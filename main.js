@@ -5,6 +5,101 @@ const fs = require('fs');
 const fsPromises = require('fs').promises;
 const os = require('os');
 
+function isBrokenPipeError(error) {
+  if (!error) return false;
+  // Check multiple ways EPIPE might be represented
+  return error.code === 'EPIPE' || 
+         error.errno === 'EPIPE' || 
+         String(error.code) === 'EPIPE' ||
+         String(error.errno) === 'EPIPE' ||
+         (error.message && error.message.includes('EPIPE')) ||
+         (error.toString && error.toString().includes('EPIPE'));
+}
+
+// Safe logging functions that handle EPIPE errors gracefully
+// These functions will never throw, even if stdout/stderr is closed
+function safeLog(...args) {
+  try {
+    // Only log if stdout is available and writable
+    if (process.stdout && process.stdout.writable && !process.stdout.destroyed) {
+      // Use console.log but catch any synchronous errors
+      console.log(...args);
+    }
+  } catch (error) {
+    // Silently ignore all errors - EPIPE and other write errors are harmless
+    // when stdout/stderr is closed (common in Electron apps when terminal closes)
+  }
+}
+
+function safeError(...args) {
+  try {
+    // Only log if stderr is available and writable
+    if (process.stderr && process.stderr.writable && !process.stderr.destroyed) {
+      // Use console.error but catch any synchronous errors
+      console.error(...args);
+    }
+  } catch (error) {
+    // Silently ignore all errors - EPIPE and other write errors are harmless
+  }
+}
+
+function safeWarn(...args) {
+  try {
+    // Only log if stderr is available and writable
+    if (process.stderr && process.stderr.writable && !process.stderr.destroyed) {
+      // Use console.warn but catch any synchronous errors
+      console.warn(...args);
+    }
+  } catch (error) {
+    // Silently ignore all errors - EPIPE and other write errors are harmless
+  }
+}
+
+// In some launch contexts stdout/stderr can close while the app keeps running.
+// Swallow EPIPE stream errors so logging does not crash the main process.
+if (process.stdout && typeof process.stdout.on === 'function') {
+  process.stdout.on('error', (error) => {
+    if (!isBrokenPipeError(error)) {
+      throw error;
+    }
+  });
+}
+
+if (process.stderr && typeof process.stderr.on === 'function') {
+  process.stderr.on('error', (error) => {
+    if (!isBrokenPipeError(error)) {
+      throw error;
+    }
+  });
+}
+
+process.on('uncaughtException', (error) => {
+  if (isBrokenPipeError(error)) {
+    // Silently ignore EPIPE errors - they're harmless when stdout/stderr is closed
+    return;
+  }
+  // For other errors, log them safely
+  try {
+    safeError('Uncaught exception:', error);
+  } catch (e) {
+    // If even safeError fails, just ignore it
+  }
+  // Don't re-throw - let Electron handle it gracefully
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  if (isBrokenPipeError(reason)) {
+    // Silently ignore EPIPE errors in promises
+    return;
+  }
+  // For other rejections, log them safely
+  try {
+    safeError('Unhandled rejection:', reason);
+  } catch (e) {
+    // Ignore
+  }
+});
+
 let mainWindow;
 const VAULT_FOLDER_NAME = 'PetalVault';
 const DATA_FILE_NAME = 'petal.json';
@@ -46,7 +141,7 @@ function getPreferences() {
       return JSON.parse(fs.readFileSync(prefsFile, 'utf-8'));
     }
   } catch (e) {
-    console.warn('Error reading preferences:', e);
+    safeWarn('Error reading preferences:', e);
   }
   
   return {};
@@ -63,7 +158,7 @@ function storePreferences(prefs) {
     fs.writeFileSync(prefsFile, JSON.stringify(merged, null, 2));
     return true;
   } catch (e) {
-    console.error('Error storing preferences:', e);
+    safeError('Error storing preferences:', e);
     return false;
   }
 }
@@ -322,7 +417,7 @@ async function writeDataFile(data) {
       const conflictFile = path.join(paths.vaultPath, `petal.conflict-${timestamp}.json`);
       await fsPromises.copyFile(paths.tempFile, conflictFile);
       await fsPromises.unlink(paths.tempFile);
-      console.warn('Conflict detected! Saved as:', conflictFile);
+      safeWarn('Conflict detected! Saved as:', conflictFile);
       return { success: false, conflict: true, conflictFile };
     }
     
@@ -341,7 +436,7 @@ async function writeDataFile(data) {
       // Ignore cleanup errors
     }
     
-    console.error('Error writing data file:', error);
+    safeError('Error writing data file:', error);
     return { success: false, error: error.message };
   }
 }
@@ -394,7 +489,7 @@ ipcMain.handle('storage:load', async () => {
   try {
     return await readDataFile();
   } catch (error) {
-    console.error('Error loading data:', error);
+    safeError('Error loading data:', error);
     return {
       data: { tasks: [], projects: [], openProjects: [], settings: {} },
       hasConflicts: false,
@@ -409,7 +504,7 @@ ipcMain.handle('storage:readConflictFile', async (event, conflictFilePath) => {
     const data = await fsPromises.readFile(conflictFilePath, 'utf-8');
     return JSON.parse(data);
   } catch (error) {
-    console.error('Error reading conflict file:', error);
+    safeError('Error reading conflict file:', error);
     throw error;
   }
 });
@@ -439,7 +534,7 @@ ipcMain.handle('storage:resolveConflict', async (event, action, conflictFilePath
     }
     return { success: false, error: 'Unknown action' };
   } catch (error) {
-    console.error('Error resolving conflict:', error);
+    safeError('Error resolving conflict:', error);
     return { success: false, error: error.message };
   }
 });
@@ -450,17 +545,17 @@ ipcMain.handle('storage:save', async (event, state) => {
     if (result.success) {
       const paths = getVaultPaths();
       const stats = fs.existsSync(paths.dataFile) ? fs.statSync(paths.dataFile) : null;
-      console.log(`✓ Saved successfully to: ${paths.dataFile}`);
-      console.log(`  Tasks: ${state.tasks?.length || 0}, Projects: ${state.projects?.length || 0}`);
+      safeLog(`✓ Saved successfully to: ${paths.dataFile}`);
+      safeLog(`  Tasks: ${state.tasks?.length || 0}, Projects: ${state.projects?.length || 0}`);
       if (stats) {
-        console.log(`  File size: ${stats.size} bytes, Modified: ${stats.mtime.toISOString()}`);
+        safeLog(`  File size: ${stats.size} bytes, Modified: ${stats.mtime.toISOString()}`);
       }
     } else {
-      console.error('✗ Save failed:', result);
+      safeError('✗ Save failed:', result);
     }
     return result.success || false;
   } catch (error) {
-    console.error('Error saving data:', error);
+    safeError('Error saving data:', error);
     return false;
   }
 });
@@ -569,7 +664,7 @@ ipcMain.handle('file:chooseFile', async () => {
   try {
     // Ensure mainWindow exists and is focused
     if (!mainWindow) {
-      console.error('mainWindow is not available');
+      safeError('mainWindow is not available');
       return null;
     }
     
@@ -628,7 +723,7 @@ ipcMain.handle('file:chooseFile', async () => {
     
     return link;
   } catch (error) {
-    console.error('Error in file:chooseFile:', error);
+    safeError('Error in file:chooseFile:', error);
     return null;
   }
 });
@@ -667,7 +762,7 @@ ipcMain.handle('file:getMetadata', async (event, fileLink) => {
       exists: true
     };
   } catch (error) {
-    console.error('Error getting file metadata:', error);
+    safeError('Error getting file metadata:', error);
     return { success: false, error: error.message };
   }
 });
@@ -680,7 +775,7 @@ ipcMain.handle('storage:export', async (event, data) => {
     await fsPromises.writeFile(exportPath, JSON.stringify(data, null, 2), 'utf-8');
     return exportPath;
   } catch (error) {
-    console.error('Error exporting data:', error);
+    safeError('Error exporting data:', error);
     throw error;
   }
 });
@@ -701,7 +796,7 @@ ipcMain.handle('file:open', async (event, filePath) => {
     await shell.openPath(cleanPath);
     return true;
   } catch (error) {
-    console.error('Error opening file:', error);
+    safeError('Error opening file:', error);
     return false;
   }
 });
