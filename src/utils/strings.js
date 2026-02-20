@@ -22,3 +22,14 @@ export function fileIcon(fileLink) {
   };
   return m[ext] || '🔗';
 }
+
+export function escJsonForAttr(obj) {
+  return JSON.stringify(obj).replace(/"/g, '&quot;');
+}
+
+export function escJsonForDataAttr(jsonObj) {
+  const jsonStr = JSON.stringify(jsonObj);
+  // For data attributes with single quotes, we only need to escape single quotes
+  // HTML entities are not needed in data attributes - they're safe as-is
+  return jsonStr.replace(/'/g, '&#39;');
+}

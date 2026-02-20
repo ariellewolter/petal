@@ -22,7 +22,11 @@ class StorageAdapter {
             tasks: result.data.tasks || [],
             projects: result.data.projects || [],
             openProjects: result.data.openProjects || [],
-            settings: result.data.settings || {}
+            settings: result.data.settings || {},
+            fileHistory: result.data.fileHistory || {},
+            fileRegistry: result.data.fileRegistry || {},
+            events: result.data.events || [],
+            recurringRules: result.data.recurringRules || []
           };
           return result;
         } else {
@@ -32,7 +36,11 @@ class StorageAdapter {
               tasks: result.tasks || [],
               projects: result.projects || [],
               openProjects: result.openProjects || [],
-              settings: result.settings || {}
+              settings: result.settings || {},
+              fileHistory: result.fileHistory || {},
+              fileRegistry: result.fileRegistry || {},
+              events: result.events || [],
+              recurringRules: result.recurringRules || []
             },
             hasConflicts: false,
             conflicts: [],
@@ -42,7 +50,16 @@ class StorageAdapter {
       } catch (e) {
         console.error('Error loading state from file:', e);
         return {
-          data: { tasks: [], projects: [], openProjects: [], settings: {} },
+          data: { 
+            tasks: [], 
+            projects: [], 
+            openProjects: [], 
+            settings: {},
+            fileHistory: {},
+            fileRegistry: {},
+            events: [],
+            recurringRules: []
+          },
           hasConflicts: false,
           conflicts: [],
           newerConflicts: []
@@ -55,11 +72,24 @@ class StorageAdapter {
           tasks: JSON.parse(localStorage.getItem('petal-tasks') || '[]'),
           projects: JSON.parse(localStorage.getItem('petal-projects') || '[]'),
           openProjects: JSON.parse(localStorage.getItem('petal-open-proj') || '[]'),
-          settings: JSON.parse(localStorage.getItem('petal-settings') || '{}')
+          settings: JSON.parse(localStorage.getItem('petal-settings') || '{}'),
+          fileHistory: JSON.parse(localStorage.getItem('petal-file-history') || '{}'),
+          fileRegistry: JSON.parse(localStorage.getItem('petal-file-registry') || '{}'),
+          events: JSON.parse(localStorage.getItem('petal-events') || '[]'),
+          recurringRules: JSON.parse(localStorage.getItem('petal-recurring-rules') || '[]')
         };
       } catch (e) {
         console.error('Error loading state:', e);
-        return { tasks: [], projects: [], openProjects: [], settings: {} };
+        return { 
+          tasks: [], 
+          projects: [], 
+          openProjects: [], 
+          settings: {},
+          fileHistory: {},
+          fileRegistry: {},
+          events: [],
+          recurringRules: []
+        };
       }
     }
   }
@@ -73,7 +103,11 @@ class StorageAdapter {
           tasks: state.tasks || [],
           projects: state.projects || [],
           openProjects: state.openProjects || [],
-          settings: state.settings || {}
+          settings: state.settings || {},
+          events: state.events || [],
+          recurringRules: state.recurringRules || [],
+          fileHistory: state.fileHistory || {},
+          fileRegistry: state.fileRegistry || {}
         });
         
         if (success) {
@@ -91,6 +125,10 @@ class StorageAdapter {
         localStorage.setItem('petal-projects', JSON.stringify(state.projects || []));
         localStorage.setItem('petal-open-proj', JSON.stringify(state.openProjects || []));
         localStorage.setItem('petal-settings', JSON.stringify(state.settings || {}));
+        localStorage.setItem('petal-events', JSON.stringify(state.events || []));
+        localStorage.setItem('petal-recurring-rules', JSON.stringify(state.recurringRules || []));
+        localStorage.setItem('petal-file-history', JSON.stringify(state.fileHistory || {}));
+        localStorage.setItem('petal-file-registry', JSON.stringify(state.fileRegistry || {}));
         
         // Notify listeners of changes
         this.listeners.forEach(cb => cb(state));
