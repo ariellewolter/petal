@@ -353,6 +353,7 @@ function createWindow() {
     minWidth: 600,
     minHeight: 500,
     backgroundColor: '#faf8f5',
+    show: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -363,6 +364,10 @@ function createWindow() {
 
   mainWindow.loadFile('tasklist (1).html');
 
+  // Ensure window is shown and focused
+  mainWindow.show();
+  mainWindow.focus();
+
   // Open DevTools in development
   if (process.env.NODE_ENV === 'development') {
     mainWindow.webContents.openDevTools();
@@ -370,6 +375,11 @@ function createWindow() {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+  });
+
+  // Log any errors
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    console.error('Failed to load:', errorCode, errorDescription);
   });
 }
 
@@ -381,6 +391,9 @@ app.whenReady().then(() => {
       createWindow();
     }
   });
+}).catch((error) => {
+  console.error('Error during app initialization:', error);
+  dialog.showErrorBox('App Error', `Failed to start app: ${error.message}`);
 });
 
 app.on('window-all-closed', () => {
