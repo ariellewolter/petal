@@ -1677,12 +1677,27 @@ import * as TaskDrawer from './src/features/taskDrawer.js';
 // Create context object that pages can use to access global state
 // This function will be called when handlers are invoked, so globals will be available
 function createPageContext() {
-  // Access globals from window or from the main script scope
-  // These are defined in the main script that runs after this module
+  // Try to get from store first (new system), then fall back to window globals
+  let tasks = [];
+  let projects = [];
+  let settings = {};
+  
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    tasks = state.tasks || [];
+    projects = state.projects || [];
+    settings = state.settings || {};
+  } else {
+    // Fallback to window globals (backward compatibility)
+    tasks = window.tasks || [];
+    projects = window.projects || [];
+    settings = window.settings || {};
+  }
+  
   return {
-    tasks: window.tasks || [],
-    projects: window.projects || [],
-    settings: window.settings || {},
+    tasks,
+    projects,
+    settings,
     save: async () => {
       // Call the global save function if it exists
       if (typeof window.save === 'function') {
@@ -1694,6 +1709,7 @@ function createPageContext() {
       }
       console.warn('save function not found');
     },
+    render: window.render,
     // Add other globals as needed
   };
 }
@@ -1998,6 +2014,67 @@ window.Petal.features.taskDrawer = {
     await TaskDrawer.addSubtaskToTask(ctx);
   }
 };
+</script>
+<script type="module">
+// ═══════════════════════ MODULE IMPORTS & STORE SETUP ═══════════════════════
+// Step 2: Wire store and handlers - single namespace for app integration
+
+import { appStore } from './src/state/store.js';
+import { handlers } from './src/ui/handlers.js';
+import { initPersistence } from './src/storage/persistence.js';
+import { LANE_STAGES, MATRIX_STAGES, MATRIX_LANES, DEFAULT_BOARD_COLUMNS } from './src/domain/schema.js';
+import { getMatrixStage, isTaskBlocked, getAllTasks } from './src/domain/models.js';
+import { today, parseDate, dueLabel } from './src/utils/dates.js';
+import { esc, fileIcon } from './src/utils/strings.js';
+
+// Set up window.Petal namespace - single integration point
+window.Petal = window.Petal || {};
+window.Petal.store = appStore;
+window.Petal.handlers = handlers;
+
+// Domain functions (wrapped to take state explicitly from store)
+window.Petal.getMatrixStage = (task) => {
+  const state = appStore.getState();
+  const allTasks = getAllTasks(state.tasks, state.projects);
+  return getMatrixStage(task, allTasks);
+};
+
+window.Petal.isTaskBlocked = (task) => {
+  const state = appStore.getState();
+  const allTasks = getAllTasks(state.tasks, state.projects);
+  return isTaskBlocked(task, allTasks);
+};
+
+window.Petal.getAllTasks = () => {
+  const state = appStore.getState();
+  return getAllTasks(state.tasks || [], state.projects || []);
+};
+
+// Utilities
+window.Petal.today = today;
+window.Petal.parseDate = parseDate;
+window.Petal.dueLabel = dueLabel;
+window.Petal.esc = esc;
+window.Petal.fileIcon = fileIcon;
+
+// Constants
+window.Petal.LANE_STAGES = LANE_STAGES;
+window.Petal.MATRIX_STAGES = MATRIX_STAGES;
+window.Petal.MATRIX_LANES = MATRIX_LANES;
+window.Petal.DEFAULT_BOARD_COLUMNS = DEFAULT_BOARD_COLUMNS;
+
+// Expose constants to window for backward compatibility
+window.LANE_STAGES = LANE_STAGES;
+window.MATRIX_STAGES = MATRIX_STAGES;
+window.MATRIX_LANES = MATRIX_LANES;
+window.DEFAULT_BOARD_COLUMNS = DEFAULT_BOARD_COLUMNS;
+
+// Initialize persistence (auto-saves on state changes)
+initPersistence();
+
+// Wire render function to store changes (will be set up after render is defined)
+// This will be done in the initState function after render is available
+console.log('✓ Store and handlers initialized');
 </script>
 <script>
 // ═══════════════════════ STATE ═══════════════════════
@@ -2601,17 +2678,11 @@ async function initState() {
   // Load state (with conflict detection)
   const loadResult = await storage.loadState();
   
-  // Handle conflict detection result
+  // Extract data (handle both Electron and browser formats)
+  let loadedData;
   if (loadResult.hasConflicts !== undefined) {
     // Electron: has conflict info
-    tasks = loadResult.data.tasks || [];
-    projects = loadResult.data.projects || [];
-    openProjects = new Set(loadResult.data.openProjects || []);
-    settings = loadResult.data.settings || {};
-    fileHistory = loadResult.data.fileHistory || {};
-    fileRegistry = loadResult.data.fileRegistry || {}; // Load standalone files
-    events = loadResult.data.events || []; // Load calendar events
-    recurringRules = loadResult.data.recurringRules || []; // Load recurring event rules
+    loadedData = loadResult.data;
     
     // Show conflict banner if conflicts exist
     if (loadResult.hasConflicts && loadResult.conflicts && loadResult.conflicts.length > 0) {
@@ -2619,14 +2690,69 @@ async function initState() {
     }
   } else {
     // Browser: simple state
-    tasks = loadResult.tasks || [];
-    projects = loadResult.projects || [];
-    openProjects = new Set(loadResult.openProjects || []);
-    events = loadResult.events || [];
-    recurringRules = loadResult.recurringRules || [];
-    settings = loadResult.settings || {};
-    fileHistory = loadResult.fileHistory || {};
+    loadedData = loadResult;
   }
+  
+  // Load data into store (Step 2: Wire store)
+  // Wait for module to load if needed (module scripts are deferred)
+  if (!window.Petal || !window.Petal.store) {
+    console.warn('Store not available yet, waiting...');
+    // Retry after a short delay
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  
+  if (window.Petal && window.Petal.store) {
+    window.Petal.store.loadState({
+      tasks: loadedData.tasks || [],
+      projects: loadedData.projects || [],
+      openProjects: loadedData.openProjects || [],
+      settings: loadedData.settings || {},
+      currentView: currentView,
+      currentSort: currentSort,
+      currentFilter: currentFilter,
+      currentProjFilter: currentProjFilter,
+      selectedColor: selectedColor,
+      taskMode: taskMode,
+      boardProjectFilter: boardProjectFilter,
+      searchQuery: searchQuery,
+      currentFileView: currentFileView,
+      selectedProjectId: selectedProjectId,
+      fileRegistry: loadedData.fileRegistry || {},
+      fileHistory: loadedData.fileHistory || {}
+    });
+    
+    // Wire render function to store changes (Step 2b)
+    window.Petal.store.subscribe(() => {
+      if (typeof render === 'function') {
+        render();
+      }
+    });
+    
+    console.log('✓ Store loaded and render subscription wired');
+  }
+  
+  // Keep global variables as sync proxies for backward compatibility (Step 2f)
+  // Sync from store to globals
+  const state = window.Petal?.store?.getState() || {};
+  tasks = state.tasks || [];
+  projects = state.projects || [];
+  openProjects = state.openProjects || new Set();
+  settings = state.settings || {};
+  fileHistory = state.fileHistory || {};
+  fileRegistry = state.fileRegistry || {};
+  events = loadedData.events || []; // Events not in store yet
+  recurringRules = loadedData.recurringRules || []; // Recurring rules not in store yet
+  
+  // CRITICAL: Update window.tasks immediately so createPageContext() can find them
+  window.tasks = tasks;
+  window.projects = projects;
+  window.settings = settings;
+  
+  console.log('✓ Globals synced from store:', {
+    tasksCount: tasks.length,
+    projectsCount: projects.length,
+    windowTasksCount: window.tasks?.length
+  });
 
   migrateTasksForKanban();
   ensureCellLogSettings();
@@ -3031,6 +3157,7 @@ async function resolveConflict(action) {
 }
 
 // Save state (async)
+// Step 2e: Sync globals to store, then store auto-saves via persistence subscription
 async function save() {
   ensureBoardSettings();
   ensureCellLogSettings();
@@ -3042,6 +3169,31 @@ async function save() {
     buildFileRegistry(); // Fallback
   }
   
+  // Step 2e: Sync globals to store (store will auto-save via persistence subscription)
+  if (window.Petal?.store) {
+    window.Petal.store.setState({
+      tasks,
+      projects,
+      openProjects,
+      settings,
+      fileHistory,
+      fileRegistry,
+      currentView,
+      currentSort,
+      currentFilter,
+      currentProjFilter,
+      selectedColor,
+      taskMode,
+      boardProjectFilter,
+      searchQuery,
+      currentFileView,
+      selectedProjectId
+    });
+    // Store will auto-save via persistence subscription, but we still need to save events/recurringRules
+    // TODO: Add events and recurringRules to store in future
+  }
+  
+  // Save events and recurringRules directly (not in store yet)
   const success = await storage.saveState({
     tasks,
     projects,
@@ -3049,8 +3201,8 @@ async function save() {
     settings,
     fileHistory,
     fileRegistry, // Save standalone files
-    events, // Save calendar events
-    recurringRules // Save recurring event rules
+    events, // Save calendar events (not in store yet)
+    recurringRules // Save recurring event rules (not in store yet)
   });
   
   // Update window references (in case arrays were reassigned)
@@ -3846,10 +3998,10 @@ async function saveEditModal() {
       closeEditModal();
     }
   } else if(editingTaskId) {
-    // Editing a regular task
-    const t = tasks.find(task => task.id === editingTaskId);
+    // Editing a regular task - exclude deleted tasks
+    const t = tasks.find(task => task.id === editingTaskId && !task.deletedAt);
     if(!t) {
-      alert('Task not found.');
+      alert('Task not found or has been deleted.');
       closeEditModal();
       return;
     }
@@ -6609,6 +6761,37 @@ function hideAllForms() {
 
 // ═══════════════════════ RENDER ═══════════════════════
 async function render(){
+  // Step 2d: Read from store instead of globals
+  const state = window.Petal?.store?.getState() || {};
+  const storeTasks = state.tasks || [];
+  const storeProjects = state.projects || [];
+  
+  // Sync store to globals for backward compatibility (Step 2f)
+  tasks = storeTasks;
+  projects = storeProjects;
+  openProjects = state.openProjects || new Set();
+  settings = state.settings || {};
+  fileHistory = state.fileHistory || {};
+  fileRegistry = state.fileRegistry || {};
+  currentView = state.currentView || currentView;
+  currentSort = state.currentSort || currentSort;
+  currentFilter = state.currentFilter || currentFilter;
+  currentProjFilter = state.currentProjFilter || currentProjFilter;
+  selectedColor = state.selectedColor || selectedColor;
+  taskMode = state.taskMode || taskMode;
+  boardProjectFilter = state.boardProjectFilter || boardProjectFilter;
+  searchQuery = state.searchQuery || searchQuery;
+  currentFileView = state.currentFileView || currentFileView;
+  selectedProjectId = state.selectedProjectId || selectedProjectId;
+  
+  // CRITICAL: Update window references IMMEDIATELY so createPageContext() can find them
+  window.tasks = tasks;
+  window.projects = projects;
+  window.settings = settings;
+  window.fileRegistry = fileRegistry;
+  window.fileHistory = fileHistory;
+  window.currentView = currentView;
+  
   const allTasks=[...tasks,...projects.flatMap(p=>p.subtasks||[])];
   const remaining=tasks.filter(t=>!t.done).length + projects.reduce((a,p)=>a+(p.subtasks||[]).filter(s=>!s.done).length,0);
   const overdue=allTasks.filter(t=>!t.done&&t.due&&parseDate(t.due)<today()).length + projects.filter(p=>!p.done&&p.due&&parseDate(p.due)<today()).length;

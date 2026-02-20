@@ -4,10 +4,47 @@
 import { esc } from '../utils/strings.js';
 
 /**
+ * Helper: Update store or fallback to save/render pattern
+ * Step 2e: Use store when available, fallback for backward compatibility
+ */
+function updateStoreOrSave(updates, fallbackSave, fallbackRender) {
+  if (window.Petal?.store) {
+    window.Petal.store.setState(updates);
+    // Store auto-saves and auto-renders via subscriptions
+  } else if (fallbackSave) {
+    // Fallback: old pattern
+    fallbackSave();
+    if (fallbackRender) fallbackRender();
+  }
+}
+
+/**
+ * Helper to find a task by ID, excluding deleted tasks
+ * Handles both string and number ID types
+ */
+function findActiveTask(tasks, id) {
+  if (id === null || id === undefined) return null;
+  
+  // Normalize ID to number for comparison
+  const idNum = typeof id === 'string' ? parseInt(id) : Number(id);
+  if (isNaN(idNum)) return null;
+  
+  return tasks.find(task => {
+    if (!task || task.deletedAt) return false; // Exclude deleted tasks
+    if (!task.id) return false;
+    
+    // Try multiple comparison methods for ID type flexibility
+    const taskId = Number(task.id);
+    return taskId === idNum || task.id === id || String(task.id) === String(id);
+  });
+}
+
+/**
  * Get tasks for a specific column/status
  */
 export function getColumnTasks(tasks, status, projectFilter = 'all', excludeTaskId = null) {
   return tasks
+    .filter((t) => !t.deletedAt) // Exclude deleted tasks
     .filter((t) => t.status === status)
     .filter((t) => projectFilter === 'all' || String(t.projectId || '') === String(projectFilter))
     .filter((t) => excludeTaskId === null || t.id !== excludeTaskId)
@@ -153,9 +190,27 @@ export async function addTask(ctx, titleOverride = null, statusOverride = null) 
     boardOrder
   };
   
-  tasks.unshift(newTask);
-  await save();
-  if (render) render();
+  // Step 2e: Use store instead of direct save/render
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    // CRITICAL: Preserve all state fields, especially projects!
+    window.Petal.store.setState({ 
+      tasks: [newTask, ...(state.tasks || [])],
+      // Explicitly preserve projects and all other state
+      projects: state.projects || [],
+      openProjects: state.openProjects || new Set(),
+      settings: state.settings || {},
+      fileRegistry: state.fileRegistry || {},
+      fileHistory: state.fileHistory || {}
+    });
+    // Store auto-saves via persistence subscription
+    // Store auto-renders via render subscription
+  } else {
+    // Fallback: old pattern for backward compatibility
+    tasks.unshift(newTask);
+    await save();
+    if (render) render();
+  }
   
   // Clear form if not using override
   if (!titleOverride) {
@@ -206,19 +261,72 @@ export async function addTask(ctx, titleOverride = null, statusOverride = null) 
  */
 export async function toggleTask(ctx, id) {
   const { tasks, save, render } = ctx;
-  const t = tasks.find(t => t.id === id);
+  
+  // Debug: Log task count and ID being searched
+  if (!tasks || tasks.length === 0) {
+    console.error('toggleTask: tasks array is empty!', { 
+      tasksLength: tasks?.length, 
+      id, 
+      ctxHasTasks: !!ctx.tasks,
+      windowTasksLength: window.tasks?.length 
+    });
+  }
+  
+  const t = findActiveTask(tasks, id);
   if (!t) {
-    console.warn('Task not found for ID:', id);
+    console.warn('Task not found for ID:', id, {
+      tasksCount: tasks?.length,
+      taskIds: tasks?.slice(0, 5).map(t => t?.id),
+      searchingFor: id,
+      idType: typeof id
+    });
     return;
   }
+  // Step 2e: Use store instead of direct save/render
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    const updatedTasks = state.tasks.map(task => {
+      if (task.id === id) {
+        const newDone = !task.done;
+        return {
+          ...task,
+          done: newDone,
+          status: newDone ? 'Done' : (task.status === 'Done' ? 'Todo' : task.status)
+        };
+      }
+      return task;
+    });
+    window.Petal.store.setState({ tasks: updatedTasks });
+    // Store auto-saves and auto-renders
+  } else {
+    // Fallback: old pattern
   t.done = !t.done;
   if (t.done) {
     t.status = 'Done';
   } else if (t.status === 'Done') {
     t.status = 'Todo';
   }
-  await save();
-  if (render) render();
+  
+  // Step 2e: Use store instead of direct save/render
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    // CRITICAL: Preserve all state fields, especially projects!
+    window.Petal.store.setState({
+      tasks: state.tasks.map(task => task.id === id ? t : task),
+      // Explicitly preserve projects and all other state
+      projects: state.projects || [],
+      openProjects: state.openProjects || new Set(),
+      settings: state.settings || {},
+      fileRegistry: state.fileRegistry || {},
+      fileHistory: state.fileHistory || {}
+    });
+    // Store auto-saves and auto-renders
+  } else {
+    // Fallback: old pattern
+    await save();
+    if (render) render();
+  }
+  }
 }
 
 /**
@@ -226,19 +334,45 @@ export async function toggleTask(ctx, id) {
  */
 export async function toggleSubtask(ctx, projectId, subtaskId) {
   const { tasks, save, render } = ctx;
-  const subtask = tasks.find(t => t.id === subtaskId && (t.parentTaskId || t.projectId === projectId));
+  const subtask = findActiveTask(tasks, subtaskId);
   if (!subtask) {
-    console.warn('Subtask not found for ID:', subtaskId);
+    console.warn('Subtask not found for ID:', subtaskId, '- Subtask may have been deleted');
     return;
   }
-  subtask.done = !subtask.done;
-  if (subtask.done) {
-    subtask.status = 'Done';
-  } else if (subtask.status === 'Done') {
-    subtask.status = 'Todo';
+  // Verify it's actually a subtask for this project
+  if (subtask.parentTaskId || subtask.projectId === projectId) {
+    // Valid subtask
+  } else {
+    console.warn('Subtask ID', subtaskId, 'does not belong to project', projectId);
+    return;
   }
-  await save();
-  if (render) render();
+  // Step 2e: Use store instead of direct save/render
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    const updatedTasks = state.tasks.map(task => {
+      if (task.id === subtaskId || String(task.id) === String(subtaskId)) {
+        const newDone = !task.done;
+        return {
+          ...task,
+          done: newDone,
+          status: newDone ? 'Done' : (task.status === 'Done' ? 'Todo' : task.status)
+        };
+      }
+      return task;
+    });
+    window.Petal.store.setState({ tasks: updatedTasks });
+    // Store auto-saves and auto-renders
+  } else {
+    // Fallback: old pattern
+    subtask.done = !subtask.done;
+    if (subtask.done) {
+      subtask.status = 'Done';
+    } else if (subtask.status === 'Done') {
+      subtask.status = 'Todo';
+    }
+    await save();
+    if (render) render();
+  }
 }
 
 /**
@@ -263,19 +397,7 @@ export function editTask(ctx, id) {
   const { tasks } = ctx;
   
   try {
-    // Handle both string and number IDs
-    const idNum = typeof id === 'string' ? parseInt(id) : Number(id);
-    if (isNaN(idNum) && id !== null && id !== undefined) {
-      console.error('Invalid task ID:', id);
-      alert('Invalid task ID. Please try again.');
-      return;
-    }
-    
-    const t = tasks.find(task => {
-      if (!task || !task.id) return false;
-      const taskId = Number(task.id);
-      return taskId === idNum || task.id === id || String(task.id) === String(id);
-    });
+    const t = findActiveTask(tasks, id);
     
     if (!t) {
       // Only log in development mode to reduce console noise
@@ -286,7 +408,7 @@ export function editTask(ctx, id) {
         window.location?.protocol === 'file:'
       );
       if (isDev) {
-        console.warn('Task not found for ID:', id, '- This may happen if the task was recently deleted');
+        console.warn('Task not found for ID:', id, '- Task may have been deleted');
       }
       // Clear stale edit pointers so the UI does not keep retrying invalid IDs.
       if (typeof window !== 'undefined') {

@@ -10,6 +10,14 @@ if (typeof window !== 'undefined') {
 }
 
 /**
+ * Helper to find active (non-deleted) task by ID
+ */
+function findActiveTask(tasks, taskId) {
+  if (!taskId) return null;
+  return tasks.find(t => t.id === taskId && !t.deletedAt);
+}
+
+/**
  * Helper to get project name by ID
  */
 function projectNameById(projects, projectId) {
@@ -23,8 +31,12 @@ function projectNameById(projects, projectId) {
  */
 export function openTaskDrawer(ctx, taskId) {
   const { tasks, projects } = ctx;
-  const task = tasks.find(t => t.id === taskId);
-  if (!task) return;
+  // Only show active (non-deleted) tasks in drawer
+  const task = tasks.find(t => t.id === taskId && !t.deletedAt);
+  if (!task) {
+    console.warn('Task not found or deleted:', taskId);
+    return;
+  }
   
   window.currentDrawerTaskId = taskId;
   window.currentDrawerTab = 'notes';
@@ -129,7 +141,7 @@ export function debounceSaveTaskNoteFromDrawer(ctx) {
     debounceSaveTaskNote(window.currentDrawerTaskId, value);
   } else {
     // Fallback: save immediately
-    const task = ctx.tasks.find(t => t.id === window.currentDrawerTaskId);
+    const task = findActiveTask(ctx.tasks, window.currentDrawerTaskId);
     if (task) {
       task.note = value;
       task.noteUpdatedAt = new Date().toISOString();
@@ -144,7 +156,7 @@ export function debounceSaveTaskNoteFromDrawer(ctx) {
 export function renderTaskLogEntries(ctx) {
   if (!window.currentDrawerTaskId) return;
   const { tasks } = ctx;
-  const task = tasks.find(t => t.id === window.currentDrawerTaskId);
+  const task = findActiveTask(tasks, window.currentDrawerTaskId);
   if (!task) return;
   
   const container = document.getElementById('task-drawer-log-entries');
@@ -176,7 +188,7 @@ export function renderTaskLogEntries(ctx) {
 export async function addTaskLogEntry(ctx) {
   if (!window.currentDrawerTaskId) return;
   const { tasks, save } = ctx;
-  const task = tasks.find(t => t.id === window.currentDrawerTaskId);
+  const task = findActiveTask(tasks, window.currentDrawerTaskId);
   if (!task) return;
   
   const text = prompt('Enter log entry:');
@@ -203,7 +215,7 @@ export async function addTaskLogEntry(ctx) {
 export async function deleteTaskLogEntry(ctx, entryId) {
   if (!window.currentDrawerTaskId) return;
   const { tasks, save } = ctx;
-  const task = tasks.find(t => t.id === window.currentDrawerTaskId);
+  const task = findActiveTask(tasks, window.currentDrawerTaskId);
   if (!task || !task.log) return;
   
   task.log = task.log.filter(e => e.id !== entryId);
@@ -217,7 +229,7 @@ export async function deleteTaskLogEntry(ctx, entryId) {
 export function renderTaskDrawerFiles(ctx) {
   if (!window.currentDrawerTaskId) return;
   const { tasks } = ctx;
-  const task = tasks.find(t => t.id === window.currentDrawerTaskId);
+  const task = findActiveTask(tasks, window.currentDrawerTaskId);
   if (!task) return;
   
   const container = document.getElementById('task-drawer-files-list');
@@ -257,7 +269,7 @@ export function renderTaskDrawerFiles(ctx) {
 export async function linkExistingFileToTask(ctx) {
   if (!window.currentDrawerTaskId) return;
   const { tasks, projects, save } = ctx;
-  const task = tasks.find(t => t.id === window.currentDrawerTaskId);
+  const task = findActiveTask(tasks, window.currentDrawerTaskId);
   if (!task || !task.projectId) {
     alert('Task must be in a project to link files');
     return;
@@ -302,7 +314,7 @@ export function addNewFileToTask() {
 export async function unlinkFileFromTask(ctx, fileId) {
   if (!window.currentDrawerTaskId) return;
   const { tasks, save } = ctx;
-  const task = tasks.find(t => t.id === window.currentDrawerTaskId);
+  const task = findActiveTask(tasks, window.currentDrawerTaskId);
   if (!task) return;
   
   if (!task.fileIds) task.fileIds = [];
@@ -317,7 +329,7 @@ export async function unlinkFileFromTask(ctx, fileId) {
 export function renderTaskDrawerSubtasks(ctx) {
   if (!window.currentDrawerTaskId) return;
   const { tasks } = ctx;
-  const task = tasks.find(t => t.id === window.currentDrawerTaskId);
+  const task = findActiveTask(tasks, window.currentDrawerTaskId);
   if (!task) return;
   
   const container = document.getElementById('task-drawer-subtasks-list');
@@ -352,9 +364,9 @@ export async function addSubtaskToTask(ctx) {
       return;
     }
     const { tasks, save, render } = ctx;
-    const task = tasks.find(t => t.id === window.currentDrawerTaskId);
+    const task = findActiveTask(tasks, window.currentDrawerTaskId);
     if (!task) {
-      console.warn('addSubtaskToTask: Task not found:', window.currentDrawerTaskId);
+      console.warn('addSubtaskToTask: Task not found or deleted:', window.currentDrawerTaskId);
       return;
     }
     

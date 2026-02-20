@@ -6,9 +6,23 @@
  */
 export function confirmDeleteTask(ctx, taskId, isSubtask, projectId, parentTaskId) {
   const { tasks } = ctx;
-  const task = tasks.find(t => t.id === taskId);
+  // Find task even if deleted (we want to show delete confirmation for recently deleted tasks)
+  // But check if it's already deleted to avoid double-deletion
+  const idNum = typeof taskId === 'string' ? parseInt(taskId) : Number(taskId);
+  const task = tasks.find(t => {
+    if (!t || !t.id) return false;
+    const tId = Number(t.id);
+    return tId === idNum || t.id === taskId || String(t.id) === String(taskId);
+  });
+  
   if (!task) {
     alert('Task not found');
+    return;
+  }
+  
+  // If already deleted, inform user
+  if (task.deletedAt) {
+    alert('This task has already been deleted');
     return;
   }
   
@@ -117,14 +131,30 @@ export async function executeDelete(ctx) {
  */
 export async function softDeleteTask(ctx, taskId) {
   const { tasks } = ctx;
-  const task = tasks.find(t => t.id === taskId);
-  if (!task) return;
+  // Find task even if already deleted (to handle double-delete gracefully)
+  const idNum = typeof taskId === 'string' ? parseInt(taskId) : Number(taskId);
+  const task = tasks.find(t => {
+    if (!t || !t.id) return false;
+    const tId = Number(t.id);
+    return tId === idNum || t.id === taskId || String(t.id) === String(taskId);
+  });
+  
+  if (!task) {
+    console.warn('Task not found for deletion:', taskId);
+    return;
+  }
+  
+  // Skip if already deleted
+  if (task.deletedAt) {
+    console.warn('Task already deleted:', taskId);
+    return;
+  }
   
   // Mark task as deleted
   task.deletedAt = new Date().toISOString();
   
-  // Also soft delete all subtasks
-  const subtasks = tasks.filter(t => t.parentTaskId === taskId);
+  // Also soft delete all subtasks (only active ones)
+  const subtasks = tasks.filter(t => t.parentTaskId === taskId && !t.deletedAt);
   subtasks.forEach(subtask => {
     subtask.deletedAt = new Date().toISOString();
   });
