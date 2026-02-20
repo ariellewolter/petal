@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self';">
 <title>Petal — My Tasks</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#c98b8b">
@@ -367,6 +367,122 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
   .subtask-add-row{flex-wrap:wrap;}
   .btn-export,.btn-import{width:100%;}
   .kanban-board{grid-template-columns:1fr;}
+}
+
+/* ── PLANNER LAYOUT STYLES ── */
+#view-planner{display:none;height:calc(100vh - 200px);overflow:hidden;flex-direction:column;}
+#view-planner[style*="display:flex"]{display:flex!important;}
+
+/* Calendar grid */
+.cal-daylabel{text-align:center;font-size:7px;color:var(--text-muted);letter-spacing:0.07em;padding-bottom:4px;font-family:'Jost',sans-serif;font-weight:700;}
+.cal-day{text-align:center;font-size:10px;padding:4px 1px;border-radius:5px;cursor:pointer;color:var(--text-dim);transition:all 0.11s;position:relative;line-height:1.2;}
+.cal-day:hover{background:var(--bg2);color:var(--text);}
+.cal-day.is-today{background:var(--rose);color:white;font-weight:600;}
+.cal-day.is-selected:not(.is-today){background:rgba(201,139,139,0.12);color:var(--text);outline:1px solid rgba(201,139,139,0.25);}
+.cal-day.in-week:not(.is-today){background:rgba(201,139,139,0.06);color:var(--text-dim);}
+.cal-day.has-ev::after{content:'';position:absolute;bottom:1px;left:50%;transform:translateX(-50%);width:3px;height:3px;border-radius:50%;background:var(--sage);}
+.cal-day.is-today.has-ev::after{background:rgba(255,255,255,0.6);}
+.cal-day.other-mo{opacity:0.28;pointer-events:none;}
+.cal-arrow:hover{color:var(--rose);}
+
+/* Event items in sidebar */
+.ev-item{display:flex;align-items:flex-start;gap:9px;padding:7px 8px;border-radius:7px;cursor:pointer;border:1px solid transparent;transition:all 0.13s;}
+.ev-item:hover{background:var(--bg2);border-color:var(--border);}
+.ev-item.is-now{background:rgba(201,139,139,0.05);border-color:rgba(201,139,139,0.15);}
+.ev-stripe{width:3px;border-radius:2px;align-self:stretch;flex-shrink:0;min-height:28px;}
+.stripe-yellow{background:var(--rose);}
+.stripe-green{background:var(--sage);}
+.stripe-red{background:var(--overdue);}
+.stripe-blue{background:var(--mauve);}
+.stripe-muted{background:var(--border2);}
+.ev-content{flex:1;min-width:0;}
+.ev-name{font-size:10.5px;color:var(--text);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ev-time{font-size:8px;color:var(--text-muted);letter-spacing:0.04em;}
+.ev-day-badge{font-size:7px;letter-spacing:0.08em;padding:2px 6px;border-radius:4px;background:var(--bg2);color:var(--text-muted);white-space:nowrap;align-self:flex-start;margin-top:1px;}
+.sidebar-add:hover{color:var(--rose);}
+
+/* Timeline */
+.t-row{display:grid;grid-template-columns:42px 1fr;gap:0;position:relative;min-height:60px;margin-bottom:8px;}
+.t-row::after{content:'';position:absolute;left:52px;right:0;top:0;height:1px;background:var(--border);}
+.t-label{font-size:8px;color:var(--text-muted);letter-spacing:0.05em;padding:4px 6px 0 0;text-align:right;flex-shrink:0;line-height:1;margin-top:-6px;}
+.t-slot{padding:5px 0 5px 14px;display:flex;flex-direction:column;gap:4px;position:relative;}
+/* Task list specific styles for t-row */
+#task-container .t-row{min-height:40px;margin-bottom:4px;}
+#task-container .t-label{font-size:10px;color:var(--text-dim);padding:8px 0;text-align:right;padding-right:12px;margin-top:0;}
+#task-container .t-slot{padding:4px 0;}
+#task-container .t-ghost{font-size:11px;padding:8px 14px;}
+
+/* Now marker */
+.now-marker{position:absolute;left:42px;right:0;height:1px;background:var(--overdue);z-index:5;pointer-events:none;}
+.now-marker::before{content:'';position:absolute;left:12px;top:-3px;width:7px;height:7px;border-radius:50%;background:var(--overdue);}
+
+/* Time blocks */
+.t-block{border-radius:10px;padding:10px 14px;border-left:3px solid transparent;cursor:pointer;transition:transform 0.13s,filter 0.13s;position:relative;}
+.t-block:hover{transform:translateX(3px);filter:brightness(1.08);}
+.t-block.yellow{background:rgba(201,139,139,0.08);border-left-color:var(--rose);}
+.t-block.green{background:rgba(154,171,148,0.08);border-left-color:var(--sage);}
+.t-block.red{background:rgba(196,122,122,0.09);border-left-color:var(--overdue);}
+.t-block.blue{background:rgba(160,136,152,0.08);border-left-color:var(--mauve);}
+.t-block.muted{background:var(--bg2);border-left-color:var(--border2);}
+.t-block-title{font-family:'Jost',sans-serif;font-size:11.5px;font-weight:600;color:var(--text);margin-bottom:3px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.t-block-meta{font-size:8.5px;color:var(--text-dim);letter-spacing:0.03em;}
+.t-block-footer{display:flex;align-items:center;gap:6px;margin-top:7px;}
+.tag{font-size:7px;letter-spacing:0.08em;padding:2px 8px;border-radius:999px;text-transform:uppercase;}
+.tag.yellow{background:rgba(201,139,139,0.15);color:var(--rose);}
+.tag.green{background:rgba(154,171,148,0.15);color:var(--sage);}
+.tag.red{background:rgba(196,122,122,0.15);color:var(--overdue);}
+.tag.blue{background:rgba(160,136,152,0.15);color:var(--mauve);}
+.tag.muted{background:var(--bg2);color:var(--text-muted);}
+.t-block-dur{font-size:8px;color:var(--text-muted);margin-left:auto;letter-spacing:0.04em;}
+
+/* Ghost add slot */
+.t-ghost{background:transparent;border:1px dashed var(--border2);border-radius:9px;padding:7px 14px;font-size:8.5px;color:var(--text-muted);cursor:pointer;text-align:left;transition:all 0.14s;letter-spacing:0.05em;font-family:'Jost',sans-serif;opacity:0;}
+.t-row:hover .t-ghost{opacity:1;}
+.t-ghost:hover{border-color:var(--rose);color:var(--rose);background:rgba(201,139,139,0.04);opacity:1;}
+
+/* All-day events */
+.allday-chip{font-size:8.5px;padding:3px 9px;border-radius:999px;white-space:nowrap;letter-spacing:0.04em;}
+.allday-chip.yellow{background:rgba(201,139,139,0.14);color:var(--rose);}
+.allday-chip.green{background:rgba(154,171,148,0.14);color:var(--sage);}
+.allday-chip.red{background:rgba(196,122,122,0.14);color:var(--overdue);}
+
+/* Week view */
+.wch-day{padding:10px 6px 9px;text-align:center;border-left:1px solid var(--border);cursor:pointer;transition:background 0.12s;user-select:none;}
+.wch-day:hover{background:var(--bg2);}
+.wch-day.is-today{background:rgba(201,139,139,0.05);}
+.wch-day.is-selected:not(.is-today){background:rgba(154,171,148,0.04);}
+.wch-name{font-size:7.5px;color:var(--text-muted);letter-spacing:0.1em;text-transform:uppercase;font-family:'Jost',sans-serif;font-weight:700;margin-bottom:5px;}
+.wch-num{font-family:'Cormorant Garamond',serif;font-size:21px;line-height:1;color:var(--text-dim);}
+.wch-day.is-today .wch-num{color:var(--rose);}
+.wch-day.is-selected:not(.is-today) .wch-num{color:var(--sage);}
+.wch-dots{display:flex;justify-content:center;gap:3px;margin-top:4px;min-height:5px;}
+.wch-dot{width:4px;height:4px;border-radius:50%;}
+.wg-time-col{display:flex;flex-direction:column;}
+.wg-time-cell{height:60px;display:flex;align-items:flex-start;justify-content:flex-end;padding:3px 7px 0;border-bottom:1px solid var(--border);}
+.wg-time-cell span{font-size:7.5px;color:var(--text-muted);letter-spacing:0.04em;}
+.wg-day-col{border-left:1px solid var(--border);position:relative;display:flex;flex-direction:column;}
+.wg-day-col.is-today{background:rgba(201,139,139,0.018);}
+.wg-hour{height:60px;border-bottom:1px solid rgba(232,224,216,0.7);flex-shrink:0;transition:background 0.1s;}
+.wg-hour:hover{background:rgba(255,255,255,0.01);}
+.w-event{position:absolute;left:3px;right:3px;border-radius:7px;padding:5px 8px;border-left:3px solid transparent;cursor:pointer;overflow:hidden;transition:filter 0.12s,transform 0.12s;z-index:2;}
+.w-event:hover{filter:brightness(1.2);transform:scaleX(0.95);}
+.w-event.yellow{background:rgba(201,139,139,0.13);border-left-color:var(--rose);}
+.w-event.green{background:rgba(154,171,148,0.13);border-left-color:var(--sage);}
+.w-event.red{background:rgba(196,122,122,0.13);border-left-color:var(--overdue);}
+.w-event.blue{background:rgba(160,136,152,0.13);border-left-color:var(--mauve);}
+.w-event.muted{background:rgba(245,240,235,0.95);border-left-color:var(--border2);}
+.w-event-title{font-size:9px;font-family:'Jost',sans-serif;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.w-event-time{font-size:7.5px;color:var(--text-dim);margin-top:1px;}
+.w-nowline{position:absolute;left:0;right:0;height:1px;background:var(--overdue);z-index:10;pointer-events:none;}
+.w-nowline::before{content:'';position:absolute;left:-3px;top:-3px;width:7px;height:7px;border-radius:50%;background:var(--overdue);}
+
+/* View switcher */
+.view-btn.active{background:var(--bg2);color:var(--rose);border:1px solid var(--border2);}
+.view-btn:hover:not(.active){color:var(--text);}
+.btn:hover{background:var(--bg2);color:var(--text);border-color:var(--rose);}
+.btn.today:hover{color:var(--rose);}
+
+@media(max-width:600px){
   .board-project-filter{width:100%;}
   #view-workflow{padding:12px!important;}
   .workflow-lanes-grid{gap:12px;}
@@ -988,15 +1104,16 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
         <div id="task-drawer-files" class="task-drawer-tab-content" style="display:none;">
           <div style="margin-bottom:16px;">
             <button onclick="linkExistingFileToTask()" style="padding:8px 16px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;margin-right:8px;">Link Existing File</button>
-            <button onclick="addNewFileToTask()" style="padding:8px 16px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;">Add New File</button>
+            <button id="btn-add-new-file-to-task" onclick="addNewFileToTask()" style="padding:8px 16px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;">Add New File</button>
           </div>
           <div id="task-drawer-files-list" style="display:flex;flex-direction:column;gap:12px;"></div>
         </div>
         
         <!-- Subtasks Tab -->
         <div id="task-drawer-subtasks" class="task-drawer-tab-content" style="display:none;">
-          <div style="margin-bottom:16px;">
-            <button onclick="addSubtaskToTask()" style="padding:8px 16px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;">+ Add Subtask</button>
+          <div style="margin-bottom:16px;display:flex;gap:8px;">
+            <input type="text" id="subtask-input" placeholder="Enter subtask title..." style="flex:1;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:12px;outline:none;" onkeydown="if(event.key==='Enter'){event.preventDefault();addSubtaskToTask();}">
+            <button onclick="addSubtaskToTask()" style="padding:8px 16px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;">+ Add</button>
           </div>
           <div id="task-drawer-subtasks-list" style="display:flex;flex-direction:column;gap:8px;"></div>
         </div>
@@ -1116,19 +1233,71 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
   </div>
 
   <!-- ═══════════════════════════════════ PLANNER VIEW ═══ -->
-  <div id="view-planner" style="display:none;padding:20px;box-sizing:border-box;width:100%;max-width:100%;">
-    <div style="margin-bottom:20px;">
-      <h2 style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:400;color:var(--rose);margin-bottom:8px;">Time Planner</h2>
-      <p style="font-size:13px;color:var(--text-dim);margin:0;">Account for fixed time blocks and see what's actually available</p>
+  <div id="view-planner" style="display:none;height:calc(100vh - 200px);overflow:hidden;flex-direction:column;">
+    <!-- Planner Top Bar (view switcher) -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 20px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;gap:12px;">
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button class="btn icon" onclick="plannerNav(-1)" id="planner-nav-prev" style="height:28px;width:28px;padding:0;border-radius:7px;border:1px solid var(--border2);background:transparent;color:var(--text-dim);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;">‹</button>
+        <span class="period-label" id="planner-period-label" style="font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);min-width:220px;text-align:center;letter-spacing:0.01em;">—</span>
+        <button class="btn icon" onclick="plannerNav(1)" id="planner-nav-next" style="height:28px;width:28px;padding:0;border-radius:7px;border:1px solid var(--border2);background:transparent;color:var(--text-dim);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;">›</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <div class="view-switcher" style="display:flex;background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:2px;gap:2px;">
+          <button class="view-btn active" id="planner-vbtn-day" onclick="setPlannerView('daily', this)" style="padding:4px 14px;font-size:8px;font-family:'Jost',sans-serif;font-weight:700;letter-spacing:0.13em;text-transform:uppercase;border:none;border-radius:6px;cursor:pointer;color:var(--text-muted);background:transparent;transition:all 0.14s;">Day</button>
+          <button class="view-btn" id="planner-vbtn-week" onclick="setPlannerView('weekly', this)" style="padding:4px 14px;font-size:8px;font-family:'Jost',sans-serif;font-weight:700;letter-spacing:0.13em;text-transform:uppercase;border:none;border-radius:6px;cursor:pointer;color:var(--text-muted);background:transparent;transition:all 0.14s;">Week</button>
+        </div>
+        <button class="btn" onclick="openAddEventModal()" style="height:28px;padding:0 11px;border-radius:7px;border:1px solid var(--border2);background:transparent;color:var(--text-dim);cursor:pointer;font-family:'Jost',sans-serif;font-size:8.5px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;display:flex;align-items:center;gap:5px;">+ Block</button>
+      </div>
     </div>
-    
-    <div style="display:flex;gap:8px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:8px;">
-      <button id="planner-tab-weekly" onclick="setPlannerView('weekly', this)" class="planner-view-tab" style="background:none;border:none;border-bottom:2px solid var(--rose);padding:8px 16px;font-size:12px;color:var(--rose);cursor:pointer;">Weekly</button>
-      <button id="planner-tab-daily" onclick="setPlannerView('daily', this)" class="planner-view-tab" style="background:none;border:none;border-bottom:2px solid transparent;padding:8px 16px;font-size:12px;color:var(--text-dim);cursor:pointer;">Daily</button>
+
+    <!-- Main Layout: Sidebar + Canvas -->
+    <div style="display:grid;grid-template-columns:230px 1fr;flex:1;overflow:hidden;min-height:0;">
+      <!-- Sidebar -->
+      <div class="planner-sidebar" style="border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;background:var(--surface);">
+        <!-- Mini Calendar -->
+        <div class="mini-cal" style="padding:16px 16px 12px;border-bottom:1px solid var(--border);flex-shrink:0;">
+          <div class="cal-nav" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <button class="cal-arrow" onclick="plannerCalNav(-1)" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:13px;padding:2px 4px;border-radius:4px;transition:color 0.13s;line-height:1;">‹</button>
+            <span class="cal-month-label" id="planner-cal-month-label" style="font-family:'Cormorant Garamond',serif;font-size:14px;color:var(--text);">—</span>
+            <button class="cal-arrow" onclick="plannerCalNav(1)" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:13px;padding:2px 4px;border-radius:4px;transition:color 0.13s;line-height:1;">›</button>
+          </div>
+          <div class="cal-grid" id="planner-cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;"></div>
+        </div>
+
+        <!-- Upcoming Events -->
+        <div class="sidebar-section-header" style="padding:12px 16px 8px;font-family:'Jost',sans-serif;font-size:8px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+          Upcoming
+          <button class="sidebar-add" onclick="openAddEventModal()" style="font-size:16px;color:var(--text-muted);cursor:pointer;transition:color 0.13s;background:none;border:none;line-height:1;">+</button>
+        </div>
+        <div class="events-list" id="planner-events-list" style="flex:1;overflow-y:auto;padding:8px 10px;display:flex;flex-direction:column;gap:2px;"></div>
+      </div>
+
+      <!-- Canvas -->
+      <div class="planner-canvas" style="display:flex;flex-direction:column;overflow:hidden;min-height:0;background:var(--bg);">
+        <!-- Day View -->
+        <div id="planner-view-day" style="display:flex;flex-direction:column;flex:1;overflow:hidden;min-height:0;">
+          <div class="day-header" style="padding:20px 28px 14px;border-bottom:1px solid var(--border);flex-shrink:0;">
+            <div class="day-title" id="planner-day-title" style="font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:400;color:var(--text);line-height:1;margin-bottom:4px;">—</div>
+            <div class="day-meta" id="planner-day-meta" style="font-size:8.5px;color:var(--text-muted);letter-spacing:0.1em;text-transform:uppercase;">—</div>
+          </div>
+          <div class="day-scroll" style="flex:1;overflow-y:auto;padding:0 28px 28px;">
+            <div class="allday-strip" style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);min-height:36px;">
+              <div class="allday-label" style="font-size:7.5px;color:var(--text-muted);letter-spacing:0.06em;width:42px;text-align:right;flex-shrink:0;">all‑day</div>
+              <div class="allday-events" id="planner-allday-events" style="display:flex;gap:5px;flex-wrap:wrap;"></div>
+            </div>
+            <div class="timeline" id="planner-timeline" style="display:flex;flex-direction:column;position:relative;padding-top:4px;"></div>
+          </div>
+        </div>
+
+        <!-- Week View -->
+        <div id="planner-view-week" style="display:none;flex-direction:column;flex:1;overflow:hidden;min-height:0;">
+          <div class="week-col-headers" id="planner-wch" style="display:grid;grid-template-columns:52px repeat(7,1fr);border-bottom:1px solid var(--border);flex-shrink:0;background:var(--surface);"></div>
+          <div class="week-body" style="flex:1;overflow-y:auto;overflow-x:hidden;">
+            <div class="week-grid" id="planner-wgrid" style="display:grid;grid-template-columns:52px repeat(7,1fr);position:relative;"></div>
+          </div>
+        </div>
+      </div>
     </div>
-    
-    <div id="planner-weekly-container"></div>
-    <div id="planner-daily-container" style="display:none;"></div>
   </div>
 
   <!-- ═══════════════════════════════════ CELL LOG VIEW ═══ -->
@@ -1204,7 +1373,7 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
         </div>
         <div class="field-row">
           <div class="field" style="display:flex;align-items:center;gap:8px;padding-top:20px;">
-            <input type="checkbox" id="cell-log-freeze" onchange="toggleFreezeFields()" style="width:18px;height:18px;cursor:pointer;">
+            <input type="checkbox" id="cell-log-freeze" onchange="window.Petal?.pages?.cellLog?.toggleFreeze()" style="width:18px;height:18px;cursor:pointer;">
             <label for="cell-log-freeze" style="margin:0;cursor:pointer;">Freeze</label>
           </div>
           <div class="field" id="cell-log-vials-field" style="display:none;">
@@ -1231,8 +1400,8 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
           <textarea id="cell-log-notes" placeholder="Anything important to remember"></textarea>
         </div>
         <div style="display:flex;gap:8px;">
-          <button class="btn-submit" id="cell-log-submit-btn" onclick="addCellLogEntry()">Add Cell Log Entry</button>
-          <button class="btn-secondary" id="cell-log-cancel-btn" onclick="cancelEditCellLogEntry()" style="display:none;">Cancel</button>
+          <button class="btn-submit" id="cell-log-submit-btn" onclick="window.Petal?.pages?.cellLog?.addEntry()">Add Cell Log Entry</button>
+          <button class="btn-secondary" id="cell-log-cancel-btn" onclick="window.Petal?.pages?.cellLog?.cancelEdit()" style="display:none;">Cancel</button>
         </div>
         <input type="hidden" id="cell-log-edit-id" value="">
       </div>
@@ -1242,7 +1411,7 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
           <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;">Reusable Cell Types</div>
           <div style="display:flex;gap:8px;margin-bottom:10px;">
             <input type="text" id="cell-type-input" placeholder="Add reusable cell type">
-            <button class="btn-secondary" onclick="addCellType()">Add</button>
+            <button class="btn-secondary" onclick="window.Petal?.pages?.cellLog?.addCellType()">Add</button>
           </div>
           <div id="cell-types-list" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
         </div>
@@ -1250,7 +1419,7 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
           <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;">Reusable Media Types</div>
           <div style="display:flex;gap:8px;margin-bottom:10px;">
             <input type="text" id="media-type-input" placeholder="Add reusable media type">
-            <button class="btn-secondary" onclick="addMediaType()">Add</button>
+            <button class="btn-secondary" onclick="window.Petal?.pages?.cellLog?.addMediaType()">Add</button>
           </div>
           <div id="media-types-list" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
         </div>
@@ -1492,6 +1661,344 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 </div><!-- .app -->
 
 <script src="storage.js"></script>
+<script type="module">
+// ═══════════════════════ PAGE MODULES ═══════════════════════
+// Import page modules
+import * as CellLogPage from './src/pages/CellLogPage.js';
+import * as TodayPage from './src/pages/TodayPage.js';
+
+// Import feature modules
+import * as FileManagement from './src/features/fileManagement.js';
+import * as FileOperations from './src/features/fileOperations.js';
+import * as TaskOperations from './src/features/taskOperations.js';
+import * as DeleteHandlers from './src/features/deleteHandlers.js';
+import * as TaskDrawer from './src/features/taskDrawer.js';
+
+// Create context object that pages can use to access global state
+// This function will be called when handlers are invoked, so globals will be available
+function createPageContext() {
+  // Access globals from window or from the main script scope
+  // These are defined in the main script that runs after this module
+  return {
+    tasks: window.tasks || [],
+    projects: window.projects || [],
+    settings: window.settings || {},
+    save: async () => {
+      // Call the global save function if it exists
+      if (typeof window.save === 'function') {
+        return await window.save();
+      }
+      // Fallback: try to find save function in global scope
+      if (typeof save === 'function') {
+        return await save();
+      }
+      console.warn('save function not found');
+    },
+    // Add other globals as needed
+  };
+}
+
+// Wire up Cell Log page handlers to window for inline onclick handlers
+window.Petal = window.Petal || {};
+window.Petal.pages = window.Petal.pages || {};
+window.Petal.pages.cellLog = {
+  setTab: (cellType) => {
+    CellLogPage.setCellLogTab(cellType, createPageContext());
+  },
+  addCellType: async () => {
+    await CellLogPage.addCellType(createPageContext());
+  },
+  removeCellType: async (cellType) => {
+    await CellLogPage.removeCellType(cellType, createPageContext());
+  },
+  addMediaType: async () => {
+    await CellLogPage.addMediaType(createPageContext());
+  },
+  removeMediaType: async (mediaType) => {
+    await CellLogPage.removeMediaType(mediaType, createPageContext());
+  },
+  addEntry: async () => {
+    await CellLogPage.addCellLogEntry(createPageContext());
+  },
+  editEntry: (entryId) => {
+    CellLogPage.editCellLogEntry(entryId, createPageContext());
+  },
+  deleteEntry: async (entryId) => {
+    await CellLogPage.deleteCellLogEntry(entryId, createPageContext());
+  },
+  cancelEdit: () => {
+    CellLogPage.cancelEditCellLogEntry();
+  },
+  toggleFreeze: () => {
+    CellLogPage.toggleFreezeFields();
+  },
+  render: async () => {
+    await CellLogPage.renderCellLogPage(createPageContext());
+  }
+};
+
+// Export render function for use in main script
+// This will be called after globals are defined
+window.renderCellLogPage = async () => {
+  await CellLogPage.renderCellLogPage(createPageContext());
+};
+
+// Wire up Today page handlers to window for inline onclick handlers
+window.Petal = window.Petal || {};
+window.Petal.pages = window.Petal.pages || {};
+window.Petal.pages.today = {
+  render: async () => {
+    await TodayPage.renderToday(createPageContext());
+  },
+  renderTask: async (ctx, t, dl, proj) => {
+    return await TodayPage.renderTodayTask(ctx, t, dl, proj);
+  }
+};
+
+// Export render function for use in main script
+window.renderToday = async () => {
+  await TodayPage.renderToday(createPageContext());
+};
+
+// Wire up file management functions
+window.Petal = window.Petal || {};
+window.Petal.features = window.Petal.features || {};
+window.Petal.features.fileManagement = {
+  buildFileRegistry: () => {
+    const ctx = createPageContext();
+    const result = FileManagement.buildFileRegistry({
+      ...ctx,
+      fileRegistry: window.fileRegistry || {},
+      fileHistory: window.fileHistory || {}
+    });
+    // Update window globals
+    window.fileRegistry = result.fileRegistry;
+    window.fileHistory = result.fileHistory;
+    return result;
+  },
+  getTaskFiles: (task) => {
+    return FileManagement.getTaskFiles(task, createPageContext());
+  },
+  resolveFileIds: (projectId, fileIds) => {
+    return FileManagement.resolveFileIds(projectId, fileIds, createPageContext());
+  },
+  findOrCreateCanonicalFile: (projectId, fileLink) => {
+    return FileManagement.findOrCreateCanonicalFile(projectId, fileLink, createPageContext());
+  },
+  trackFileOpen: async (fileLink) => {
+    const ctx = createPageContext();
+    await FileManagement.trackFileOpen(fileLink, {
+      ...ctx,
+      fileHistory: window.fileHistory || {}
+    });
+  },
+  refreshFileMetadata: async (fileLink) => {
+    const ctx = createPageContext();
+    return await FileManagement.refreshFileMetadata(fileLink, {
+      ...ctx,
+      fileHistory: window.fileHistory || {}
+    });
+  },
+  updateFileStatus: async (fileKey, status) => {
+    const ctx = createPageContext();
+    await FileManagement.updateFileStatus(fileKey, status, {
+      ...ctx,
+      fileRegistry: window.fileRegistry || {},
+      currentView: window.currentView || 'tasks',
+      renderFiles: window.renderFiles
+    });
+  },
+  showFileRelations: (fileKey) => {
+    const ctx = createPageContext();
+    FileManagement.showFileRelations(fileKey, {
+      ...ctx,
+      fileRegistry: window.fileRegistry || {}
+    });
+  },
+  editSubmissionMeta: async (fileKey) => {
+    const ctx = createPageContext();
+    await FileManagement.editSubmissionMeta(fileKey, {
+      ...ctx,
+      fileRegistry: window.fileRegistry || {},
+      currentView: window.currentView || 'tasks',
+      renderFiles: window.renderFiles
+    });
+  }
+};
+
+// Wire up file operations
+window.Petal.features.fileOperations = {
+  addFileRow: async (containerId, prefix, subtaskProjId, subtaskId) => {
+    await FileOperations.addFileRow(containerId, prefix, subtaskProjId, subtaskId);
+  },
+  normalizeFileUrl: async (url) => {
+    return await FileOperations.normalizeFileUrl(url);
+  },
+  resolveFileUrl: async (url) => {
+    return await FileOperations.resolveFileUrl(url);
+  },
+  getFileLinks: (containerId, prefix) => {
+    return FileOperations.getFileLinks(containerId, prefix);
+  },
+  getFileLinksNormalized: (containerId, prefix) => {
+    return FileOperations.getFileLinksNormalized(containerId, prefix);
+  }
+};
+
+// Export FILE_STATUSES
+window.FILE_STATUSES = FileManagement.FILE_STATUSES;
+
+// Wire up task operations
+window.Petal.features.taskOperations = {
+  getColumnTasks: (status, projectFilter, excludeTaskId) => {
+    const ctx = createPageContext();
+    return TaskOperations.getColumnTasks(ctx.tasks, status, projectFilter, excludeTaskId);
+  },
+  nextBoardOrderForNewTask: (status, projectId) => {
+    const ctx = createPageContext();
+    return TaskOperations.nextBoardOrderForNewTask(
+      ctx.tasks,
+      status,
+      projectId,
+      window.boardProjectFilter || 'all'
+    );
+  },
+  extractTags: (text) => {
+    return TaskOperations.extractTags(text);
+  },
+  removeTags: (text) => {
+    return TaskOperations.removeTags(text);
+  },
+  getStageForLaneAndStatus: (lane, status) => {
+    return TaskOperations.getStageForLaneAndStatus(lane, status);
+  },
+  addTask: async (titleOverride, statusOverride) => {
+    const ctx = createPageContext();
+    ctx.render = window.render;
+    ctx.boardProjectFilter = window.boardProjectFilter || 'all';
+    await TaskOperations.addTask(ctx, titleOverride, statusOverride);
+  },
+  toggleTask: async (id) => {
+    const ctx = createPageContext();
+    ctx.render = window.render;
+    await TaskOperations.toggleTask(ctx, id);
+  },
+  toggleSubtask: async (projectId, subtaskId) => {
+    const ctx = createPageContext();
+    ctx.render = window.render;
+    await TaskOperations.toggleSubtask(ctx, projectId, subtaskId);
+  },
+  updateTagPreview: () => {
+    TaskOperations.updateTagPreview();
+  },
+  editTask: (id) => {
+    const ctx = createPageContext();
+    TaskOperations.editTask(ctx, id);
+  }
+};
+
+// Export tag functions globally for backward compatibility
+window.extractTags = TaskOperations.extractTags;
+window.removeTags = TaskOperations.removeTags;
+
+// Wire up delete handlers
+window.Petal.features.deleteHandlers = {
+  confirmDeleteTask: (taskId, isSubtask, projectId, parentTaskId) => {
+    DeleteHandlers.confirmDeleteTask(createPageContext(), taskId, isSubtask, projectId, parentTaskId);
+  },
+  confirmDeleteFile: (projectId, fileId) => {
+    DeleteHandlers.confirmDeleteFile(createPageContext(), projectId, fileId);
+  },
+  closeDeleteConfirmModal: () => {
+    DeleteHandlers.closeDeleteConfirmModal();
+  },
+  executeDelete: async () => {
+    const ctx = createPageContext();
+    ctx.render = window.render;
+    await DeleteHandlers.executeDelete(ctx);
+  },
+  softDeleteTask: async (taskId) => {
+    await DeleteHandlers.softDeleteTask(createPageContext(), taskId);
+  },
+  softDeleteFile: async (projectId, fileId) => {
+    await DeleteHandlers.softDeleteFile(createPageContext(), projectId, fileId);
+  },
+  delProject: async (id) => {
+    const ctx = createPageContext();
+    ctx.render = window.render;
+    ctx.openProjects = window.openProjects;
+    await DeleteHandlers.delProject(ctx, id);
+  },
+  delTaskSubtask: async (taskId, subtaskId) => {
+    const ctx = createPageContext();
+    ctx.render = window.render;
+    await DeleteHandlers.delTaskSubtask(ctx, taskId, subtaskId);
+  },
+  delSubtask: async (projId, subId) => {
+    const ctx = createPageContext();
+    ctx.render = window.render;
+    await DeleteHandlers.delSubtask(ctx, projId, subId);
+  }
+};
+
+// Wire up task drawer functions
+window.Petal.features.taskDrawer = {
+  openTaskDrawer: (taskId) => {
+    const ctx = createPageContext();
+    TaskDrawer.openTaskDrawer(ctx, taskId);
+  },
+  closeTaskDrawer: () => {
+    TaskDrawer.closeTaskDrawer();
+  },
+  switchTaskDrawerTab: (tabName) => {
+    TaskDrawer.switchTaskDrawerTab(tabName);
+  },
+  debounceSaveTaskNoteFromDrawer: () => {
+    const ctx = createPageContext();
+    TaskDrawer.debounceSaveTaskNoteFromDrawer(ctx);
+  },
+  renderTaskLogEntries: () => {
+    const ctx = createPageContext();
+    TaskDrawer.renderTaskLogEntries(ctx);
+  },
+  addTaskLogEntry: async () => {
+    const ctx = createPageContext();
+    ctx.render = window.render;
+    await TaskDrawer.addTaskLogEntry(ctx);
+  },
+  deleteTaskLogEntry: async (entryId) => {
+    const ctx = createPageContext();
+    ctx.render = window.render;
+    await TaskDrawer.deleteTaskLogEntry(ctx, entryId);
+  },
+  renderTaskDrawerFiles: () => {
+    const ctx = createPageContext();
+    TaskDrawer.renderTaskDrawerFiles(ctx);
+  },
+  linkExistingFileToTask: async () => {
+    const ctx = createPageContext();
+    ctx.render = window.render;
+    await TaskDrawer.linkExistingFileToTask(ctx);
+  },
+  addNewFileToTask: () => {
+    TaskDrawer.addNewFileToTask();
+  },
+  unlinkFileFromTask: async (fileId) => {
+    const ctx = createPageContext();
+    ctx.render = window.render;
+    await TaskDrawer.unlinkFileFromTask(ctx, fileId);
+  },
+  renderTaskDrawerSubtasks: () => {
+    const ctx = createPageContext();
+    TaskDrawer.renderTaskDrawerSubtasks(ctx);
+  },
+  addSubtaskToTask: async () => {
+    const ctx = createPageContext();
+    ctx.render = window.render;
+    await TaskDrawer.addSubtaskToTask(ctx);
+  }
+};
+</script>
 <script>
 // ═══════════════════════ STATE ═══════════════════════
 let tasks = [];
@@ -1501,7 +2008,14 @@ let openTaskSubtasks = new Set(); // Track which task subtask sections are open
 let events = []; // One-off calendar events
 let recurringRules = []; // Recurring event rules
 let settings = {};
-let currentPlannerView = 'weekly'; // 'weekly' or 'daily'
+
+// Expose globals to window for page modules to access
+window.tasks = tasks;
+window.projects = projects;
+window.settings = settings;
+// Note: fileRegistry, fileHistory, and currentView will be exposed after they're declared below
+// Note: save function will be exposed after it's defined below
+let currentPlannerView = 'daily'; // 'weekly' or 'daily'
 let selectedPlannerDate = null; // For daily view
 
 let currentView      = 'tasks';
@@ -1519,6 +2033,16 @@ let fileHistory      = {};
 let selectedProjectId = null;
 let currentProjectPageTab = 'workflow';
 const DEFAULT_BOARD_COLUMNS = ['Inbox', 'Backlog', 'Todo', 'Doing', 'Done'];
+
+// Expose these globals to window for page modules to access (after they're declared)
+window.fileRegistry = fileRegistry;
+window.fileHistory = fileHistory;
+window.currentView = currentView;
+
+// Sync currentView from window if it was set before initialization (e.g., from switchView)
+if (window.currentView && window.currentView !== currentView && window.currentView !== 'tasks') {
+  currentView = window.currentView;
+}
 
 // ═══════════════════════ FALLBACK CONSTANTS ═══════════════════════
 // Prevent crashes if constants aren't loaded from modules
@@ -2086,6 +2610,8 @@ async function initState() {
     settings = loadResult.data.settings || {};
     fileHistory = loadResult.data.fileHistory || {};
     fileRegistry = loadResult.data.fileRegistry || {}; // Load standalone files
+    events = loadResult.data.events || []; // Load calendar events
+    recurringRules = loadResult.data.recurringRules || []; // Load recurring event rules
     
     // Show conflict banner if conflicts exist
     if (loadResult.hasConflicts && loadResult.conflicts && loadResult.conflicts.length > 0) {
@@ -2348,101 +2874,39 @@ function migrateToCanonicalFileRegistry() {
  * Returns the file ID
  */
 function findOrCreateCanonicalFile(projectId, fileLink) {
-  const project = projects.find(p => p.id === projectId);
-  if (!project) {
-    console.warn('Project not found:', projectId);
+  // Delegates to module
+  if (window.Petal?.features?.fileManagement?.findOrCreateCanonicalFile) {
+    return window.Petal.features.fileManagement.findOrCreateCanonicalFile(projectId, fileLink);
+  } else {
+    console.error('File management module not loaded');
     return null;
   }
-  
-  if (!project.files) {
-    project.files = [];
-  }
-  
-  // Normalize fileLink to object
-  const fileObj = typeof fileLink === 'string' 
-    ? { abs_path: fileLink, label: fileLink }
-    : fileLink;
-  
-  if (!fileObj || typeof fileObj !== 'object') {
-    return null;
-  }
-  
-  // Try to find existing file
-  const existing = project.files.find(f => {
-    if (!f) return false;
-    // Match by onedrive_rel (preferred), abs_path, or share_url
-    if (f.onedrive_rel && fileObj.onedrive_rel && f.onedrive_rel === fileObj.onedrive_rel) return true;
-    if (f.abs_path && fileObj.abs_path && f.abs_path === fileObj.abs_path) return true;
-    if (f.share_url && fileObj.share_url && f.share_url === fileObj.share_url) return true;
-    return false;
-  });
-  
-  if (existing) {
-    // Update existing file with any new fields
-    if (fileObj.label && !existing.label) existing.label = fileObj.label;
-    if (fileObj.type && !existing.type) existing.type = fileObj.type;
-    return existing.id;
-  }
-  
-  // Create new canonical file
-  const canonicalFile = {
-    id: fileObj.id || `file_${project.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    label: fileObj.label || fileObj.name || (fileObj.abs_path ? fileObj.abs_path.split(/[/\\]/).pop() : ''),
-    abs_path: fileObj.abs_path || null,
-    onedrive_rel: fileObj.onedrive_rel || null,
-    share_url: fileObj.share_url || null,
-    type: fileObj.type || null,
-    note: fileObj.note || '',
-    noteUpdatedAt: fileObj.noteUpdatedAt || '',
-    versions: fileObj.versions || [],
-    versionCurrent: fileObj.versionCurrent || null,
-    pinned: fileObj.pinned || false,
-    isCurrent: fileObj.isCurrent !== undefined ? fileObj.isCurrent : true, // NEW: Simple version clarity
-    artifactTag: fileObj.artifactTag || null // NEW: Lightweight artifact label
-  };
-  
-  project.files.push(canonicalFile);
-  return canonicalFile.id;
 }
 
 /**
  * Helper: Resolve fileIds to file objects from project registry
  */
 function resolveFileIds(projectId, fileIds) {
-  if (!fileIds || !Array.isArray(fileIds) || fileIds.length === 0) {
+  // Delegates to module
+  if (window.Petal?.features?.fileManagement?.resolveFileIds) {
+    return window.Petal.features.fileManagement.resolveFileIds(projectId, fileIds);
+  } else {
+    console.error('File management module not loaded');
     return [];
   }
-  
-  const project = projects.find(p => p.id === projectId);
-  if (!project || !project.files) {
-    return [];
-  }
-  
-  return fileIds
-    .map(fileId => project.files.find(f => f && f.id === fileId))
-    .filter(f => f !== undefined && !f.deletedAt); // Filter out deleted files
 }
 
 /**
  * Helper: Get all files for a task (from fileIds, with fallback to legacy files)
  */
 function getTaskFiles(task) {
-  if (!task) return [];
-  
-  // Prefer fileIds (canonical registry)
-  if (task.fileIds && Array.isArray(task.fileIds) && task.fileIds.length > 0) {
-    const resolved = resolveFileIds(task.projectId, task.fileIds);
-    if (resolved.length > 0) {
-      return resolved;
-    }
+  // Delegates to module
+  if (window.Petal?.features?.fileManagement?.getTaskFiles) {
+    return window.Petal.features.fileManagement.getTaskFiles(task);
+  } else {
+    console.error('File management module not loaded');
+    return [];
   }
-  
-  // Fallback to legacy embedded files
-  if (task.files && Array.isArray(task.files) && task.files.length > 0) {
-    return task.files.map(f => typeof f === 'string' ? { abs_path: f, label: f } : f);
-  }
-  
-  return [];
 }
 
 /**
@@ -2572,7 +3036,11 @@ async function save() {
   ensureCellLogSettings();
   
   // Build registry before saving to include standalone files
-  buildFileRegistry();
+  if (window.Petal?.features?.fileManagement?.buildFileRegistry) {
+    window.Petal.features.fileManagement.buildFileRegistry();
+  } else {
+    buildFileRegistry(); // Fallback
+  }
   
   const success = await storage.saveState({
     tasks,
@@ -2580,8 +3048,15 @@ async function save() {
     openProjects: [...openProjects],
     settings,
     fileHistory,
-    fileRegistry // Save standalone files
+    fileRegistry, // Save standalone files
+    events, // Save calendar events
+    recurringRules // Save recurring event rules
   });
+  
+  // Update window references (in case arrays were reassigned)
+  window.tasks = tasks;
+  window.projects = projects;
+  window.settings = settings;
   
   if (window.electronAPI) {
     if (success) {
@@ -2605,6 +3080,9 @@ async function save() {
     }
   }
 }
+
+// Expose save function to window for page modules
+window.save = save;
 
 // ═══════════════════════ VERIFY SAVE LOCATION ═══════════════════════
 async function verifySaveLocation() {
@@ -2701,7 +3179,14 @@ async function importData(event) {
 
 // ═══════════════════════ VIEW SWITCH ═══════════════════════
 function switchView(v) {
-  currentView = v;
+  // Always use window.currentView to avoid temporal dead zone issues
+  window.currentView = v;
+  
+  // Update local variable after it's initialized (if it exists)
+  // window.currentView is the source of truth, so this is just for backward compatibility
+  if (typeof currentView !== 'undefined') {
+    currentView = v;
+  }
   document.getElementById('view-today').style.display    = v==='today'    ? '' : 'none';
   document.getElementById('view-tasks').style.display    = v==='tasks'    ? '' : 'none';
   const workflowViewEl = document.getElementById('view-workflow');
@@ -2710,7 +3195,40 @@ function switchView(v) {
   if (filesViewEl) filesViewEl.style.display = v==='files' ? '' : 'none';
   document.getElementById('view-projects').style.display = v==='projects' ? '' : 'none';
   const plannerViewEl = document.getElementById('view-planner');
-  if (plannerViewEl) plannerViewEl.style.display = v==='planner' ? '' : 'none';
+  if (plannerViewEl) {
+    if (v === 'planner') {
+      plannerViewEl.style.display = 'flex';
+      // Initialize planner if not already done
+      if (!plannerViewDate || plannerViewDate.toString() === 'Invalid Date') {
+        plannerViewDate = new Date();
+        plannerWeekOffset = 0;
+        plannerCalYear = new Date().getFullYear();
+        plannerCalMonth = new Date().getMonth();
+      }
+      // Ensure day view is active by default
+      if (!currentPlannerView || currentPlannerView === 'weekly') {
+        currentPlannerView = 'daily';
+      }
+      // Initialize the view switcher to match - explicitly set to day view
+      const dayBtn = document.getElementById('planner-vbtn-day');
+      const weekBtn = document.getElementById('planner-vbtn-week');
+      if (dayBtn && weekBtn) {
+        dayBtn.classList.add('active');
+        weekBtn.classList.remove('active');
+      }
+      const dayView = document.getElementById('planner-view-day');
+      const weekView = document.getElementById('planner-view-week');
+      if (dayView) dayView.style.display = 'flex';
+      if (weekView) weekView.style.display = 'none';
+      
+      updatePlannerPeriodLabel();
+      renderPlanner();
+      buildPlannerSidebar();
+      buildPlannerCalendar();
+    } else {
+      plannerViewEl.style.display = 'none';
+    }
+  }
   const cellLogViewEl = document.getElementById('view-cell-log');
   if (cellLogViewEl) cellLogViewEl.style.display = v==='cell-log' ? '' : 'none';
   document.getElementById('tab-today').classList.toggle('active',    v==='today');
@@ -2765,186 +3283,75 @@ function updateFileButtons() {
 
 // ═══════════════════════ FILE ROWS ═══════════════════════
 async function addFileRow(containerId, prefix, subtaskProjId, subtaskId) {
-  const c  = document.getElementById(containerId);
-  if (!c) {
-    console.error('Container not found:', containerId);
-    alert('Error: Could not find file container. Please refresh the page.');
-    return;
-  }
-  
-  const id = Date.now();
-  const row = document.createElement('div');
-  row.className  = 'file-link-row';
-  row.dataset.id = id;
-  
-  // Use file picker if in Electron, otherwise manual input
-  if (!window.electronAPI) {
-    console.warn('window.electronAPI is not available');
-  } else if (!window.electronAPI.chooseFile) {
-    console.warn('window.electronAPI.chooseFile is not available');
-  }
-  
-  if (window.electronAPI && window.electronAPI.chooseFile) {
-    try {
-      console.log('Opening file picker for container:', containerId);
-      console.log('Electron API available:', !!window.electronAPI);
-      const fileLink = await window.electronAPI.chooseFile();
-      console.log('File picker result:', fileLink);
-      if (fileLink) {
-        row.innerHTML = `
-          <input type="text" placeholder="Label" id="${prefix}fn-${id}" value="${esc(fileLink.label)}">
-          <input type="text" placeholder="File path" id="${prefix}fu-${id}" value="${esc(fileLink.abs_path || '')}" readonly style="background:var(--bg2);">
-          <input type="hidden" id="${prefix}fl-${id}" value="${esc(JSON.stringify(fileLink))}">
-          <button class="btn-remove" onclick="this.parentElement.remove()">✕</button>`;
-        c.appendChild(row);
-        return;
-      }
-      // User cancelled file picker - don't add row
-      console.log('File picker was cancelled');
-      return;
-    } catch (e) {
-      console.error('File picker error:', e);
-      alert('Could not open file picker: ' + e.message);
-      // Don't fall back to manual input - let user try again
-      return;
-    }
+  // Delegates to module
+  if (window.Petal?.features?.fileOperations?.addFileRow) {
+    await window.Petal.features.fileOperations.addFileRow(containerId, prefix, subtaskProjId, subtaskId);
   } else {
-    console.log('Electron API not available, using manual input');
+    console.error('File operations module not loaded');
   }
-  
-  // Fallback: manual input (only if not in Electron)
-  row.innerHTML = `
-    <input type="text" placeholder="Label" id="${prefix}fn-${id}">
-    <input type="url"  placeholder="URL or file path" id="${prefix}fu-${id}">
-    <button class="btn-remove" onclick="this.parentElement.remove()">✕</button>`;
-  c.appendChild(row);
 }
 
-// Normalize file URL to use relative path if in vault attachments
+// Normalize file URL to use relative path if in vault attachments - delegates to module
 async function normalizeFileUrl(url) {
-  if (!url || !window.electronAPI) return url;
-  
-  try {
-    const vaultPath = await window.electronAPI.getVaultPath();
-    if (!vaultPath) return url;
-    
-    // Convert to absolute path if it's a file:// URL
-    let absPath = url;
-    if (url.startsWith('file://')) {
-      absPath = decodeURIComponent(url.replace(/^file:\/\//, ''));
-    }
-    
-    // Normalize path separators
-    const normalizedVault = vaultPath.replace(/\\/g, '/');
-    const normalizedAbs = absPath.replace(/\\/g, '/');
-    
-    // Check if file is in vault attachments folder
-    const attachmentsPath = normalizedVault + '/attachments';
-    if (normalizedAbs.toLowerCase().startsWith(attachmentsPath.toLowerCase())) {
-      // Use relative path: attachments/filename
-      const relative = normalizedAbs.substring(attachmentsPath.length + 1);
-      return 'attachments/' + relative;
-    }
-    
-    return url;
-  } catch (e) {
-    console.warn('Error normalizing file URL:', e);
+  if (window.Petal?.features?.fileOperations?.normalizeFileUrl) {
+    return await window.Petal.features.fileOperations.normalizeFileUrl(url);
+  } else {
+    console.error('File operations module not loaded');
     return url;
   }
 }
 
-// Resolve relative path to absolute (for display/opening)
+// Resolve relative path to absolute (for display/opening) - delegates to module
 async function resolveFileUrl(url) {
-  if (!url || !window.electronAPI) return url;
-  
-  // If it's already absolute or a full URL, return as-is
-  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('file://')) {
+  if (window.Petal?.features?.fileOperations?.resolveFileUrl) {
+    return await window.Petal.features.fileOperations.resolveFileUrl(url);
+  } else {
+    console.error('File operations module not loaded');
     return url;
   }
-  
-  // Windows absolute path (C:\...)
-  if (url.length > 2 && url[1] === ':' && (url[2] === '\\' || url[2] === '/')) {
-    return url;
-  }
-  
-  // If it's a relative path starting with attachments/
-  if (url.startsWith('attachments/')) {
-    try {
-      const vaultPath = await window.electronAPI.getVaultPath();
-      if (vaultPath) {
-        const fileName = url.substring('attachments/'.length);
-        const fullPath = vaultPath.replace(/\\/g, '/') + '/attachments/' + fileName;
-        return 'file:///' + fullPath.replace(/\\/g, '/');
-      }
-    } catch (e) {
-      console.warn('Error resolving file URL:', e);
-    }
-  }
-  
-  return url;
 }
 
 function getFileLinks(containerId, prefix) {
-  return [...(document.getElementById(containerId)?.querySelectorAll('.file-link-row')||[])].map(r=>{
-    const id=r.dataset.id;
-    const name = document.getElementById(prefix+'fn-'+id)?.value.trim();
-    const urlInput = document.getElementById(prefix+'fu-'+id)?.value.trim();
-    const linkDataInput = document.getElementById(prefix+'fl-'+id);
-    
-    // If we have stored link data (from file picker), use it
-    if (linkDataInput && linkDataInput.value) {
-      try {
-        const linkData = JSON.parse(linkDataInput.value);
-        return {
-          id: linkData.id || Date.now() + Math.random(), // Ensure ID exists
-          label: name || linkData.label,
-          onedrive_rel: linkData.onedrive_rel,
-          abs_path: linkData.abs_path,
-          share_url: linkData.share_url,
-          type: linkData.type,
-          note: linkData.note || '', // NEW: preserve existing note or default to empty
-          noteUpdatedAt: linkData.noteUpdatedAt || '' // NEW: preserve timestamp or default to empty
-        };
-      } catch (e) {
-        console.warn('Error parsing link data:', e);
-      }
-    }
-    
-    // Fallback: simple name/url (legacy format)
-    if (name && urlInput) {
-      return {
-        id: Date.now() + Math.random(), // NEW: add ID
-        label: name,
-        abs_path: urlInput,
-        // Try to detect if it's a URL vs path
-        share_url: (urlInput.startsWith('http://') || urlInput.startsWith('https://')) ? urlInput : undefined,
-        note: '', // NEW: note field
-        noteUpdatedAt: '' // NEW: timestamp for note updates
-      };
-    }
-    
-    return null;
-  }).filter(f=>f && (f.label || f.abs_path || f.onedrive_rel));
+  // Delegates to module
+  if (window.Petal?.features?.fileOperations?.getFileLinks) {
+    return window.Petal.features.fileOperations.getFileLinks(containerId, prefix);
+  } else {
+    console.error('File operations module not loaded');
+    return [];
+  }
 }
 
 // Get file links (already in normalized format)
 function getFileLinksNormalized(containerId, prefix) {
+  // Use new module if available
+  if (window.Petal?.features?.fileOperations?.getFileLinksNormalized) {
+    return window.Petal.features.fileOperations.getFileLinksNormalized(containerId, prefix);
+  }
+  
+  // Fallback to old implementation
   return getFileLinks(containerId, prefix);
 }
 
 // ═══════════════════════ TASKS ═══════════════════════
+// Task operations have been moved to src/features/taskOperations.js
+// Wrapper functions delegate to the new module
+
 function getColumnTasks(status, projectFilter = boardProjectFilter, excludeTaskId = null) {
-  return tasks
-    .filter((t) => t.status === status)
-    .filter((t) => projectFilter === 'all' || String(t.projectId || '') === String(projectFilter))
-    .filter((t) => excludeTaskId === null || t.id !== excludeTaskId)
-    .sort((a, b) => (a.boardOrder - b.boardOrder) || (a.id - b.id));
+  if (window.Petal?.features?.taskOperations?.getColumnTasks) {
+    return window.Petal.features.taskOperations.getColumnTasks(status, projectFilter, excludeTaskId);
+  } else {
+    console.error('Task operations module not loaded');
+    return [];
+  }
 }
 
 function nextBoardOrderForNewTask(status, projectId) {
-  const list = getColumnTasks(status, projectId || 'all');
-  if (!list.length) return 1024;
-  return (list[list.length - 1].boardOrder || 0) + 1024;
+  if (window.Petal?.features?.taskOperations?.nextBoardOrderForNewTask) {
+    return window.Petal.features.taskOperations.nextBoardOrderForNewTask(status, projectId);
+  } else {
+    console.error('Task operations module not loaded');
+    return 1024;
+  }
 }
 
 // setTaskMode removed - always use list view
@@ -2954,139 +3361,50 @@ function setBoardProjectFilter(value) {
   if (taskMode === 'kanban') render();
 }
 
-// Extract tags from text (e.g., "Task #paper #lab")
+// Extract tags from text - delegates to module
 function extractTags(text) {
-  const tagRegex = /#(\w+)/g;
-  const tags = [];
-  let match;
-  while ((match = tagRegex.exec(text)) !== null) {
-    tags.push('#' + match[1]);
+  if (window.Petal?.features?.taskOperations?.extractTags) {
+    return window.Petal.features.taskOperations.extractTags(text);
+  } else {
+    console.error('Task operations module not loaded');
+    return [];
   }
-  return [...new Set(tags)]; // Remove duplicates
 }
 
-// Remove tags from text
+// Remove tags from text - delegates to module
 function removeTags(text) {
-  return text.replace(/#\w+/g, '').trim();
+  if (window.Petal?.features?.taskOperations?.removeTags) {
+    return window.Petal.features.taskOperations.removeTags(text);
+  } else {
+    console.error('Task operations module not loaded');
+    return text;
+  }
 }
 
 async function addTask(titleOverride = null, statusOverride = null) {
-  const title = titleOverride || document.getElementById('in-title').value.trim();
-  if(!title){if(!titleOverride) document.getElementById('in-title').focus();return;}
-  
-  // Extract tags from title
-  const tags = extractTags(title);
-  const cleanTitle = removeTags(title);
-  
-  const status = statusOverride || document.getElementById('in-status').value || 'Inbox';
-  const projectId = normalizeProjectIdValue(document.getElementById('in-project')?.value || '');
-  const dependsOn = document.getElementById('in-depends-on')?.value || '';
-  const lane = document.getElementById('in-lane')?.value || '';
-  const fileLinks = window.electronAPI ? await getFileLinksNormalized('files-container','t') : getFileLinks('files-container','t');
-  
-  // Convert file links to canonical registry and get fileIds
-  const fileIds = [];
-  if (projectId && fileLinks && fileLinks.length > 0) {
-    fileLinks.forEach(fileLink => {
-      const fileId = findOrCreateCanonicalFile(projectId, fileLink);
-      if (fileId && !fileIds.includes(fileId)) {
-        fileIds.push(fileId);
-      }
-    });
+  if (window.Petal?.features?.taskOperations?.addTask) {
+    await window.Petal.features.taskOperations.addTask(titleOverride, statusOverride);
+    return;
+  } else {
+    console.error('Task operations module not loaded');
   }
-  
-  // Add selected files from project files dropdown
-  const filesSelect = document.getElementById('task-project-files-select');
-  if (filesSelect && projectId) {
-    const selectedOptions = Array.from(filesSelect.selectedOptions);
-    selectedOptions.forEach(option => {
-      const fileId = option.value;
-      if (fileId && !fileIds.includes(fileId)) {
-        fileIds.push(fileId);
-      }
-    });
-  }
-  
-  // Determine stage based on lane and status
-  let stage = status;
-  if (lane === 'lab') {
-    const labStages = { 'Inbox': 'Planned', 'Todo': 'Planned', 'Doing': 'Running', 'Done': 'Results Ready' };
-    stage = labStages[status] || status;
-  } else if (lane === 'comp') {
-    const compStages = { 'Inbox': 'Planned', 'Todo': 'Planned', 'Doing': 'Building', 'Done': 'Output Ready' };
-    stage = compStages[status] || status;
-  } else if (lane === 'writing') {
-    const writingStages = { 'Inbox': 'Outline', 'Todo': 'Outline', 'Doing': 'Drafting', 'Done': 'Submission Prep' };
-    stage = writingStages[status] || status;
-  }
-  
-  tasks.unshift({
-    id:Date.now(),
-    title: cleanTitle,
-    note: document.getElementById('in-notes')?.value.trim() || '', // Use note (singular) for quick note
-    noteUpdatedAt: null,
-    log: [], // Timestamped log entries
-    notes: document.getElementById('in-notes')?.value.trim() || '', // Keep for backward compatibility
-    priority: parseInt(document.getElementById('in-priority')?.value) || 2,
-    estimatedMinutes: parseInt(document.getElementById('in-estimated-minutes')?.value) || null,
-    timeBlock: document.getElementById('in-time-block')?.value || null,
-    artifactTag: document.getElementById('in-artifact-tag')?.value.trim() || null, // NEW: Lightweight artifact label
-    due:document.getElementById('in-due')?.value || '',
-    fileIds: fileIds, // NEW: Use fileIds instead of embedded files
-    files: fileLinks, // Keep for backward compatibility during migration
-    tags,
-    done:status === 'Done',
-    status,
-    lane: lane || null,
-    stage: stage,
-    projectId,
-    dependsOn: dependsOn ? parseInt(dependsOn) : null,
-    boardOrder: nextBoardOrderForNewTask(status, projectId)
-  });
-  await save();render();
-  if (!titleOverride) {
-    document.getElementById('in-title').value='';
-    document.getElementById('in-notes').value='';
-    document.getElementById('in-due').value='';
-    document.getElementById('in-priority').value='2';
-    document.getElementById('in-estimated-minutes').value='';
-    document.getElementById('in-time-block').value='';
-    document.getElementById('in-status').value='Todo';
-    document.getElementById('in-project').value='';
-    document.getElementById('in-depends-on').value='';
-    document.getElementById('in-lane').value='';
-    document.getElementById('in-tags').value='';
-    document.getElementById('tag-preview').innerHTML='';
-    document.getElementById('in-artifact-tag').value='';
-    document.getElementById('files-container').innerHTML='';
-    // Clear project files select
-    const filesSelect = document.getElementById('task-project-files-select');
-    if (filesSelect) {
-      filesSelect.selectedIndex = -1;
-    }
-    updateProjectFilesSelect(); // Hide the select if no project
-  }
+  // Function body removed - now handled by module
 }
 
 function updateTagPreview() {
-  const input = document.getElementById('in-tags');
-  const preview = document.getElementById('tag-preview');
-  if (!input || !preview) return;
-  
-  const text = input.value;
-  const tags = extractTags(text);
-  preview.innerHTML = tags.length > 0 
-    ? tags.map(tag => `<span class="tag-chip" data-tag="${esc(tag)}">${esc(tag)}</span>`).join('')
-    : '';
-}
-async function toggleTask(id){
-  const t=tasks.find(t=>t.id===id);
-  if(t){
-    t.done=!t.done;
-    if (t.done) t.status = 'Done';
-    else if (t.status === 'Done') t.status = 'Todo';
+  if (window.Petal?.features?.taskOperations?.updateTagPreview) {
+    window.Petal.features.taskOperations.updateTagPreview();
+  } else {
+    console.error('Task operations module not loaded');
   }
-  await save();render();
+}
+
+async function toggleTask(id) {
+  if (window.Petal?.features?.taskOperations?.toggleTask) {
+    await window.Petal.features.taskOperations.toggleTask(id);
+  } else {
+    console.error('Task operations module not loaded');
+  }
 }
 
 // ═══════════════════════ TASK NOTES ═══════════════════════
@@ -3151,305 +3469,114 @@ function debounceSaveTaskNote(taskId, value) {
 }
 
 // ═══════════════════════ TASK DRAWER ═══════════════════════
-let currentDrawerTaskId = null;
-let currentDrawerTab = 'notes';
+// Task drawer functions have been moved to src/features/taskDrawer.js
+// Wrapper functions delegate to the new module
+
+// Store drawer state in window (used by module)
+window.currentDrawerTaskId = window.currentDrawerTaskId || null;
+window.currentDrawerTab = window.currentDrawerTab || 'notes';
 
 function openTaskDrawer(taskId) {
-  const task = tasks.find(t => t.id === taskId);
-  if (!task) return;
-  
-  currentDrawerTaskId = taskId;
-  currentDrawerTab = 'notes';
-  
-  // Set title and meta
-  document.getElementById('task-drawer-title').textContent = task.title || 'Untitled Task';
-  const meta = [];
-  if (task.priority) meta.push(task.priority);
-  if (task.status) meta.push(task.status);
-  if (task.projectId) {
-    const project = projects.find(p => p.id === task.projectId);
-    if (project) meta.push(project.name);
+  if (window.Petal?.features?.taskDrawer?.openTaskDrawer) {
+    window.Petal.features.taskDrawer.openTaskDrawer(taskId);
+  } else {
+    console.error('Task drawer module not loaded');
   }
-  document.getElementById('task-drawer-meta').textContent = meta.join(' • ') || '';
-  
-  // Populate note
-  document.getElementById('task-drawer-note-input').value = task.note || '';
-  
-  // Render log entries
-  renderTaskLogEntries();
-  
-  // Render files
-  renderTaskDrawerFiles();
-  
-  // Render subtasks
-  renderTaskDrawerSubtasks();
-  
-  // Show/hide protocol tab based on task protocol
-  const protocolTab = document.getElementById('task-drawer-tab-protocol');
-  if (protocolTab) {
-    if (task.protocol && task.protocol.enabled) {
-      protocolTab.style.display = 'block';
-    } else {
-      protocolTab.style.display = 'none';
-    }
-  }
-  
-  // Switch to notes tab
-  switchTaskDrawerTab('notes');
-  
-  // Show drawer
-  document.getElementById('task-drawer').style.display = 'flex';
 }
 
 function closeTaskDrawer() {
-  document.getElementById('task-drawer').style.display = 'none';
-  currentDrawerTaskId = null;
+  if (window.Petal?.features?.taskDrawer?.closeTaskDrawer) {
+    window.Petal.features.taskDrawer.closeTaskDrawer();
+  } else {
+    console.error('Task drawer module not loaded');
+  }
 }
 
 function switchTaskDrawerTab(tabName) {
-  currentDrawerTab = tabName;
-  
-  // Update tab buttons
-  ['notes', 'protocol', 'files', 'subtasks'].forEach(tab => {
-    const btn = document.getElementById(`task-drawer-tab-${tab}`);
-    const content = document.getElementById(`task-drawer-${tab}`);
-    if (btn && content) {
-      if (tab === tabName) {
-        btn.classList.add('active');
-        content.style.display = 'block';
-        // Render protocol tab if switching to it
-        if (tab === 'protocol') {
-          renderProtocolTab();
-        }
-      } else {
-        btn.classList.remove('active');
-        content.style.display = 'none';
-      }
-    }
-  });
+  if (window.Petal?.features?.taskDrawer?.switchTaskDrawerTab) {
+    window.Petal.features.taskDrawer.switchTaskDrawerTab(tabName);
+  } else {
+    console.error('Task drawer module not loaded');
+  }
 }
 
 function debounceSaveTaskNoteFromDrawer() {
-  if (!currentDrawerTaskId) return;
-  const value = document.getElementById('task-drawer-note-input').value || '';
-  debounceSaveTaskNote(currentDrawerTaskId, value);
+  if (window.Petal?.features?.taskDrawer?.debounceSaveTaskNoteFromDrawer) {
+    window.Petal.features.taskDrawer.debounceSaveTaskNoteFromDrawer();
+  } else {
+    console.error('Task drawer module not loaded');
+  }
 }
 
 function renderTaskLogEntries() {
-  if (!currentDrawerTaskId) return;
-  const task = tasks.find(t => t.id === currentDrawerTaskId);
-  if (!task) return;
-  
-  const container = document.getElementById('task-drawer-log-entries');
-  if (!container) return;
-  
-  if (!task.log || task.log.length === 0) {
-    container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-dim);font-size:12px;">No log entries yet</div>';
-    return;
+  if (window.Petal?.features?.taskDrawer?.renderTaskLogEntries) {
+    window.Petal.features.taskDrawer.renderTaskLogEntries();
+  } else {
+    console.error('Task drawer module not loaded');
   }
-  
-  container.innerHTML = task.log.map(entry => {
-    const date = new Date(entry.at);
-    const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-    return `
-      <div class="task-log-entry">
-        <div class="task-log-entry-header">
-          <span class="task-log-entry-time">${esc(dateStr)}</span>
-          <button class="task-log-entry-delete" onclick="deleteTaskLogEntry('${entry.id}')" title="Delete">✕</button>
-        </div>
-        <div style="font-size:12px;color:var(--text);white-space:pre-wrap;">${esc(entry.text || '')}</div>
-      </div>
-    `;
-  }).join('');
 }
 
 function addTaskLogEntry() {
-  if (!currentDrawerTaskId) return;
-  const task = tasks.find(t => t.id === currentDrawerTaskId);
-  if (!task) return;
-  
-  const text = prompt('Enter log entry:');
-  if (!text || !text.trim()) return;
-  
-  if (!task.log) task.log = [];
-  
-  const entry = {
-    id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    at: new Date().toISOString(),
-    text: text.trim()
-  };
-  
-  task.log.push(entry);
-  task.log.sort((a, b) => new Date(b.at) - new Date(a.at)); // Sort newest first
-  
-  save();
-  renderTaskLogEntries();
+  if (window.Petal?.features?.taskDrawer?.addTaskLogEntry) {
+    window.Petal.features.taskDrawer.addTaskLogEntry();
+  } else {
+    console.error('Task drawer module not loaded');
+  }
 }
 
 function deleteTaskLogEntry(entryId) {
-  if (!currentDrawerTaskId) return;
-  const task = tasks.find(t => t.id === currentDrawerTaskId);
-  if (!task || !task.log) return;
-  
-  task.log = task.log.filter(e => e.id !== entryId);
-  save();
-  renderTaskLogEntries();
+  if (window.Petal?.features?.taskDrawer?.deleteTaskLogEntry) {
+    window.Petal.features.taskDrawer.deleteTaskLogEntry(entryId);
+  } else {
+    console.error('Task drawer module not loaded');
+  }
 }
 
 function renderTaskDrawerFiles() {
-  if (!currentDrawerTaskId) return;
-  const task = tasks.find(t => t.id === currentDrawerTaskId);
-  if (!task) return;
-  
-  const container = document.getElementById('task-drawer-files-list');
-  if (!container) return;
-  
-  const taskFiles = getTaskFiles(task);
-  
-  if (taskFiles.length === 0) {
-    container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-dim);font-size:12px;">No files linked</div>';
-    return;
+  if (window.Petal?.features?.taskDrawer?.renderTaskDrawerFiles) {
+    window.Petal.features.taskDrawer.renderTaskDrawerFiles();
+  } else {
+    console.error('Task drawer module not loaded');
   }
-  
-  container.innerHTML = taskFiles.map(file => {
-    const label = file.label || file.name || 'File';
-    const note = file.note ? `<div class="task-drawer-file-note">${esc(file.note)}</div>` : '';
-    const icon = fileIcon(file.abs_path || file.onedrive_rel || file.share_url || '');
-    return `
-      <div class="task-drawer-file-item">
-        <div class="task-drawer-file-info">
-          <div class="task-drawer-file-name">${icon} ${esc(label)}</div>
-          ${note}
-        </div>
-        <div class="task-drawer-file-actions">
-          <button onclick="openFile(${escJsonForAttr(file)})" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;">Open</button>
-          <button onclick="unlinkFileFromTask('${file.id}')" style="padding:4px 8px;background:none;border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;color:var(--text-dim);">Unlink</button>
-        </div>
-      </div>
-    `;
-  }).join('');
 }
 
 function linkExistingFileToTask() {
-  if (!currentDrawerTaskId) return;
-  const task = tasks.find(t => t.id === currentDrawerTaskId);
-  if (!task || !task.projectId) {
-    alert('Task must be in a project to link files');
-    return;
-  }
-  
-  const project = projects.find(p => p.id === task.projectId);
-  if (!project || !project.files || project.files.length === 0) {
-    alert('No files available in this project');
-    return;
-  }
-  
-  // Simple prompt for now - could be enhanced with a modal
-  const fileLabels = project.files.map((f, i) => `${i + 1}. ${f.label || f.name || 'File'}`).join('\n');
-  const choice = prompt(`Select file number:\n\n${fileLabels}`);
-  const index = parseInt(choice) - 1;
-  
-  if (isNaN(index) || index < 0 || index >= project.files.length) return;
-  
-  const file = project.files[index];
-  if (!file || !file.id) return;
-  
-  if (!task.fileIds) task.fileIds = [];
-  if (!task.fileIds.includes(file.id)) {
-    task.fileIds.push(file.id);
-    save();
-    renderTaskDrawerFiles();
+  if (window.Petal?.features?.taskDrawer?.linkExistingFileToTask) {
+    window.Petal.features.taskDrawer.linkExistingFileToTask();
+  } else {
+    console.error('Task drawer module not loaded');
   }
 }
 
 function addNewFileToTask() {
-  if (!currentDrawerTaskId) return;
-  const task = tasks.find(t => t.id === currentDrawerTaskId);
-  if (!task || !task.projectId) {
-    alert('Task must be in a project to add files');
-    return;
+  if (window.Petal?.features?.taskDrawer?.addNewFileToTask) {
+    window.Petal.features.taskDrawer.addNewFileToTask();
+  } else {
+    console.error('Task drawer module not loaded');
   }
-  
-  // Open the add file modal - this will add to project, then we link it
-  // For now, just show a message
-  alert('Use the Files view to add files to the project, then link them here');
 }
 
 function unlinkFileFromTask(fileId) {
-  if (!currentDrawerTaskId) return;
-  const task = tasks.find(t => t.id === currentDrawerTaskId);
-  if (!task) return;
-  
-  if (!task.fileIds) task.fileIds = [];
-  task.fileIds = task.fileIds.filter(id => id !== fileId);
-  save();
-  renderTaskDrawerFiles();
+  if (window.Petal?.features?.taskDrawer?.unlinkFileFromTask) {
+    window.Petal.features.taskDrawer.unlinkFileFromTask(fileId);
+  } else {
+    console.error('Task drawer module not loaded');
+  }
 }
 
 function renderTaskDrawerSubtasks() {
-  if (!currentDrawerTaskId) return;
-  const task = tasks.find(t => t.id === currentDrawerTaskId);
-  if (!task) return;
-  
-  const container = document.getElementById('task-drawer-subtasks-list');
-  if (!container) return;
-  
-  // Find subtasks (tasks with parentTaskId matching this task), excluding deleted
-  const subtasks = tasks.filter(t => t.parentTaskId === task.id && !t.deletedAt);
-  
-  if (subtasks.length === 0) {
-    container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-dim);font-size:12px;">No subtasks</div>';
-    return;
+  if (window.Petal?.features?.taskDrawer?.renderTaskDrawerSubtasks) {
+    window.Petal.features.taskDrawer.renderTaskDrawerSubtasks();
+  } else {
+    console.error('Task drawer module not loaded');
   }
-  
-  container.innerHTML = subtasks.map(st => `
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center;">
-      <span style="font-size:13px;color:var(--text);">${esc(st.title)}</span>
-      <div style="display:flex;gap:6px;">
-        <button data-action="edit-task" data-task-id="${st.id}" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;">Edit</button>
-        <button data-action="delete-task" data-task-id="${st.id}" style="padding:4px 8px;background:none;border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;color:var(--text-dim);">Delete</button>
-      </div>
-    </div>
-  `).join('');
 }
 
 async function addSubtaskToTask() {
-  try {
-    if (!currentDrawerTaskId) {
-      console.warn('addSubtaskToTask: No task drawer open');
-      return;
-    }
-  const task = tasks.find(t => t.id === currentDrawerTaskId);
-    if (!task) {
-      console.warn('addSubtaskToTask: Task not found:', currentDrawerTaskId);
-      return;
-    }
-  
-  const title = prompt('Enter subtask title:');
-  if (!title || !title.trim()) return;
-  
-  const newSubtask = {
-    id: Date.now(),
-    title: title.trim(),
-    note: '',
-    noteUpdatedAt: null,
-    log: [],
-    fileIds: [],
-    priority: task.priority || 'medium',
-    due: '',
-    done: false,
-    status: 'Todo',
-    projectId: task.projectId,
-    parentTaskId: task.id,
-    boardOrder: 0
-  };
-  
-  tasks.push(newSubtask);
-    await save();
-  renderTaskDrawerSubtasks();
-  } catch (error) {
-    console.error('Error in addSubtaskToTask:', error);
-    alert('Error adding subtask: ' + error.message);
+  if (window.Petal?.features?.taskDrawer?.addSubtaskToTask) {
+    await window.Petal.features.taskDrawer.addSubtaskToTask();
+  } else {
+    console.error('Task drawer module not loaded');
   }
 }
 
@@ -3600,130 +3727,11 @@ let editingTaskId = null;
 let editingSubtaskInfo = null; // {projectId, subtaskId}
 
 // Make editTask globally accessible
-function editTask(id){
-  try {
-    // Handle both string and number IDs
-    const idNum = typeof id === 'string' ? parseInt(id) : Number(id);
-    if (isNaN(idNum) && id !== null && id !== undefined) {
-      console.error('Invalid task ID:', id);
-      alert('Invalid task ID. Please try again.');
-      return;
-    }
-    
-    const t = tasks.find(task => {
-      if (!task || !task.id) return false;
-      const taskId = Number(task.id);
-      return taskId === idNum || task.id === id || String(task.id) === String(id);
-    });
-    
-    if (!t) {
-      console.error('Task not found for ID:', id);
-      alert('Task not found. Please try again.');
-      return;
-    }
-    
-    editingTaskId = t.id;
-    editingSubtaskInfo = null;
-    
-    // Get modal elements
-    const modal = document.getElementById('edit-modal');
-    const titleEl = document.getElementById('edit-modal-title');
-    const titleInput = document.getElementById('edit-title');
-    const notesInput = document.getElementById('edit-notes');
-    const prioritySelect = document.getElementById('edit-priority');
-    const dueInput = document.getElementById('edit-due');
-    const estimatedMinutesInput = document.getElementById('edit-estimated-minutes');
-    const timeBlockSelect = document.getElementById('edit-time-block');
-    const notesField = document.getElementById('edit-notes-field');
-    const tagsHint = document.getElementById('edit-tags-hint');
-    
-    if (!modal || !titleEl || !titleInput) {
-      console.error('Edit modal elements not found');
-      alert('Edit modal not found. Please refresh the page.');
-      return;
-    }
-    
-    // Populate modal
-    const currentTitle = [t.title, ...(t.tags||[])].filter(Boolean).join(' ').trim();
-    titleEl.textContent = 'Edit Task';
-    titleInput.value = currentTitle || t.title || '';
-    
-    if (notesInput) {
-      notesInput.value = t.notes || t.note || '';
-    }
-    
-    // Handle both old (high/medium/low) and new (1-3) priority formats
-    let priorityValue = 2;
-    if (typeof t.priority === 'number') {
-      priorityValue = t.priority;
-    } else if (typeof t.priority === 'string') {
-      priorityValue = t.priority === 'high' ? 3 : t.priority === 'low' ? 1 : 2;
-    }
-    
-    if (prioritySelect) {
-      prioritySelect.value = priorityValue || 2;
-    }
-    
-    if (dueInput) {
-      dueInput.value = t.due || '';
-    }
-    
-    if (estimatedMinutesInput) {
-      estimatedMinutesInput.value = t.estimatedMinutes || '';
-    }
-    
-    const artifactTagInput = document.getElementById('edit-artifact-tag');
-    if (artifactTagInput) {
-      artifactTagInput.value = t.artifactTag || '';
-    }
-    if (timeBlockSelect) {
-      timeBlockSelect.value = t.timeBlock || '';
-    }
-    
-    if (notesField) {
-      notesField.style.display = '';
-    }
-    
-    if (tagsHint) {
-      tagsHint.style.display = '';
-    }
-    
-    // Populate protocol fields
-    const protocolEnabled = t.protocol && t.protocol.enabled;
-    const protocolEnabledCheckbox = document.getElementById('edit-protocol-enabled');
-    if (protocolEnabledCheckbox) {
-      protocolEnabledCheckbox.checked = protocolEnabled || false;
-      if (protocolEnabled && t.protocol) {
-        const protocolStartInput = document.getElementById('edit-protocol-start');
-        const protocolEndInput = document.getElementById('edit-protocol-end');
-        const protocolDayIndexInput = document.getElementById('edit-protocol-day-index');
-        
-        if (protocolStartInput && t.protocol.startAt) {
-          const startDate = new Date(t.protocol.startAt);
-          protocolStartInput.value = formatDateTimeLocal(startDate);
-        }
-        if (protocolEndInput && t.protocol.expectedEndAt) {
-          const endDate = new Date(t.protocol.expectedEndAt);
-          protocolEndInput.value = formatDateTimeLocal(endDate);
-        }
-        if (protocolDayIndexInput) {
-          protocolDayIndexInput.value = t.protocol.dayIndex || '';
-        }
-      }
-      toggleProtocolFields();
-    }
-    
-    // Populate project files select
-    updateEditModalProjectFiles(t.projectId, t.fileIds || []);
-    
-    // Show modal
-    modal.classList.add('active');
-    setTimeout(() => {
-      titleInput.focus();
-    }, 100);
-  } catch (error) {
-    console.error('Error in editTask:', error);
-    alert('Error opening edit modal: ' + error.message);
+function editTask(id) {
+  if (window.Petal?.features?.taskOperations?.editTask) {
+    window.Petal.features.taskOperations.editTask(id);
+  } else {
+    console.error('Task operations module not loaded');
   }
 }
 function editSubtask(projId,subId){
@@ -4142,130 +4150,52 @@ function setupEventDelegation() {
   
   // Create unified click handler
   window._eventDelegationHandler = function(e) {
-    // TEST: Uncomment this to verify handler is being called at all
-    // console.log('Handler called for:', e.target.tagName, e.target.className);
-    
-    // Debug: log ALL clicks to see if handler is being called
-    const isButtonClick = e.target.classList && (
-      e.target.classList.contains('btn-del') || 
-      e.target.closest('.btn-del') ||
-      e.target.tagName === 'BUTTON' ||
-      e.target.closest('button')
-    );
-    
-    if (isButtonClick) {
-      console.log('=== CLICK DETECTED ===');
-      console.log('Target:', e.target);
-      console.log('Target tag:', e.target.tagName);
-      console.log('Target classes:', e.target.className);
-      console.log('Has data-action on target:', e.target.hasAttribute && e.target.hasAttribute('data-action'));
-      console.log('data-action value:', e.target.getAttribute('data-action'));
-    }
-    
     // Find the closest element with a data-action attribute
     // Try multiple methods to find the button
     let actionBtn = null;
     
-    // Method 1: closest() - works for nested elements
-    if (e.target.closest) {
-      actionBtn = e.target.closest('[data-action]');
-      if (actionBtn && isButtonClick) {
-        console.log('Found via closest():', actionBtn);
-      }
+    // Method 1: Check if target itself has data-action
+    if (e.target && e.target.hasAttribute && e.target.hasAttribute('data-action')) {
+      actionBtn = e.target;
     }
     
-    // Method 2: Check target itself
-    if (!actionBtn && e.target && e.target.hasAttribute && e.target.hasAttribute('data-action')) {
-      actionBtn = e.target;
-      if (isButtonClick) {
-        console.log('Found on target itself');
-      }
+    // Method 2: Use closest() - works for nested elements (icons, text inside buttons)
+    if (!actionBtn && e.target && e.target.closest) {
+      actionBtn = e.target.closest('[data-action]');
     }
     
     // Method 3: Check parent elements manually (for cases where closest doesn't work)
     if (!actionBtn) {
       let element = e.target;
       let depth = 0;
-      while (element && element !== appContainer && depth < 15) {
+      while (element && element !== appContainer && depth < 20) {
         if (element.hasAttribute && element.hasAttribute('data-action')) {
           actionBtn = element;
-          if (isButtonClick) {
-            console.log('Found via parent traversal at depth', depth, ':', element);
-          }
           break;
         }
-        element = element.parentElement;
+        element = element.parentElement || element.parentNode;
         depth++;
       }
     }
     
     if (!actionBtn) {
-      // Debug: log when we don't find an action button
-      if (isButtonClick) {
-        console.warn('Button clicked but no data-action found');
-        console.warn('Target:', e.target);
-        console.warn('Parent:', e.target.parentElement);
-        console.warn('Parent parent:', e.target.parentElement?.parentElement);
-      }
       return;
     }
     
     const action = actionBtn.getAttribute('data-action');
-    
-    // Debug logging
-    console.log('✓ Event delegation caught action:', action, 'on element:', actionBtn);
-    
-    // Edit task
-    if (action === 'edit-task') {
-      try {
-        e.stopPropagation();
-        e.preventDefault();
-        const taskIdAttr = actionBtn.getAttribute('data-task-id');
-        if (!taskIdAttr) {
-          console.warn('Edit task button missing data-task-id attribute', actionBtn);
-          return;
-        }
-        
-        const taskId = parseInt(taskIdAttr);
-        if (isNaN(taskId)) {
-          console.error('Invalid task ID:', taskIdAttr, 'from button:', actionBtn);
-          alert('Invalid task ID. Please try again.');
-          return;
-        }
-        
-        const isSubtask = actionBtn.getAttribute('data-is-subtask') === 'true';
-        const projectId = actionBtn.getAttribute('data-project-id');
-        
-        if (isSubtask && projectId) {
-          editSubtask(parseInt(projectId), taskId);
-        } else if (taskId) {
-          editTask(taskId);
-        } else {
-          console.error('No valid task ID to edit');
-          alert('Could not find task to edit. Please try again.');
-        }
-      } catch (error) {
-        console.error('Error handling edit-task action:', error, error.stack);
-        alert('Error opening edit modal: ' + error.message);
-      }
+    if (!action) {
       return;
     }
     
-    // Delete task
+    // Edit task - use helper function
+    if (action === 'edit-task') {
+      handleEditTaskAction(e);
+      return;
+    }
+    
+    // Delete task - use helper function
     if (action === 'delete-task') {
-      e.stopPropagation();
-      e.preventDefault();
-      const taskIdAttr = actionBtn.getAttribute('data-task-id');
-      if (!taskIdAttr) return;
-      
-      const taskId = parseInt(taskIdAttr);
-      if (isNaN(taskId)) return;
-      
-      const isSubtask = actionBtn.getAttribute('data-is-subtask') === 'true';
-      const projectId = actionBtn.getAttribute('data-project-id');
-      const parentTaskId = actionBtn.getAttribute('data-parent-task-id');
-      
-      confirmDeleteTask(taskId, isSubtask, projectId, parentTaskId);
+      handleDeleteTaskAction(e);
       return;
     }
     
@@ -4314,138 +4244,176 @@ function setupEventDelegation() {
   // Attach handler to root container (capture phase to catch early)
   appContainer.addEventListener('click', window._eventDelegationHandler, true);
   
-  // Verify listener is attached
-  console.log('Event delegation set up for edit buttons');
-  console.log('App container:', appContainer);
-  console.log('Handler function:', window._eventDelegationHandler);
-  console.log('Listener attached:', appContainer.hasAttribute ? 'yes' : 'check manually');
-  
-  // Test: Add a simple click handler to verify clicks work at all
-  appContainer.addEventListener('click', function testHandler(e) {
-    if (e.target.classList && e.target.classList.contains('btn-del')) {
-      console.log('TEST: Simple handler caught btn-del click:', e.target);
-    }
-  }, false);
-  
   // Make editTask globally accessible as a fallback for direct onclick handlers
   window.editTask = editTask;
 }
 
-// ═══════════════════════ DELETE HANDLERS ═══════════════════════
-let pendingDelete = null; // {type: 'task'|'file', taskId, isSubtask, projectId, parentTaskId, fileId}
+// ═══════════════════════ BUTTON ACTION HELPERS ═══════════════════════
+// Helper functions to handle edit/delete actions from buttons
+// Can be called from onclick handlers or event delegation
 
-function confirmDeleteTask(taskId, isSubtask, projectId, parentTaskId) {
-  const task = tasks.find(t => t.id === taskId);
-  if (!task) {
-    alert('Task not found');
+function handleEditTaskAction(event, buttonElement) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+  
+  // Find the button element - try multiple methods for Electron compatibility
+  let btn = null;
+  
+  // Method 1: Use buttonElement parameter (passed from onclick handler)
+  if (buttonElement && buttonElement.getAttribute && buttonElement.getAttribute('data-action') === 'edit-task') {
+    btn = buttonElement;
+  }
+  // Method 2: Use event.target and closest
+  else if (event && event.target) {
+    btn = event.target.closest ? event.target.closest('[data-action="edit-task"]') : null;
+    if (!btn && event.target.getAttribute && event.target.getAttribute('data-action') === 'edit-task') {
+      btn = event.target;
+    }
+  }
+  // Method 3: Try to find from currentTarget
+  else if (event && event.currentTarget && event.currentTarget.getAttribute && event.currentTarget.getAttribute('data-action') === 'edit-task') {
+    btn = event.currentTarget;
+  }
+  
+  if (!btn || btn.getAttribute('data-action') !== 'edit-task') {
+    console.warn('Could not find edit button element', { event, buttonElement, btn });
     return;
   }
   
-  // Check for subtasks
-  const subtasks = tasks.filter(t => t.parentTaskId === taskId);
-  const hasSubtasks = subtasks.length > 0;
-  
-  const title = task.title || 'Untitled Task';
-  let message = `Delete task "${title}"?`;
-  if (hasSubtasks) {
-    message += `\n\nThis task has ${subtasks.length} subtask${subtasks.length > 1 ? 's' : ''} that will also be deleted.`;
+  const taskIdAttr = btn.getAttribute('data-task-id');
+  if (!taskIdAttr) {
+    console.warn('Edit task button missing data-task-id attribute');
+    return;
   }
   
-  pendingDelete = {
-    type: 'task',
-    taskId: taskId,
-    isSubtask: isSubtask,
-    projectId: projectId,
-    parentTaskId: parentTaskId
-  };
+  const taskId = parseInt(taskIdAttr);
+  if (isNaN(taskId)) {
+    console.error('Invalid task ID:', taskIdAttr);
+    return;
+  }
   
-  document.getElementById('delete-confirm-title').textContent = 'Delete Task';
-  document.getElementById('delete-confirm-message').textContent = message;
-  document.getElementById('delete-confirm-modal').classList.add('active');
+  const isSubtask = btn.getAttribute('data-is-subtask') === 'true';
+  const projectId = btn.getAttribute('data-project-id');
+  
+  try {
+    if (isSubtask && projectId) {
+      editSubtask(parseInt(projectId), taskId);
+    } else if (taskId) {
+      editTask(taskId);
+    }
+  } catch (error) {
+    console.error('Error handling edit-task action:', error);
+    alert('Error opening edit modal: ' + error.message);
+  }
+}
+
+function handleDeleteTaskAction(event, buttonElement) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+  
+  // Find the button element - try multiple methods for Electron compatibility
+  let btn = null;
+  
+  // Method 1: Use buttonElement parameter (passed from onclick handler)
+  if (buttonElement && buttonElement.getAttribute && buttonElement.getAttribute('data-action') === 'delete-task') {
+    btn = buttonElement;
+  }
+  // Method 2: Use event.target and closest
+  else if (event && event.target) {
+    btn = event.target.closest ? event.target.closest('[data-action="delete-task"]') : null;
+    if (!btn && event.target.getAttribute && event.target.getAttribute('data-action') === 'delete-task') {
+      btn = event.target;
+    }
+  }
+  // Method 3: Try to find from currentTarget
+  else if (event && event.currentTarget && event.currentTarget.getAttribute && event.currentTarget.getAttribute('data-action') === 'delete-task') {
+    btn = event.currentTarget;
+  }
+  
+  if (!btn || btn.getAttribute('data-action') !== 'delete-task') {
+    console.warn('Could not find delete button element', { event, buttonElement, btn });
+    return;
+  }
+  
+  const taskIdAttr = btn.getAttribute('data-task-id');
+  if (!taskIdAttr) {
+    return;
+  }
+  
+  const taskId = parseInt(taskIdAttr);
+  if (isNaN(taskId)) {
+    return;
+  }
+  
+  const isSubtask = btn.getAttribute('data-is-subtask') === 'true';
+  const projectId = btn.getAttribute('data-project-id');
+  const parentTaskId = btn.getAttribute('data-parent-task-id');
+  
+  confirmDeleteTask(taskId, isSubtask, projectId, parentTaskId);
+}
+
+// Make helpers globally accessible
+window.handleEditTaskAction = handleEditTaskAction;
+window.handleDeleteTaskAction = handleDeleteTaskAction;
+
+// ═══════════════════════ DELETE HANDLERS ═══════════════════════
+// Delete handlers have been moved to src/features/deleteHandlers.js
+// Wrapper functions delegate to the new module
+
+// Store pending delete in window (used by module)
+window.pendingDelete = null;
+
+function confirmDeleteTask(taskId, isSubtask, projectId, parentTaskId) {
+  if (window.Petal?.features?.deleteHandlers?.confirmDeleteTask) {
+    window.Petal.features.deleteHandlers.confirmDeleteTask(taskId, isSubtask, projectId, parentTaskId);
+  } else {
+    console.error('Delete handlers module not loaded');
+  }
 }
 
 function confirmDeleteFile(projectId, fileId) {
-  const project = projects.find(p => p.id === projectId);
-  if (!project || !project.files) {
-    alert('File not found');
-    return;
+  if (window.Petal?.features?.deleteHandlers?.confirmDeleteFile) {
+    window.Petal.features.deleteHandlers.confirmDeleteFile(projectId, fileId);
+  } else {
+    console.error('Delete handlers module not loaded');
   }
-  
-  const file = project.files.find(f => f && f.id === fileId);
-  if (!file) {
-    alert('File not found');
-    return;
-  }
-  
-  const label = file.label || file.name || 'File';
-  const message = `Remove file "${label}" from this project?\n\nThis will remove the link from the project but will not delete the actual file on disk.`;
-  
-  pendingDelete = {
-    type: 'file',
-    projectId: projectId,
-    fileId: fileId
-  };
-  
-  document.getElementById('delete-confirm-title').textContent = 'Remove File';
-  document.getElementById('delete-confirm-message').textContent = message;
-  document.getElementById('delete-confirm-modal').classList.add('active');
 }
 
 function closeDeleteConfirmModal() {
-  document.getElementById('delete-confirm-modal').classList.remove('active');
-  pendingDelete = null;
+  if (window.Petal?.features?.deleteHandlers?.closeDeleteConfirmModal) {
+    window.Petal.features.deleteHandlers.closeDeleteConfirmModal();
+  } else {
+    console.error('Delete handlers module not loaded');
+  }
 }
 
 async function executeDelete() {
-  if (!pendingDelete) return;
-  
-  if (pendingDelete.type === 'task') {
-    await softDeleteTask(pendingDelete.taskId);
-    
-    // If this was a subtask in the drawer, refresh the drawer
-    if (currentDrawerTaskId && pendingDelete.parentTaskId === currentDrawerTaskId) {
-      renderTaskDrawerSubtasks();
-    }
-  } else if (pendingDelete.type === 'file') {
-    await softDeleteFile(pendingDelete.projectId, pendingDelete.fileId);
+  if (window.Petal?.features?.deleteHandlers?.executeDelete) {
+    await window.Petal.features.deleteHandlers.executeDelete();
+  } else {
+    console.error('Delete handlers module not loaded');
   }
-  
-  closeDeleteConfirmModal();
-  await save();
-  render();
 }
 
-// Soft delete: mark as deleted instead of removing
+// Soft delete: mark as deleted instead of removing - delegates to module
 async function softDeleteTask(taskId) {
-  const task = tasks.find(t => t.id === taskId);
-  if (!task) return;
-  
-  // Mark task as deleted
-  task.deletedAt = new Date().toISOString();
-  
-  // Also soft delete all subtasks
-  const subtasks = tasks.filter(t => t.parentTaskId === taskId);
-  subtasks.forEach(subtask => {
-    subtask.deletedAt = new Date().toISOString();
-  });
+  if (window.Petal?.features?.deleteHandlers?.softDeleteTask) {
+    await window.Petal.features.deleteHandlers.softDeleteTask(taskId);
+  } else {
+    console.error('Delete handlers module not loaded');
+  }
 }
 
 async function softDeleteFile(projectId, fileId) {
-  const project = projects.find(p => p.id === projectId);
-  if (!project || !project.files) return;
-  
-  const file = project.files.find(f => f && f.id === fileId);
-  if (!file) return;
-  
-  // Mark file as deleted
-  file.deletedAt = new Date().toISOString();
-  
-  // Remove file links from tasks
-  tasks.forEach(task => {
-    if (task.fileIds && task.fileIds.includes(fileId)) {
-      task.fileIds = task.fileIds.filter(id => id !== fileId);
-    }
-  });
+  if (window.Petal?.features?.deleteHandlers?.softDeleteFile) {
+    await window.Petal.features.deleteHandlers.softDeleteFile(projectId, fileId);
+  } else {
+    console.error('Delete handlers module not loaded');
+  }
 }
 
 // Legacy hard delete function (kept for backward compatibility, but now uses soft delete)
@@ -4453,6 +4421,33 @@ async function delTask(id) {
   await softDeleteTask(id);
   await save();
   render();
+}
+
+// Delete project - delegates to module
+async function delProject(id) {
+  if (window.Petal?.features?.deleteHandlers?.delProject) {
+    await window.Petal.features.deleteHandlers.delProject(id);
+  } else {
+    console.error('Delete handlers module not loaded');
+  }
+}
+
+// Delete task subtask - delegates to module
+async function delTaskSubtask(taskId, subtaskId) {
+  if (window.Petal?.features?.deleteHandlers?.delTaskSubtask) {
+    await window.Petal.features.deleteHandlers.delTaskSubtask(taskId, subtaskId);
+  } else {
+    console.error('Delete handlers module not loaded');
+  }
+}
+
+// Delete project subtask (legacy) - delegates to module
+async function delSubtask(projId, subId) {
+  if (window.Petal?.features?.deleteHandlers?.delSubtask) {
+    await window.Petal.features.deleteHandlers.delSubtask(projId, subId);
+  } else {
+    console.error('Delete handlers module not loaded');
+  }
 }
 
 // ═══════════════════════ NOTES ═══════════════════════
@@ -4657,19 +4652,12 @@ async function addProject(){
   document.querySelector('.color-swatch[data-color="1"]').classList.add('selected');
   selectedColor=1;
 }
-async function delProject(id){
-  projects=projects.filter(p=>p.id!==id);
-  openProjects.delete(id);
-  tasks = tasks.map((t) => String(t.projectId || '') === String(id) ? { ...t, projectId: '' } : t);
-  // Clear matrix view if deleted project was selected
-  if (selectedProjectId === id) {
-    selectedProjectId = null;
-    document.getElementById('matrix-project-select').value = '';
-    document.getElementById('workflow-matrix-view').style.display = 'none';
-    document.getElementById('project-list-view').style.display = '';
+async function delProject(id) {
+  if (window.Petal?.features?.deleteHandlers?.delProject) {
+    await window.Petal.features.deleteHandlers.delProject(id);
+  } else {
+    console.error('Delete handlers module not loaded');
   }
-  refreshProjectSelects();
-  await save();render();
 }
 async function toggleProjectDone(id){const p=projects.find(p=>p.id===id);if(p)p.done=!p.done;await save();render();}
 
@@ -6048,11 +6036,12 @@ function editTaskSubtask(taskId, subtaskId){
   document.getElementById('edit-title').focus();
 }
 
-async function delTaskSubtask(taskId, subtaskId){
-  // subtaskId is now a task ID - delete it as a regular task
-  tasks = tasks.filter(t => t.id !== subtaskId);
-  await save();
-  render();
+async function delTaskSubtask(taskId, subtaskId) {
+  if (window.Petal?.features?.deleteHandlers?.delTaskSubtask) {
+    await window.Petal.features.deleteHandlers.delTaskSubtask(taskId, subtaskId);
+  } else {
+    console.error('Delete handlers module not loaded');
+  }
 }
 
 // Open Add File Modal for Project
@@ -6454,11 +6443,12 @@ async function toggleSubtask(projId,subId){
   if(s)s.done=!s.done;
   await save();render();
 }
-async function delSubtask(projId,subId){
-  const p=projects.find(p=>p.id===projId);
-  if(!p)return;
-  p.subtasks=p.subtasks.filter(s=>s.id!==subId);
-  await save();render();
+async function delSubtask(projId, subId) {
+  if (window.Petal?.features?.deleteHandlers?.delSubtask) {
+    await window.Petal.features.deleteHandlers.delSubtask(projId, subId);
+  } else {
+    console.error('Delete handlers module not loaded');
+  }
 }
 
 function getSubFileLinks(projId){
@@ -6630,7 +6620,14 @@ async function render(){
   else if(currentView==='workflow') await renderWorkflow();
   else if(currentView==='files') await renderFiles();
   else if(currentView==='planner') await renderPlanner();
-  else if(currentView==='cell-log') await renderCellLogTab();
+  else if(currentView==='cell-log') {
+    // Use new page module
+    if (window.renderCellLogPage) {
+      await window.renderCellLogPage();
+    } else {
+      console.error('Cell Log page module not loaded');
+    }
+  }
   else await renderProjects();
   
   // Always hide all forms after rendering (use setTimeout to ensure DOM is updated)
@@ -6646,434 +6643,9 @@ async function render(){
   }, 500);
 }
 
-async function renderCellLogTab() {
-  ensureCellLogSettings();
-
-  const dateInput = document.getElementById('cell-log-date');
-  if (dateInput && !dateInput.value) {
-    dateInput.value = new Date().toISOString().split('T')[0];
-  }
-
-  // Refresh project select
-  const cellLogProjectSelect = document.getElementById('cell-log-project-select');
-  if (cellLogProjectSelect) {
-    const selected = cellLogProjectSelect.value;
-    cellLogProjectSelect.innerHTML = '<option value="">No project</option>' +
-      projects.filter(p => !p.done).map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
-    if (selected && projects.some((p) => String(p.id) === selected)) {
-      cellLogProjectSelect.value = selected;
-    }
-  }
-
-  const cellTypeSelect = document.getElementById('cell-log-cell-type-select');
-  if (cellTypeSelect) {
-    const current = cellTypeSelect.value;
-    cellTypeSelect.innerHTML = '<option value="">Select a saved cell type</option>' +
-      settings.cellLog.cellTypes.map(type => `<option value="${esc(type)}">${esc(type)}</option>`).join('');
-    if (current && settings.cellLog.cellTypes.includes(current)) {
-      cellTypeSelect.value = current;
-    }
-  }
-
-  const mediaTypeSelect = document.getElementById('cell-log-media-type-select');
-  if (mediaTypeSelect) {
-    const current = mediaTypeSelect.value;
-    mediaTypeSelect.innerHTML = '<option value="">Select a saved media type</option>' +
-      settings.cellLog.mediaTypes.map(type => `<option value="${esc(type)}">${esc(type)}</option>`).join('');
-    if (current && settings.cellLog.mediaTypes.includes(current)) {
-      mediaTypeSelect.value = current;
-    }
-  }
-
-  renderCellTypesList();
-  renderMediaTypesList();
-  
-  // Get or initialize current tab selection
-  if (typeof window.currentCellLogTab === 'undefined') {
-    window.currentCellLogTab = 'all';
-  }
-  renderCellLogEntries(window.currentCellLogTab);
-}
-
-function setCellLogTab(cellType) {
-  window.currentCellLogTab = cellType;
-  renderCellLogEntries(cellType);
-}
-
-function renderCellTypesList() {
-  ensureCellLogSettings();
-  const listEl = document.getElementById('cell-types-list');
-  if (!listEl) return;
-
-  if (settings.cellLog.cellTypes.length === 0) {
-    listEl.innerHTML = '<div style="font-size:12px;color:var(--text-dim);">No reusable cell types yet.</div>';
-    return;
-  }
-
-  listEl.innerHTML = settings.cellLog.cellTypes.map(type => `
-    <span style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid var(--border);border-radius:999px;background:var(--bg2);font-size:11px;color:var(--text);">
-      ${esc(type)}
-      <button onclick="removeCellType(${escJsonForAttr(type)})" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:12px;line-height:1;padding:0;">✕</button>
-    </span>
-  `).join('');
-}
-
-function renderMediaTypesList() {
-  ensureCellLogSettings();
-  const listEl = document.getElementById('media-types-list');
-  if (!listEl) return;
-
-  if (settings.cellLog.mediaTypes.length === 0) {
-    listEl.innerHTML = '<div style="font-size:12px;color:var(--text-dim);">No reusable media types yet.</div>';
-    return;
-  }
-
-  listEl.innerHTML = settings.cellLog.mediaTypes.map(type => `
-    <span style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid var(--border);border-radius:999px;background:var(--bg2);font-size:11px;color:var(--text);">
-      ${esc(type)}
-      <button onclick="removeMediaType(${escJsonForAttr(type)})" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:12px;line-height:1;padding:0;">✕</button>
-    </span>
-  `).join('');
-}
-
-function toggleFreezeFields() {
-  const freezeCheckbox = document.getElementById('cell-log-freeze');
-  const vialsField = document.getElementById('cell-log-vials-field');
-  if (freezeCheckbox && vialsField) {
-    vialsField.style.display = freezeCheckbox.checked ? 'block' : 'none';
-  }
-}
-
-function renderCellLogEntries(selectedCellType = 'all') {
-  ensureCellLogSettings();
-  const entriesEl = document.getElementById('cell-log-entries');
-  const tabsEl = document.getElementById('cell-log-tabs');
-  if (!entriesEl) return;
-
-  // Get all entries
-  const allEntries = [...settings.cellLog.entries];
-  
-  // Get cell types from reusable list (so tabs appear even if no entries yet)
-  const reusableCellTypes = [...settings.cellLog.cellTypes].sort();
-  
-  // Also include any cell types from entries that aren't in the reusable list
-  const entryCellTypes = [...new Set(allEntries.map(e => e.cellType).filter(Boolean))];
-  const allCellTypes = [...new Set([...reusableCellTypes, ...entryCellTypes])].sort();
-  
-  // Render tabs
-  if (tabsEl) {
-    const tabs = ['all', ...allCellTypes];
-    tabsEl.innerHTML = tabs.map(cellType => {
-      const isActive = cellType === selectedCellType;
-      const label = cellType === 'all' ? 'All' : esc(cellType);
-      const count = cellType === 'all' ? allEntries.length : allEntries.filter(e => e.cellType === cellType).length;
-      return `
-        <button onclick="setCellLogTab(${escJsonForAttr(cellType)})" 
-                style="background:${isActive ? 'var(--rose-pale)' : 'none'};
-                       border:none;
-                       border-radius:6px;
-                       color:${isActive ? 'var(--rose)' : 'var(--text-dim)'};
-                       font-size:11px;
-                       padding:6px 12px;
-                       cursor:pointer;
-                       transition:all .15s;
-                       font-family:'Jost',sans-serif;">
-          ${label} (${count})
-        </button>
-      `;
-    }).join('');
-  }
-
-  // Filter entries by selected cell type
-  let entries = [...allEntries];
-  if (selectedCellType !== 'all') {
-    entries = entries.filter(e => e.cellType === selectedCellType);
-  }
-
-  // Sort entries
-  entries.sort((a, b) => {
-    const dateA = a.dayDone ? new Date(a.dayDone).getTime() : 0;
-    const dateB = b.dayDone ? new Date(b.dayDone).getTime() : 0;
-    if (dateB !== dateA) return dateB - dateA;
-    return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
-  });
-
-  if (entries.length === 0) {
-    entriesEl.innerHTML = '<div style="font-size:12px;color:var(--text-dim);padding:6px 0;">No entries yet.</div>';
-    return;
-  }
-
-  entriesEl.innerHTML = entries.map(entry => {
-    const project = entry.projectId ? projects.find(p => String(p.id) === String(entry.projectId)) : null;
-    const day = entry.dayDone ? new Date(entry.dayDone + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown day';
-    const wellsText = entry.wellCount !== '' && entry.wellCount !== null && entry.wellCount !== undefined ? `${entry.wellCount} wells` : 'Wells n/a';
-    const passageText = entry.passage !== null && entry.passage !== undefined ? `P${entry.passage}` : '';
-    const freezeText = entry.isFrozen && entry.vialsCount ? ` • Frozen: ${entry.vialsCount} vial${entry.vialsCount !== 1 ? 's' : ''}` : '';
-    return `
-      <div style="padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);margin-bottom:8px;">
-        <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
-          <div style="font-size:12px;color:var(--text-dim);">${day}${project ? ` • ${esc(project.name)}` : ''}</div>
-          <div style="display:flex;gap:8px;">
-            <button onclick="editCellLogEntry(${escJsonForAttr(entry.id)})" style="background:none;border:none;color:var(--rose);cursor:pointer;font-size:12px;">Edit</button>
-            <button onclick="deleteCellLogEntry(${escJsonForAttr(entry.id)})" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:12px;">Delete</button>
-          </div>
-        </div>
-        <div style="font-size:14px;color:var(--text);margin-top:4px;">${esc(entry.taskPerformed || 'No task description')}</div>
-        <div style="font-size:12px;color:var(--text-dim);margin-top:6px;">
-          <span style="margin-right:12px;">Cell type: ${esc(entry.cellType || 'n/a')}${passageText ? ` ${passageText}` : ''}</span>
-          ${entry.mediaType ? `<span style="margin-right:12px;">Media: ${esc(entry.mediaType)}</span>` : ''}
-          <span style="margin-right:12px;">Plate: ${esc(entry.plateType || 'n/a')}</span>
-          <span>${esc(wellsText)}${freezeText}</span>
-        </div>
-        ${entry.notes ? `<div style="font-size:12px;color:var(--text-dim);margin-top:6px;">${esc(entry.notes)}</div>` : ''}
-      </div>
-    `;
-  }).join('');
-}
-
-async function addCellType() {
-  ensureCellLogSettings();
-  const input = document.getElementById('cell-type-input');
-  if (!input) return;
-  const value = input.value.trim();
-  if (!value) return;
-
-  const exists = settings.cellLog.cellTypes.some(type => type.toLowerCase() === value.toLowerCase());
-  if (exists) {
-    input.value = '';
-    return;
-  }
-
-  settings.cellLog.cellTypes.push(value);
-  settings.cellLog.cellTypes.sort((a, b) => a.localeCompare(b));
-  input.value = '';
-  await save();
-  await renderCellLogTab();
-}
-
-async function removeCellType(cellType) {
-  ensureCellLogSettings();
-  settings.cellLog.cellTypes = settings.cellLog.cellTypes.filter(type => type !== cellType);
-  await save();
-  await renderCellLogTab();
-}
-
-async function addMediaType() {
-  ensureCellLogSettings();
-  const input = document.getElementById('media-type-input');
-  if (!input) return;
-  const value = input.value.trim();
-  if (!value) return;
-
-  const exists = settings.cellLog.mediaTypes.some(type => type.toLowerCase() === value.toLowerCase());
-  if (exists) {
-    input.value = '';
-    return;
-  }
-
-  settings.cellLog.mediaTypes.push(value);
-  settings.cellLog.mediaTypes.sort((a, b) => a.localeCompare(b));
-  input.value = '';
-  await save();
-  await renderCellLogTab();
-}
-
-async function removeMediaType(mediaType) {
-  ensureCellLogSettings();
-  settings.cellLog.mediaTypes = settings.cellLog.mediaTypes.filter(type => type !== mediaType);
-  await save();
-  await renderCellLogTab();
-}
-
-async function addCellLogEntry() {
-  ensureCellLogSettings();
-
-  const editId = document.getElementById('cell-log-edit-id')?.value || '';
-  const isEditing = !!editId;
-
-  const dayDone = document.getElementById('cell-log-date')?.value || '';
-  const taskPerformed = document.getElementById('cell-log-task')?.value.trim() || '';
-  const selectedType = document.getElementById('cell-log-cell-type-select')?.value || '';
-  const customType = document.getElementById('cell-log-cell-type-custom')?.value.trim() || '';
-  const cellType = customType || selectedType;
-  const passageValue = document.getElementById('cell-log-passage')?.value || '';
-  const passage = passageValue === '' ? null : Number(passageValue);
-  const selectedMediaType = document.getElementById('cell-log-media-type-select')?.value || '';
-  const customMediaType = document.getElementById('cell-log-media-type-custom')?.value.trim() || '';
-  const mediaType = customMediaType || selectedMediaType;
-  const plateType = document.getElementById('cell-log-plate-type')?.value || '';
-  const wellCountValue = document.getElementById('cell-log-well-count')?.value || '';
-  const freezeCheckbox = document.getElementById('cell-log-freeze');
-  const isFrozen = freezeCheckbox ? freezeCheckbox.checked : false;
-  const vialsCountValue = document.getElementById('cell-log-vials-count')?.value || '';
-  const vialsCount = isFrozen && vialsCountValue ? Number(vialsCountValue) : null;
-  const projectId = document.getElementById('cell-log-project-select')?.value || '';
-  const notes = document.getElementById('cell-log-notes')?.value.trim() || '';
-
-  if (!dayDone) {
-    alert('Please add the day this was done.');
-    return;
-  }
-  if (!taskPerformed) {
-    alert('Please add the task performed.');
-    return;
-  }
-
-  if (cellType && !settings.cellLog.cellTypes.includes(cellType)) {
-    settings.cellLog.cellTypes.push(cellType);
-    settings.cellLog.cellTypes.sort((a, b) => a.localeCompare(b));
-  }
-
-  if (mediaType && !settings.cellLog.mediaTypes.includes(mediaType)) {
-    settings.cellLog.mediaTypes.push(mediaType);
-    settings.cellLog.mediaTypes.sort((a, b) => a.localeCompare(b));
-  }
-
-  if (isEditing) {
-    // Update existing entry
-    const entryIndex = settings.cellLog.entries.findIndex(e => String(e.id) === String(editId));
-    if (entryIndex !== -1) {
-      const existingEntry = settings.cellLog.entries[entryIndex];
-      settings.cellLog.entries[entryIndex] = {
-        ...existingEntry,
-        dayDone,
-        taskPerformed,
-        cellType,
-        passage,
-        mediaType,
-        plateType,
-        wellCount: wellCountValue === '' ? '' : Number(wellCountValue),
-        isFrozen,
-        vialsCount,
-        projectId: projectId || null,
-        notes
-      };
-    }
-  } else {
-    // Add new entry
-    settings.cellLog.entries.push({
-      id: `cell-log-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      dayDone,
-      taskPerformed,
-      cellType,
-      passage,
-      mediaType,
-      plateType,
-      wellCount: wellCountValue === '' ? '' : Number(wellCountValue),
-      isFrozen,
-      vialsCount,
-      projectId: projectId || null,
-      notes,
-      createdAt: new Date().toISOString()
-    });
-  }
-
-  // Clear form
-  document.getElementById('cell-log-edit-id').value = '';
-  document.getElementById('cell-log-task').value = '';
-  document.getElementById('cell-log-cell-type-select').value = '';
-  document.getElementById('cell-log-cell-type-custom').value = '';
-  document.getElementById('cell-log-passage').value = '';
-  document.getElementById('cell-log-media-type-select').value = '';
-  document.getElementById('cell-log-media-type-custom').value = '';
-  document.getElementById('cell-log-plate-type').value = '';
-  document.getElementById('cell-log-well-count').value = '';
-  document.getElementById('cell-log-freeze').checked = false;
-  document.getElementById('cell-log-vials-count').value = '1';
-  toggleFreezeFields();
-  document.getElementById('cell-log-notes').value = '';
-  
-  // Update button text and hide cancel button
-  const submitBtn = document.getElementById('cell-log-submit-btn');
-  const cancelBtn = document.getElementById('cell-log-cancel-btn');
-  if (submitBtn) submitBtn.textContent = 'Add Cell Log Entry';
-  if (cancelBtn) cancelBtn.style.display = 'none';
-
-  await save();
-  await renderCellLogTab();
-}
-
-function editCellLogEntry(entryId) {
-  ensureCellLogSettings();
-  const entry = settings.cellLog.entries.find(e => String(e.id) === String(entryId));
-  if (!entry) return;
-
-  // Populate form with entry data
-  document.getElementById('cell-log-edit-id').value = entry.id;
-  document.getElementById('cell-log-date').value = entry.dayDone || '';
-  document.getElementById('cell-log-task').value = entry.taskPerformed || '';
-  
-  // Handle cell type - check if it's in saved types or use custom
-  if (entry.cellType) {
-    if (settings.cellLog.cellTypes.includes(entry.cellType)) {
-      document.getElementById('cell-log-cell-type-select').value = entry.cellType;
-      document.getElementById('cell-log-cell-type-custom').value = '';
-    } else {
-      document.getElementById('cell-log-cell-type-select').value = '';
-      document.getElementById('cell-log-cell-type-custom').value = entry.cellType;
-    }
-  }
-  
-  document.getElementById('cell-log-passage').value = entry.passage !== null && entry.passage !== undefined ? entry.passage : '';
-  
-  // Handle media type - check if it's in saved types or use custom
-  if (entry.mediaType) {
-    if (settings.cellLog.mediaTypes.includes(entry.mediaType)) {
-      document.getElementById('cell-log-media-type-select').value = entry.mediaType;
-      document.getElementById('cell-log-media-type-custom').value = '';
-    } else {
-      document.getElementById('cell-log-media-type-select').value = '';
-      document.getElementById('cell-log-media-type-custom').value = entry.mediaType;
-    }
-  }
-  
-  document.getElementById('cell-log-plate-type').value = entry.plateType || '';
-  document.getElementById('cell-log-well-count').value = entry.wellCount !== '' && entry.wellCount !== null && entry.wellCount !== undefined ? entry.wellCount : '';
-  document.getElementById('cell-log-freeze').checked = entry.isFrozen || false;
-  document.getElementById('cell-log-vials-count').value = entry.vialsCount || '1';
-  toggleFreezeFields();
-  document.getElementById('cell-log-project-select').value = entry.projectId || '';
-  document.getElementById('cell-log-notes').value = entry.notes || '';
-  
-  // Update button text and show cancel button
-  const submitBtn = document.getElementById('cell-log-submit-btn');
-  const cancelBtn = document.getElementById('cell-log-cancel-btn');
-  if (submitBtn) submitBtn.textContent = 'Update Entry';
-  if (cancelBtn) cancelBtn.style.display = 'block';
-  
-  // Scroll to form
-  document.getElementById('view-cell-log').scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-function cancelEditCellLogEntry() {
-  // Clear form
-  document.getElementById('cell-log-edit-id').value = '';
-  document.getElementById('cell-log-task').value = '';
-  document.getElementById('cell-log-cell-type-select').value = '';
-  document.getElementById('cell-log-cell-type-custom').value = '';
-  document.getElementById('cell-log-passage').value = '';
-  document.getElementById('cell-log-media-type-select').value = '';
-  document.getElementById('cell-log-media-type-custom').value = '';
-  document.getElementById('cell-log-plate-type').value = '';
-  document.getElementById('cell-log-well-count').value = '';
-  document.getElementById('cell-log-freeze').checked = false;
-  document.getElementById('cell-log-vials-count').value = '1';
-  toggleFreezeFields();
-  document.getElementById('cell-log-notes').value = '';
-  
-  // Update button text and hide cancel button
-  const submitBtn = document.getElementById('cell-log-submit-btn');
-  const cancelBtn = document.getElementById('cell-log-cancel-btn');
-  if (submitBtn) submitBtn.textContent = 'Add Cell Log Entry';
-  if (cancelBtn) cancelBtn.style.display = 'none';
-}
-
-async function deleteCellLogEntry(entryId) {
-  ensureCellLogSettings();
-  settings.cellLog.entries = settings.cellLog.entries.filter(entry => String(entry.id) !== String(entryId));
-  await save();
-  await renderCellLogTab();
-}
+// ═══════════════════════ CELL LOG (LEGACY WRAPPERS - REMOVED) ═══════════════════════
+// All Cell Log functionality has been moved to src/pages/CellLogPage.js
+// These wrapper functions are no longer needed since inline handlers call the module directly
 
 // Old setupEditButtons removed - now using event delegation in setupEventDelegation()
 
@@ -7108,245 +6680,26 @@ function getTasksForSubtask(subtaskId) {
   });
 }
 
+// Wrapper for renderToday - delegates to module
 async function renderToday() {
-  const c = document.getElementById('today-container');
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const weekFromNow = new Date(today);
-  weekFromNow.setDate(today.getDate() + 7);
-  const monthFromNow = new Date(today);
-  monthFromNow.setDate(today.getDate() + 30);
-  
-  const allTasks = getAllTasks().filter(t => !t.done);
-  
-  // Helper: Check if task is due soon (within 7 days)
-  const isDueSoon = (task) => {
-    const due = parseDate(task.due);
-    if (!due) return false;
-    due.setHours(0, 0, 0, 0);
-    return due >= today && due <= weekFromNow;
-  };
-  
-  // Helper: Check if task is due in month
-  const isDueInMonth = (task) => {
-    const due = parseDate(task.due);
-    if (!due) return false;
-    due.setHours(0, 0, 0, 0);
-    return due > weekFromNow && due <= monthFromNow;
-  };
-  
-  // Lab today (lane === 'lab' + due today/soon)
-  const labToday = allTasks.filter(t => {
-    if (t.lane !== 'lab') return false;
-    const due = parseDate(t.due);
-    if (!due) return false;
-    due.setHours(0, 0, 0, 0);
-    return due >= today && due <= weekFromNow; // Today or within week
-  }).sort((a, b) => {
-    const aDue = parseDate(a.due) || new Date(999999999999);
-    const bDue = parseDate(b.due) || new Date(999999999999);
-    return aDue - bDue;
-  });
-  
-  // Comp window today (lane === 'comp' + due today/soon, pre-filtered by estimatedMinutes if available)
-  const compToday = allTasks.filter(t => {
-    if (t.lane !== 'comp') return false;
-    const due = parseDate(t.due);
-    if (!due) return false;
-    due.setHours(0, 0, 0, 0);
-    return due >= today && due <= weekFromNow; // Today or within week
-  }).sort((a, b) => {
-    // Prefer tasks with estimatedMinutes (smaller windows first)
-    if (a.estimatedMinutes && !b.estimatedMinutes) return -1;
-    if (!a.estimatedMinutes && b.estimatedMinutes) return 1;
-    if (a.estimatedMinutes && b.estimatedMinutes) {
-      return a.estimatedMinutes - b.estimatedMinutes;
-    }
-    const aDue = parseDate(a.due) || new Date(999999999999);
-    const bDue = parseDate(b.due) || new Date(999999999999);
-    return aDue - bDue;
-  });
-  
-  // Due soon (week/month) - talks/papers don't disappear
-  const dueSoon = allTasks.filter(t => {
-    const due = parseDate(t.due);
-    if (!due) return false;
-    due.setHours(0, 0, 0, 0);
-    return due > today && due <= monthFromNow;
-  }).sort((a, b) => {
-    const aDue = parseDate(a.due) || new Date(999999999999);
-    const bDue = parseDate(b.due) || new Date(999999999999);
-    return aDue - bDue;
-  });
-  
-  // Overdue tasks
-  const overdue = allTasks.filter(t => {
-    const due = parseDate(t.due);
-    if (!due) return false;
-    return due < today;
-  });
-  
-  let html = '';
-  
-  // Overdue section (always show if exists)
-  if (overdue.length > 0) {
-    html += `<div class="today-section">
-      <div class="today-section-header">
-        <span class="today-section-title overdue">⚠️ Overdue (${overdue.length})</span>
-      </div>`;
-    const overdueHtml = await Promise.all(overdue.map(async t => {
-      const dl = dueLabel(t.due);
-      const proj = projectNameById(t.projectId);
-      return renderTodayTask(t, dl, proj);
-    }));
-    html += overdueHtml.join('');
-    html += '</div>';
+  if (window.Petal?.pages?.today?.render) {
+    await window.Petal.pages.today.render();
+  } else {
+    // Fallback: try direct module call
+    const TodayPage = await import('./src/pages/TodayPage.js');
+    await TodayPage.renderToday(createPageContext());
   }
-  
-  // Lab Today section
-  if (labToday.length > 0) {
-    const totalMinutes = labToday.reduce((sum, t) => sum + (t.estimatedMinutes || 0), 0);
-    const timeDisplay = totalMinutes > 0 ? ` (~${Math.round(totalMinutes / 60 * 10) / 10}h)` : '';
-    html += `<div class="today-section">
-      <div class="today-section-header">
-        <span class="today-section-title">🧪 Lab Today (${labToday.length}${timeDisplay})</span>
-      </div>`;
-    const labHtml = await Promise.all(labToday.map(async t => {
-      const dl = dueLabel(t.due);
-      const proj = projectNameById(t.projectId);
-      return renderTodayTask(t, dl, proj);
-    }));
-    html += labHtml.join('');
-    html += '</div>';
-  }
-  
-  // Comp Window Today section
-  if (compToday.length > 0) {
-    const totalMinutes = compToday.reduce((sum, t) => sum + (t.estimatedMinutes || 0), 0);
-    const timeDisplay = totalMinutes > 0 ? ` (~${Math.round(totalMinutes / 60 * 10) / 10}h)` : '';
-    html += `<div class="today-section">
-      <div class="today-section-header">
-        <span class="today-section-title">💻 Comp Window Today (${compToday.length}${timeDisplay})</span>
-      </div>`;
-    const compHtml = await Promise.all(compToday.map(async t => {
-      const dl = dueLabel(t.due);
-      const proj = projectNameById(t.projectId);
-      return renderTodayTask(t, dl, proj);
-    }));
-    html += compHtml.join('');
-    html += '</div>';
-  }
-  
-  // Due Soon (Next 7 days)
-  const dueNext7Days = dueSoon.filter(t => isDueSoon(t));
-  if (dueNext7Days.length > 0) {
-    html += `<div class="today-section">
-      <div class="today-section-header">
-        <span class="today-section-title">📅 Due Next 7 Days (${dueNext7Days.length})</span>
-      </div>`;
-    const soonHtml = await Promise.all(dueNext7Days.map(async t => {
-      const dl = dueLabel(t.due);
-      const proj = projectNameById(t.projectId);
-      return renderTodayTask(t, dl, proj);
-    }));
-    html += soonHtml.join('');
-    html += '</div>';
-  }
-  
-  // Due Soon (Next 30 days) - talks/papers
-  const dueNext30Days = dueSoon.filter(t => isDueInMonth(t));
-  if (dueNext30Days.length > 0) {
-    html += `<div class="today-section">
-      <div class="today-section-header">
-        <span class="today-section-title">📆 Due Next 30 Days (${dueNext30Days.length})</span>
-      </div>`;
-    const monthHtml = await Promise.all(dueNext30Days.map(async t => {
-      const dl = dueLabel(t.due);
-      const proj = projectNameById(t.projectId);
-      return renderTodayTask(t, dl, proj);
-    }));
-    html += monthHtml.join('');
-    html += '</div>';
-  }
-  
-  // Recently touched (tasks edited in last 7 days)
-  const recentlyTouched = allTasks
-    .filter(t => {
-      if (t.updatedAt) {
-        const updated = new Date(t.updatedAt);
-        const daysAgo = (today - updated) / (1000 * 60 * 60 * 24);
-        return daysAgo <= 7;
-      }
-      return false;
-    })
-    .sort((a, b) => {
-      const aUpdated = new Date(a.updatedAt || 0);
-      const bUpdated = new Date(b.updatedAt || 0);
-      return bUpdated - aUpdated;
-    })
-    .slice(0, 10);
-  
-  if (recentlyTouched.length > 0) {
-    html += `<div class="today-section">
-      <div class="today-section-header">
-        <span class="today-section-title">🔄 Recently Touched (${recentlyTouched.length})</span>
-      </div>`;
-    const recentHtml = await Promise.all(recentlyTouched.map(async t => {
-      const dl = dueLabel(t.due);
-      const proj = projectNameById(t.projectId);
-      return renderTodayTask(t, dl, proj);
-    }));
-    html += recentHtml.join('');
-    html += '</div>';
-  }
-  
-  if (!html) {
-    html = '<div class="empty-state">Nothing scheduled for today<small>Enjoy your free time!</small></div>';
-  }
-  
-  c.innerHTML = html;
 }
 
+// Wrapper for renderTodayTask - delegates to module
 async function renderTodayTask(t, dl, proj) {
-  // Handle subtasks - get project name if it's a subtask
-  const projectName = t.isSubtask ? (t.projectName || projectNameById(t.projectId)) : proj;
-  
-  let filesHtml = '';
-  const taskFiles = getTaskFiles(t); // Use canonical registry
-  if (taskFiles?.length) {
-    const fileHtmls = await Promise.all(taskFiles.map(async f => {
-      const label = f.label || f.name || 'File';
-      const fileLink = typeof f === 'string' ? { abs_path: f } : f;
-      const fileDataAttr = escJsonForDataAttr(fileLink);
-      const icon = fileIcon(fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url || '');
-      return `<a href="#" class="file-chip" data-file-link='${fileDataAttr}' onclick="event.preventDefault();openFile(JSON.parse(this.getAttribute('data-file-link')))">${icon} ${esc(label)}</a>`;
-    }));
-    filesHtml = `<div class="task-files">${fileHtmls.join('')}</div>`;
+  if (window.Petal?.pages?.today?.renderTask) {
+    return await window.Petal.pages.today.renderTask(createPageContext(), t, dl, proj);
+  } else {
+    // Fallback: try direct module call
+    const TodayPage = await import('./src/pages/TodayPage.js');
+    return await TodayPage.renderTodayTask(createPageContext(), t, dl, proj);
   }
-  
-  const toggleOnclick = t.isSubtask ? 'toggleSubtask(' + t.projectId + ', ' + t.id + ')' : 'toggleTask(' + t.id + ')';
-  return `<div class="task-card ${t.done?'done':''}" data-priority="${t.priority}">
-    <div class="task-top">
-      <div class="check-box ${t.done?'checked':''}" onclick="${toggleOnclick}"></div>
-      <div class="task-body">
-        <div class="task-title">${t.isSubtask ? '<span style="opacity:0.6;font-size:11px;">📁 ' + esc(projectName || 'Project') + ' →</span> ' : ''}${esc(t.title)}</div>
-        <div class="task-meta-row">
-          <span class="priority-tag ${t.priority}">${t.priority}</span>
-          ${getProtocolBadge(t)}
-          ${t.artifactTag ? '<span class="due-tag" style="background:var(--sage-pale);color:var(--sage);" title="Artifact: ' + esc(t.artifactTag) + '">🏷️ ' + esc(t.artifactTag) + '</span>' : ''}
-          ${t.estimatedMinutes ? '<span class="due-tag" style="background:var(--blush);color:var(--mauve);" title="Estimated time">⏱️ ' + Math.round(t.estimatedMinutes / 60 * 10) / 10 + 'h</span>' : ''}
-          ${projectName && !t.isSubtask ? '<span class="due-tag">' + esc(projectName) + '</span>' : ''}
-          ${dl ? '<span class="due-tag ' + dl.cls + '"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' + esc(dl.text) + '</span>' : ''}
-          ${t.tags?.length ? '<span class="task-tags">' + t.tags.map(tag => '<span class="tag-chip" data-tag="' + esc(tag) + '">' + esc(tag) + '</span>').join('') + '</span>' : ''}
-        </div>
-        ${t.notes ? '<div class="task-notes-section"><div class="task-notes-toggle ' + (t.notes && t.notes.length > 100 ? '' : 'expanded') + '" onclick="toggleTaskNotes(' + t.id + ', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg><span>Notes</span></div><div class="task-notes-content ' + (t.notes && t.notes.length > 100 ? 'collapsed' : 'expanded') + '" id="notes-' + t.id + '"><div class="task-notes-full">' + esc(t.notes) + '</div></div></div>' : ''}
-        ${filesHtml}
-      </div>
-      <button class="btn-del" onclick="openTaskDrawer(${t.id})" title="Open drawer (Notes, Files, Subtasks)">📝</button>
-      <button class="btn-del" data-action="edit-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" title="Edit">✎</button>
-      <button class="btn-del" data-action="delete-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" title="Delete">✕</button>
-    </div>
-  </div>`;
 }
 
 async function renderTasks(){
@@ -7357,8 +6710,10 @@ async function renderTasks(){
   if (filterGroup) filterGroup.style.display = taskMode === 'kanban' ? 'none' : '';
   const sortGroup = document.querySelector('#view-tasks .sort-group');
   if (sortGroup) sortGroup.style.display = taskMode === 'kanban' ? 'none' : '';
-  document.getElementById('task-container').style.display = taskMode === 'list' ? '' : 'none';
-  document.getElementById('kanban-container').style.display = taskMode === 'kanban' ? '' : 'none';
+  const taskContainer = document.getElementById('task-container');
+  if (taskContainer) taskContainer.style.display = taskMode === 'list' ? '' : 'none';
+  const kanbanContainer = document.getElementById('kanban-container');
+  if (kanbanContainer) kanbanContainer.style.display = taskMode === 'kanban' ? '' : 'none';
   if (taskMode === 'kanban') return renderKanban();
   return renderTaskList();
 }
@@ -7420,6 +6775,15 @@ async function renderTaskList(){
   for(const lbl of keys){
     const ts=groups[lbl].sort((a,b)=>pR[a.priority]-pR[b.priority]);
     html+=`<div class="group-label">${esc(lbl)}<span class="group-count">${ts.length} task${ts.length>1?'s':''}</span></div>`;
+    
+    // Add ghost "Add task" element that appears on hover
+    html += `<div class="t-row" style="margin-bottom:8px;">
+      <div class="t-label" style="width:42px;"></div>
+      <div class="t-slot">
+        <button class="t-ghost" onclick="document.getElementById('in-title').focus();" style="width:100%;">+ Add task</button>
+      </div>
+    </div>`;
+    
     const taskHtmls = await Promise.all(ts.map(async t=>{
       const dl=dueLabel(t.due);
       let filesHtml = '';
@@ -7484,8 +6848,8 @@ async function renderTaskList(){
             ${filesHtml}
           </div>
           <button class="btn-del" onclick="openTaskDrawer(${t.id})" title="Open drawer (Notes, Files, Subtasks)">📝</button>
-          <button class="btn-del" data-action="edit-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" title="Edit">✎</button>
-          <button class="btn-del" data-action="delete-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" title="Delete">✕</button>
+          <button class="btn-del" data-action="edit-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" onclick="handleEditTaskAction(event, this)" title="Edit">✎</button>
+          <button class="btn-del" data-action="delete-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" onclick="handleDeleteTaskAction(event, this)" title="Delete">✕</button>
         </div>
       </div>`;
     }));
@@ -7805,8 +7169,8 @@ function projectHTML(p){
                   </div>` : ''}
                 </div>
                 <div style="display:flex;gap:4px;flex-shrink:0;">
-                  <button class="btn-del" data-action="edit-task" data-task-id="${st.id}" data-is-subtask="false" data-project-id="${t.projectId || ''}" title="Edit">✎</button>
-                  <button class="btn-del" data-action="delete-task" data-task-id="${st.id}" data-parent-task-id="${t.id}" data-is-subtask="false" data-project-id="${t.projectId || ''}" title="Delete">✕</button>
+                  <button class="btn-del" data-action="edit-task" data-task-id="${st.id}" data-is-subtask="false" data-project-id="${t.projectId || ''}" onclick="handleEditTaskAction(event, this)" title="Edit">✎</button>
+                  <button class="btn-del" data-action="delete-task" data-task-id="${st.id}" data-parent-task-id="${t.id}" data-is-subtask="false" data-project-id="${t.projectId || ''}" onclick="handleDeleteTaskAction(event, this)" title="Delete">✕</button>
                 </div>
               </div>
             </div>`;
@@ -8214,6 +7578,18 @@ function renderCompWindow(project, projectTasks) {
   const contentEl = document.getElementById('comp-window-content');
   if (!contentEl) return;
   
+  // If called without arguments, get project and tasks from selectedProjectId
+  if (!project || !projectTasks) {
+    if (!selectedProjectId) return;
+    project = projects.find(p => p.id === selectedProjectId);
+    if (!project) return;
+    projectTasks = tasks.filter(t => {
+      if (t.deletedAt) return false;
+      const taskProjectId = t.projectId ? (typeof t.projectId === 'number' ? t.projectId : parseInt(t.projectId)) : null;
+      return taskProjectId === selectedProjectId;
+    });
+  }
+  
   const windowSelect = document.getElementById('comp-window-select');
   const availableWindow = parseInt(windowSelect?.value || 90);
   
@@ -8403,7 +7779,7 @@ function renderTaskItemCompact(task) {
           html += `<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">${esc(tdl.text)}</div>`;
         }
   html += '</div>';
-  html += `<button data-action="edit-task" data-task-id="${task.id}" style="padding:4px 8px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:10px;cursor:pointer;">Edit</button>`;
+  html += `<button data-action="edit-task" data-task-id="${task.id}" onclick="handleEditTaskAction(event, this)" style="padding:4px 8px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:10px;cursor:pointer;">Edit</button>`;
   html += '</div>';
   return html;
 }
@@ -8424,7 +7800,7 @@ function renderTaskItem(task, isStale = false, depTask = null) {
     html += `<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">${esc(tdl.text)}</div>`;
   }
   html += '</div>';
-  html += `<button data-action="edit-task" data-task-id="${task.id}" style="padding:4px 8px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:10px;cursor:pointer;">Edit</button>`;
+  html += `<button data-action="edit-task" data-task-id="${task.id}" onclick="handleEditTaskAction(event, this)" style="padding:4px 8px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:10px;cursor:pointer;">Edit</button>`;
   html += '</div>';
   return html;
 }
@@ -10082,156 +9458,48 @@ const FILE_STATUSES = {
   'written': 'Written'
 };
 
-// Build file registry from all tasks and projects
-function buildFileRegistry() {
-  fileRegistry = fileRegistry || {}; // Preserve existing registry
-  fileHistory = fileHistory || {};
-  
-  // Helper to get file key
-  function getFileKey(fileLink) {
-    return fileLink.onedrive_rel || fileLink.abs_path || fileLink.share_url || JSON.stringify(fileLink);
-  }
-  
-  // Preserve standalone files (files not linked to tasks/projects)
-  const standaloneFiles = {};
-  Object.keys(fileRegistry).forEach(key => {
-    const file = fileRegistry[key];
-    // Preserve if it's marked as standalone OR if it has no tasks/projects
-    if (file.standalone || ((!file.tasks || file.tasks.length === 0) && (!file.projects || file.projects.length === 0))) {
-      standaloneFiles[key] = { ...file, standalone: true };
-    }
-  });
-  
-  // Start fresh but preserve standalone files
-  fileRegistry = { ...standaloneFiles };
-  
-  // Scan tasks
-  tasks.forEach(task => {
-    if (task.files && task.files.length) {
-      task.files.forEach(fileLink => {
-        const key = getFileKey(fileLink);
-        if (!fileRegistry[key]) {
-          fileRegistry[key] = {
-            ...fileLink,
-            key,
-            status: fileLink.status || 'draft',
-            tasks: [],
-            projects: [],
-            lastOpened: fileHistory[key]?.lastOpened || null,
-            submissionMeta: fileLink.submissionMeta || null
-          };
-        }
-        fileRegistry[key].tasks.push({
-          id: task.id,
-          title: task.title,
-          status: task.status,
-          done: task.done,
-          projectId: task.projectId
-        });
-      });
-    }
-  });
-  
-  // Scan projects
-  projects.forEach(project => {
-    if (project.files && project.files.length) {
-      project.files.forEach(fileLink => {
-        const key = getFileKey(fileLink);
-        if (!fileRegistry[key]) {
-          fileRegistry[key] = {
-            ...fileLink,
-            key,
-            status: fileLink.status || 'draft',
-            tasks: [],
-            projects: [],
-            lastOpened: fileHistory[key]?.lastOpened || null,
-            submissionMeta: fileLink.submissionMeta || null
-          };
-        }
-        fileRegistry[key].projects.push({
-          id: project.id,
-          name: project.name,
-          done: project.done
-        });
-      });
-    }
-    
-    // Scan subtasks
-    (project.subtasks || []).forEach(subtask => {
-      if (subtask.files && subtask.files.length) {
-        subtask.files.forEach(fileLink => {
-          const key = getFileKey(fileLink);
-          if (!fileRegistry[key]) {
-            fileRegistry[key] = {
-              ...fileLink,
-              key,
-              status: fileLink.status || 'draft',
-              tasks: [],
-              projects: [],
-              lastOpened: fileHistory[key]?.lastOpened || null,
-              submissionMeta: fileLink.submissionMeta || null
-            };
-          }
-          fileRegistry[key].tasks.push({
-            id: subtask.id,
-            title: subtask.title,
-            status: 'subtask',
-            done: subtask.done,
-            projectId: project.id,
-            isSubtask: true
-          });
-        });
-      }
-    });
-  });
-}
+// ═══════════════════════ FILE MANAGEMENT (LEGACY WRAPPERS - REMOVED) ═══════════════════════
+// All file management functionality has been moved to src/features/fileManagement.js
+// Wrapper functions delegate to the new modules (see module script section)
 
-// Track file open
+// Track file open - delegates to module
 async function trackFileOpen(fileLink) {
-  const key = fileLink.onedrive_rel || fileLink.abs_path || fileLink.share_url || JSON.stringify(fileLink);
-  if (!fileHistory[key]) {
-    fileHistory[key] = {};
+  if (window.Petal?.features?.fileManagement?.trackFileOpen) {
+    await window.Petal.features.fileManagement.trackFileOpen(fileLink);
+  } else {
+    console.error('File management module not loaded');
   }
-  fileHistory[key].lastOpened = Date.now();
-  
-  // Update file registry
-  if (fileRegistry[key]) {
-    fileRegistry[key].lastOpened = Date.now();
-  }
-  
-  await save();
 }
 
-// Get file metadata from OS
+// Get file metadata from OS - delegates to module
 async function refreshFileMetadata(fileLink) {
-  if (!window.electronAPI || !window.electronAPI.getFileMetadata) {
+  if (window.Petal?.features?.fileManagement?.refreshFileMetadata) {
+    const ctx = createPageContext();
+    return await window.Petal.features.fileManagement.refreshFileMetadata(fileLink, {
+      ...ctx,
+      fileHistory: window.fileHistory || {}
+    });
+  } else {
+    console.error('File management module not loaded');
     return null;
   }
-  
-  try {
-    const metadata = await window.electronAPI.getFileMetadata(fileLink);
-    if (metadata.success) {
-      const key = fileLink.onedrive_rel || fileLink.abs_path || fileLink.share_url || JSON.stringify(fileLink);
-      if (!fileHistory[key]) {
-        fileHistory[key] = {};
-      }
-      fileHistory[key].lastModified = metadata.lastModified;
-      fileHistory[key].size = metadata.size;
-      return metadata;
-    }
-  } catch (e) {
-    console.error('Error refreshing file metadata:', e);
-  }
-  return null;
 }
 
-// Refresh all file metadata
+// Refresh all file metadata - delegates to module
 async function refreshFileHistory() {
-  buildFileRegistry();
-  const files = Object.values(fileRegistry);
+  if (window.Petal?.features?.fileManagement?.buildFileRegistry) {
+    window.Petal.features.fileManagement.buildFileRegistry();
+  } else {
+    console.error('File management module not loaded');
+    return;
+  }
+  
+  const files = Object.values(window.fileRegistry || fileRegistry);
   
   for (const file of files) {
-    await refreshFileMetadata(file);
+    if (window.Petal?.features?.fileManagement?.refreshFileMetadata) {
+      await window.Petal.features.fileManagement.refreshFileMetadata(file);
+    }
   }
   
   await save();
@@ -10250,7 +9518,12 @@ function setFileView(view, btn) {
 
 // Render files view
 async function renderFiles() {
-  buildFileRegistry();
+  // Build registry using new module
+  if (window.Petal?.features?.fileManagement?.buildFileRegistry) {
+    window.Petal.features.fileManagement.buildFileRegistry();
+  } else {
+    console.error('File management module not loaded');
+  }
   const c = document.getElementById('files-view-container');
   if (!c) {
     console.error('Files view container not found!');
@@ -10371,103 +9644,22 @@ async function renderFiles() {
   c.innerHTML = fileHtmls.join('');
 }
 
-// Update file status
+// Update file status - delegates to module
 async function updateFileStatus(fileKey, status) {
-  if (!fileRegistry[fileKey]) return;
-  
-  fileRegistry[fileKey].status = status;
-  
-  // Update in all tasks/projects
-  const fileLink = fileRegistry[fileKey];
-  
-  // Update in tasks
-  tasks.forEach(task => {
-    if (task.files) {
-      task.files = task.files.map(f => {
-        const key = f.onedrive_rel || f.abs_path || f.share_url || JSON.stringify(f);
-        if (key === fileKey) {
-          return { ...f, status };
-        }
-        return f;
-      });
-    }
-  });
-  
-  // Update in projects
-  projects.forEach(project => {
-    if (project.files) {
-      project.files = project.files.map(f => {
-        const key = f.onedrive_rel || f.abs_path || f.share_url || JSON.stringify(f);
-        if (key === fileKey) {
-          return { ...f, status };
-        }
-        return f;
-      });
-    }
-    
-    // Update in subtasks
-    (project.subtasks || []).forEach(subtask => {
-      if (subtask.files) {
-        subtask.files = subtask.files.map(f => {
-          const key = f.onedrive_rel || f.abs_path || f.share_url || JSON.stringify(f);
-          if (key === fileKey) {
-            return { ...f, status };
-          }
-          return f;
-        });
-      }
-    });
-  });
-  
-  await save();
-  if (currentView === 'files') {
-    await renderFiles();
+  if (window.Petal?.features?.fileManagement?.updateFileStatus) {
+    await window.Petal.features.fileManagement.updateFileStatus(fileKey, status);
+  } else {
+    console.error('File management module not loaded');
   }
 }
 
-// Show file relationships
+// Show file relationships - delegates to module
 function showFileRelations(fileKey) {
-  const file = fileRegistry[fileKey];
-  if (!file) return;
-  
-  const label = file.label || file.name || 'File';
-  let html = `<div style="padding:20px;">
-    <h3 style="font-family:'Cormorant Garamond',serif;font-size:20px;margin-bottom:16px;">${esc(label)}</h3>
-    <div style="font-size:12px;color:var(--text-dim);margin-bottom:20px;">All tasks and projects referencing this file</div>`;
-  
-  if (file.tasks.length > 0) {
-    html += `<div style="margin-bottom:16px;">
-      <div style="font-weight:500;margin-bottom:8px;">Tasks (${file.tasks.length})</div>`;
-    file.tasks.forEach(t => {
-      const proj = t.projectId ? projectNameById(t.projectId) : '';
-      html += `<div style="padding:8px;background:var(--bg2);border-radius:6px;margin-bottom:6px;">
-        <div style="font-weight:500;">${esc(t.title)}</div>
-        <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">
-          Status: ${t.status || 'none'} ${t.done ? '✓ Done' : ''} ${proj ? `• Project: ${esc(proj)}` : ''}
-        </div>
-      </div>`;
-    });
-    html += `</div>`;
+  if (window.Petal?.features?.fileManagement?.showFileRelations) {
+    window.Petal.features.fileManagement.showFileRelations(fileKey);
+  } else {
+    console.error('File management module not loaded');
   }
-  
-  if (file.projects.length > 0) {
-    html += `<div>
-      <div style="font-weight:500;margin-bottom:8px;">Projects (${file.projects.length})</div>`;
-    file.projects.forEach(p => {
-      html += `<div style="padding:8px;background:var(--bg2);border-radius:6px;margin-bottom:6px;">
-        <div style="font-weight:500;">${esc(p.name)}</div>
-        <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">
-          ${p.done ? '✓ Done' : 'Active'}
-        </div>
-      </div>`;
-    });
-    html += `</div>`;
-  }
-  
-  html += `</div>`;
-  
-  // Show in modal or alert (simplified for now)
-  alert(html.replace(/<[^>]*>/g, '\n').replace(/\n+/g, '\n'));
 }
 
 // Show active files panel
@@ -10480,60 +9672,13 @@ function showActiveFiles() {
   });
 }
 
-// Edit submission metadata
-function editSubmissionMeta(fileKey) {
-  const file = fileRegistry[fileKey];
-  if (!file) return;
-  
-  const meta = file.submissionMeta || {};
-  const journal = prompt('Journal/Conference:', meta.journal || '');
-  if (journal === null) return;
-  
-  const version = prompt('Version:', meta.version || '');
-  const submitted = prompt('Submitted date (YYYY-MM-DD):', meta.submittedDate || '');
-  const decision = prompt('Decision date (YYYY-MM-DD):', meta.decisionDate || '');
-  
-  const newMeta = {
-    journal: journal || undefined,
-    version: version || undefined,
-    submittedDate: submitted || undefined,
-    decisionDate: decision || undefined
-  };
-  
-  // Update file registry
-  fileRegistry[fileKey].submissionMeta = Object.keys(newMeta).length > 0 ? newMeta : null;
-  
-  // Update in tasks/projects
-  const fileLink = fileRegistry[fileKey];
-  tasks.forEach(task => {
-    if (task.files) {
-      task.files = task.files.map(f => {
-        const key = f.onedrive_rel || f.abs_path || f.share_url || JSON.stringify(f);
-        if (key === fileKey) {
-          return { ...f, submissionMeta: newMeta };
-        }
-        return f;
-      });
-    }
-  });
-  
-  projects.forEach(project => {
-    if (project.files) {
-      project.files = project.files.map(f => {
-        const key = f.onedrive_rel || f.abs_path || f.share_url || JSON.stringify(f);
-        if (key === fileKey) {
-          return { ...f, submissionMeta: newMeta };
-        }
-        return f;
-      });
-    }
-  });
-  
-  save().then(() => {
-    if (currentView === 'files') {
-      renderFiles();
-    }
-  });
+// Edit submission metadata - delegates to module
+async function editSubmissionMeta(fileKey) {
+  if (window.Petal?.features?.fileManagement?.editSubmissionMeta) {
+    await window.Petal.features.fileManagement.editSubmissionMeta(fileKey);
+  } else {
+    console.error('File management module not loaded');
+  }
 }
 
 // Suggest copying file to vault
@@ -10849,8 +9994,8 @@ async function renderLane(laneName, allTasks) {
         </div>
         <div style="display:flex;gap:4px;align-items:flex-start;">
           <button type="button" class="btn-del" onclick="openTaskDrawer(${t.id})" title="Open drawer" style="font-size:11px;">📝</button>
-          <button type="button" class="btn-del" data-action="edit-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" onclick="console.log('Edit button clicked directly', ${t.id}); const btn = event.target.closest('[data-action]') || event.target; if (btn.getAttribute('data-action') === 'edit-task') { const taskId = parseInt(btn.getAttribute('data-task-id')); if (taskId) editTask(taskId); }" title="Edit">✎</button>
-          <button type="button" class="btn-del" data-action="delete-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" onclick="console.log('Delete button clicked directly', ${t.id}); event.stopPropagation(); const btn = event.target.closest('[data-action]') || event.target; if (btn.getAttribute('data-action') === 'delete-task') { const taskId = parseInt(btn.getAttribute('data-task-id')); const isSubtask = btn.getAttribute('data-is-subtask') === 'true'; const projectId = btn.getAttribute('data-project-id'); if (taskId) confirmDeleteTask(taskId, isSubtask, projectId, null); }" title="Delete">✕</button>
+          <button type="button" class="btn-del" data-action="edit-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" onclick="handleEditTaskAction(event, this)" title="Edit">✎</button>
+          <button type="button" class="btn-del" data-action="delete-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" onclick="handleDeleteTaskAction(event, this)" title="Delete">✕</button>
         </div>
       </div>
     </div>`;
@@ -10937,8 +10082,8 @@ async function renderUnassignedLane(allTasks) {
         </div>
         <div style="display:flex;gap:4px;align-items:flex-start;">
           <button type="button" class="btn-del" onclick="openTaskDrawer(${t.id})" title="Open drawer" style="font-size:11px;">📝</button>
-          <button type="button" class="btn-del" data-action="edit-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" onclick="console.log('Edit button clicked directly', ${t.id}); const btn = event.target.closest('[data-action]') || event.target; if (btn.getAttribute('data-action') === 'edit-task') { const taskId = parseInt(btn.getAttribute('data-task-id')); if (taskId) editTask(taskId); }" title="Edit">✎</button>
-          <button type="button" class="btn-del" data-action="delete-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" onclick="console.log('Delete button clicked directly', ${t.id}); event.stopPropagation(); const btn = event.target.closest('[data-action]') || event.target; if (btn.getAttribute('data-action') === 'delete-task') { const taskId = parseInt(btn.getAttribute('data-task-id')); const isSubtask = btn.getAttribute('data-is-subtask') === 'true'; const projectId = btn.getAttribute('data-project-id'); if (taskId) confirmDeleteTask(taskId, isSubtask, projectId, null); }" title="Delete">✕</button>
+          <button type="button" class="btn-del" data-action="edit-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" onclick="handleEditTaskAction(event, this)" title="Edit">✎</button>
+          <button type="button" class="btn-del" data-action="delete-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" onclick="handleDeleteTaskAction(event, this)" title="Delete">✕</button>
         </div>
       </div>
     </div>`;
@@ -11199,22 +10344,235 @@ if (document.readyState === 'loading') {
 }
 
 // ═══════════════════════ PLANNER ═══════════════════════
+// Planner state
+let plannerViewDate = new Date();
+let plannerWeekOffset = 0;
+let plannerCalYear = new Date().getFullYear();
+let plannerCalMonth = new Date().getMonth();
+
 // Set planner view (weekly or daily)
 function setPlannerView(view, btn) {
   currentPlannerView = view;
-  document.querySelectorAll('.planner-view-tab').forEach(b => {
-    b.style.borderBottomColor = 'transparent';
-    b.style.color = 'var(--text-dim)';
-  });
-  if (btn) {
-    btn.style.borderBottomColor = 'var(--rose)';
-    btn.style.color = 'var(--rose)';
+  
+  // Update view switcher buttons
+  const dayBtn = document.getElementById('planner-vbtn-day');
+  const weekBtn = document.getElementById('planner-vbtn-week');
+  if (dayBtn && weekBtn) {
+    dayBtn.classList.toggle('active', view === 'daily');
+    weekBtn.classList.toggle('active', view === 'weekly');
   }
   
-  document.getElementById('planner-weekly-container').style.display = view === 'weekly' ? '' : 'none';
-  document.getElementById('planner-daily-container').style.display = view === 'daily' ? '' : 'none';
+  // Show/hide views
+  const dayView = document.getElementById('planner-view-day');
+  const weekView = document.getElementById('planner-view-week');
+  if (dayView) dayView.style.display = view === 'daily' ? 'flex' : 'none';
+  if (weekView) weekView.style.display = view === 'weekly' ? 'flex' : 'none';
   
+  updatePlannerPeriodLabel();
   renderPlanner();
+  buildPlannerSidebar();
+  buildPlannerCalendar();
+}
+
+// Update period label in planner top bar
+function updatePlannerPeriodLabel() {
+  const label = document.getElementById('planner-period-label');
+  if (!label) return;
+  
+  if (currentPlannerView === 'daily') {
+    label.textContent = plannerViewDate.toLocaleDateString('en-US', {
+      weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
+    });
+  } else {
+    const startOfWeek = new Date(plannerViewDate);
+    startOfWeek.setDate(plannerViewDate.getDate() - plannerViewDate.getDay());
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    const f = d => d.toLocaleDateString('en-US', {month: 'short', day: 'numeric'});
+    label.textContent = `${f(startOfWeek)} – ${f(endOfWeek)}, ${startOfWeek.getFullYear()}`;
+  }
+}
+
+// Planner navigation
+function plannerNav(dir) {
+  if (currentPlannerView === 'daily') {
+    plannerViewDate = new Date(plannerViewDate);
+    plannerViewDate.setDate(plannerViewDate.getDate() + dir);
+  } else {
+    plannerWeekOffset += dir;
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+    plannerViewDate = new Date(startOfWeek);
+    plannerViewDate.setDate(startOfWeek.getDate() + plannerWeekOffset * 7);
+  }
+  updatePlannerPeriodLabel();
+  renderPlanner();
+  buildPlannerSidebar();
+  buildPlannerCalendar();
+}
+
+// Go to today in planner
+function plannerGoToday() {
+  plannerViewDate = new Date();
+  plannerWeekOffset = 0;
+  plannerCalYear = new Date().getFullYear();
+  plannerCalMonth = new Date().getMonth();
+  updatePlannerPeriodLabel();
+  renderPlanner();
+  buildPlannerSidebar();
+  buildPlannerCalendar();
+}
+
+// Calendar navigation
+function plannerCalNav(dir) {
+  plannerCalMonth += dir;
+  if (plannerCalMonth > 11) { plannerCalMonth = 0; plannerCalYear++; }
+  if (plannerCalMonth < 0) { plannerCalMonth = 11; plannerCalYear--; }
+  buildPlannerCalendar();
+}
+
+// Build mini calendar in sidebar
+function buildPlannerCalendar() {
+  const label = document.getElementById('planner-cal-month-label');
+  const grid = document.getElementById('planner-cal-grid');
+  if (!label || !grid) return;
+  
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  label.textContent = `${months[plannerCalMonth]} ${plannerCalYear}`;
+  
+  grid.innerHTML = '';
+  ['Su','Mo','Tu','We','Th','Fr','Sa'].forEach(n => {
+    const el = document.createElement('div');
+    el.className = 'cal-daylabel';
+    el.textContent = n;
+    grid.appendChild(el);
+  });
+  
+  const first = new Date(plannerCalYear, plannerCalMonth, 1).getDay();
+  const last = new Date(plannerCalYear, plannerCalMonth + 1, 0).getDate();
+  const prevL = new Date(plannerCalYear, plannerCalMonth, 0).getDate();
+  
+  // Event days
+  const evDays = new Set();
+  events.forEach(e => {
+    const d = new Date(e.date);
+    if (d.getFullYear() === plannerCalYear && d.getMonth() === plannerCalMonth) {
+      evDays.add(d.getDate());
+    }
+  });
+  
+  // Week highlight
+  const wkDays = new Set();
+  if (currentPlannerView === 'weekly') {
+    const startOfWeek = new Date(plannerViewDate);
+    startOfWeek.setDate(plannerViewDate.getDate() - plannerViewDate.getDay());
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(startOfWeek);
+      d.setDate(startOfWeek.getDate() + i);
+      if (d.getFullYear() === plannerCalYear && d.getMonth() === plannerCalMonth) {
+        wkDays.add(d.getDate());
+      }
+    }
+  }
+  
+  const today = new Date();
+  for (let i = 0; i < first; i++) {
+    const el = document.createElement('div');
+    el.className = 'cal-day other-mo';
+    el.textContent = prevL - first + 1 + i;
+    grid.appendChild(el);
+  }
+  for (let d = 1; d <= last; d++) {
+    const el = document.createElement('div');
+    el.className = 'cal-day';
+    const date = new Date(plannerCalYear, plannerCalMonth, d);
+    if (date.toDateString() === today.toDateString()) {
+      el.classList.add('is-today');
+    } else if (currentPlannerView === 'daily' && date.toDateString() === plannerViewDate.toDateString()) {
+      el.classList.add('is-selected');
+    } else if (currentPlannerView === 'weekly' && wkDays.has(d)) {
+      el.classList.add('in-week');
+    }
+    if (evDays.has(d)) el.classList.add('has-ev');
+    el.textContent = d;
+    el.onclick = () => {
+      plannerViewDate = new Date(plannerCalYear, plannerCalMonth, d);
+      if (currentPlannerView === 'weekly') setPlannerView('daily', document.getElementById('planner-vbtn-day'));
+      else {
+        updatePlannerPeriodLabel();
+        renderPlanner();
+        buildPlannerSidebar();
+        buildPlannerCalendar();
+      }
+    };
+    grid.appendChild(el);
+  }
+}
+
+// Build sidebar events list
+function buildPlannerSidebar() {
+  const list = document.getElementById('planner-events-list');
+  if (!list) return;
+  
+  list.innerHTML = '';
+  
+  // Collect upcoming events (next 14 days, sorted)
+  const upcoming = [];
+  const today = new Date();
+  for (let i = -1; i <= 14; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    const dateStr = d.toISOString().split('T')[0];
+    const dayEvents = getEventsForDate(d);
+    dayEvents.forEach(e => {
+      upcoming.push({...e, date: d, dateStr});
+    });
+  }
+  upcoming.sort((a, b) => {
+    if (a.dateStr !== b.dateStr) return a.dateStr.localeCompare(b.dateStr);
+    return parseTime(a.startTime) - parseTime(b.startTime);
+  });
+  
+  const todayStr = today.toISOString().split('T')[0];
+  const todayEvents = upcoming.filter(e => e.dateStr === todayStr);
+  const futureEvents = upcoming.filter(e => e.dateStr > todayStr);
+  
+  const renderSection = (label, items) => {
+    if (!items.length) return;
+    const hdr = document.createElement('div');
+    hdr.style.cssText = 'font-size:7px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-muted);padding:8px 8px 3px;font-family:"Jost",sans-serif;font-weight:700;';
+    hdr.textContent = label;
+    list.appendChild(hdr);
+    items.slice(0, 8).forEach(e => {
+      const el = document.createElement('div');
+      el.className = 'ev-item';
+      const isNow = e.dateStr === todayStr;
+      if (isNow) el.classList.add('is-now');
+      const dayLabel = isNow ? 'Today' : e.date.toLocaleDateString('en-US', {weekday: 'short', month: 'short', day: 'numeric'});
+      const categoryColors = {personal: 'yellow', lab: 'red', equipment: 'green', travel: 'muted', writing: 'blue', comp: 'green'};
+      const color = categoryColors[e.category] || 'muted';
+      el.innerHTML = `
+        <div class="ev-stripe stripe-${color}"></div>
+        <div class="ev-content">
+          <div class="ev-name">${esc(e.title)}</div>
+          <div class="ev-time">${dayLabel} · ${formatTime(parseTime(e.startTime))} – ${formatTime(parseTime(e.startTime) + e.durationMin)}</div>
+        </div>`;
+      el.onclick = () => {
+        plannerViewDate = new Date(e.date);
+        if (currentPlannerView !== 'daily') setPlannerView('daily', document.getElementById('planner-vbtn-day'));
+        else {
+          updatePlannerPeriodLabel();
+          renderPlanner();
+          buildPlannerCalendar();
+        }
+      };
+      list.appendChild(el);
+    });
+  };
+  
+  renderSection('Today', todayEvents);
+  renderSection('Upcoming', futureEvents);
 }
 
 // Render planner (weekly or daily based on currentPlannerView)
@@ -11292,8 +10650,8 @@ function formatTime(minutes) {
 
 // Calculate available time blocks for a day
 function calculateAvailableBlocks(dayEvents) {
-  const dayStart = 6 * 60; // 6:00 AM in minutes
-  const dayEnd = 22 * 60; // 10:00 PM in minutes
+  const dayStart = 0; // Midnight (0:00) in minutes
+  const dayEnd = 24 * 60; // 11:59 PM (1440 minutes) - full 24-hour day
   
   // Sort events by start time
   const sorted = [...dayEvents].sort((a, b) => {
@@ -11382,12 +10740,14 @@ function detectConflicts(dayEvents) {
 
 // Render weekly planner view
 async function renderWeeklyPlanner() {
-  const container = document.getElementById('planner-weekly-container');
-  if (!container) return;
+  const wch = document.getElementById('planner-wch');
+  const grid = document.getElementById('planner-wgrid');
+  if (!wch || !grid) return;
   
   const today = new Date();
-  const startOfWeek = new Date(today);
-  startOfWeek.setDate(today.getDate() - today.getDay()); // Start on Sunday
+  const now = new Date();
+  const startOfWeek = new Date(plannerViewDate);
+  startOfWeek.setDate(plannerViewDate.getDate() - plannerViewDate.getDay());
   startOfWeek.setHours(0, 0, 0, 0);
   
   const days = [];
@@ -11397,80 +10757,130 @@ async function renderWeeklyPlanner() {
     days.push(date);
   }
   
-  let html = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:12px;margin-bottom:20px;">';
-  
-  days.forEach((day, idx) => {
-    const dateStr = day.toISOString().split('T')[0];
-    const dayEvents = getEventsForDate(day);
-    const blocks = calculateAvailableBlocks(dayEvents);
-    const conflicts = detectConflicts(dayEvents);
-    const availableBlocks = blocks.filter(b => b.type === 'available');
-    const totalAvailable = availableBlocks.reduce((sum, b) => sum + b.duration, 0);
-    const largestBlock = availableBlocks.length > 0 
-      ? Math.max(...availableBlocks.map(b => b.duration))
-      : 0;
-    
-    const isToday = day.toDateString() === today.toDateString();
-    const dayName = day.toLocaleDateString('en-US', { weekday: 'short' });
-    const dayNum = day.getDate();
-    
-    html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;cursor:pointer;position:relative;${isToday ? 'border-color:var(--rose);' : ''}" onclick="selectPlannerDate('${dateStr}');setPlannerView('daily', document.getElementById('planner-tab-daily'));" oncontextmenu="event.preventDefault();openAddEventModal('${dateStr}');">
-      <button onclick="event.stopPropagation();openAddEventModal('${dateStr}')" style="position:absolute;top:8px;right:8px;padding:4px 8px;background:var(--rose-pale);border:1px solid var(--rose-soft);border-radius:4px;font-size:10px;color:var(--rose);cursor:pointer;" title="Add event">+</button>
-      <div style="font-size:11px;font-weight:600;color:var(--text-dim);text-transform:uppercase;margin-bottom:8px;">${dayName} ${dayNum}</div>
-      ${conflicts.length > 0 ? `<div style="font-size:10px;color:var(--overdue);margin-bottom:4px;">⚠️ ${conflicts.length} conflict${conflicts.length > 1 ? 's' : ''}</div>` : ''}
-      <div style="font-size:11px;color:var(--text);margin-bottom:4px;">
-        <div>${dayEvents.length} event${dayEvents.length !== 1 ? 's' : ''}</div>
-        <div style="color:var(--sage);margin-top:4px;">Free: ${Math.round(totalAvailable / 60 * 10) / 10}h</div>
-        ${largestBlock > 0 ? `<div style="color:var(--text-dim);font-size:10px;margin-top:2px;">Largest: ${Math.round(largestBlock / 60 * 10) / 10}h</div>` : ''}
-      </div>
-    </div>`;
+  // Column headers
+  wch.innerHTML = '<div class="wch-corner"></div>';
+  days.forEach(d => {
+    const evs = getEventsForDate(d);
+    const dotColors = [...new Set(evs.map(e => {
+      const categoryColors = {personal: 'yellow', lab: 'red', equipment: 'green', travel: 'muted', writing: 'blue', comp: 'green'};
+      return categoryColors[e.category] || 'muted';
+    }))].slice(0, 4);
+    const dots = dotColors.map(c => {
+      const colorMap = {yellow: 'var(--rose)', green: 'var(--sage)', red: 'var(--overdue)', blue: 'var(--mauve)', muted: 'var(--border2)'};
+      return `<div class="wch-dot" style="background:${colorMap[c] || 'var(--border2)'}"></div>`;
+    }).join('');
+    const col = document.createElement('div');
+    col.className = 'wch-day';
+    if (d.toDateString() === today.toDateString()) col.classList.add('is-today');
+    if (d.toDateString() === plannerViewDate.toDateString()) col.classList.add('is-selected');
+    const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    col.innerHTML = `<div class="wch-name">${dayNames[d.getDay()]}</div><div class="wch-num">${d.getDate()}</div><div class="wch-dots">${dots}</div>`;
+    col.onclick = () => {
+      plannerViewDate = new Date(d);
+      setPlannerView('daily', document.getElementById('planner-vbtn-day'));
+    };
+    wch.appendChild(col);
   });
   
-  html += '</div>';
-  html += '<div style="margin-top:20px;"><button onclick="openAddEventModal()" style="padding:8px 16px;background:var(--rose);color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;">+ Add Event</button> <button onclick="openAddRecurringModal()" style="padding:8px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;margin-left:8px;">+ Add Recurring</button></div>';
+  // Grid
+  grid.innerHTML = '';
   
-  // Recurring rules list
-  if (recurringRules.length > 0) {
-    html += '<div style="margin-top:24px;padding-top:24px;border-top:1px solid var(--border);">';
-    html += '<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px;">Recurring Events</div>';
-    html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+  // Time gutter
+  const tg = document.createElement('div');
+  tg.className = 'wg-time-col';
+  const HOURS = Array.from({length: 24}, (_, i) => i); // 0 (midnight) - 23 (11pm) - all 24 hours
+  const S_HOUR = 0;
+  HOURS.forEach(h => {
+    const cell = document.createElement('div');
+    cell.className = 'wg-time-cell';
+    const sp = document.createElement('span');
+    if (h === 0) {
+      sp.textContent = '12am';
+    } else if (h < 12) {
+      sp.textContent = `${h}am`;
+    } else if (h === 12) {
+      sp.textContent = '12pm';
+    } else {
+      sp.textContent = `${h - 12}pm`;
+    }
+    cell.appendChild(sp);
+    tg.appendChild(cell);
+  });
+  grid.appendChild(tg);
+  
+  // Day columns
+  const nowH = now.getHours() + now.getMinutes() / 60;
+  days.forEach(d => {
+    const col = document.createElement('div');
+    col.className = 'wg-day-col';
+    if (d.toDateString() === today.toDateString()) col.classList.add('is-today');
     
-    recurringRules.forEach(rule => {
-      if (!rule.enabled) return;
-      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      const days = rule.daysOfWeek.map(d => dayNames[d]).join(', ');
-      html += `<div style="padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-          <div style="flex:1;">
-            <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:4px;">${esc(rule.title)}</div>
-            <div style="font-size:11px;color:var(--text-dim);">${days} at ${rule.startTime} (${rule.durationMin} min)</div>
-            ${rule.location ? `<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">📍 ${esc(rule.location)}</div>` : ''}
-          </div>
-          <div style="display:flex;gap:4px;">
-            <button onclick="editRecurringRule('${rule.id}')" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:10px;cursor:pointer;">Edit</button>
-            <button onclick="deleteRecurringRule('${rule.id}')" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:10px;cursor:pointer;">Delete</button>
-          </div>
-        </div>
-      </div>`;
+    // Hour cells
+    HOURS.forEach(() => {
+      const c = document.createElement('div');
+      c.className = 'wg-hour';
+      col.appendChild(c);
     });
     
-    html += '</div></div>';
-  }
-  
-  container.innerHTML = html;
+    // Events - positioned based on exact start time and duration
+    const dayEvents = getEventsForDate(d);
+    dayEvents.forEach(e => {
+      const ev = document.createElement('div');
+      const categoryColors = {personal: 'yellow', lab: 'red', equipment: 'green', travel: 'muted', writing: 'blue', comp: 'green'};
+      const color = categoryColors[e.category] || 'muted';
+      ev.className = `w-event ${color}`;
+      const startMins = parseTime(e.startTime);
+      // Calculate top position: startMins in pixels (1px per minute)
+      // Hour cells are 60px high, so 1px per minute
+      const top = startMins;
+      // Height based on exact duration in minutes (2 hours = 120px)
+      const h = e.durationMin;
+      ev.style.cssText = `top:${top}px;height:${h}px;`;
+      const timeStr = `${formatTime(startMins)} – ${formatTime(startMins + e.durationMin)}`;
+      ev.innerHTML = `<div class="w-event-title" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(e.title)}</span>
+        <span style="font-size:7.5px;color:var(--text-dim);font-weight:400;white-space:nowrap;flex-shrink:0;">${timeStr}</span>
+      </div>`;
+      ev.onclick = evt => {
+        evt.stopPropagation();
+        plannerViewDate = new Date(d);
+        setPlannerView('daily', document.getElementById('planner-vbtn-day'));
+      };
+      col.appendChild(ev);
+    });
+    
+    // Now line - positioned at exact current time
+    if (d.toDateString() === today.toDateString() && nowH >= 0 && nowH < 24) {
+      const nl = document.createElement('div');
+      nl.className = 'w-nowline';
+      // Calculate exact position: (currentHour*60 + currentMinute)
+      const nowMins = now.getHours() * 60 + now.getMinutes();
+      nl.style.top = nowMins + 'px';
+      col.appendChild(nl);
+    }
+    
+    grid.appendChild(col);
+  });
 }
 
 // Select a date for daily view
 function selectPlannerDate(dateStr) {
-  selectedPlannerDate = dateStr;
+  plannerViewDate = new Date(dateStr);
+  updatePlannerPeriodLabel();
+  renderPlanner();
+  buildPlannerCalendar();
 }
 
 // Render daily planner view
 async function renderDailyPlanner() {
-  const container = document.getElementById('planner-daily-container');
-  if (!container) return;
+  const dayTitle = document.getElementById('planner-day-title');
+  const dayMeta = document.getElementById('planner-day-meta');
+  const alldayEvents = document.getElementById('planner-allday-events');
+  const timeline = document.getElementById('planner-timeline');
   
-  const date = selectedPlannerDate ? new Date(selectedPlannerDate) : new Date();
+  if (!dayTitle || !dayMeta || !alldayEvents || !timeline) return;
+  
+  const date = new Date(plannerViewDate);
   date.setHours(0, 0, 0, 0);
   const dateStr = date.toISOString().split('T')[0];
   
@@ -11478,102 +10888,137 @@ async function renderDailyPlanner() {
   const blocks = calculateAvailableBlocks(dayEvents);
   const conflicts = detectConflicts(dayEvents);
   
-  const dayName = date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  // Header
+  dayTitle.textContent = date.toLocaleDateString('en-US', {weekday: 'long', month: 'long', day: 'numeric'});
+  const totalH = dayEvents.reduce((s, e) => s + e.durationMin, 0) / 60;
+  dayMeta.textContent = `${dayEvents.length} block${dayEvents.length !== 1 ? 's' : ''} · ${Math.round(totalH * 10) / 10}h scheduled`;
   
-  let html = `<div style="margin-bottom:16px;">
-    <h3 style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:400;color:var(--rose);margin:0 0 8px 0;">${dayName}</h3>
-    <input type="date" id="planner-date-selector" value="${dateStr}" onchange="selectPlannerDate(this.value);renderPlanner();" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px;">
-  </div>`;
+  // All-day events (currently empty, but structure ready)
+  alldayEvents.innerHTML = '';
   
-  if (conflicts.length > 0) {
-    html += '<div style="background:var(--rose-pale);border:1px solid var(--rose-soft);border-radius:6px;padding:12px;margin-bottom:16px;">';
-    html += '<div style="font-size:12px;font-weight:600;color:var(--rose);margin-bottom:8px;">⚠️ Conflicts Detected</div>';
-    conflicts.forEach(conflict => {
-      if (conflict.type === 'overlap') {
-        html += `<div style="font-size:11px;color:var(--text);margin-bottom:4px;">"${esc(conflict.event1.title)}" overlaps with "${esc(conflict.event2.title)}" by ${conflict.overlapMinutes} minutes</div>`;
-      } else if (conflict.type === 'tight') {
-        html += `<div style="font-size:11px;color:var(--text);margin-bottom:4px;">Tight transition: "${esc(conflict.event1.title)}" → "${esc(conflict.event2.title)}" (${conflict.gapMinutes} min gap)</div>`;
-      }
-    });
-    html += '</div>';
-  }
+  // Timeline
+  timeline.innerHTML = '';
+  timeline.style.position = 'relative';
   
-  // Vertical timeline
-  html += '<div style="display:flex;gap:16px;">';
-  html += '<div style="flex:2;">';
-  html += '<div style="position:relative;min-height:800px;">';
+  const HOURS = Array.from({length: 24}, (_, i) => i); // 0 (midnight) - 23 (11pm) - all 24 hours
+  const S_HOUR = 0;
+  const E_HOUR = 24;
+  const PIXELS_PER_MINUTE = 1; // 1px per minute for precise positioning
   
-  const startHour = 6;
-  const endHour = 22;
-  const pixelsPerMinute = 2;
+  // Calculate total height needed (24 hours = 1440 minutes)
+  const totalMinutes = 24 * 60;
+  timeline.style.minHeight = (totalMinutes * PIXELS_PER_MINUTE) + 'px';
   
-  // Hour markers
-  for (let hour = startHour; hour <= endHour; hour++) {
-    const top = (hour - startHour) * 60 * pixelsPerMinute;
-    html += `<div style="position:absolute;top:${top}px;left:0;right:0;border-top:1px solid var(--border);padding-top:4px;">
-      <span style="font-size:10px;color:var(--text-dim);">${formatTime(hour * 60)}</span>
-    </div>`;
-  }
-  
-  // Event blocks
-  blocks.forEach(block => {
-    const top = (block.start / 60 - startHour) * 60 * pixelsPerMinute;
-    const height = block.duration * pixelsPerMinute;
+  // Create hour rows as visual guides
+  HOURS.forEach(h => {
+    const row = document.createElement('div');
+    row.className = 't-row';
+    row.style.position = 'absolute';
+    row.style.top = (h * 60 * PIXELS_PER_MINUTE) + 'px';
+    row.style.left = '0';
+    row.style.right = '0';
+    row.style.zIndex = '1';
     
-    if (block.type === 'available') {
-      html += `<div style="position:absolute;top:${top}px;left:60px;right:0;height:${height}px;background:var(--sage-pale);border-left:3px solid var(--sage);border-radius:4px;padding:4px 8px;box-sizing:border-box;">
-        <div style="font-size:11px;color:var(--sage);font-weight:500;">Available (${Math.round(block.duration / 60 * 10) / 10}h)</div>
-      </div>`;
+    const lbl = document.createElement('div');
+    lbl.className = 't-label';
+    if (h === 0) {
+      lbl.textContent = '12am';
+    } else if (h < 12) {
+      lbl.textContent = `${h}am`;
+    } else if (h === 12) {
+      lbl.textContent = '12pm';
     } else {
-      const event = block.event;
-      const categoryColors = {
-        personal: 'var(--blush)',
-        lab: 'var(--rose-pale)',
-        equipment: 'var(--sage-pale)',
-        travel: 'var(--text-light)',
-        writing: 'var(--mauve)',
-        comp: 'var(--sage-pale)'
-      };
-      const bgColor = categoryColors[event.category] || 'var(--bg2)';
-      
-      html += `<div style="position:absolute;top:${top}px;left:60px;right:0;height:${height}px;background:${bgColor};border-left:3px solid var(--rose);border-radius:4px;padding:4px 8px;box-sizing:border-box;">
-        <div style="font-size:12px;font-weight:500;color:var(--text);">${esc(event.title)}</div>
-        <div style="font-size:10px;color:var(--text-dim);">${formatTime(parseTime(event.startTime))} - ${formatTime(parseTime(event.startTime) + event.durationMin)}</div>
-        ${event.location ? `<div style="font-size:9px;color:var(--text-dim);margin-top:2px;">📍 ${esc(event.location)}</div>` : ''}
-      </div>`;
+      lbl.textContent = `${h - 12}pm`;
+    }
+    
+    const slot = document.createElement('div');
+    slot.className = 't-slot';
+    slot.style.position = 'relative';
+    
+    // Add ghost button for this hour
+    const ghost = document.createElement('button');
+    ghost.className = 't-ghost';
+    ghost.textContent = '+ Add block';
+    ghost.onclick = () => {
+      openAddEventModal(dateStr);
+      const startInput = document.getElementById('event-start-time');
+      if (startInput) startInput.value = formatTime(h * 60);
+      const endInput = document.getElementById('event-duration');
+      if (endInput) endInput.value = '60';
+    };
+    slot.appendChild(ghost);
+    
+    row.appendChild(lbl);
+    row.appendChild(slot);
+    timeline.appendChild(row);
+    
+    // Add 15-minute interval markers (subtle lines)
+    for (let q = 1; q < 4; q++) {
+      const marker = document.createElement('div');
+      marker.style.position = 'absolute';
+      marker.style.top = ((h * 60 * PIXELS_PER_MINUTE) + (q * 15 * PIXELS_PER_MINUTE)) + 'px';
+      marker.style.left = '52px';
+      marker.style.right = '0';
+      marker.style.height = '1px';
+      marker.style.background = 'var(--border)';
+      marker.style.opacity = '0.3';
+      marker.style.pointerEvents = 'none';
+      marker.style.zIndex = '0';
+      timeline.appendChild(marker);
     }
   });
   
-  html += '</div></div>';
-  
-  // Event list panel
-  html += '<div style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;">';
-  html += '<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:12px;">Events</div>';
-  
-  if (dayEvents.length === 0) {
-    html += '<div style="font-size:11px;color:var(--text-dim);">No events scheduled</div>';
-  } else {
-    dayEvents.forEach(event => {
-      const isRecurring = event.recurrenceId !== null && event.recurrenceId !== undefined;
-      html += `<div style="padding:8px;background:var(--surface);border-radius:4px;margin-bottom:6px;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-          <div style="flex:1;">
-            <div style="font-size:12px;font-weight:500;color:var(--text);">${esc(event.title)}${isRecurring ? ' <span style="font-size:9px;color:var(--text-dim);">(recurring)</span>' : ''}</div>
-            <div style="font-size:10px;color:var(--text-dim);">${formatTime(parseTime(event.startTime))} - ${formatTime(parseTime(event.startTime) + event.durationMin)}</div>
-            ${event.location ? `<div style="font-size:9px;color:var(--text-dim);margin-top:2px;">📍 ${esc(event.location)}</div>` : ''}
-          </div>
-          <div style="display:flex;gap:4px;">
-            ${!isRecurring ? `<button onclick="editEvent('${event.id}')" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:10px;cursor:pointer;">Edit</button>
-            <button onclick="deleteEvent('${event.id}')" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:10px;cursor:pointer;">Delete</button>` : `<button onclick="editRecurringRule('${event.recurrenceId}')" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:10px;cursor:pointer;">Edit Rule</button>`}
-          </div>
-        </div>
+  // Position events absolutely based on their exact start time and duration
+  dayEvents.forEach(e => {
+    const startMins = parseTime(e.startTime);
+    const startHour = Math.floor(startMins / 60);
+    const endMins = startMins + e.durationMin;
+    const endHour = Math.floor(endMins / 60);
+    
+    // Show all events (full 24-hour day)
+    if (startHour < 0 || startHour >= 24) return;
+    
+    const blk = document.createElement('div');
+    const categoryColors = {personal: 'yellow', lab: 'red', equipment: 'green', travel: 'muted', writing: 'blue', comp: 'green'};
+    const color = categoryColors[e.category] || 'muted';
+    blk.className = `t-block ${color}`;
+    blk.style.position = 'absolute';
+    // Position at exact start time (S_HOUR is 0, so just use startMins)
+    blk.style.top = (startMins * PIXELS_PER_MINUTE) + 'px';
+    blk.style.left = '52px';
+    blk.style.right = '0';
+    blk.style.zIndex = '2';
+    // Height based on exact duration in minutes (2 hours = 120px)
+    blk.style.height = (e.durationMin * PIXELS_PER_MINUTE) + 'px';
+    
+    const timeStr = `${formatTime(parseTime(e.startTime))} – ${formatTime(parseTime(e.startTime) + e.durationMin)}`;
+    blk.innerHTML = `
+      <div class="t-block-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span>${esc(e.title)}</span>
+        <span style="font-size:9px;color:var(--text-dim);font-weight:400;white-space:nowrap;">${timeStr}</span>
+      </div>
+      ${e.location ? `<div class="t-block-meta">${esc(e.location)}</div>` : ''}
+      <div class="t-block-footer">
+        <span class="t-block-dur">${Math.round(e.durationMin / 60 * 10) / 10}h</span>
       </div>`;
-    });
+    blk.onclick = (evt) => {
+      evt.stopPropagation();
+      editEvent(e.id);
+    };
+    timeline.appendChild(blk);
+  });
+  
+  // Now marker
+  const now = new Date();
+  const nowH = now.getHours() + now.getMinutes() / 60;
+  const isToday = date.toDateString() === now.toDateString();
+  if (isToday && nowH >= 0 && nowH < 24) {
+    const nm = document.createElement('div');
+    nm.className = 'now-marker';
+    nm.style.top = (nowH * 60 * PIXELS_PER_MINUTE) + 'px';
+    nm.style.zIndex = '10';
+    timeline.appendChild(nm);
   }
-  
-  html += '</div></div>';
-  
-  container.innerHTML = html;
 }
 
 // Event modal functions
@@ -11659,6 +11104,8 @@ async function submitEventModal() {
   await save();
   closeEventModal();
   renderPlanner();
+  buildPlannerSidebar();
+  buildPlannerCalendar();
 }
 
 function editEvent(eventId) {
@@ -11689,6 +11136,8 @@ function deleteEvent(eventId) {
     events = events.filter(e => e.id !== eventId);
     save();
     renderPlanner();
+    buildPlannerSidebar();
+    buildPlannerCalendar();
   }
 }
 
@@ -11773,6 +11222,8 @@ async function submitRecurringModal() {
   await save();
   closeRecurringModal();
   renderPlanner();
+  buildPlannerSidebar();
+  buildPlannerCalendar();
 }
 
 function editRecurringRule(ruleId) {
@@ -11805,6 +11256,8 @@ function deleteRecurringRule(ruleId) {
     recurringRules = recurringRules.filter(r => r.id !== ruleId);
     save();
     renderPlanner();
+    buildPlannerSidebar();
+    buildPlannerCalendar();
   }
 }
 

@@ -1,9 +1,6 @@
 // ═══════════════════════ ELECTRON MAIN PROCESS ═══════════════════════
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
-const path = require('path');
-const fs = require('fs');
-const fsPromises = require('fs').promises;
-const os = require('os');
+// SET UP ERROR HANDLING FIRST - before any other code runs
+// This prevents EPIPE errors from crashing the app
 
 function isBrokenPipeError(error) {
   if (!error) return false;
@@ -16,89 +13,286 @@ function isBrokenPipeError(error) {
          (error.toString && error.toString().includes('EPIPE'));
 }
 
+// Console output is opt-in to avoid EPIPE crashes in detached GUI launches.
+const ENABLE_CONSOLE_OUTPUT = process.env.PETAL_ENABLE_CONSOLE_OUTPUT === '1';
+let stdioBroken = false;
+
+function canWriteToStream(stream) {
+  return ENABLE_CONSOLE_OUTPUT &&
+    !stdioBroken &&
+    !!stream &&
+    stream.writable &&
+    !stream.destroyed;
+}
+
+function guardProcessStreamWrites(stream) {
+  if (!stream || typeof stream.write !== 'function') {
+    return;
+  }
+
+  const originalWrite = stream.write.bind(stream);
+
+  stream.write = function patchedWrite(chunk, encoding, callback) {
+    const enc = typeof encoding === 'function' ? undefined : encoding;
+    const cb = typeof encoding === 'function' ? encoding : callback;
+
+    // In detached GUI launches, stdio may be a broken pipe. Drop writes entirely.
+    if (!ENABLE_CONSOLE_OUTPUT) {
+      if (typeof cb === 'function') cb();
+      return true;
+    }
+
+    if (!stream.writable || stream.destroyed) {
+      if (typeof cb === 'function') cb();
+      return true;
+    }
+
+    try {
+      return originalWrite(chunk, enc, (err) => {
+        if (isBrokenPipeError(err)) {
+          stdioBroken = true;
+          if (typeof cb === 'function') cb();
+          return;
+        }
+        if (typeof cb === 'function') cb(err);
+      });
+    } catch (err) {
+      if (isBrokenPipeError(err)) {
+        stdioBroken = true;
+        if (typeof cb === 'function') cb();
+        return true;
+      }
+      throw err;
+    }
+  };
+}
+
+// Set up uncaught exception handler IMMEDIATELY
+// This must be set up before any code runs that might throw EPIPE errors
+process.on('uncaughtException', (error) => {
+  // Always check for EPIPE first - these are completely harmless
+  if (isBrokenPipeError(error)) {
+    return; // Silently ignore EPIPE errors - don't try to log them
+  }
+  // For other errors, we could log them, but that might cause another EPIPE
+  // So we just silently ignore all uncaught exceptions to prevent cascading errors
+  // The app will continue running
+});
+
+// Set up unhandled rejection handler to catch EPIPE in promises
+process.on('unhandledRejection', (reason, promise) => {
+  // Always check for EPIPE first - these are completely harmless
+  if (isBrokenPipeError(reason)) {
+    return; // Silently ignore EPIPE errors
+  }
+  // Avoid writing to stderr from rejection handlers when stdio is no longer available.
+});
+
+// Set up stream error handlers IMMEDIATELY
+if (process.stdout && typeof process.stdout.on === 'function') {
+  process.stdout.on('error', (err) => {
+    if (isBrokenPipeError(err)) stdioBroken = true;
+  }); // Ignore all errors
+  process.stdout.on('close', () => { stdioBroken = true; }); // Ignore close events
+  guardProcessStreamWrites(process.stdout);
+}
+
+if (process.stderr && typeof process.stderr.on === 'function') {
+  process.stderr.on('error', (err) => {
+    if (isBrokenPipeError(err)) stdioBroken = true;
+  }); // Ignore all errors
+  process.stderr.on('close', () => { stdioBroken = true; }); // Ignore close events
+  guardProcessStreamWrites(process.stderr);
+}
+
+// Now require modules
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const path = require('path');
+const fs = require('fs');
+const fsPromises = require('fs').promises;
+const os = require('os');
+
+// Store original console methods and override them IMMEDIATELY
+// This must happen before any console.log calls in the codebase
+const _realConsoleLog = console.log.bind(console);
+const _realConsoleError = console.error.bind(console);
+const _realConsoleWarn = console.warn.bind(console);
+
+// Create ultra-safe wrapped versions that never throw
+// These catch EPIPE errors that can occur even after stream checks
+const originalConsoleLog = function(...args) {
+  try {
+    // Check stream state multiple times
+    if (!canWriteToStream(process.stdout)) {
+      return;
+    }
+    // Final check right before write
+    if (!canWriteToStream(process.stdout)) {
+      return;
+    }
+    // Wrap the actual call in another try-catch to catch EPIPE from Node's internal write
+    try {
+      _realConsoleLog(...args);
+    } catch (writeError) {
+      // If EPIPE or any write error occurs, mark stream as broken and silently ignore
+      if (isBrokenPipeError(writeError)) {
+        stdioBroken = true;
+      }
+      // Silently ignore all write errors
+    }
+  } catch (e) {
+    // Completely ignore all errors - don't even check type
+    if (isBrokenPipeError(e)) {
+      stdioBroken = true;
+    }
+  }
+};
+
+const originalConsoleError = function(...args) {
+  try {
+    // Check stream state multiple times
+    if (!canWriteToStream(process.stderr)) {
+      return;
+    }
+    // Final check right before write
+    if (!canWriteToStream(process.stderr)) {
+      return;
+    }
+    // Wrap the actual call in another try-catch to catch EPIPE from Node's internal write
+    try {
+      _realConsoleError(...args);
+    } catch (writeError) {
+      // If EPIPE or any write error occurs, mark stream as broken and silently ignore
+      if (isBrokenPipeError(writeError)) {
+        stdioBroken = true;
+      }
+      // Silently ignore all write errors
+    }
+  } catch (e) {
+    // Completely ignore all errors - don't even check type
+    if (isBrokenPipeError(e)) {
+      stdioBroken = true;
+    }
+  }
+};
+
+const originalConsoleWarn = function(...args) {
+  try {
+    // Check stream state multiple times
+    if (!canWriteToStream(process.stderr)) {
+      return;
+    }
+    // Final check right before write
+    if (!canWriteToStream(process.stderr)) {
+      return;
+    }
+    // Wrap the actual call in another try-catch to catch EPIPE from Node's internal write
+    try {
+      _realConsoleWarn(...args);
+    } catch (writeError) {
+      // If EPIPE or any write error occurs, mark stream as broken and silently ignore
+      if (isBrokenPipeError(writeError)) {
+        stdioBroken = true;
+      }
+      // Silently ignore all write errors
+    }
+  } catch (e) {
+    // Completely ignore all errors - don't even check type
+    if (isBrokenPipeError(e)) {
+      stdioBroken = true;
+    }
+  }
+};
+
 // Safe logging functions that handle EPIPE errors gracefully
 // These functions will never throw, even if stdout/stderr is closed
 function safeLog(...args) {
   try {
     // Only log if stdout is available and writable
-    if (process.stdout && process.stdout.writable && !process.stdout.destroyed) {
-      // Use console.log but catch any synchronous errors
-      console.log(...args);
+    if (canWriteToStream(process.stdout)) {
+      // Use original console.log directly to avoid circular calls
+      originalConsoleLog(...args);
     }
   } catch (error) {
-    // Silently ignore all errors - EPIPE and other write errors are harmless
+    // Silently ignore EPIPE and other write errors - they're harmless
     // when stdout/stderr is closed (common in Electron apps when terminal closes)
+    // Don't try to log the error itself - that could cause another EPIPE
   }
 }
 
 function safeError(...args) {
   try {
     // Only log if stderr is available and writable
-    if (process.stderr && process.stderr.writable && !process.stderr.destroyed) {
-      // Use console.error but catch any synchronous errors
-      console.error(...args);
+    if (canWriteToStream(process.stderr)) {
+      // Use original console.error directly to avoid circular calls
+      originalConsoleError(...args);
     }
   } catch (error) {
-    // Silently ignore all errors - EPIPE and other write errors are harmless
+    // Silently ignore all errors - don't try to log them as that could cause another EPIPE
   }
 }
 
 function safeWarn(...args) {
   try {
     // Only log if stderr is available and writable
-    if (process.stderr && process.stderr.writable && !process.stderr.destroyed) {
-      // Use console.warn but catch any synchronous errors
-      console.warn(...args);
+    if (canWriteToStream(process.stderr)) {
+      // Use original console.warn directly to avoid circular calls
+      originalConsoleWarn(...args);
     }
   } catch (error) {
-    // Silently ignore all errors - EPIPE and other write errors are harmless
+    // Silently ignore all errors - don't try to log them as that could cause another EPIPE
   }
 }
 
-// In some launch contexts stdout/stderr can close while the app keeps running.
-// Swallow EPIPE stream errors so logging does not crash the main process.
-if (process.stdout && typeof process.stdout.on === 'function') {
-  process.stdout.on('error', (error) => {
-    if (!isBrokenPipeError(error)) {
-      throw error;
-    }
-  });
-}
-
-if (process.stderr && typeof process.stderr.on === 'function') {
-  process.stderr.on('error', (error) => {
-    if (!isBrokenPipeError(error)) {
-      throw error;
-    }
-  });
-}
-
-process.on('uncaughtException', (error) => {
-  if (isBrokenPipeError(error)) {
-    // Silently ignore EPIPE errors - they're harmless when stdout/stderr is closed
-    return;
-  }
-  // For other errors, log them safely
+// Override global console methods to use safe versions
+// This ensures ALL console.log/error/warn calls are protected, even from third-party code
+console.log = function(...args) {
   try {
-    safeError('Uncaught exception:', error);
-  } catch (e) {
-    // If even safeError fails, just ignore it
+    // Double-check stream state before and during write
+    if (canWriteToStream(process.stdout)) {
+      // Check again right before writing (stream state can change)
+      if (canWriteToStream(process.stdout)) {
+        originalConsoleLog(...args);
+      }
+    }
+  } catch (error) {
+    // Silently ignore ALL errors - EPIPE and any other write errors
+    // Don't check error type as that could also throw
   }
-  // Don't re-throw - let Electron handle it gracefully
-});
+};
 
-process.on('unhandledRejection', (reason, promise) => {
-  if (isBrokenPipeError(reason)) {
-    // Silently ignore EPIPE errors in promises
-    return;
-  }
-  // For other rejections, log them safely
+console.error = function(...args) {
   try {
-    safeError('Unhandled rejection:', reason);
-  } catch (e) {
-    // Ignore
+    // Double-check stream state before and during write
+    if (canWriteToStream(process.stderr)) {
+      // Check again right before writing (stream state can change)
+      if (canWriteToStream(process.stderr)) {
+        originalConsoleError(...args);
+      }
+    }
+  } catch (error) {
+    // Silently ignore ALL errors - EPIPE and any other write errors
+    // Don't check error type as that could also throw
   }
-});
+};
+
+console.warn = function(...args) {
+  try {
+    // Double-check stream state before and during write
+    if (canWriteToStream(process.stderr)) {
+      // Check again right before writing (stream state can change)
+      if (canWriteToStream(process.stderr)) {
+        originalConsoleWarn(...args);
+      }
+    }
+  } catch (error) {
+    // Silently ignore ALL errors - EPIPE and any other write errors
+    // Don't check error type as that could also throw
+  }
+};
+
+// Note: Stream error handlers and uncaught exception handlers are already set up at the top of the file
+// No need to set them up again here
 
 let mainWindow;
 const VAULT_FOLDER_NAME = 'PetalVault';
