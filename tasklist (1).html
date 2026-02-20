@@ -1510,6 +1510,7 @@ let currentFilter    = 'all';
 let currentProjFilter= 'all';
 let selectedColor    = 1;
 // Kanban mode removed - always use list view
+let taskMode = 'list';
 let boardProjectFilter = 'all';
 let searchQuery      = '';
 let currentFileView  = 'all';
@@ -4141,9 +4142,24 @@ function setupEventDelegation() {
   
   // Create unified click handler
   window._eventDelegationHandler = function(e) {
-    // Debug: log all clicks on buttons or elements with btn-del class
-    if (e.target.classList && (e.target.classList.contains('btn-del') || e.target.closest('.btn-del'))) {
-      console.log('Click detected on button element:', e.target, e.target.getAttribute('data-action'));
+    // TEST: Uncomment this to verify handler is being called at all
+    // console.log('Handler called for:', e.target.tagName, e.target.className);
+    
+    // Debug: log ALL clicks to see if handler is being called
+    const isButtonClick = e.target.classList && (
+      e.target.classList.contains('btn-del') || 
+      e.target.closest('.btn-del') ||
+      e.target.tagName === 'BUTTON' ||
+      e.target.closest('button')
+    );
+    
+    if (isButtonClick) {
+      console.log('=== CLICK DETECTED ===');
+      console.log('Target:', e.target);
+      console.log('Target tag:', e.target.tagName);
+      console.log('Target classes:', e.target.className);
+      console.log('Has data-action on target:', e.target.hasAttribute && e.target.hasAttribute('data-action'));
+      console.log('data-action value:', e.target.getAttribute('data-action'));
     }
     
     // Find the closest element with a data-action attribute
@@ -4153,20 +4169,29 @@ function setupEventDelegation() {
     // Method 1: closest() - works for nested elements
     if (e.target.closest) {
       actionBtn = e.target.closest('[data-action]');
+      if (actionBtn && isButtonClick) {
+        console.log('Found via closest():', actionBtn);
+      }
     }
     
     // Method 2: Check target itself
     if (!actionBtn && e.target && e.target.hasAttribute && e.target.hasAttribute('data-action')) {
       actionBtn = e.target;
+      if (isButtonClick) {
+        console.log('Found on target itself');
+      }
     }
     
     // Method 3: Check parent elements manually (for cases where closest doesn't work)
     if (!actionBtn) {
       let element = e.target;
       let depth = 0;
-      while (element && element !== appContainer && depth < 10) {
+      while (element && element !== appContainer && depth < 15) {
         if (element.hasAttribute && element.hasAttribute('data-action')) {
           actionBtn = element;
+          if (isButtonClick) {
+            console.log('Found via parent traversal at depth', depth, ':', element);
+          }
           break;
         }
         element = element.parentElement;
@@ -4176,8 +4201,11 @@ function setupEventDelegation() {
     
     if (!actionBtn) {
       // Debug: log when we don't find an action button
-      if (e.target.classList && e.target.classList.contains('btn-del')) {
-        console.warn('Button clicked but no data-action found:', e.target, e.target.parentElement);
+      if (isButtonClick) {
+        console.warn('Button clicked but no data-action found');
+        console.warn('Target:', e.target);
+        console.warn('Parent:', e.target.parentElement);
+        console.warn('Parent parent:', e.target.parentElement?.parentElement);
       }
       return;
     }
@@ -4185,7 +4213,7 @@ function setupEventDelegation() {
     const action = actionBtn.getAttribute('data-action');
     
     // Debug logging
-    console.log('Event delegation caught action:', action, 'on element:', actionBtn);
+    console.log('✓ Event delegation caught action:', action, 'on element:', actionBtn);
     
     // Edit task
     if (action === 'edit-task') {
@@ -4286,10 +4314,21 @@ function setupEventDelegation() {
   // Attach handler to root container (capture phase to catch early)
   appContainer.addEventListener('click', window._eventDelegationHandler, true);
   
+  // Verify listener is attached
+  console.log('Event delegation set up for edit buttons');
+  console.log('App container:', appContainer);
+  console.log('Handler function:', window._eventDelegationHandler);
+  console.log('Listener attached:', appContainer.hasAttribute ? 'yes' : 'check manually');
+  
+  // Test: Add a simple click handler to verify clicks work at all
+  appContainer.addEventListener('click', function testHandler(e) {
+    if (e.target.classList && e.target.classList.contains('btn-del')) {
+      console.log('TEST: Simple handler caught btn-del click:', e.target);
+    }
+  }, false);
+  
   // Make editTask globally accessible as a fallback for direct onclick handlers
   window.editTask = editTask;
-  
-  console.log('Event delegation set up for edit buttons');
 }
 
 // ═══════════════════════ DELETE HANDLERS ═══════════════════════
@@ -10804,22 +10843,14 @@ async function renderLane(laneName, allTasks) {
           ${blocked ? `<div style="font-size:10px;color:var(--overdue);margin-top:4px;">🔒 Blocked by: ${depTask ? esc(depTask.title) : 'task'}</div>` : ''}
           ${filesHtml}
           <div style="margin-top:8px;display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
-            <select onchange="updateTaskLane(${t.id}, this.value)" style="font-size:10px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:var(--bg2);color:var(--text);" title="Change lane">
-              <option value="" ${!t.lane || t.lane === 'none' ? 'selected' : ''}>No lane</option>
-              <option value="lab" ${t.lane === 'lab' ? 'selected' : ''}>🧪 Lab</option>
-              <option value="comp" ${t.lane === 'comp' ? 'selected' : ''}>💻 Comp</option>
-              <option value="writing" ${t.lane === 'writing' ? 'selected' : ''}>📝 Writing</option>
-              <option value="presentation" ${t.lane === 'presentation' ? 'selected' : ''}>📊 Presentation</option>
-            </select>
-            ${t.lane && t.lane !== 'none' && LANE_STAGES[t.lane] ? `<select onchange="updateTaskStage(${t.id}, '${t.lane}', this.value)" style="font-size:10px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:var(--bg2);color:var(--text);" title="Change stage">
-              ${LANE_STAGES[t.lane].map(s => `<option value="${s}" ${t.stage === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}
-            </select>` : ''}
+            <span class="due-tag" style="background:var(--bg2);">${esc(t.lane || 'No lane')}</span>
+            <span class="due-tag" style="background:var(--bg2);">${esc(currentStage || 'planned')}</span>
           </div>
         </div>
         <div style="display:flex;gap:4px;align-items:flex-start;">
           <button type="button" class="btn-del" onclick="openTaskDrawer(${t.id})" title="Open drawer" style="font-size:11px;">📝</button>
-          <button type="button" class="btn-del" data-action="edit-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" title="Edit">✎</button>
-          <button type="button" class="btn-del" data-action="delete-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" title="Delete">✕</button>
+          <button type="button" class="btn-del" data-action="edit-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" onclick="console.log('Edit button clicked directly', ${t.id}); const btn = event.target.closest('[data-action]') || event.target; if (btn.getAttribute('data-action') === 'edit-task') { const taskId = parseInt(btn.getAttribute('data-task-id')); if (taskId) editTask(taskId); }" title="Edit">✎</button>
+          <button type="button" class="btn-del" data-action="delete-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" onclick="console.log('Delete button clicked directly', ${t.id}); event.stopPropagation(); const btn = event.target.closest('[data-action]') || event.target; if (btn.getAttribute('data-action') === 'delete-task') { const taskId = parseInt(btn.getAttribute('data-task-id')); const isSubtask = btn.getAttribute('data-is-subtask') === 'true'; const projectId = btn.getAttribute('data-project-id'); if (taskId) confirmDeleteTask(taskId, isSubtask, projectId, null); }" title="Delete">✕</button>
         </div>
       </div>
     </div>`;
@@ -10901,19 +10932,13 @@ async function renderUnassignedLane(allTasks) {
           ${blocked ? `<div style="font-size:10px;color:var(--overdue);margin-top:4px;">🔒 Blocked by: ${depTask ? esc(depTask.title) : 'task'}</div>` : ''}
           ${filesHtml}
           <div style="margin-top:8px;display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
-            <select onchange="updateTaskLane(${t.id}, this.value)" style="font-size:10px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:var(--bg2);color:var(--text);" title="Assign to lane">
-              <option value="" selected>Assign lane...</option>
-              <option value="lab">🧪 Lab</option>
-              <option value="comp">💻 Comp</option>
-              <option value="writing">📝 Writing</option>
-              <option value="presentation">📊 Presentation</option>
-            </select>
+            <span class="due-tag" style="background:var(--bg2);">No lane</span>
           </div>
         </div>
         <div style="display:flex;gap:4px;align-items:flex-start;">
           <button type="button" class="btn-del" onclick="openTaskDrawer(${t.id})" title="Open drawer" style="font-size:11px;">📝</button>
-          <button type="button" class="btn-del" data-action="edit-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" title="Edit">✎</button>
-          <button type="button" class="btn-del" data-action="delete-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" title="Delete">✕</button>
+          <button type="button" class="btn-del" data-action="edit-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" onclick="console.log('Edit button clicked directly', ${t.id}); const btn = event.target.closest('[data-action]') || event.target; if (btn.getAttribute('data-action') === 'edit-task') { const taskId = parseInt(btn.getAttribute('data-task-id')); if (taskId) editTask(taskId); }" title="Edit">✎</button>
+          <button type="button" class="btn-del" data-action="delete-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" onclick="console.log('Delete button clicked directly', ${t.id}); event.stopPropagation(); const btn = event.target.closest('[data-action]') || event.target; if (btn.getAttribute('data-action') === 'delete-task') { const taskId = parseInt(btn.getAttribute('data-task-id')); const isSubtask = btn.getAttribute('data-is-subtask') === 'true'; const projectId = btn.getAttribute('data-project-id'); if (taskId) confirmDeleteTask(taskId, isSubtask, projectId, null); }" title="Delete">✕</button>
         </div>
       </div>
     </div>`;
