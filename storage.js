@@ -193,3 +193,6 @@ class StorageAdapter {
 
 // Create singleton instance
 const storage = new StorageAdapter();
+
+// Export the storage instance
+export { storage };

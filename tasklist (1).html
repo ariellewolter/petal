@@ -525,8 +525,8 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 
   <!-- VIEW TABS -->
   <div class="tabs">
-    <button class="tab active" id="tab-today"    onclick="switchView('today')">Today</button>
-    <button class="tab"        id="tab-tasks"    onclick="switchView('tasks')">Tasks</button>
+    <button class="tab"        id="tab-today"    onclick="switchView('today')">Today</button>
+    <button class="tab active" id="tab-tasks"    onclick="switchView('tasks')">Tasks</button>
     <button class="tab"        id="tab-workflow" onclick="switchView('workflow')">Workflow</button>
     <button class="tab"        id="tab-files"    onclick="switchView('files')">Files</button>
     <button class="tab"        id="tab-projects" onclick="switchView('projects')">Projects</button>
@@ -1500,6 +1500,10 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
             <input type="checkbox" id="pr-workflow-writing" value="writing" style="cursor:pointer;">
             <span>📝 Writing</span>
           </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" id="pr-workflow-presentation" value="presentation" style="cursor:pointer;">
+            <span>📊 Presentation</span>
+          </label>
         </div>
         <div style="font-size:11px;color:var(--text-dim);margin-top:6px;">Tasks in this project will be restricted to selected lanes</div>
       </div>
@@ -2072,9 +2076,25 @@ window.DEFAULT_BOARD_COLUMNS = DEFAULT_BOARD_COLUMNS;
 // Initialize persistence (auto-saves on state changes)
 initPersistence();
 
+// Step 3: Import UI rendering modules
+import * as uiModules from './src/ui/index.js';
+import * as uiHelpers from './src/ui/helpers.js';
+import * as projectHelpers from './src/utils/projectHelpers.js';
+import * as migrations from './src/utils/migrations.js';
+
+// Set up window.Petal.ui namespace
+window.Petal.ui = window.Petal.ui || {};
+Object.assign(window.Petal.ui, uiModules);
+Object.assign(window.Petal.ui, uiHelpers);
+
+// Set up window.Petal.utils namespace
+window.Petal.utils = window.Petal.utils || {};
+Object.assign(window.Petal.utils, projectHelpers);
+Object.assign(window.Petal.utils, migrations);
+
 // Wire render function to store changes (will be set up after render is defined)
 // This will be done in the initState function after render is available
-console.log('✓ Store and handlers initialized');
+console.log('✓ Store, handlers, and UI modules initialized');
 </script>
 <script>
 // ═══════════════════════ STATE ═══════════════════════
@@ -2328,7 +2348,13 @@ function normalizeProjectStructure(project) {
 }
 
 function normalizeProjectsData() {
-  projects = (projects || []).map(normalizeProjectStructure);
+  // Step 3 cleanup: Use extracted helper if available
+  if (window.Petal?.utils?.normalizeProjectStructure) {
+    projects = (projects || []).map(p => window.Petal.utils.normalizeProjectStructure(p, PROJECT_TEMPLATES));
+  } else {
+    // Fallback: old implementation
+    projects = (projects || []).map(normalizeProjectStructure);
+  }
 }
 
 function ensureBoardSettings() {
@@ -2356,6 +2382,11 @@ function getBoardColumns() {
 }
 
 function normalizeProjectIdValue(value) {
+  // Step 3 cleanup: Use extracted helper if available
+  if (window.Petal?.utils?.normalizeProjectIdValue) {
+    return window.Petal.utils.normalizeProjectIdValue(value);
+  }
+  // Fallback: old implementation
   if (value === undefined || value === null || value === '') return '';
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : String(value);
@@ -2464,49 +2495,51 @@ function updateLaneOptions() {
 }
 
 function refreshProjectSelects() {
-  // Refresh project selects
-  document.querySelectorAll('#in-project, #pr-project').forEach(sel => {
-    if (!sel) return;
-    const current = sel.value;
-    sel.innerHTML = '<option value="">No project</option>';
-    projects.filter(p => !p.done).forEach(p => {
-      const opt = document.createElement('option');
-      opt.value = p.id;
-      opt.textContent = p.name;
-      sel.appendChild(opt);
+  // Step 3 cleanup: Use extracted helper if available
+  if (window.Petal?.ui?.refreshProjectSelects) {
+    const state = window.Petal.store?.getState() || { tasks, projects };
+    window.Petal.ui.refreshProjectSelects(state);
+  } else {
+    // Fallback: old implementation
+    document.querySelectorAll('#in-project, #pr-project').forEach(sel => {
+      if (!sel) return;
+      const current = sel.value;
+      sel.innerHTML = '<option value="">No project</option>';
+      projects.filter(p => !p.done).forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.name;
+        sel.appendChild(opt);
+      });
+      if (current) sel.value = current;
     });
-    if (current) sel.value = current;
-  });
 
-  const cellLogProjectSelect = document.getElementById('cell-log-project-select');
-  if (cellLogProjectSelect) {
-    const selected = cellLogProjectSelect.value;
-    cellLogProjectSelect.innerHTML = '<option value="">No project</option>' +
-      projects.filter(p => !p.done).map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
-    if (selected) {
-      cellLogProjectSelect.value = projects.some((p) => String(p.id) === selected) ? selected : '';
+    const cellLogProjectSelect = document.getElementById('cell-log-project-select');
+    if (cellLogProjectSelect) {
+      const selected = cellLogProjectSelect.value;
+      cellLogProjectSelect.innerHTML = '<option value="">No project</option>' +
+        projects.filter(p => !p.done).map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
+      if (selected) {
+        cellLogProjectSelect.value = projects.some((p) => String(p.id) === selected) ? selected : '';
+      }
     }
-  }
-  
-  // Update lane options based on selected project
-  updateLaneOptions();
-  
-  // Update project files select if a project is selected
-  updateProjectFilesSelect();
-  
-  // Refresh dependency selects
-  document.querySelectorAll('#in-depends-on').forEach(sel => {
-    if (!sel) return;
-    const current = sel.value;
-    sel.innerHTML = '<option value="">None</option>';
-    tasks.filter(t => !t.done).forEach(t => {
-      const opt = document.createElement('option');
-      opt.value = t.id;
-      opt.textContent = t.title;
-      sel.appendChild(opt);
+    
+    updateLaneOptions();
+    updateProjectFilesSelect();
+    
+    document.querySelectorAll('#in-depends-on').forEach(sel => {
+      if (!sel) return;
+      const current = sel.value;
+      sel.innerHTML = '<option value="">None</option>';
+      tasks.filter(t => !t.done).forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = t.title;
+        sel.appendChild(opt);
+      });
+      if (current) sel.value = current;
     });
-    if (current) sel.value = current;
-  });
+  }
 }
 
 // Update project files select dropdown when project is selected (for add task form)
@@ -2693,6 +2726,14 @@ async function initState() {
     loadedData = loadResult;
   }
   
+  // DEBUG: Log what was loaded
+  console.log('🔍 DEBUG: Loaded data:', {
+    tasksCount: loadedData.tasks?.length || 0,
+    projectsCount: loadedData.projects?.length || 0,
+    eventsCount: loadedData.events?.length || 0,
+    openProjects: loadedData.openProjects || []
+  });
+  
   // Load data into store (Step 2: Wire store)
   // Wait for module to load if needed (module scripts are deferred)
   if (!window.Petal || !window.Petal.store) {
@@ -2702,7 +2743,7 @@ async function initState() {
   }
   
   if (window.Petal && window.Petal.store) {
-    window.Petal.store.loadState({
+    const stateToLoad = {
       tasks: loadedData.tasks || [],
       projects: loadedData.projects || [],
       openProjects: loadedData.openProjects || [],
@@ -2719,6 +2760,22 @@ async function initState() {
       selectedProjectId: selectedProjectId,
       fileRegistry: loadedData.fileRegistry || {},
       fileHistory: loadedData.fileHistory || {}
+    };
+    
+    console.log('🔍 DEBUG: Loading into store:', {
+      tasksCount: stateToLoad.tasks.length,
+      projectsCount: stateToLoad.projects.length,
+      openProjectsCount: stateToLoad.openProjects.length
+    });
+    
+    window.Petal.store.loadState(stateToLoad);
+    
+    // Verify what's in the store after loading
+    const storeState = window.Petal.store.getState();
+    console.log('🔍 DEBUG: Store state after load:', {
+      tasksCount: storeState.tasks?.length || 0,
+      projectsCount: storeState.projects?.length || 0,
+      openProjectsSize: storeState.openProjects?.size || 0
     });
     
     // Wire render function to store changes (Step 2b)
@@ -2729,6 +2786,11 @@ async function initState() {
     });
     
     console.log('✓ Store loaded and render subscription wired');
+  } else {
+    console.error('❌ ERROR: Store not available!', {
+      hasPetal: !!window.Petal,
+      hasStore: !!(window.Petal && window.Petal.store)
+    });
   }
   
   // Keep global variables as sync proxies for backward compatibility (Step 2f)
@@ -2751,8 +2813,14 @@ async function initState() {
   console.log('✓ Globals synced from store:', {
     tasksCount: tasks.length,
     projectsCount: projects.length,
-    windowTasksCount: window.tasks?.length
+    windowTasksCount: window.tasks?.length,
+    eventsCount: events.length
   });
+  
+  // DEBUG: Verify data is actually there
+  if (tasks.length === 0 && projects.length === 0) {
+    console.error('❌ WARNING: No tasks or projects loaded! Check data file.');
+  }
 
   migrateTasksForKanban();
   ensureCellLogSettings();
@@ -4712,12 +4780,17 @@ async function addProject(){
   if(!name){document.getElementById('pr-name').focus();return;}
   const files = window.electronAPI ? await getFileLinksNormalized('proj-files-container','p') : getFileLinks('proj-files-container','p');
   
-  // Get selected workflow lanes
+  // Get selected workflow lanes (with null checks)
   const workflowLanes = [];
-  if (document.getElementById('pr-workflow-lab').checked) workflowLanes.push('lab');
-  if (document.getElementById('pr-workflow-comp').checked) workflowLanes.push('comp');
-  if (document.getElementById('pr-workflow-writing').checked) workflowLanes.push('writing');
-  if (document.getElementById('pr-workflow-presentation').checked) workflowLanes.push('presentation');
+  const labCheckbox = document.getElementById('pr-workflow-lab');
+  const compCheckbox = document.getElementById('pr-workflow-comp');
+  const writingCheckbox = document.getElementById('pr-workflow-writing');
+  const presentationCheckbox = document.getElementById('pr-workflow-presentation');
+  
+  if (labCheckbox?.checked) workflowLanes.push('lab');
+  if (compCheckbox?.checked) workflowLanes.push('comp');
+  if (writingCheckbox?.checked) workflowLanes.push('writing');
+  if (presentationCheckbox?.checked) workflowLanes.push('presentation');
   
   // Get project brief fields
   const brief = {
@@ -4788,10 +4861,12 @@ async function addProject(){
   document.getElementById('pr-desc').value='';
   document.getElementById('pr-due').value='';
   document.getElementById('proj-files-container').innerHTML='';
-  document.getElementById('pr-workflow-lab').checked = false;
-  document.getElementById('pr-workflow-comp').checked = false;
-  document.getElementById('pr-workflow-writing').checked = false;
-  document.getElementById('pr-workflow-presentation').checked = false;
+  
+  // Reuse checkbox variables from above
+  if (labCheckbox) labCheckbox.checked = false;
+  if (compCheckbox) compCheckbox.checked = false;
+  if (writingCheckbox) writingCheckbox.checked = false;
+  if (presentationCheckbox) presentationCheckbox.checked = false;
   if (document.getElementById('pr-brief-objective')) document.getElementById('pr-brief-objective').value = '';
   if (document.getElementById('pr-brief-hypothesis')) document.getElementById('pr-brief-hypothesis').value = '';
   if (document.getElementById('pr-brief-key-outputs')) document.getElementById('pr-brief-key-outputs').value = '';
@@ -4826,15 +4901,21 @@ function applyProjectTemplate(templateId) {
   
   const template = PROJECT_TEMPLATES[templateId];
   
-  // Set workflow lanes
-  document.getElementById('pr-workflow-lab').checked = template.lanes.includes('lab');
-  document.getElementById('pr-workflow-comp').checked = template.lanes.includes('comp');
-  document.getElementById('pr-workflow-writing').checked = template.lanes.includes('writing');
-  document.getElementById('pr-workflow-presentation').checked = template.lanes.includes('presentation');
+  // Set workflow lanes (with null checks)
+  const labCheckbox = document.getElementById('pr-workflow-lab');
+  const compCheckbox = document.getElementById('pr-workflow-comp');
+  const writingCheckbox = document.getElementById('pr-workflow-writing');
+  const presentationCheckbox = document.getElementById('pr-workflow-presentation');
+  
+  if (labCheckbox) labCheckbox.checked = template.lanes.includes('lab');
+  if (compCheckbox) compCheckbox.checked = template.lanes.includes('comp');
+  if (writingCheckbox) writingCheckbox.checked = template.lanes.includes('writing');
+  if (presentationCheckbox) presentationCheckbox.checked = template.lanes.includes('presentation');
   
   // Set brief focus
-  if (document.getElementById('pr-brief-focus')) {
-    document.getElementById('pr-brief-focus').value = template.briefFocus || '';
+  const briefFocusEl = document.getElementById('pr-brief-focus');
+  if (briefFocusEl) {
+    briefFocusEl.value = template.briefFocus || '';
   }
 }
 
@@ -6798,10 +6879,48 @@ async function render(){
   document.getElementById('stat-remaining').textContent=remaining;
   document.getElementById('stat-overdue').textContent=overdue;
 
+  // DEBUG: Log what view we're rendering
+  console.log('🔍 DEBUG: Rendering view:', currentView, {
+    tasksInStore: state.tasks?.length || 0,
+    projectsInStore: state.projects?.length || 0
+  });
+  
   if(currentView==='today') await renderToday();
-  else if(currentView==='tasks') await renderTasks();
-  else if(currentView==='workflow') await renderWorkflow();
-  else if(currentView==='files') await renderFiles();
+  else if(currentView==='tasks') {
+    // Step 3: Use extracted render module if available
+    if (window.Petal?.ui?.renderTasks) {
+      const containerEl = document.getElementById('view-tasks');
+      const state = window.Petal.store?.getState() || {};
+      console.log('🔍 DEBUG: Rendering tasks view, container:', containerEl, 'state tasks:', state.tasks?.length);
+      await window.Petal.ui.renderTasks(containerEl, state, window.Petal.handlers);
+    } else {
+      console.log('🔍 DEBUG: Using fallback renderTasks function');
+      // Fallback: old render function
+      await renderTasks();
+    }
+  }
+  else if(currentView==='workflow') {
+    // Step 3: Use extracted render module if available
+    if (window.Petal?.ui?.renderWorkflow) {
+      const containerEl = document.getElementById('view-workflow');
+      const state = window.Petal.store?.getState() || {};
+      await window.Petal.ui.renderWorkflow(containerEl, state, window.Petal.handlers);
+    } else {
+      // Fallback: old render function
+      await renderWorkflow();
+    }
+  }
+  else if(currentView==='files') {
+    // Step 3: Use extracted render module if available
+    if (window.Petal?.ui?.renderFiles) {
+      const containerEl = document.getElementById('files-view-container');
+      const state = window.Petal.store?.getState() || {};
+      await window.Petal.ui.renderFiles(containerEl, state, window.Petal.handlers);
+    } else {
+      // Fallback: old render function
+      await renderFiles();
+    }
+  }
   else if(currentView==='planner') await renderPlanner();
   else if(currentView==='cell-log') {
     // Use new page module
@@ -6811,7 +6930,38 @@ async function render(){
       console.error('Cell Log page module not loaded');
     }
   }
-  else await renderProjects();
+  else if(currentView==='projects') {
+    // Step 3: Use extracted render module if available
+    if (window.Petal?.ui?.renderProjects) {
+      const containerEl = document.getElementById('project-container');
+      let state = window.Petal.store?.getState() || {};
+      // Ensure openProjects is a Set
+      if (state.openProjects && !(state.openProjects instanceof Set)) {
+        state = { ...state, openProjects: new Set(state.openProjects) };
+      }
+      console.log('🔍 DEBUG: Rendering projects view, container:', containerEl, 'state projects:', state.projects?.length);
+      await window.Petal.ui.renderProjects(containerEl, state, window.Petal.handlers);
+    } else {
+      console.log('🔍 DEBUG: Using fallback renderProjects function');
+      // Fallback: old render function
+      renderProjects();
+    }
+  }
+  else {
+    // Default fallback - render projects
+    console.log('🔍 DEBUG: Default fallback, rendering projects');
+    if (window.Petal?.ui?.renderProjects) {
+      const containerEl = document.getElementById('project-container');
+      let state = window.Petal.store?.getState() || {};
+      // Ensure openProjects is a Set
+      if (state.openProjects && !(state.openProjects instanceof Set)) {
+        state = { ...state, openProjects: new Set(state.openProjects) };
+      }
+      window.Petal.ui.renderProjects(containerEl, state, window.Petal.handlers);
+    } else {
+      renderProjects();
+    }
+  }
   
   // Always hide all forms after rendering (use setTimeout to ensure DOM is updated)
   setTimeout(() => {

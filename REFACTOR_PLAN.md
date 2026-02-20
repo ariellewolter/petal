@@ -21,9 +21,9 @@ Created:
 - `src/utils/strings.js` - String utilities
 - `src/state/store.js` - Centralized state management
 
-## Step 2: Wire Store and Handlers
+## Step 2: Wire Store and Handlers ✅ (COMPLETED)
 
-### 2a. Add module imports and single namespace
+### 2a. Add module imports and single namespace ✅
 ```html
 <script type="module">
   import { appStore } from './src/state/store.js';
@@ -76,88 +76,77 @@ Created:
 </script>
 ```
 
-### 2b. Replace global variables with store
-Instead of:
-```js
-let tasks = [];
-let projects = [];
-```
+### 2b. Replace global variables with store ✅
+- ✅ Store is now the single source of truth
+- ✅ Globals are kept as sync proxies for backward compatibility
+- ✅ `render()` reads from store and syncs to globals
+- ✅ `initState()` loads data into store
 
-Use:
-```js
-// Load from store
-const { tasks, projects } = appStore.getState();
-// Or use window.Petal.store.getState()
-```
+### 2c. Replace inline handlers ⚠️ (PARTIAL)
+- ✅ Handlers module created (`src/ui/handlers.js`)
+- ✅ `window.Petal.handlers` namespace set up
+- ⚠️ Inline handlers in HTML still use old pattern (will be migrated in Step 3)
+- ✅ Feature files can use store when available
 
-### 2c. Replace inline handlers
-Instead of:
-```html
-<button onclick="addTask()">Add</button>
-```
+### 2d. Remove direct save() calls from handlers ✅
+- ✅ `src/ui/handlers.js` uses `appStore.setState()` (no save/render calls)
+- ✅ Persistence layer auto-saves on store changes
+- ✅ Render subscription auto-renders on store changes
+- ✅ Updated `taskOperations.js` key functions to use store
+- ⚠️ Some feature files still use `save()` (but it now syncs to store first)
 
-Use:
-```html
-<button onclick="Petal.handlers.addTask(taskData)">Add</button>
-```
+### 2e. Update existing functions to use store ✅
+- ✅ `render()` reads from store and syncs to globals
+- ✅ `save()` syncs globals to store (store auto-saves)
+- ✅ `initState()` loads into store
+- ✅ `createPageContext()` reads from store first, falls back to globals
 
-### 2d. Remove direct save() calls from handlers
-Instead of:
-```js
-async function addTask() {
-  tasks.push(newTask);
-  await save(); // ❌ Remove this
-  render(); // ❌ Remove this
-}
-```
-
-Use:
-```js
-// In handlers.js (already done)
-async addTask(taskData) {
-  const state = appStore.getState();
-  appStore.setState({ tasks: [...state.tasks, newTask] });
-  // ✅ Persistence and render happen automatically via subscriptions
-}
-```
-
-### 2e. Update existing functions to use store
-```js
-// OLD
-async function render() {
-  const allTasks = [...tasks, ...projects.flatMap(p => p.subtasks || [])];
-  // ...
-}
-
-// NEW
-async function render() {
-  const state = appStore.getState();
-  const allTasks = Petal.getAllTasks(); // Uses store internally
-  // ...
-}
-```
-
-## Step 3: Extract UI Rendering (Next)
+## Step 3: Extract UI Rendering ✅ (COMPLETED)
 
 Create separate modules for each view (pure functions):
-- `src/ui/renderTasks.js` - `renderTasks(containerEl, state, handlers)`
-- `src/ui/renderProjects.js` - `renderProjects(containerEl, state, handlers)`
-- `src/ui/renderMatrix.js` - `renderMatrix(containerEl, state, handlers)`
-- `src/ui/renderWorkflow.js` - `renderWorkflow(containerEl, state, handlers)`
-- `src/ui/renderFiles.js` - `renderFiles(containerEl, state, handlers)`
+- ✅ `src/ui/renderTasks.js` - `renderTasks(containerEl, state, handlers)` - Created
+- ✅ `src/ui/renderProjects.js` - `renderProjects(containerEl, state, handlers)` - Created
+- ✅ `src/ui/renderWorkflow.js` - `renderWorkflow(containerEl, state, handlers)` - Created
+- ✅ `src/ui/renderFiles.js` - `renderFiles(containerEl, state, handlers)` - Created
+- ✅ `src/ui/index.js` - Central export point for UI modules - Created
+- ⏳ `src/ui/renderMatrix.js` - `renderMatrix(containerEl, state, handlers)` - Optional (matrix view is part of projects)
 
 **Key principle**: Rendering functions should:
-- Take state and handlers as parameters (no store peeking)
-- Not call save() or mutate state directly
-- Return nothing (side effect: updates DOM)
-- Be testable with mock state
+- ✅ Take state and handlers as parameters (no store peeking)
+- ✅ Not call save() or mutate state directly
+- ✅ Return nothing (side effect: updates DOM)
+- ✅ Be testable with mock state
+
+**Progress**:
+- ✅ Created UI module index for central exports
+- ✅ Integrated UI modules into main render() function with fallbacks
+- ✅ All main rendering modules created and wired (tasks, projects, workflow, files)
+- ✅ Modules use domain functions (getAllTasks, isTaskBlocked) and utilities (esc, fileIcon)
+- ⏳ Can refine modules later to include full original logic
 
 ## Step 4: Extract View Logic (Later)
 
 Create page modules:
-- `src/pages/ProjectsPage.js` - Project page logic
-- `src/pages/ProjectMatrixPage.js` - Matrix view logic
-- `src/pages/WorkflowPage.js` - Workflow view logic
+- ✅ `src/pages/TodayPage.js` - Today page logic (already exists)
+- ✅ `src/pages/CellLogPage.js` - Cell log page logic (already exists)
+- ⏳ `src/pages/ProjectsPage.js` - Project page logic
+- ⏳ `src/pages/ProjectMatrixPage.js` - Matrix view logic
+- ⏳ `src/pages/WorkflowPage.js` - Workflow view logic
+
+## Cleanup Phase: Further Extraction
+
+**Completed:**
+- ✅ `src/utils/projectHelpers.js` - Project normalization functions
+- ✅ `src/ui/helpers.js` - UI helper functions (refreshProjectSelects, updateLaneOptions, etc.)
+- ✅ `src/utils/migrations.js` - Data migration functions
+
+**Remaining (see CLEANUP_PLAN.md for details):**
+- ⏳ Extract large render functions (renderToday, renderPlanner, renderMatrix)
+- ⏳ Extract modal management functions
+- ⏳ Extract remaining migration functions
+- ⏳ Extract complex HTML generators
+
+**Note**: HTML file will always be large due to HTML structure (~1,500 lines) and CSS (~500 lines). Focus is on extracting logic, not structure.
 
 ## Migration Strategy
 

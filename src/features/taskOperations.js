@@ -4,17 +4,25 @@
 import { esc } from '../utils/strings.js';
 
 /**
- * Helper: Update store or fallback to save/render pattern
+ * Helper: Update store with safety - preserves all state fields
  * Step 2e: Use store when available, fallback for backward compatibility
  */
-function updateStoreOrSave(updates, fallbackSave, fallbackRender) {
+function updateStoreSafely(updates, fallbackFn) {
   if (window.Petal?.store) {
-    window.Petal.store.setState(updates);
+    const state = window.Petal.store.getState();
+    // Merge updates with current state to preserve all fields
+    window.Petal.store.setState({
+      ...state,
+      ...updates,
+      // Ensure Sets are properly cloned
+      openProjects: updates.openProjects instanceof Set 
+        ? new Set(updates.openProjects) 
+        : (state.openProjects || new Set())
+    });
     // Store auto-saves and auto-renders via subscriptions
-  } else if (fallbackSave) {
+  } else if (fallbackFn) {
     // Fallback: old pattern
-    fallbackSave();
-    if (fallbackRender) fallbackRender();
+    fallbackFn();
   }
 }
 
@@ -191,26 +199,15 @@ export async function addTask(ctx, titleOverride = null, statusOverride = null) 
   };
   
   // Step 2e: Use store instead of direct save/render
-  if (window.Petal?.store) {
-    const state = window.Petal.store.getState();
-    // CRITICAL: Preserve all state fields, especially projects!
-    window.Petal.store.setState({ 
-      tasks: [newTask, ...(state.tasks || [])],
-      // Explicitly preserve projects and all other state
-      projects: state.projects || [],
-      openProjects: state.openProjects || new Set(),
-      settings: state.settings || {},
-      fileRegistry: state.fileRegistry || {},
-      fileHistory: state.fileHistory || {}
-    });
-    // Store auto-saves via persistence subscription
-    // Store auto-renders via render subscription
-  } else {
-    // Fallback: old pattern for backward compatibility
-    tasks.unshift(newTask);
-    await save();
-    if (render) render();
-  }
+  updateStoreSafely(
+    { tasks: [newTask, ...(tasks || [])] },
+    async () => {
+      // Fallback: old pattern for backward compatibility
+      tasks.unshift(newTask);
+      await save();
+      if (render) render();
+    }
+  );
   
   // Clear form if not using override
   if (!titleOverride) {
@@ -285,8 +282,9 @@ export async function toggleTask(ctx, id) {
   // Step 2e: Use store instead of direct save/render
   if (window.Petal?.store) {
     const state = window.Petal.store.getState();
-    const updatedTasks = state.tasks.map(task => {
-      if (task.id === id) {
+    const updatedTasks = (state.tasks || []).map(task => {
+      // Handle both number and string ID comparison
+      if (task.id === id || String(task.id) === String(id)) {
         const newDone = !task.done;
         return {
           ...task,
@@ -296,36 +294,17 @@ export async function toggleTask(ctx, id) {
       }
       return task;
     });
-    window.Petal.store.setState({ tasks: updatedTasks });
-    // Store auto-saves and auto-renders
+    updateStoreSafely({ tasks: updatedTasks });
   } else {
     // Fallback: old pattern
-  t.done = !t.done;
-  if (t.done) {
-    t.status = 'Done';
-  } else if (t.status === 'Done') {
-    t.status = 'Todo';
-  }
-  
-  // Step 2e: Use store instead of direct save/render
-  if (window.Petal?.store) {
-    const state = window.Petal.store.getState();
-    // CRITICAL: Preserve all state fields, especially projects!
-    window.Petal.store.setState({
-      tasks: state.tasks.map(task => task.id === id ? t : task),
-      // Explicitly preserve projects and all other state
-      projects: state.projects || [],
-      openProjects: state.openProjects || new Set(),
-      settings: state.settings || {},
-      fileRegistry: state.fileRegistry || {},
-      fileHistory: state.fileHistory || {}
-    });
-    // Store auto-saves and auto-renders
-  } else {
-    // Fallback: old pattern
+    t.done = !t.done;
+    if (t.done) {
+      t.status = 'Done';
+    } else if (t.status === 'Done') {
+      t.status = 'Todo';
+    }
     await save();
     if (render) render();
-  }
   }
 }
 
@@ -349,7 +328,7 @@ export async function toggleSubtask(ctx, projectId, subtaskId) {
   // Step 2e: Use store instead of direct save/render
   if (window.Petal?.store) {
     const state = window.Petal.store.getState();
-    const updatedTasks = state.tasks.map(task => {
+    const updatedTasks = (state.tasks || []).map(task => {
       if (task.id === subtaskId || String(task.id) === String(subtaskId)) {
         const newDone = !task.done;
         return {
@@ -360,8 +339,7 @@ export async function toggleSubtask(ctx, projectId, subtaskId) {
       }
       return task;
     });
-    window.Petal.store.setState({ tasks: updatedTasks });
-    // Store auto-saves and auto-renders
+    updateStoreSafely({ tasks: updatedTasks });
   } else {
     // Fallback: old pattern
     subtask.done = !subtask.done;

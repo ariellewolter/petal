@@ -514,6 +514,11 @@ function detectOneDriveConflicts(vaultPath) {
 async function readDataFile() {
   const paths = ensureVaultStructure();
   
+  // DEBUG: Log what vault we're reading from
+  safeLog(`🔍 DEBUG: Reading from vault: ${paths.vaultPath}`);
+  safeLog(`🔍 DEBUG: Data file path: ${paths.dataFile}`);
+  safeLog(`🔍 DEBUG: Data file exists: ${fs.existsSync(paths.dataFile)}`);
+  
   try {
     // Check for OneDrive conflicted copies
     const oneDriveConflicts = detectOneDriveConflicts(paths.vaultPath);
@@ -549,6 +554,15 @@ async function readDataFile() {
       mainMtime = stats.mtime;
       const data = await fsPromises.readFile(paths.dataFile, 'utf-8');
       mainData = JSON.parse(data);
+      
+      // DEBUG: Log what was loaded
+      safeLog(`🔍 DEBUG: Loaded data from file:`);
+      safeLog(`  Tasks: ${mainData.tasks?.length || 0}`);
+      safeLog(`  Projects: ${mainData.projects?.length || 0}`);
+      safeLog(`  Events: ${mainData.events?.length || 0}`);
+      safeLog(`  Open Projects: ${mainData.openProjects?.length || 0}`);
+    } else {
+      safeWarn(`⚠️ WARNING: Data file not found at ${paths.dataFile}`);
     }
     
     // Check if we have conflicts that are newer than main file
@@ -681,7 +695,20 @@ app.on('window-all-closed', () => {
 // IPC handlers for file operations
 ipcMain.handle('storage:load', async () => {
   try {
-    return await readDataFile();
+    const paths = getVaultPaths();
+    const vaultPath = getVaultPath();
+    const isStored = getStoredVaultPath() !== null;
+    safeLog(`📂 Loading from vault: ${vaultPath}`);
+    safeLog(`  ${isStored ? '✓ Using user-selected vault' : '⚠ Using default vault (no user selection)'}`);
+    safeLog(`  Data file: ${paths.dataFile}`);
+    
+    const result = await readDataFile();
+    
+    if (result.data) {
+      safeLog(`  ✓ Loaded ${result.data.tasks?.length || 0} tasks, ${result.data.projects?.length || 0} projects`);
+    }
+    
+    return result;
   } catch (error) {
     safeError('Error loading data:', error);
     return {
@@ -735,11 +762,15 @@ ipcMain.handle('storage:resolveConflict', async (event, action, conflictFilePath
 
 ipcMain.handle('storage:save', async (event, state) => {
   try {
+    const vaultPath = getVaultPath();
+    const isStored = getStoredVaultPath() !== null;
     const result = await writeDataFile(state);
     if (result.success) {
       const paths = getVaultPaths();
       const stats = fs.existsSync(paths.dataFile) ? fs.statSync(paths.dataFile) : null;
-      safeLog(`✓ Saved successfully to: ${paths.dataFile}`);
+      safeLog(`💾 Saved successfully to vault: ${vaultPath}`);
+      safeLog(`  ${isStored ? '✓ Using user-selected vault' : '⚠ Using default vault (no user selection)'}`);
+      safeLog(`  Data file: ${paths.dataFile}`);
       safeLog(`  Tasks: ${state.tasks?.length || 0}, Projects: ${state.projects?.length || 0}`);
       if (stats) {
         safeLog(`  File size: ${stats.size} bytes, Modified: ${stats.mtime.toISOString()}`);
@@ -774,6 +805,8 @@ ipcMain.handle('storage:chooseVaultFolder', async () => {
     const chosenPath = result.filePaths[0];
     storeVaultPath(chosenPath);
     ensureVaultStructure();
+    safeLog(`📁 User selected vault folder: ${chosenPath}`);
+    safeLog(`  ✓ Vault path saved to preferences`);
     return chosenPath;
   }
   

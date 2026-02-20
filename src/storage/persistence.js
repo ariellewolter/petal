@@ -21,6 +21,21 @@ async function saveState(state) {
   saveTimeout = setTimeout(async () => {
     try {
       const stateToSave = appStore.exportState();
+      
+      // CRITICAL: Verify we're not saving incomplete state
+      if (!stateToSave.projects || stateToSave.projects.length === 0) {
+        // If projects are missing, try to get them from window globals as fallback
+        if (window.projects && window.projects.length > 0) {
+          console.warn('⚠️ Store missing projects, using window.projects as fallback');
+          stateToSave.projects = window.projects;
+        } else {
+          console.error('⚠️ WARNING: Attempting to save state with no projects!', {
+            storeProjects: appStore.getState().projects?.length,
+            windowProjects: window.projects?.length
+          });
+        }
+      }
+      
       await storage.saveState(stateToSave);
     } catch (error) {
       console.error('Error saving state:', error);
