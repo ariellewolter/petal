@@ -145,31 +145,33 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 .group-count{font-family:'Jost',sans-serif;font-size:11px;font-style:normal;letter-spacing:.12em;text-transform:uppercase;color:var(--text-light);}
 
 /* ── TASK CARD ── */
-.task-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:8px;transition:all .2s;animation:fadeSlide .25s ease both;position:relative;overflow:hidden;}
-.task-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:12px 0 0 12px;background:var(--rose-soft);}
+.task-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:16px;overflow:hidden;transition:box-shadow .2s;animation:fadeSlide .3s ease both;position:relative;}
+.task-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:16px 0 0 16px;background:var(--rose-soft);}
 .task-card[data-priority="high"]::before{background:var(--rose);}
 .task-card[data-priority="medium"]::before{background:var(--rose-soft);}
 .task-card[data-priority="low"]::before{background:var(--sage);}
-.task-card:hover{box-shadow:0 4px 20px rgba(160,110,100,.09);transform:translateY(-1px);}
+.task-card:hover{box-shadow:0 4px 24px rgba(160,110,100,.1);}
 .task-card.done{opacity:.55;}
 .task-card.done .task-title{text-decoration:line-through;text-decoration-color:var(--rose-soft);}
-.task-top{display:flex;align-items:flex-start;gap:13px;}
-.check-box{width:18px;height:18px;border:1.5px solid var(--border2);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .18s;background:white;flex-shrink:0;margin-top:2px;}
+.task-top{display:flex;align-items:center;gap:14px;padding:18px 20px;cursor:pointer;user-select:none;position:relative;justify-content:space-between;}
+.task-content{display:flex;align-items:center;gap:14px;flex:1;min-width:0;}
+.task-actions{display:flex;gap:4px;margin-left:8px;flex-shrink:0;}
+.check-box{width:18px;height:18px;border:1.5px solid var(--border2);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .18s;background:white;flex-shrink:0;margin-top:0;}
 .check-box:hover{border-color:var(--rose-soft);background:var(--rose-pale);}
-.check-box.checked{background:linear-gradient(135deg,#d4a0a0,#c98b8b);border-color:#c98b8b;}
+.check-box.checked{background:var(--rose);border-color:var(--rose);}
 .check-box.checked::after{content:'';width:5px;height:8px;border:1.5px solid white;border-top:none;border-left:none;transform:rotate(45deg) translateY(-1px);display:block;}
 .task-body{flex:1;min-width:0;}
-.task-title{font-size:14px;font-weight:400;color:var(--text);line-height:1.5;}
-.task-meta-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:5px;}
-.priority-tag{font-size:9px;letter-spacing:.15em;text-transform:uppercase;padding:2px 9px;border-radius:20px;}
+.task-title{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:400;color:var(--text);line-height:1.2;}
+.task-meta-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:3px;}
+.priority-tag{font-size:8px;letter-spacing:.12em;text-transform:uppercase;padding:2px 8px;border-radius:20px;}
 .priority-tag.high{background:var(--rose-pale);color:var(--rose);}
 .priority-tag.medium{background:var(--blush);color:var(--mauve);}
 .priority-tag.low{background:var(--sage-pale);color:var(--sage);}
 .due-tag{font-size:10px;letter-spacing:.05em;color:var(--text-dim);display:flex;align-items:center;gap:4px;}
 .due-tag.overdue{color:var(--overdue);font-weight:500;}
 .due-tag.soon{color:var(--soon);}
-.task-notes{font-size:12px;color:var(--text-dim);line-height:1.6;margin-top:8px;padding:10px 12px;background:var(--bg2);border-radius:8px;border-left:3px solid var(--rose-soft);position:relative;}
-.task-notes-toggle{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;margin-top:8px;font-size:11px;color:var(--text-dim);padding:6px 10px;background:var(--bg2);border-radius:6px;transition:all .15s;width:fit-content;}
+.task-notes{font-size:12px;color:var(--text-dim);line-height:1.6;margin-top:8px;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-left:3px solid var(--rose-soft);border-radius:8px;position:relative;}
+.task-notes-toggle{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;margin-top:8px;font-size:11px;color:var(--text-dim);padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;transition:all .15s;width:fit-content;}
 .task-notes-toggle:hover{background:var(--rose-pale);color:var(--rose);}
 .task-notes-toggle svg{width:12px;height:12px;transition:transform .2s;}
 .task-notes-toggle.expanded svg{transform:rotate(90deg);}
@@ -177,10 +179,10 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 .task-notes-content.expanded{max-height:500px;}
 .task-notes-content.collapsed{max-height:0;}
 .task-notes-preview{font-size:12px;color:var(--text-dim);line-height:1.5;white-space:pre-wrap;word-break:break-word;}
-.task-notes-full{font-size:12px;color:var(--text-dim);line-height:1.6;white-space:pre-wrap;word-break:break-word;padding:10px 12px;background:var(--bg2);border-radius:8px;border-left:3px solid var(--rose-soft);}
+.task-notes-full{font-size:12px;color:var(--text-dim);line-height:1.6;white-space:pre-wrap;word-break:break-word;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-left:3px solid var(--rose-soft);border-radius:8px;}
 .task-notes-icon{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text-dim);margin-left:8px;}
 .task-note-section{margin-top:8px;}
-.task-note-toggle{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;font-size:11px;color:var(--text-dim);padding:6px 10px;background:var(--bg2);border-radius:6px;transition:all .15s;width:100%;}
+.task-note-toggle{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;font-size:11px;color:var(--text-dim);padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;transition:all .15s;width:100%;}
 .task-note-toggle:hover{background:var(--rose-pale);color:var(--rose);}
 .task-note-toggle svg{transition:transform .2s;}
 .task-note-content.expanded .task-note-toggle svg{transform:rotate(90deg);}
@@ -950,6 +952,21 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
         <div class="field" style="flex:1;">
           <label>Buffer After (minutes)</label>
           <input type="number" id="event-buffer-after" placeholder="0" min="0" step="5" style="width:100%;">
+        </div>
+      </div>
+      
+      <div class="field-row" style="margin-bottom:16px;">
+        <div class="field" style="flex:1;">
+          <label>Link to Project (optional)</label>
+          <select id="event-linked-project" style="width:100%;">
+            <option value="">No project</option>
+          </select>
+        </div>
+        <div class="field" style="flex:1;">
+          <label>Link to Task (optional)</label>
+          <select id="event-linked-task" style="width:100%;">
+            <option value="">No task</option>
+          </select>
         </div>
       </div>
       
@@ -1898,6 +1915,9 @@ window.Petal.features.fileManagement = {
       currentView: window.currentView || 'tasks',
       renderFiles: window.renderFiles
     });
+  },
+  ensureRegistryInitialized: () => {
+    return FileManagement.ensureRegistryInitialized();
   }
 };
 
@@ -2131,6 +2151,91 @@ window.DEFAULT_BOARD_COLUMNS = DEFAULT_BOARD_COLUMNS;
 // Initialize persistence (auto-saves on state changes)
 initPersistence();
 
+// ═══════════════════════ PHASE 1: READ-ONLY GLOBALS ═══════════════════════
+// Replace window globals with read-only getters that read from store
+// This eliminates multiple sources of truth while maintaining backward compatibility
+Object.defineProperty(window, "tasks", {
+  get: () => window.Petal?.store?.getState()?.tasks || [],
+  set: () => { 
+    console.error("❌ ERROR: Cannot assign to window.tasks - use store.setState()");
+    throw new Error("Cannot assign to window.tasks - use store.setState()");
+  },
+  configurable: true
+});
+
+Object.defineProperty(window, "projects", {
+  get: () => window.Petal?.store?.getState()?.projects || [],
+  set: () => { 
+    console.error("❌ ERROR: Cannot assign to window.projects - use store.setState()");
+    throw new Error("Cannot assign to window.projects - use store.setState()");
+  },
+  configurable: true
+});
+
+Object.defineProperty(window, "events", {
+  get: () => window.Petal?.store?.getState()?.events || [],
+  set: () => { 
+    console.error("❌ ERROR: Cannot assign to window.events - use store.setState()");
+    throw new Error("Cannot assign to window.events - use store.setState()");
+  },
+  configurable: true
+});
+
+Object.defineProperty(window, "recurringRules", {
+  get: () => window.Petal?.store?.getState()?.recurringRules || [],
+  set: () => { 
+    console.error("❌ ERROR: Cannot assign to window.recurringRules - use store.setState()");
+    throw new Error("Cannot assign to window.recurringRules - use store.setState()");
+  },
+  configurable: true
+});
+
+console.log('✓ Phase 1: Window globals are now read-only getters from store');
+
+// ═══════════════════════ PHASE 2: DEBUG ASSERTIONS ═══════════════════════
+// Add assertions to catch future mutations (development only)
+if (typeof window !== 'undefined' && window.Petal?.store) {
+  // Wrap store.setState to add mutation detection
+  const originalSetState = window.Petal.store.setState.bind(window.Petal.store);
+  window.Petal.store.setState = function(partial) {
+    // Check if partial contains arrays that might be mutated
+    const state = this.getState();
+    Object.keys(partial).forEach(key => {
+      if (['tasks', 'projects', 'events', 'recurringRules'].includes(key)) {
+        const newValue = partial[key];
+        const oldValue = state[key];
+        if (Array.isArray(newValue) && Array.isArray(oldValue)) {
+          // Check if arrays are the same reference (direct mutation)
+          if (newValue === oldValue) {
+            console.error(`❌ PHASE 2 VIOLATION: Direct mutation detected for ${key}. Use immutable updates!`);
+            console.trace();
+          }
+        }
+      }
+    });
+    return originalSetState(partial);
+  };
+  
+  // Protect local variables from direct mutation (development only)
+  if (process.env.NODE_ENV !== 'production') {
+    const protectArray = (arr, name) => {
+      return new Proxy(arr, {
+        set(target, prop, value) {
+          if (typeof prop === 'string' && ['push', 'splice', 'unshift', 'pop', 'shift'].includes(prop)) {
+            console.error(`❌ PHASE 2 VIOLATION: Direct mutation of ${name}.${prop}() detected. Use store.setState() instead!`);
+            console.trace();
+          }
+          return Reflect.set(target, prop, value);
+        }
+      });
+    };
+    // Note: This would need to be applied where variables are declared
+    // For now, we rely on the getter protection and store.setState wrapping
+  }
+  
+  console.log('✓ Phase 2: Debug assertions enabled');
+}
+
 // Step 3: Import UI rendering modules
 import * as uiModules from './src/ui/index.js';
 import * as uiHelpers from './src/ui/helpers.js';
@@ -2161,9 +2266,9 @@ let events = []; // One-off calendar events
 let recurringRules = []; // Recurring event rules
 let settings = {};
 
-// Expose globals to window for page modules to access
-window.tasks = tasks;
-window.projects = projects;
+// NOTE: window.tasks, window.projects, window.events, window.recurringRules are now read-only getters (defined above)
+// Do NOT assign to them - use store.setState() instead
+// Only expose settings (not in store yet)
 window.settings = settings;
 // Note: fileRegistry, fileHistory, and currentView will be exposed after they're declared below
 // Note: save function will be exposed after it's defined below
@@ -2550,50 +2655,78 @@ function updateLaneOptions() {
 }
 
 function refreshProjectSelects() {
-  // Step 3 cleanup: Use extracted helper if available
-  if (window.Petal?.ui?.refreshProjectSelects) {
-    const state = window.Petal.store?.getState() || { tasks, projects };
-    window.Petal.ui.refreshProjectSelects(state);
-  } else {
-    // Fallback: old implementation
-    document.querySelectorAll('#in-project, #pr-project').forEach(sel => {
-      if (!sel) return;
-      const current = sel.value;
-      sel.innerHTML = '<option value="">No project</option>';
-      projects.filter(p => !p.done).forEach(p => {
-        const opt = document.createElement('option');
-        opt.value = p.id;
-        opt.textContent = p.name;
-        sel.appendChild(opt);
-      });
-      if (current) sel.value = current;
-    });
-
-    const cellLogProjectSelect = document.getElementById('cell-log-project-select');
-    if (cellLogProjectSelect) {
-      const selected = cellLogProjectSelect.value;
-      cellLogProjectSelect.innerHTML = '<option value="">No project</option>' +
-        projects.filter(p => !p.done).map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
-      if (selected) {
-        cellLogProjectSelect.value = projects.some((p) => String(p.id) === selected) ? selected : '';
-      }
+  // ═══════════════════════ PHASE 3 FIX: Read from store only ═══════════════════════
+  try {
+    // DEBUG: Confirm store has projects when dropdown is empty
+    const store = window.Petal?.store;
+    if (!store) {
+      console.error('❌ refreshProjectSelects: Store not available!');
+      return;
     }
     
-    updateLaneOptions();
-    updateProjectFilesSelect();
-    
-    document.querySelectorAll('#in-depends-on').forEach(sel => {
-      if (!sel) return;
-      const current = sel.value;
-      sel.innerHTML = '<option value="">None</option>';
-      tasks.filter(t => !t.done).forEach(t => {
-        const opt = document.createElement('option');
-        opt.value = t.id;
-        opt.textContent = t.title;
-        sel.appendChild(opt);
-      });
-      if (current) sel.value = current;
+    const state = store.getState();
+    console.log('🔍 DEBUG projects snapshot (refreshProjectSelects):', {
+      storeProjects: state.projects?.length || 0,
+      storeProjectIds: (state.projects || []).map(p => p.id),
+      localProjectsVar: projects?.length || 0, // For comparison
+      windowProjectsGetter: window.projects?.length || 0 // For comparison
     });
+    
+    // Phase 3: Read ONLY from store (single source of truth)
+    const projectsFromStore = state.projects || [];
+    
+    // Sync local variable for backward compatibility (but don't use it for rendering)
+    projects = projectsFromStore;
+    
+    // Step 3 cleanup: Use extracted helper if available
+    if (window.Petal?.ui?.refreshProjectSelects) {
+      window.Petal.ui.refreshProjectSelects(state);
+    } else {
+      // Fallback: old implementation - but use projectsFromStore
+      document.querySelectorAll('#in-project, #pr-project').forEach(sel => {
+        if (!sel) return;
+        const current = sel.value;
+        sel.innerHTML = '<option value="">No project</option>';
+        projectsFromStore.filter(p => !p.done).forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = p.name;
+          sel.appendChild(opt);
+        });
+        if (current) sel.value = current;
+      });
+
+      const cellLogProjectSelect = document.getElementById('cell-log-project-select');
+      if (cellLogProjectSelect) {
+        const selected = cellLogProjectSelect.value;
+        cellLogProjectSelect.innerHTML = '<option value="">No project</option>' +
+          projectsFromStore.filter(p => !p.done).map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
+        if (selected) {
+          cellLogProjectSelect.value = projectsFromStore.some((p) => String(p.id) === selected) ? selected : '';
+        }
+      }
+      
+      updateLaneOptions();
+      updateProjectFilesSelect();
+    
+      // Also populate depends-on dropdown (use tasks from store)
+      const tasksFromStore = state.tasks || [];
+      document.querySelectorAll('#in-depends-on').forEach(sel => {
+        if (!sel) return;
+        const current = sel.value;
+        sel.innerHTML = '<option value="">None</option>';
+        tasksFromStore.filter(t => !t.done).forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t.id;
+          opt.textContent = t.title;
+          sel.appendChild(opt);
+        });
+        if (current) sel.value = current;
+      });
+    }
+  } catch (e) {
+    console.error('❌ refreshProjectSelects crashed:', e);
+    console.error('Stack:', e?.stack);
   }
 }
 
@@ -2996,6 +3129,15 @@ async function initState() {
     
     window.Petal.store.loadState(stateToLoad);
     
+    // GUARANTEE: Ensure registry is always initialized (defensive check)
+    if (window.Petal.store.ensureRegistryInitialized) {
+      window.Petal.store.ensureRegistryInitialized();
+    }
+    // Also ensure via FileManagement module if available
+    if (window.Petal?.features?.fileManagement?.ensureRegistryInitialized) {
+      window.Petal.features.fileManagement.ensureRegistryInitialized();
+    }
+    
     // Verify what's in the store after loading
     const storeState = window.Petal.store.getState();
     console.log('🔍 DEBUG: Store state after load:', {
@@ -3020,7 +3162,7 @@ async function initState() {
   }
   
   // Keep global variables as sync proxies for backward compatibility (Step 2f)
-  // Sync from store to globals
+  // Sync from store to globals (read-only - window globals are now getters)
   const state = window.Petal?.store?.getState() || {};
   tasks = state.tasks || [];
   projects = state.projects || [];
@@ -3031,10 +3173,8 @@ async function initState() {
   fileHistory = state.fileHistory || {};
   fileRegistry = state.fileRegistry || {};
   
-  // CRITICAL: Update window.tasks immediately so createPageContext() can find them
-  window.tasks = tasks;
-  window.projects = projects;
-  window.settings = settings;
+  // NOTE: window.tasks, window.projects, etc. are now read-only getters
+  // They automatically read from store, so no assignment needed
   
   console.log('✓ Globals synced from store:', {
     tasksCount: tasks.length,
@@ -3055,7 +3195,12 @@ async function initState() {
   migrateNotesFields(); // NEW: Ensure all tasks and files have note fields
   const fileRegistryMigrated = migrateToCanonicalFileRegistry(); // NEW: Migrate to canonical file registry
   if (subtasksMigrated || fileRegistryMigrated) {
-    await save(); // Save after migration
+    // Phase 3: Use flush() for critical operations like migrations
+    if (window.Petal?.persistence?.flush) {
+      await window.Petal.persistence.flush();
+    } else {
+      await save(); // Fallback
+    }
   }
   
   // Re-enable saves after migrations complete
@@ -3457,8 +3602,14 @@ async function resolveConflict(action) {
 }
 
 // Save state (async)
-// Step 2e: Sync globals to store, then store auto-saves via persistence subscription
+// Phase 3.2: This function is now a no-op wrapper for backward compatibility
+// All persistence is handled automatically by the persistence layer subscription
+// Direct save() calls are deprecated - use window.Petal.persistence.flush() for immediate saves
 async function save() {
+  // Phase 3: All saves go through persistence layer automatically via store subscription
+  // This function is kept for backward compatibility but does minimal work
+  // Most save() calls can be removed - persistence handles it automatically
+  
   ensureBoardSettings();
   ensureCellLogSettings();
   
@@ -3469,40 +3620,48 @@ async function save() {
     buildFileRegistry(); // Fallback
   }
   
-  // Step 2e: Sync globals to store (store will auto-save via persistence subscription)
-  // This is now the ONLY save path - persistence layer handles disk writes
+  // Sync globals to store if needed (but this should already be done via store.setState() in most cases)
+  // The persistence layer will automatically save when store changes
   if (window.Petal?.store) {
-    window.Petal.store.setState({
-      tasks,
-      projects,
-      openProjects,
-      settings,
-      events,
-      recurringRules,
-      fileHistory,
-      fileRegistry,
-      currentView,
-      currentSort,
-      currentFilter,
-      currentProjFilter,
-      selectedColor,
-      taskMode,
-      boardProjectFilter,
-      searchQuery,
-      currentFileView,
-      selectedProjectId
-    });
-    // Store will auto-save via persistence subscription (debounced, single writer)
+    const state = window.Petal.store.getState();
+    // Only sync if there are actual differences (defensive)
+    const needsSync = 
+      JSON.stringify(tasks) !== JSON.stringify(state.tasks) ||
+      JSON.stringify(projects) !== JSON.stringify(state.projects) ||
+      JSON.stringify(events) !== JSON.stringify(state.events) ||
+      JSON.stringify(recurringRules) !== JSON.stringify(state.recurringRules);
+    
+    if (needsSync) {
+      window.Petal.store.setState({
+        tasks,
+        projects,
+        openProjects,
+        settings,
+        events,
+        recurringRules,
+        fileHistory,
+        fileRegistry,
+        currentView,
+        currentSort,
+        currentFilter,
+        currentProjFilter,
+        selectedColor,
+        taskMode,
+        boardProjectFilter,
+        searchQuery,
+        currentFileView,
+        selectedProjectId
+      });
+      // Store will auto-save via persistence subscription (debounced, single writer)
+    }
   }
   
-  // Track save time for conflict policy
-  window.lastSaveTime = Date.now();
+  // Track save time for conflict policy (will be updated by persistence layer)
   window.hasUnsavedChanges = false;
   
-  // Update window references (in case arrays were reassigned)
-  // These are kept for backward compatibility with legacy code
-  window.tasks = tasks;
-  window.projects = projects;
+  // NOTE: window.tasks, window.projects are now read-only getters (defined above)
+  // They automatically read from store, so no assignment needed
+  // Only expose settings (not in store yet)
   window.settings = settings;
   
   // Update vault path display after a delay (persistence is debounced, so wait for it)
@@ -5230,9 +5389,19 @@ async function addProject(){
     pinnedFiles: []
   };
   
-  projects.unshift(newProject);
+  // Phase 2: Immutable update through store
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    window.Petal.store.setState({
+      projects: [newProject, ...state.projects]
+    });
+  } else {
+    // Fallback for backward compatibility
+    projects.unshift(newProject);
+    await save();
+  }
   refreshProjectSelects();
-  await save();render();
+  render();
   
   // Clear form
   document.getElementById('pr-name').value='';
@@ -6476,8 +6645,17 @@ async function addTaskToProjectFromModal(projId, title, priority, due, lane) {
     files: [] // Keep for backward compatibility
   };
   
-  tasks.push(newTask);
-  await save();
+  // Phase 2: Immutable update through store
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    window.Petal.store.setState({
+      tasks: [...state.tasks, newTask]
+    });
+  } else {
+    // Fallback for backward compatibility
+    tasks.push(newTask);
+    await save();
+  }
   renderProjects();
 }
 
@@ -6498,8 +6676,17 @@ async function addTaskToMatrixFromModal(title, priority, due, lane) {
     files: [] // Keep for backward compatibility
   };
   
-  tasks.push(newTask);
-  await save();
+  // Phase 2: Immutable update through store
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    window.Petal.store.setState({
+      tasks: [...state.tasks, newTask]
+    });
+  } else {
+    // Fallback for backward compatibility
+    tasks.push(newTask);
+    await save();
+  }
   renderWorkflowMatrix();
 }
 
@@ -6540,8 +6727,17 @@ async function addTaskToProject(projId){
     subtasks: []
   };
   
-  tasks.unshift(newTask);
-  await save();
+  // Phase 2: Immutable update through store
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    window.Petal.store.setState({
+      tasks: [newTask, ...state.tasks]
+    });
+  } else {
+    // Fallback for backward compatibility
+    tasks.unshift(newTask);
+    await save();
+  }
   render();
   
   // Clear form
@@ -7245,12 +7441,10 @@ async function render(){
   currentFileView = state.currentFileView || currentFileView;
   selectedProjectId = state.selectedProjectId || selectedProjectId;
   
-  // CRITICAL: Update window references IMMEDIATELY so createPageContext() can find them
-  window.tasks = tasks;
-  window.projects = projects;
-  window.settings = settings;
-  window.events = events;
-  window.recurringRules = recurringRules;
+  // NOTE: window.tasks, window.projects, etc. are now read-only getters
+  // They automatically read from store, so no assignment needed
+  // Only non-store globals need assignment:
+  window.settings = settings; // settings is not in store yet
   window.fileRegistry = fileRegistry;
   window.fileHistory = fileHistory;
   window.currentView = currentView;
@@ -7313,11 +7507,27 @@ async function render(){
     }
   }
   else if(currentView==='projects') {
+    // Sync data from store before rendering
+    if (window.Petal?.store) {
+      const state = window.Petal.store.getState();
+      tasks = state.tasks || [];
+      projects = state.projects || [];
+      // NOTE: window.tasks, window.projects are now read-only getters - no assignment needed
+      openProjects = state.openProjects instanceof Set ? state.openProjects : new Set(state.openProjects || []);
+    }
     // Use old renderProjects function to show full project card view
     renderProjects();
   }
   else {
     // Default fallback - render projects
+    // Sync data from store before rendering
+    if (window.Petal?.store) {
+      const state = window.Petal.store.getState();
+      tasks = state.tasks || [];
+      projects = state.projects || [];
+      // NOTE: window.tasks, window.projects are now read-only getters - no assignment needed
+      openProjects = state.openProjects instanceof Set ? state.openProjects : new Set(state.openProjects || []);
+    }
     renderProjects();
   }
   
@@ -7497,8 +7707,9 @@ async function renderTaskList(){
       const isTaskSubtask = !!t.parentTaskId;
       return`<div class="task-card ${t.done?'done':''} ${isTaskSubtask ? 'subtask-task' : ''}" data-priority="${t.priority}">
         <div class="task-top">
-          <div class="check-box ${t.done?'checked':''}" onclick="${t.isSubtask ? 'toggleSubtask(' + t.projectId + ', ' + t.id + ')' : 'toggleTask(' + t.id + ')'}"></div>
-          <div class="task-body">
+          <div class="task-content">
+            <div class="check-box ${t.done?'checked':''}" onclick="${t.isSubtask ? 'toggleSubtask(' + t.projectId + ', ' + t.id + ')' : 'toggleTask(' + t.id + ')'}"></div>
+            <div class="task-body">
             <div class="task-title">
               ${isTaskSubtask && parentTask ? `<span style="opacity:0.6;font-size:11px;color:var(--text-dim);">↳ ${esc(parentTask.title)} → </span>` : ''}
               ${t.isSubtask ? `<span style="opacity:0.6;font-size:11px;">📁 ${esc(projName || 'Project')} →</span> ` : ''}
@@ -7538,10 +7749,13 @@ async function renderTaskList(){
               </div>
             </div>`}
             ${filesHtml}
+            </div>
           </div>
-          <button class="btn-del" onclick="openTaskDrawer(${t.id})" title="Open drawer (Notes, Files, Subtasks)">📝</button>
-          <button class="btn-del" data-action="edit-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" onclick="handleEditTaskAction(event, this)" title="Edit">✎</button>
-          <button class="btn-del" data-action="delete-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" onclick="handleDeleteTaskAction(event, this)" title="Delete">✕</button>
+          <div class="task-actions">
+            <button class="btn-del" onclick="openTaskDrawer(${t.id})" title="Open drawer (Notes, Files, Subtasks)">📝</button>
+            <button class="btn-del" data-action="edit-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" onclick="handleEditTaskAction(event, this)" title="Edit">✎</button>
+            <button class="btn-del" data-action="delete-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" onclick="handleDeleteTaskAction(event, this)" title="Delete">✕</button>
+          </div>
         </div>
       </div>`;
     }));
@@ -7670,32 +7884,101 @@ async function saveWorkflowLanes(projectId) {
 }
 
 function renderProjects(){
-  const c=document.getElementById('project-container');
-  let list=projects.filter(p=>{
-    if(currentProjFilter==='active'&&p.done)return false;
-    if(currentProjFilter==='done'&&!p.done)return false;
-    return true;
-  });
-  if(!list.length){c.innerHTML='<div class="empty-state">No projects yet<small>Create a project above</small></div>';return;}
-  c.innerHTML=list.map(p=>projectHTML(p)).join('');
-  
-  // Force hide all forms immediately after rendering
-  setTimeout(() => {
-    forceHideAllForms();
-  }, 0);
-  setTimeout(() => {
-    forceHideAllForms();
-  }, 50);
+  // ═══════════════════════ PHASE 3 FIX: Read from store only ═══════════════════════
+  try {
+    // DEBUG: Confirm store has projects when blank happens
+    const store = window.Petal?.store;
+    if (!store) {
+      console.error('❌ renderProjects: Store not available!');
+      return;
+    }
+    
+    const state = store.getState();
+    console.log('🔍 DEBUG projects snapshot (renderProjects):', {
+      storeProjects: state.projects?.length || 0,
+      storeProjectIds: (state.projects || []).map(p => p.id),
+      openProjects: state.openProjects instanceof Set ? Array.from(state.openProjects) : state.openProjects,
+      currentProjFilter: state.currentProjFilter || currentProjFilter,
+      localProjectsVar: projects?.length || 0, // For comparison
+      windowProjectsGetter: window.projects?.length || 0 // For comparison
+    });
+    
+    // Phase 3: Read ONLY from store (single source of truth)
+    const projectsFromStore = state.projects || [];
+    const currentProjFilterFromStore = state.currentProjFilter || currentProjFilter;
+    const openProjectsFromStore = state.openProjects instanceof Set ? state.openProjects : new Set(state.openProjects || []);
+    
+    // Sync local variables for backward compatibility (but don't use them for rendering)
+    projects = projectsFromStore;
+    openProjects = openProjectsFromStore;
+    
+    const c = document.getElementById('project-container');
+    if (!c) {
+      console.error('❌ renderProjects: project-container element not found!');
+      return;
+    }
+    
+    // Filter projects
+    let list = projectsFromStore.filter(p => {
+      if (currentProjFilterFromStore === 'active' && p.done) return false;
+      if (currentProjFilterFromStore === 'done' && !p.done) return false;
+      return true;
+    });
+    
+    // DEBUG: Project filtering
+    console.log('🔍 DEBUG project filtering:', {
+      total: projectsFromStore.length,
+      afterFilter: list.length,
+      filterState: { currentProjFilter: currentProjFilterFromStore }
+    });
+    
+    if (!list.length) {
+      c.innerHTML = '<div class="empty-state">No projects yet<small>Create a project above</small></div>';
+      return;
+    }
+    
+    // Get tasks from store for projectHTML
+    const tasksFromStore = state.tasks || [];
+    
+    c.innerHTML = list.map(p => projectHTML(p, tasksFromStore, openProjectsFromStore)).join('');
+    
+    // Force hide all forms immediately after rendering
+    setTimeout(() => {
+      if (typeof forceHideAllForms === 'function') {
+        forceHideAllForms();
+      }
+    }, 0);
+    setTimeout(() => {
+      if (typeof forceHideAllForms === 'function') {
+        forceHideAllForms();
+      }
+    }, 50);
+  } catch (e) {
+    console.error('❌ renderProjects crashed:', e);
+    console.error('Stack:', e?.stack);
+    // Show error in UI
+    const c = document.getElementById('project-container');
+    if (c) {
+      c.innerHTML = `<div class="empty-state" style="color:var(--error,red);">
+        Error rendering projects: ${esc(e.message || String(e))}
+        <small>Check console for details</small>
+      </div>`;
+    }
+  }
 }
 
-function projectHTML(p){
+function projectHTML(p, tasksFromStore = null, openProjectsFromStore = null){
+  // Phase 3: Read tasks and openProjects from parameters (from store) or fallback to globals
+  const tasksToUse = tasksFromStore || tasks || [];
+  const openProjectsToUse = openProjectsFromStore || openProjects || new Set();
+  
   const color=`var(--proj-${p.color})`;
   const colorPale=`var(--proj-${p.color}p)`;
   const dl=dueLabel(p.due,true);
-  const isOpen=openProjects.has(p.id);
+  const isOpen=openProjectsToUse.has(p.id);
   
   // Project metrics: tasks in this project
-  const projectTasks = tasks.filter(t => String(t.projectId) === String(p.id));
+  const projectTasks = tasksToUse.filter(t => String(t.projectId) === String(p.id));
   const totalTasks = projectTasks.length;
   const inProgressTasks = projectTasks.filter(t => t.status === 'Doing' && !t.done).length;
   const doneTasks = projectTasks.filter(t => t.done).length;
@@ -10645,15 +10928,16 @@ async function renderLane(laneName, allTasks) {
       filesHtml = `<div class="task-files" style="margin-top:6px;">${fileHtmls.join('')}</div>`;
     }
     
-    return `<div class="task-card ${t.done?'done':''} ${blocked?'blocked':''}" data-priority="${t.priority}" style="margin-bottom:12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;">
+    return `<div class="task-card ${t.done?'done':''} ${blocked?'blocked':''}" data-priority="${t.priority}">
       <div class="task-top">
-        <div class="check-box ${t.done?'checked':''}" onclick="toggleTask(${t.id})"></div>
-        <div class="task-body" style="flex:1;">
-          <div class="task-title">${esc(t.title)}</div>
-          <div class="task-meta-row" style="margin-top:6px;">
-            ${proj ? `<span class="due-tag">${esc(proj)}</span>` : ''}
-            <span class="priority-tag ${t.priority}">${t.priority}</span>
-            <span class="due-tag" style="background:var(--bg2);">${esc(currentStage)}</span>
+        <div class="task-content">
+          <div class="check-box ${t.done?'checked':''}" onclick="toggleTask(${t.id})"></div>
+          <div class="task-body" style="flex:1;">
+            <div class="task-title">${esc(t.title)}</div>
+            <div class="task-meta-row" style="margin-top:6px;">
+              ${proj ? `<span class="due-tag">${esc(proj)}</span>` : ''}
+              <span class="priority-tag ${t.priority}">${t.priority}</span>
+              <span class="due-tag" style="background:var(--bg2);">${esc(currentStage)}</span>
             ${t.status ? `<span class="due-tag" style="background:var(--bg2);">${esc(t.status)}</span>` : ''}
             ${dl ? `<span class="due-tag ${dl.cls}"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${esc(dl.text)}</span>` : ''}
             ${t.tags?.length ? '<span class="task-tags">' + t.tags.map(tag => '<span class="tag-chip" data-tag="' + esc(tag) + '">' + esc(tag) + '</span>').join('') + '</span>' : ''}
@@ -10664,8 +10948,9 @@ async function renderLane(laneName, allTasks) {
             <span class="due-tag" style="background:var(--bg2);">${esc(t.lane || 'No lane')}</span>
             <span class="due-tag" style="background:var(--bg2);">${esc(currentStage || 'planned')}</span>
           </div>
+          </div>
         </div>
-        <div style="display:flex;gap:4px;align-items:flex-start;">
+        <div class="task-actions">
           <button type="button" class="btn-del" onclick="openTaskDrawer(${t.id})" title="Open drawer" style="font-size:11px;">📝</button>
           <button type="button" class="btn-del" data-action="edit-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" onclick="handleEditTaskAction(event, this)" title="Edit">✎</button>
           <button type="button" class="btn-del" data-action="delete-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" onclick="handleDeleteTaskAction(event, this)" title="Delete">✕</button>
@@ -10735,25 +11020,27 @@ async function renderUnassignedLane(allTasks) {
       filesHtml = `<div class="task-files" style="margin-top:6px;">${fileHtmls.join('')}</div>`;
     }
     
-    return `<div class="task-card ${t.done?'done':''} ${blocked?'blocked':''}" data-priority="${t.priority}" style="margin-bottom:12px;">
+    return `<div class="task-card ${t.done?'done':''} ${blocked?'blocked':''}" data-priority="${t.priority}">
       <div class="task-top">
-        <div class="check-box ${t.done?'checked':''}" onclick="toggleTask(${t.id})"></div>
-        <div class="task-body" style="flex:1;">
-          <div class="task-title">${esc(t.title)}</div>
-          <div class="task-meta-row" style="margin-top:6px;">
-            ${proj ? `<span class="due-tag">${esc(proj)}</span>` : ''}
-            <span class="priority-tag ${t.priority}">${t.priority}</span>
-            ${t.status ? `<span class="due-tag" style="background:var(--bg2);">${esc(t.status)}</span>` : ''}
-            ${dl ? `<span class="due-tag ${dl.cls}"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${esc(dl.text)}</span>` : ''}
-            ${t.tags?.length ? '<span class="task-tags">' + t.tags.map(tag => '<span class="tag-chip" data-tag="' + esc(tag) + '">' + esc(tag) + '</span>').join('') + '</span>' : ''}
-          </div>
-          ${blocked ? `<div style="font-size:10px;color:var(--overdue);margin-top:4px;">🔒 Blocked by: ${depTask ? esc(depTask.title) : 'task'}</div>` : ''}
-          ${filesHtml}
-          <div style="margin-top:8px;display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
-            <span class="due-tag" style="background:var(--bg2);">No lane</span>
+        <div class="task-content">
+          <div class="check-box ${t.done?'checked':''}" onclick="toggleTask(${t.id})"></div>
+          <div class="task-body" style="flex:1;">
+            <div class="task-title">${esc(t.title)}</div>
+            <div class="task-meta-row" style="margin-top:6px;">
+              ${proj ? `<span class="due-tag">${esc(proj)}</span>` : ''}
+              <span class="priority-tag ${t.priority}">${t.priority}</span>
+              ${t.status ? `<span class="due-tag" style="background:var(--bg2);">${esc(t.status)}</span>` : ''}
+              ${dl ? `<span class="due-tag ${dl.cls}"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${esc(dl.text)}</span>` : ''}
+              ${t.tags?.length ? '<span class="task-tags">' + t.tags.map(tag => '<span class="tag-chip" data-tag="' + esc(tag) + '">' + esc(tag) + '</span>').join('') + '</span>' : ''}
+            </div>
+            ${blocked ? `<div style="font-size:10px;color:var(--overdue);margin-top:4px;">🔒 Blocked by: ${depTask ? esc(depTask.title) : 'task'}</div>` : ''}
+            ${filesHtml}
+            <div style="margin-top:8px;display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
+              <span class="due-tag" style="background:var(--bg2);">No lane</span>
+            </div>
           </div>
         </div>
-        <div style="display:flex;gap:4px;align-items:flex-start;">
+        <div class="task-actions">
           <button type="button" class="btn-del" onclick="openTaskDrawer(${t.id})" title="Open drawer" style="font-size:11px;">📝</button>
           <button type="button" class="btn-del" data-action="edit-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" onclick="handleEditTaskAction(event, this)" title="Edit">✎</button>
           <button type="button" class="btn-del" data-action="delete-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" onclick="handleDeleteTaskAction(event, this)" title="Delete">✕</button>
@@ -11259,11 +11546,28 @@ function buildPlannerSidebar() {
       const dayLabel = isNow ? 'Today' : e.date.toLocaleDateString('en-US', {weekday: 'short', month: 'short', day: 'numeric'});
       const categoryColors = {personal: 'yellow', lab: 'red', equipment: 'green', travel: 'muted', writing: 'blue', comp: 'green'};
       const color = categoryColors[e.category] || 'muted';
+      
+      // Get linked project and task info
+      let linkedInfo = '';
+      if (e.linkedProjectId) {
+        const project = (projects || []).find(p => String(p.id) === String(e.linkedProjectId));
+        if (project) {
+          linkedInfo += `<span style="font-size:7px;color:var(--text-dim);opacity:0.8;">📁 ${esc(project.name)}</span>`;
+        }
+      }
+      if (e.linkedTaskId) {
+        const task = (tasks || []).find(t => String(t.id) === String(e.linkedTaskId));
+        if (task) {
+          linkedInfo += `<span style="font-size:7px;color:var(--text-dim);opacity:0.8;margin-left:4px;">✓ ${esc(task.title)}</span>`;
+        }
+      }
+      
       el.innerHTML = `
         <div class="ev-stripe stripe-${color}"></div>
         <div class="ev-content">
           <div class="ev-name">${esc(e.title)}</div>
           <div class="ev-time">${dayLabel} · ${formatTime(parseTime(e.startTime))} – ${formatTime(parseTime(e.startTime) + e.durationMin)}</div>
+          ${linkedInfo ? `<div style="font-size:7px;color:var(--text-dim);opacity:0.8;margin-top:2px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;">${linkedInfo}</div>` : ''}
         </div>`;
       el.onclick = () => {
         plannerViewDate = new Date(e.date);
@@ -11544,10 +11848,27 @@ async function renderWeeklyPlanner() {
       const h = e.durationMin;
       ev.style.cssText = `top:${top}px;height:${h}px;`;
       const timeStr = `${formatTime(startMins)} – ${formatTime(startMins + e.durationMin)}`;
+      
+      // Get linked project and task info
+      let linkedInfo = '';
+      if (e.linkedProjectId) {
+        const project = (projects || []).find(p => String(p.id) === String(e.linkedProjectId));
+        if (project) {
+          linkedInfo += `<span style="font-size:7px;color:var(--text-dim);opacity:0.8;">📁 ${esc(project.name)}</span>`;
+        }
+      }
+      if (e.linkedTaskId) {
+        const task = (tasks || []).find(t => String(t.id) === String(e.linkedTaskId));
+        if (task) {
+          linkedInfo += `<span style="font-size:7px;color:var(--text-dim);opacity:0.8;margin-left:4px;">✓ ${esc(task.title)}</span>`;
+        }
+      }
+      
       ev.innerHTML = `<div class="w-event-title" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
         <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(e.title)}</span>
         <span style="font-size:7.5px;color:var(--text-dim);font-weight:400;white-space:nowrap;flex-shrink:0;">${timeStr}</span>
-      </div>`;
+      </div>
+      ${linkedInfo ? `<div class="w-event-time" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:2px;">${linkedInfo}</div>` : ''}`;
       ev.onclick = evt => {
         evt.stopPropagation();
         plannerViewDate = new Date(d);
@@ -11699,11 +12020,28 @@ async function renderDailyPlanner() {
     blk.style.height = (e.durationMin * PIXELS_PER_MINUTE) + 'px';
     
     const timeStr = `${formatTime(parseTime(e.startTime))} – ${formatTime(parseTime(e.startTime) + e.durationMin)}`;
+    
+    // Get linked project and task info
+    let linkedInfo = '';
+    if (e.linkedProjectId) {
+      const project = (projects || []).find(p => String(p.id) === String(e.linkedProjectId));
+      if (project) {
+        linkedInfo += `<span style="font-size:8px;color:var(--text-dim);">📁 ${esc(project.name)}</span>`;
+      }
+    }
+    if (e.linkedTaskId) {
+      const task = (tasks || []).find(t => String(t.id) === String(e.linkedTaskId));
+      if (task) {
+        linkedInfo += `<span style="font-size:8px;color:var(--text-dim);margin-left:6px;">✓ ${esc(task.title)}</span>`;
+      }
+    }
+    
     blk.innerHTML = `
       <div class="t-block-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <span>${esc(e.title)}</span>
         <span style="font-size:9px;color:var(--text-dim);font-weight:400;white-space:nowrap;">${timeStr}</span>
       </div>
+      ${linkedInfo ? `<div class="t-block-meta" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:2px;">${linkedInfo}</div>` : ''}
       ${e.location ? `<div class="t-block-meta">${esc(e.location)}</div>` : ''}
       <div class="t-block-footer">
         <span class="t-block-dur">${Math.round(e.durationMin / 60 * 10) / 10}h</span>
@@ -11749,8 +12087,50 @@ function openAddEventModal(dateStr = null) {
   document.getElementById('event-buffer-after').value = '0';
   document.getElementById('event-notes').value = '';
   
+  // Populate project dropdown
+  const projectSelect = document.getElementById('event-linked-project');
+  if (projectSelect) {
+    projectSelect.innerHTML = '<option value="">No project</option>';
+    (projects || []).filter(p => !p.done).forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = esc(p.name);
+      projectSelect.appendChild(opt);
+    });
+    projectSelect.value = '';
+    projectSelect.onchange = updateEventTaskOptions;
+  }
+  
+  // Populate task dropdown
+  const taskSelect = document.getElementById('event-linked-task');
+  if (taskSelect) {
+    taskSelect.innerHTML = '<option value="">No task</option>';
+    taskSelect.value = '';
+  }
+  
   modal.style.display = 'flex';
   document.getElementById('event-title').focus();
+}
+
+// Update task options based on selected project
+function updateEventTaskOptions() {
+  const projectSelect = document.getElementById('event-linked-project');
+  const taskSelect = document.getElementById('event-linked-task');
+  if (!projectSelect || !taskSelect) return;
+  
+  const projectId = projectSelect.value;
+  taskSelect.innerHTML = '<option value="">No task</option>';
+  
+  if (projectId) {
+    const projectTasks = (tasks || []).filter(t => String(t.projectId) === String(projectId) && !t.done);
+    projectTasks.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.id;
+      opt.textContent = esc(t.title);
+      taskSelect.appendChild(opt);
+    });
+  }
+  taskSelect.value = '';
 }
 
 function closeEventModal() {
@@ -11784,6 +12164,9 @@ async function submitEventModal() {
     return;
   }
   
+  const linkedProjectId = document.getElementById('event-linked-project')?.value || null;
+  const linkedTaskId = document.getElementById('event-linked-task')?.value || null;
+  
   const event = {
     id: editingEventId || `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     title: title,
@@ -11795,8 +12178,8 @@ async function submitEventModal() {
     bufferBeforeMin: parseInt(document.getElementById('event-buffer-before').value) || 0,
     bufferAfterMin: parseInt(document.getElementById('event-buffer-after').value) || 0,
     notes: document.getElementById('event-notes').value.trim() || '',
-    linkedProjectId: null,
-    linkedTaskId: null
+    linkedProjectId: linkedProjectId ? parseInt(linkedProjectId) : null,
+    linkedTaskId: linkedTaskId ? parseInt(linkedTaskId) : null
   };
   
   if (editingEventId) {
@@ -11834,6 +12217,33 @@ function editEvent(eventId) {
   document.getElementById('event-buffer-before').value = event.bufferBeforeMin || 0;
   document.getElementById('event-buffer-after').value = event.bufferAfterMin || 0;
   document.getElementById('event-notes').value = event.notes || '';
+  
+  // Populate project dropdown
+  const projectSelect = document.getElementById('event-linked-project');
+  if (projectSelect) {
+    projectSelect.innerHTML = '<option value="">No project</option>';
+    (projects || []).filter(p => !p.done).forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = esc(p.name);
+      if (event.linkedProjectId && String(p.id) === String(event.linkedProjectId)) {
+        opt.selected = true;
+      }
+      projectSelect.appendChild(opt);
+    });
+    projectSelect.onchange = updateEventTaskOptions;
+    // Update task options based on selected project
+    updateEventTaskOptions();
+  }
+  
+  // Set task selection
+  const taskSelect = document.getElementById('event-linked-task');
+  if (taskSelect && event.linkedTaskId) {
+    // Wait a moment for task options to be populated
+    setTimeout(() => {
+      taskSelect.value = event.linkedTaskId || '';
+    }, 50);
+  }
   
   modal.style.display = 'flex';
 }
