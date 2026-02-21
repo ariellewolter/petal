@@ -4,6 +4,7 @@
 
 import { appStore } from '../state/store.js';
 import { createDefaultTask, createDefaultProject } from '../domain/schema.js';
+import * as workflowOps from '../features/workflow/workflowOperations.js';
 
 /**
  * Task handlers
@@ -94,8 +95,10 @@ export const projectHandlers = {
         ? { ...t, projectId: '' } 
         : t
     );
-    const openProjects = new Set(state.openProjects);
-    openProjects.delete(projectId);
+    // Phase 3 Fix: openProjects is Array, not Set
+    const openProjects = Array.isArray(state.openProjects) 
+      ? state.openProjects.filter(id => id !== projectId)
+      : [];
     appStore.setState({ projects, tasks, openProjects });
   },
   
@@ -109,13 +112,12 @@ export const projectHandlers = {
   
   async toggleProjectOpen(projectId) {
     const state = appStore.getState();
-    const openProjects = new Set(state.openProjects);
-    if (openProjects.has(projectId)) {
-      openProjects.delete(projectId);
-    } else {
-      openProjects.add(projectId);
-    }
-    appStore.setState({ openProjects });
+    // Phase 3 Fix: openProjects is Array, not Set
+    const open = Array.isArray(state.openProjects) ? state.openProjects : [];
+    const next = open.includes(projectId)
+      ? open.filter(id => id !== projectId)
+      : [...open, projectId];
+    appStore.setState({ openProjects: next });
   },
   
   async addSubtask(projectId, subtaskData) {
@@ -206,10 +208,37 @@ export const uiHandlers = {
 };
 
 /**
+ * Workflow handlers
+ */
+export const workflowHandlers = {
+  setWorkflowPlacement: workflowOps.setWorkflowPlacement,
+  moveTask: workflowOps.moveTask,
+  setWorkflowProjectFilter: workflowOps.setWorkflowProjectFilter,
+  toggleUnassignedSection: workflowOps.toggleUnassignedSection,
+  toggleActiveFilesPanel: workflowOps.toggleActiveFilesPanel,
+  quickAssignToLane(taskId) {
+    // Quick assign to first available lane in "Next" column
+    const state = appStore.getState();
+    const workflow = state.workflow || {};
+    const laneOrder = workflow.laneOrder || ["lab", "comp", "writing", "presentation"];
+    if (laneOrder.length > 0) {
+      workflowOps.setWorkflowPlacement(taskId, laneOrder[0], 'Next');
+    }
+  },
+  openTaskDrawer(taskId) {
+    // Open task drawer - delegate to existing handler if available
+    if (window.openTaskDrawer) {
+      window.openTaskDrawer(taskId);
+    }
+  }
+};
+
+/**
  * Combined handlers object for easy access
  */
 export const handlers = {
   ...taskHandlers,
   ...projectHandlers,
-  ...uiHandlers
+  ...uiHandlers,
+  ...workflowHandlers
 };

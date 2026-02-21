@@ -2,7 +2,7 @@
 // Pure rendering function for files view
 // Takes state and handlers as parameters - no store peeking
 
-import { esc } from '../utils/strings.js';
+import { esc, escAttr } from '../utils/strings.js';
 import { fileIcon } from '../utils/strings.js';
 
 /**
@@ -12,12 +12,7 @@ import { fileIcon } from '../utils/strings.js';
  * @param {Object} handlers - Event handlers
  */
 export async function renderFiles(containerEl, state, handlers) {
-  const { fileRegistry, fileHistory, currentFileView, tasks, projects } = state;
-  
-  // Build registry using new module (if available)
-  if (window.Petal?.features?.fileManagement?.buildFileRegistry) {
-    window.Petal.features.fileManagement.buildFileRegistry();
-  }
+  const { files: persistedFiles, fileRegistry, fileHistory, currentFileView, currentFileProjectFilter, tasks, projects } = state;
   
   const c = containerEl || document.getElementById('files-view-container');
   if (!c) {
@@ -25,11 +20,97 @@ export async function renderFiles(containerEl, state, handlers) {
     return;
   }
   
-  // Get files from registry
-  let files = Object.values(fileRegistry || {});
+  // Update project filter dropdown
+  const projectFilterEl = document.getElementById('file-project-filter');
+  if (projectFilterEl) {
+    const currentValue = projectFilterEl.value || currentFileProjectFilter || 'all';
+    projectFilterEl.innerHTML = '<option value="all">All Projects</option>';
+    (projects || []).filter(p => !p.done).forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name;
+      projectFilterEl.appendChild(opt);
+    });
+    projectFilterEl.value = currentValue;
+  }
+  
+  if (window.__DEBUG__) {
+    console.log('🔍 renderFiles called:', {
+      persistedFilesCount: persistedFiles?.length || 0,
+      fileRegistryKeys: fileRegistry ? Object.keys(fileRegistry).length : 0,
+      currentFileView,
+      currentFileProjectFilter,
+      tasksCount: tasks?.length || 0,
+      projectsCount: projects?.length || 0
+    });
+  }
+  
+  // Phase 3 Fix: Read from persisted files list (authoritative), not computed registry
+  // files = authoritative user-added file entries (persisted)
+  // fileRegistry = derived index used for fast lookup (optional, can be computed)
+  let files = Array.isArray(persistedFiles) ? persistedFiles : [];
+  
+  // Always build/refresh registry to ensure we have all files from tasks/projects
+  let registryToUse = fileRegistry || {};
+  if (window.Petal?.features?.fileManagement?.buildFileRegistry) {
+    try {
+      const result = window.Petal.features.fileManagement.buildFileRegistry({
+        tasks: tasks || [],
+        projects: projects || [],
+        fileRegistry: fileRegistry || {},
+        fileHistory: fileHistory || {},
+        files: persistedFiles || []
+      }, { commit: false });
+      registryToUse = result.fileRegistry || {};
+      
+      if (window.__DEBUG__) {
+        console.log('🔍 Built registry:', Object.keys(registryToUse).length, 'files');
+      }
+    } catch (e) {
+      console.error('Error building file registry:', e);
+    }
+  }
+  
+  // If no persisted files, use all files from registry (not just standalone)
+  if (files.length === 0 && registryToUse && Object.keys(registryToUse).length > 0) {
+    // Get all files from registry
+    files = Object.values(registryToUse);
+    
+    // Convert registry format to file format for rendering
+    files = files.map(f => {
+      const fileLink = f.fileLink || f;
+      return {
+        ...f,
+        fileLink: fileLink,
+        key: f.key || fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url,
+        name: f.name || fileLink.label || fileLink.name || 'File',
+        tasks: f.tasks || [],
+        projects: f.projects || []
+      };
+    });
+    
+    if (window.__DEBUG__) {
+      console.log('🔍 Using files from registry:', files.length);
+    }
+  } else if (files.length > 0) {
+    // If we have persisted files, enrich them with registry data if available
+    files = files.map(f => {
+      const fileKey = f.key || f.fileLink?.abs_path || f.fileLink?.onedrive_rel || f.fileLink?.share_url;
+      const registryFile = registryToUse[fileKey];
+      if (registryFile) {
+        // Merge registry data (tasks, projects) with persisted file
+        return {
+          ...f,
+          tasks: registryFile.tasks || f.tasks || [],
+          projects: registryFile.projects || f.projects || []
+        };
+      }
+      return f;
+    });
+  }
   
   // Filter by view
-  if (currentFileView === 'active') {
+  if (currentFileView === 'active' || currentFileView === 'current') {
     files = files.filter(f => {
       return (f.tasks || []).some(t => t.status === 'Doing' && !t.done) ||
              (f.projects || []).some(p => !p.done);
@@ -37,7 +118,8 @@ export async function renderFiles(containerEl, state, handlers) {
   } else if (currentFileView === 'stale') {
     const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
     files = files.filter(f => {
-      const lastMod = fileHistory?.[f.key]?.lastModified;
+      const fileKey = f.key || f.fileLink?.abs_path || f.fileLink?.onedrive_rel || f.fileLink?.share_url;
+      const lastMod = fileHistory?.[fileKey]?.lastModified;
       if (!lastMod) return false;
       return lastMod < thirtyDaysAgo && 
              (f.tasks || []).some(t => !t.done && t.status === 'Doing');
@@ -46,6 +128,28 @@ export async function renderFiles(containerEl, state, handlers) {
     files = files.filter(f => f.submissionMeta || 
                                f.status === 'submitted' || 
                                f.status === 'accepted');
+  }
+  
+  // Filter by project if a project is selected
+  if (currentFileProjectFilter && currentFileProjectFilter !== 'all') {
+    const projectIdNum = parseInt(currentFileProjectFilter);
+    files = files.filter(f => {
+      // Check if file is linked to the selected project
+      const fileProjects = f.projects || [];
+      if (fileProjects.length === 0) return false;
+      
+      return fileProjects.some(p => {
+        // Handle both object format {id: ...} and direct ID format
+        const pId = typeof p === 'object' && p !== null ? (p.id || p.projectId) : p;
+        if (pId == null) return false;
+        const pIdNum = typeof pId === 'number' ? pId : parseInt(pId);
+        return pIdNum === projectIdNum;
+      });
+    });
+    
+    if (window.__DEBUG__) {
+      console.log('🔍 Filtered by project:', projectIdNum, 'result:', files.length, 'files');
+    }
   }
   
   if (files.length === 0) {
@@ -59,7 +163,7 @@ export async function renderFiles(containerEl, state, handlers) {
   
   // Render file cards
   const fileHtmls = await Promise.all(files.map(async f => {
-    return renderFileCard(f, fileHistory);
+    return renderFileCard(f, fileHistory || {});
   }));
   
   // Update container (preserve buttons and filters)
@@ -78,36 +182,43 @@ export async function renderFiles(containerEl, state, handlers) {
  * @param {Object} fileHistory - File history object
  */
 function renderFileCard(file, fileHistory) {
-  const icon = fileIcon(file.abs_path || file.onedrive_rel || file.share_url || '');
-  const label = file.label || file.name || 'File';
+  // Phase 3 Fix: Handle both persisted file format and registry format
+  const fileLink = file.fileLink || file; // Persisted files have fileLink, registry files are the link
+  const filePath = file.path || fileLink.onedrive_rel || fileLink.abs_path || fileLink.share_url || '';
+  const icon = fileIcon(filePath);
+  const label = file.name || fileLink.label || fileLink.name || 'File';
   
   // Get metadata
-  const history = fileHistory?.[file.key] || {};
+  const history = fileHistory?.[file.key || filePath] || {};
   const lastMod = history.lastModified ? new Date(history.lastModified) : null;
-  const lastOpened = file.lastOpened ? new Date(file.lastOpened) : null;
+  const lastOpened = file.lastOpened || fileLink.lastOpened ? new Date(file.lastOpened || fileLink.lastOpened) : null;
+  const addedAt = file.addedAt ? new Date(file.addedAt) : null;
   
-  // Check for warnings
+  // Check for warnings (only for registry files with task/project links)
   const warnings = [];
-  if ((file.tasks || []).some(t => t.done && lastMod && lastMod > new Date(t.done))) {
-    warnings.push('Modified after task completed');
-  }
-  if (lastMod && (Date.now() - lastMod.getTime()) > (30 * 24 * 60 * 60 * 1000) && 
-      (file.tasks || []).some(t => !t.done && t.status === 'Doing')) {
-    warnings.push('Stale (not modified in 30+ days)');
+  if (file.tasks && Array.isArray(file.tasks)) {
+    if (file.tasks.some(t => t.done && lastMod && lastMod > new Date(t.done))) {
+      warnings.push('Modified after task completed');
+    }
+    if (lastMod && (Date.now() - lastMod.getTime()) > (30 * 24 * 60 * 60 * 1000) && 
+        file.tasks.some(t => !t.done && t.status === 'Doing')) {
+      warnings.push('Stale (not modified in 30+ days)');
+    }
   }
   
   // Check if outside vault
-  const isOutsideVault = !file.isInOneDrive && file.abs_path;
+  const isOutsideVault = !fileLink.isInOneDrive && fileLink.abs_path;
   
   const tasksCount = (file.tasks || []).length;
   const projectsCount = (file.projects || []).length;
   
-  return `<div class="file-card" data-file-key="${esc(file.key)}">
+  return `<div class="file-card" data-file-id="${esc(file.id || file.key || filePath)}">
     <div class="file-card-header">
       <div style="display:flex;align-items:center;gap:8px;flex:1;">
         <span style="font-size:18px;">${icon}</span>
         <div style="flex:1;min-width:0;">
           <div style="font-weight:500;color:var(--text);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(label)}</div>
+          ${addedAt ? `<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">Added: ${addedAt.toLocaleDateString()}</div>` : ''}
           ${lastMod ? `<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">Modified: ${lastMod.toLocaleDateString()}</div>` : ''}
         </div>
       </div>
@@ -117,10 +228,11 @@ function renderFileCard(file, fileHistory) {
     <div class="file-card-meta" style="display:flex;gap:12px;margin-top:12px;font-size:11px;color:var(--text-dim);">
       ${tasksCount > 0 ? `<span>📋 ${tasksCount} task${tasksCount > 1 ? 's' : ''}</span>` : ''}
       ${projectsCount > 0 ? `<span>📁 ${projectsCount} project${projectsCount > 1 ? 's' : ''}</span>` : ''}
+      ${file.status ? `<span>Status: ${file.status}</span>` : ''}
     </div>
     <div class="file-card-actions" style="margin-top:12px;display:flex;gap:8px;">
-      <button onclick="openFile(${esc(JSON.stringify(file))})" class="btn-secondary" style="font-size:11px;padding:6px 12px;">Open</button>
-      <button onclick="window.Petal?.features?.fileManagement?.showFileRelations('${esc(file.key)}')" class="btn-secondary" style="font-size:11px;padding:6px 12px;">Relations</button>
+      <button class="file-open-btn btn-secondary" data-path="${escAttr(JSON.stringify(fileLink))}" style="font-size:11px;padding:6px 12px;">Open</button>
+      ${file.key ? `<button onclick="window.Petal?.features?.fileManagement?.showFileRelations('${esc(file.key)}')" class="btn-secondary" style="font-size:11px;padding:6px 12px;">Relations</button>` : ''}
     </div>
   </div>`;
 }

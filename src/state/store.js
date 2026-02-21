@@ -16,6 +16,12 @@ class AppStore {
       events: [],
       recurringRules: [],
       
+      // Habits and routines (planner)
+      habits: [],
+      habitCheckins: {},
+      routines: [],
+      routineCheckins: {},
+      
       // UI state
       currentView: 'tasks',
       currentSort: 'all',
@@ -26,11 +32,44 @@ class AppStore {
       boardProjectFilter: 'all',
       searchQuery: '',
       currentFileView: 'all',
+      currentFileProjectFilter: 'all', // For files view project filter
       selectedProjectId: null, // For matrix view
       
-      // File registry
+      // File registry (derived/computed, not persisted)
       fileRegistry: {},
-      fileHistory: {}
+      fileHistory: {},
+      
+      // Persisted files list (authoritative user-added files)
+      files: [],
+      
+      // Workflow state
+      workflow: {
+        laneOrder: ["lab", "comp", "writing", "presentation", "unassigned"],
+        columns: {
+          lab: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+          comp: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+          writing: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+          presentation: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+          unassigned: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+        },
+        // taskId -> { lane, column }
+        placement: {},
+        // lightweight lane preferences
+        rules: {
+          // optional: infer lane from tags
+          tagToLane: {
+            "#lab": "lab",
+            "#analysis": "comp",
+            "#paper": "writing",
+            "#slides": "presentation"
+          }
+        },
+        ui: {
+          activeProjectId: "all",
+          showUnassigned: false,
+          showActiveFiles: false
+        }
+      }
     };
     
     // Listeners for state changes
@@ -73,6 +112,30 @@ class AppStore {
     
     // Notify all listeners
     this._notify();
+  }
+  
+  /**
+   * Update ephemeral state (computed/cached data that shouldn't trigger saves)
+   * Phase 3 Fix: Prevents save spam from fileRegistry/fileHistory updates during render
+   * Updates state without triggering notifications (no persistence save)
+   */
+  setEphemeralState(partial) {
+    // Merge partial update (same as setState, but no notification)
+    Object.keys(partial).forEach(key => {
+      if (key === 'openProjects') {
+        // Normalize: accept Set or Array, store as Array
+        if (partial[key] instanceof Set) {
+          this._state[key] = Array.from(partial[key]);
+        } else if (Array.isArray(partial[key])) {
+          this._state[key] = partial[key];
+        } else {
+          this._state[key] = [];
+        }
+      } else {
+        this._state[key] = partial[key];
+      }
+    });
+    // No _notify() call - this prevents persistence saves
   }
   
   /**
@@ -130,6 +193,10 @@ class AppStore {
       settings: state.settings || {},
       events: state.events || [],
       recurringRules: state.recurringRules || [],
+      habits: Array.isArray(state.habits) ? state.habits : [],
+      habitCheckins: state.habitCheckins && typeof state.habitCheckins === 'object' ? state.habitCheckins : {},
+      routines: Array.isArray(state.routines) ? state.routines : [],
+      routineCheckins: state.routineCheckins && typeof state.routineCheckins === 'object' ? state.routineCheckins : {},
       currentView: state.currentView || 'tasks',
       currentSort: state.currentSort || 'all',
       currentFilter: state.currentFilter || 'all',
@@ -139,10 +206,65 @@ class AppStore {
       boardProjectFilter: state.boardProjectFilter || 'all',
       searchQuery: state.searchQuery || '',
       currentFileView: state.currentFileView || 'all',
+      currentFileProjectFilter: state.currentFileProjectFilter || 'all',
       selectedProjectId: state.selectedProjectId || null,
       // GUARANTEE: Always objects, never undefined
       fileRegistry: state.fileRegistry && typeof state.fileRegistry === 'object' ? state.fileRegistry : {},
-      fileHistory: state.fileHistory && typeof state.fileHistory === 'object' ? state.fileHistory : {}
+      fileHistory: state.fileHistory && typeof state.fileHistory === 'object' ? state.fileHistory : {},
+      // Persisted files list (authoritative)
+      files: Array.isArray(state.files) ? state.files : [],
+      // Workflow state (with defaults)
+      workflow: state.workflow ? {
+        laneOrder: Array.isArray(state.workflow.laneOrder) ? state.workflow.laneOrder : ["lab", "comp", "writing", "presentation", "unassigned"],
+        columns: state.workflow.columns && typeof state.workflow.columns === 'object' ? state.workflow.columns : {
+          lab: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+          comp: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+          writing: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+          presentation: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+          unassigned: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+        },
+        placement: state.workflow.placement && typeof state.workflow.placement === 'object' ? state.workflow.placement : {},
+        rules: state.workflow.rules && typeof state.workflow.rules === 'object' ? state.workflow.rules : {
+          tagToLane: {
+            "#lab": "lab",
+            "#analysis": "comp",
+            "#paper": "writing",
+            "#slides": "presentation"
+          }
+        },
+        ui: state.workflow.ui && typeof state.workflow.ui === 'object' ? {
+          activeProjectId: state.workflow.ui.activeProjectId || "all",
+          showUnassigned: state.workflow.ui.showUnassigned || false,
+          showActiveFiles: state.workflow.ui.showActiveFiles || false
+        } : {
+          activeProjectId: "all",
+          showUnassigned: false,
+          showActiveFiles: false
+        }
+      } : {
+        laneOrder: ["lab", "comp", "writing", "presentation", "unassigned"],
+        columns: {
+          lab: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+          comp: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+          writing: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+          presentation: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+          unassigned: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+        },
+        placement: {},
+        rules: {
+          tagToLane: {
+            "#lab": "lab",
+            "#analysis": "comp",
+            "#paper": "writing",
+            "#slides": "presentation"
+          }
+        },
+        ui: {
+          activeProjectId: "all",
+          showUnassigned: false,
+          showActiveFiles: false
+        }
+      }
     };
     this._notify();
   }
@@ -163,6 +285,7 @@ class AppStore {
   /**
    * Export state for saving to storage
    * Phase 3 Fix: openProjects is already Array, no conversion needed
+   * Phase 3 Fix: Exclude fileRegistry/fileHistory from persistence (derived data, recomputed on load)
    */
   exportState() {
     return {
@@ -174,8 +297,39 @@ class AppStore {
       settings: this._state.settings,
       events: this._state.events,
       recurringRules: this._state.recurringRules,
-      fileRegistry: this._state.fileRegistry,
-      fileHistory: this._state.fileHistory
+      habits: Array.isArray(this._state.habits) ? this._state.habits : [],
+      habitCheckins: this._state.habitCheckins && typeof this._state.habitCheckins === 'object' ? this._state.habitCheckins : {},
+      routines: Array.isArray(this._state.routines) ? this._state.routines : [],
+      routineCheckins: this._state.routineCheckins && typeof this._state.routineCheckins === 'object' ? this._state.routineCheckins : {},
+      files: Array.isArray(this._state.files) ? this._state.files : [],
+      workflow: this._state.workflow || {
+        laneOrder: ["lab", "comp", "writing", "presentation", "unassigned"],
+        columns: {
+          lab: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+          comp: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+          writing: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+          presentation: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+          unassigned: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+        },
+        placement: {},
+        rules: {
+          tagToLane: {
+            "#lab": "lab",
+            "#analysis": "comp",
+            "#paper": "writing",
+            "#slides": "presentation"
+          }
+        },
+        ui: {
+          activeProjectId: "all",
+          showUnassigned: false,
+          showActiveFiles: false
+        }
+      }
+      // Phase 3 Fix: fileRegistry and fileHistory are derived data, recomputed on load
+      // Excluding them prevents noisy saves and reduces file size
+      // fileRegistry: this._state.fileRegistry,
+      // fileHistory: this._state.fileHistory
     };
   }
 }

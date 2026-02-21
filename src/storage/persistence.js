@@ -99,9 +99,16 @@ async function performSave() {
   updateSaveIndicator('saving');
   
   try {
+    // Phase 3 Fix: Debug log to prove files are being saved
+    console.log('🧪 saving snapshot', { 
+      files: (stateToSave.files || []).length, 
+      first: (stateToSave.files || [])[0]?.name 
+    });
+    
     console.log('💾 SAVE start:', {
       tasks: stateToSave.tasks?.length || 0,
       projects: stateToSave.projects?.length || 0,
+      files: stateToSave.files?.length || 0,
       timestamp: new Date().toISOString()
     });
     
@@ -131,7 +138,8 @@ async function performSave() {
       console.log('✅ SAVE success:', {
         timestamp: new Date().toISOString(),
         tasks: stateToSave.tasks?.length || 0,
-        projects: stateToSave.projects?.length || 0
+        projects: stateToSave.projects?.length || 0,
+        files: stateToSave.files?.length || 0
       });
       
       // Update UI indicator - only called when write actually succeeded
@@ -217,6 +225,18 @@ function createImmutableSnapshot(state) {
     settings: state.settings ? { ...state.settings } : {},
     events: state.events ? state.events.map(e => ({ ...e })) : [],
     recurringRules: state.recurringRules ? state.recurringRules.map(r => ({ ...r })) : [],
+    habits: state.habits ? state.habits.map(h => ({ ...h })) : [],
+    habitCheckins: state.habitCheckins ? { ...state.habitCheckins } : {},
+    routines: state.routines ? state.routines.map(r => ({ ...r })) : [],
+    routineCheckins: state.routineCheckins ? { ...state.routineCheckins } : {},
+    files: state.files ? state.files.map(f => ({ ...f })) : [], // ✅ Persisted files list
+    workflow: state.workflow ? {
+      laneOrder: Array.isArray(state.workflow.laneOrder) ? [...state.workflow.laneOrder] : [],
+      columns: state.workflow.columns ? { ...state.workflow.columns } : {},
+      placement: state.workflow.placement ? { ...state.workflow.placement } : {},
+      rules: state.workflow.rules ? { ...state.workflow.rules } : {},
+      ui: state.workflow.ui ? { ...state.workflow.ui } : {}
+    } : {},
     fileRegistry: state.fileRegistry ? { ...state.fileRegistry } : {},
     fileHistory: state.fileHistory ? { ...state.fileHistory } : {}
   };
