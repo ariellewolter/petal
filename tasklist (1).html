@@ -236,6 +236,116 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 .workflow-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;cursor:move;}
 .workflow-card.blocked{border-left:3px solid var(--overdue);opacity:0.7;}
 .workflow-card.done{opacity:0.6;}
+
+/* Workflow task cards - match project-card design */
+.workflow-task-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:12px;margin-bottom:12px;cursor:move;transition:box-shadow .2s, transform .15s;position:relative;animation:fadeSlide .3s ease both;}
+.workflow-task-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:16px 0 0 16px;background:var(--rose-soft);}
+.workflow-task-card[data-priority="high"]::before{background:var(--rose);}
+.workflow-task-card[data-priority="medium"]::before{background:var(--rose-soft);}
+.workflow-task-card[data-priority="low"]::before{background:var(--sage);}
+.workflow-task-card:hover{box-shadow:0 4px 24px rgba(160,110,100,.1);transform:translateY(-1px);}
+.workflow-task-card.done{opacity:.55;}
+.workflow-task-card.done .task-title{text-decoration:line-through;text-decoration-color:var(--rose-soft);}
+.workflow-task-card.blocked{border-left:3px solid var(--overdue);opacity:0.8;}
+.workflow-task-card:active{cursor:grabbing;transform:scale(.98);}
+
+/* ── NEW WORKFLOW LANE STRUCTURE (Project-card style) ── */
+.wf-lane{
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.wf-lane-head{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+}
+
+.wf-lane-title{
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--text);
+}
+
+.wf-lane-meta{
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-left: auto;
+}
+
+.wf-collapse{
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 11px;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all .15s;
+  font-family: 'Jost', sans-serif;
+}
+
+.wf-collapse:hover{
+  background: var(--surface);
+  color: var(--text);
+}
+
+.wf-lane-body{
+  padding: 14px 16px 18px;
+}
+
+.wf-group{
+  margin-top: 14px;
+}
+
+.wf-group:first-child{
+  margin-top: 0;
+}
+
+.wf-group-title{
+  font-size: 11px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin: 0 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Jost', sans-serif;
+  font-weight: 400;
+}
+
+.wf-group.wf-done .wf-group-title{
+  cursor: pointer;
+  user-select: none;
+}
+
+.wf-group.wf-done .wf-group-title:hover{
+  color: var(--text);
+}
+
+.wf-cards{
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Make task cards slightly tighter in workflow */
+.wf-cards .task-card{
+  margin-bottom: 0;
+}
+
+.wf-cards .workflow-task-card{
+  margin-bottom: 0;
+}
 .column-header{font-size:12px;font-weight:500;color:var(--text);}
 .workflow-drop-slot{min-height:40px;border:2px dashed var(--border);border-radius:4px;margin-top:4px;transition:all 0.2s;}
 .workflow-drop-slot:hover{border-color:var(--rose);background:var(--rose-pale);}
@@ -338,6 +448,11 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 
 /* view toggle between tasks/projects */
 /* #view-tasks, #view-projects - handled by JS */
+
+/* Force hide view-projects when not active */
+.view-projects-hidden {
+  display: none !important;
+}
 
 /* ── WORKFLOW VIEW RESPONSIVE ── */
 #view-workflow{overflow-x:hidden;width:100%;max-width:100vw;box-sizing:border-box;}
@@ -1180,12 +1295,20 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
         <span style="color:white;font-size:14px;font-weight:bold;">+ Add File</span>
       </div>
       
-      <div style="display:flex;gap:8px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:8px;">
-        <button id="file-tab-all" onclick="setFileView('all', this)" class="file-view-tab" style="background:none;border:none;border-bottom:2px solid var(--rose);padding:8px 16px;font-size:12px;color:var(--rose);cursor:pointer;">All Files</button>
-        <button id="file-tab-current" onclick="setFileView('current', this)" class="file-view-tab" style="background:none;border:none;border-bottom:2px solid transparent;padding:8px 16px;font-size:12px;color:var(--text-dim);cursor:pointer;">Current Only</button>
-        <button id="file-tab-active" onclick="setFileView('active', this)" class="file-view-tab" style="background:none;border:none;border-bottom:2px solid transparent;padding:8px 16px;font-size:12px;color:var(--text-dim);cursor:pointer;">Active</button>
-        <button id="file-tab-stale" onclick="setFileView('stale', this)" class="file-view-tab" style="background:none;border:none;border-bottom:2px solid transparent;padding:8px 16px;font-size:12px;color:var(--text-dim);cursor:pointer;">Stale</button>
-        <button id="file-tab-submissions" onclick="setFileView('submissions', this)" class="file-view-tab" style="background:none;border:none;border-bottom:2px solid transparent;padding:8px 16px;font-size:12px;color:var(--text-dim);cursor:pointer;">Submissions</button>
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:20px;flex-wrap:wrap;">
+        <div style="display:flex;gap:8px;border-bottom:1px solid var(--border);padding-bottom:8px;flex:1;">
+          <button id="file-tab-all" onclick="setFileView('all', this)" class="file-view-tab" style="background:none;border:none;border-bottom:2px solid var(--rose);padding:8px 16px;font-size:12px;color:var(--rose);cursor:pointer;">All Files</button>
+          <button id="file-tab-current" onclick="setFileView('current', this)" class="file-view-tab" style="background:none;border:none;border-bottom:2px solid transparent;padding:8px 16px;font-size:12px;color:var(--text-dim);cursor:pointer;">Current Only</button>
+          <button id="file-tab-active" onclick="setFileView('active', this)" class="file-view-tab" style="background:none;border:none;border-bottom:2px solid transparent;padding:8px 16px;font-size:12px;color:var(--text-dim);cursor:pointer;">Active</button>
+          <button id="file-tab-stale" onclick="setFileView('stale', this)" class="file-view-tab" style="background:none;border:none;border-bottom:2px solid transparent;padding:8px 16px;font-size:12px;color:var(--text-dim);cursor:pointer;">Stale</button>
+          <button id="file-tab-submissions" onclick="setFileView('submissions', this)" class="file-view-tab" style="background:none;border:none;border-bottom:2px solid transparent;padding:8px 16px;font-size:12px;color:var(--text-dim);cursor:pointer;">Submissions</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <label style="font-size:11px;color:var(--text-dim);white-space:nowrap;">Filter by Project:</label>
+          <select id="file-project-filter" onchange="setFileProjectFilter(this.value)" style="padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px;cursor:pointer;min-width:180px;">
+            <option value="all">All Projects</option>
+          </select>
+        </div>
       </div>
       
       <div id="files-view-container"></div>
@@ -1217,57 +1340,138 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
     <!-- Four Main Workflow Lanes -->
     <div class="workflow-lanes-grid">
       <!-- Wet Lab Lane -->
-      <div class="workflow-lane" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:0;">
-        <div class="lane-header" style="background:var(--bg2);border-bottom:1px solid var(--border);padding:16px;">
-          <h3 style="font-size:18px;font-weight:600;color:var(--rose);margin:0;display:flex;align-items:center;gap:8px;">
-            <span>🧪</span>
-            <span>Wet Lab</span>
-          </h3>
+      <div class="wf-lane">
+        <div class="wf-lane-head">
+          <div class="wf-lane-title">🧪 Wet Lab</div>
+          <div class="wf-lane-meta" id="wf-lab-meta"></div>
+          <button class="wf-collapse" onclick="toggleLane('lab')">Hide</button>
         </div>
-        <div id="lane-lab" class="lane-columns" style="padding:16px;"></div>
+        <div class="wf-lane-body" id="wf-lab-body">
+          <div class="wf-group">
+            <div class="wf-group-title">Next</div>
+            <div class="wf-cards" id="wf-lab-next"></div>
+          </div>
+          <div class="wf-group">
+            <div class="wf-group-title">Scheduled</div>
+            <div class="wf-cards" id="wf-lab-scheduled"></div>
+          </div>
+          <div class="wf-group">
+            <div class="wf-group-title">Later</div>
+            <div class="wf-cards" id="wf-lab-later"></div>
+          </div>
+          <div class="wf-group wf-done">
+            <div class="wf-group-title" onclick="toggleDone('lab')">Done ▾</div>
+            <div class="wf-cards" id="wf-lab-done" style="display:none;"></div>
+          </div>
+        </div>
       </div>
       
       <!-- Computational Lane -->
-      <div class="workflow-lane" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:0;">
-        <div class="lane-header" style="background:var(--bg2);border-bottom:1px solid var(--border);padding:16px;">
-          <h3 style="font-size:18px;font-weight:600;color:var(--sage);margin:0;display:flex;align-items:center;gap:8px;">
-            <span>💻</span>
-            <span>Computational</span>
-          </h3>
+      <div class="wf-lane">
+        <div class="wf-lane-head">
+          <div class="wf-lane-title">💻 Computational</div>
+          <div class="wf-lane-meta" id="wf-comp-meta"></div>
+          <button class="wf-collapse" onclick="toggleLane('comp')">Hide</button>
         </div>
-        <div id="lane-comp" class="lane-columns" style="padding:16px;"></div>
+        <div class="wf-lane-body" id="wf-comp-body">
+          <div class="wf-group">
+            <div class="wf-group-title">Next</div>
+            <div class="wf-cards" id="wf-comp-next"></div>
+          </div>
+          <div class="wf-group">
+            <div class="wf-group-title">Scheduled</div>
+            <div class="wf-cards" id="wf-comp-scheduled"></div>
+          </div>
+          <div class="wf-group">
+            <div class="wf-group-title">Later</div>
+            <div class="wf-cards" id="wf-comp-later"></div>
+          </div>
+          <div class="wf-group wf-done">
+            <div class="wf-group-title" onclick="toggleDone('comp')">Done ▾</div>
+            <div class="wf-cards" id="wf-comp-done" style="display:none;"></div>
+          </div>
+        </div>
       </div>
       
       <!-- Writing Lane -->
-      <div class="workflow-lane" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:0;">
-        <div class="lane-header" style="background:var(--bg2);border-bottom:1px solid var(--border);padding:16px;">
-          <h3 style="font-size:18px;font-weight:600;color:var(--mauve);margin:0;display:flex;align-items:center;gap:8px;">
-            <span>📝</span>
-            <span>Writing</span>
-          </h3>
+      <div class="wf-lane">
+        <div class="wf-lane-head">
+          <div class="wf-lane-title">📝 Writing</div>
+          <div class="wf-lane-meta" id="wf-writing-meta"></div>
+          <button class="wf-collapse" onclick="toggleLane('writing')">Hide</button>
         </div>
-        <div id="lane-writing" class="lane-columns" style="padding:16px;"></div>
+        <div class="wf-lane-body" id="wf-writing-body">
+          <div class="wf-group">
+            <div class="wf-group-title">Next</div>
+            <div class="wf-cards" id="wf-writing-next"></div>
+          </div>
+          <div class="wf-group">
+            <div class="wf-group-title">Scheduled</div>
+            <div class="wf-cards" id="wf-writing-scheduled"></div>
+          </div>
+          <div class="wf-group">
+            <div class="wf-group-title">Later</div>
+            <div class="wf-cards" id="wf-writing-later"></div>
+          </div>
+          <div class="wf-group wf-done">
+            <div class="wf-group-title" onclick="toggleDone('writing')">Done ▾</div>
+            <div class="wf-cards" id="wf-writing-done" style="display:none;"></div>
+          </div>
+        </div>
       </div>
       
       <!-- Presentation Lane -->
-      <div class="workflow-lane" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:0;">
-        <div class="lane-header" style="background:var(--bg2);border-bottom:1px solid var(--border);padding:16px;">
-          <h3 style="font-size:18px;font-weight:600;color:var(--soon);margin:0;display:flex;align-items:center;gap:8px;">
-            <span>📊</span>
-            <span>Presentation</span>
-          </h3>
+      <div class="wf-lane">
+        <div class="wf-lane-head">
+          <div class="wf-lane-title">📊 Presentation</div>
+          <div class="wf-lane-meta" id="wf-presentation-meta"></div>
+          <button class="wf-collapse" onclick="toggleLane('presentation')">Hide</button>
         </div>
-        <div id="lane-presentation" class="lane-columns" style="padding:16px;"></div>
+        <div class="wf-lane-body" id="wf-presentation-body">
+          <div class="wf-group">
+            <div class="wf-group-title">Next</div>
+            <div class="wf-cards" id="wf-presentation-next"></div>
+          </div>
+          <div class="wf-group">
+            <div class="wf-group-title">Scheduled</div>
+            <div class="wf-cards" id="wf-presentation-scheduled"></div>
+          </div>
+          <div class="wf-group">
+            <div class="wf-group-title">Later</div>
+            <div class="wf-cards" id="wf-presentation-later"></div>
+          </div>
+          <div class="wf-group wf-done">
+            <div class="wf-group-title" onclick="toggleDone('presentation')">Done ▾</div>
+            <div class="wf-cards" id="wf-presentation-done" style="display:none;"></div>
+          </div>
+        </div>
       </div>
     </div>
     
     <!-- Unassigned Tasks Section (Collapsible) -->
     <div style="margin-top:20px;border-top:2px solid var(--border);padding-top:20px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;cursor:pointer;" onclick="toggleUnassignedSection()">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;cursor:pointer;" onclick="if(window.Petal?.handlers?.toggleUnassignedSection){window.Petal.handlers.toggleUnassignedSection();window.Petal?.ui?.renderWorkflow?.(document.getElementById('view-workflow'),window.Petal.store.getState(),window.Petal.handlers);}">
         <h3 style="font-size:16px;font-weight:500;color:var(--text-dim);margin:0;">📋 Unassigned Tasks</h3>
         <span id="unassigned-toggle" style="font-size:14px;color:var(--text-dim);">▼</span>
       </div>
-      <div id="lane-unassigned" class="lane-columns" style="display:none;padding:12px;background:var(--bg2);border-radius:8px;"></div>
+      <div id="wf-unassigned-body" class="wf-lane-body" style="display:none;padding:12px;background:var(--bg2);border-radius:8px;">
+        <div class="wf-group">
+          <div class="wf-group-title">Next</div>
+          <div class="wf-cards" id="wf-unassigned-next"></div>
+        </div>
+        <div class="wf-group">
+          <div class="wf-group-title">Scheduled</div>
+          <div class="wf-cards" id="wf-unassigned-scheduled"></div>
+        </div>
+        <div class="wf-group">
+          <div class="wf-group-title">Later</div>
+          <div class="wf-cards" id="wf-unassigned-later"></div>
+        </div>
+        <div class="wf-group wf-done">
+          <div class="wf-group-title" onclick="toggleDone('unassigned')">Done ▾</div>
+          <div class="wf-cards" id="wf-unassigned-done" style="display:none;"></div>
+        </div>
+      </div>
     </div>
     
     <!-- Active Files Sidebar (toggleable) -->
@@ -1483,9 +1687,9 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
   </div>
 
   <!-- ═══════════════════════════════════ PROJECTS VIEW ═══ -->
-  <div id="view-projects" style="display:none;">
+  <div id="view-projects" class="view-projects-hidden" style="display:none;">
     <!-- Project Selector and Create Form -->
-    <div style="display:flex;gap:16px;margin-bottom:24px;align-items:flex-start;">
+    <div id="project-selector-create-section" style="display:flex;gap:16px;margin-bottom:24px;align-items:flex-start;">
       <div style="flex:1;">
         <label style="font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-dim);display:block;margin-bottom:6px;">Select Project</label>
         <select id="matrix-project-select" onchange="selectProjectForMatrix(this.value)" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px;font-family:'Jost',sans-serif;cursor:pointer;">
@@ -1853,13 +2057,13 @@ window.renderToday = async () => {
 window.Petal = window.Petal || {};
 window.Petal.features = window.Petal.features || {};
 window.Petal.features.fileManagement = {
-  buildFileRegistry: () => {
+  buildFileRegistry: (commit = true) => {
     const ctx = createPageContext();
     const result = FileManagement.buildFileRegistry({
       ...ctx,
       fileRegistry: window.fileRegistry || {},
       fileHistory: window.fileHistory || {}
-    });
+    }, { commit }); // Phase 3 Fix: Allow commit control
     // Update window globals
     window.fileRegistry = result.fileRegistry;
     window.fileHistory = result.fileHistory;
@@ -2217,7 +2421,8 @@ if (typeof window !== 'undefined' && window.Petal?.store) {
   };
   
   // Protect local variables from direct mutation (development only)
-  if (process.env.NODE_ENV !== 'production') {
+  // Phase 3 Fix: process.env doesn't exist in browser, use window check instead
+  if (typeof process === 'undefined' || (process.env && process.env.NODE_ENV !== 'production')) {
     const protectArray = (arr, name) => {
       return new Proxy(arr, {
         set(target, prop, value) {
@@ -2667,16 +2872,12 @@ function refreshProjectSelects() {
     const state = store.getState();
     console.log('🔍 DEBUG projects snapshot (refreshProjectSelects):', {
       storeProjects: state.projects?.length || 0,
-      storeProjectIds: (state.projects || []).map(p => p.id),
-      localProjectsVar: projects?.length || 0, // For comparison
-      windowProjectsGetter: window.projects?.length || 0 // For comparison
+      storeProjectIds: (state.projects || []).map(p => p.id)
     });
     
     // Phase 3: Read ONLY from store (single source of truth)
+    // Never read from globals, never accept params, never sync local vars
     const projectsFromStore = state.projects || [];
-    
-    // Sync local variable for backward compatibility (but don't use it for rendering)
-    projects = projectsFromStore;
     
     // Step 3 cleanup: Use extracted helper if available
     if (window.Petal?.ui?.refreshProjectSelects) {
@@ -3118,13 +3319,21 @@ async function initState() {
       currentFileView: currentFileView,
       selectedProjectId: selectedProjectId,
       fileRegistry: loadedData.fileRegistry || {},
-      fileHistory: loadedData.fileHistory || {}
+      fileHistory: loadedData.fileHistory || {},
+      files: loadedData.files || [] // Phase 3 Fix: Load persisted files
     };
+    
+    // Phase 3 Fix: Debug log to prove files are being loaded
+    console.log('🧪 loaded snapshot', { 
+      files: (loadedData.files || []).length, 
+      first: (loadedData.files || [])[0]?.name 
+    });
     
     console.log('🔍 DEBUG: Loading into store:', {
       tasksCount: stateToLoad.tasks.length,
       projectsCount: stateToLoad.projects.length,
-      openProjectsCount: stateToLoad.openProjects.length
+      openProjectsCount: stateToLoad.openProjects.length,
+      filesCount: stateToLoad.files.length
     });
     
     window.Petal.store.loadState(stateToLoad);
@@ -3140,6 +3349,16 @@ async function initState() {
     
     // Verify what's in the store after loading
     const storeState = window.Petal.store.getState();
+    
+    // Step 3: Test debug IPC to verify we're talking to the right main process
+    if (window.electronAPI?.debugPid) {
+      try {
+        const debugInfo = await window.electronAPI.debugPid();
+        console.log('🔍 debugPid result:', debugInfo);
+      } catch (e) {
+        console.error('❌ debugPid failed:', e);
+      }
+    }
     
     // Phase 3 Fix: Invariant logging after load (exact types)
     console.log('INVARIANT after load:', {
@@ -3627,8 +3846,9 @@ async function save() {
   ensureCellLogSettings();
   
   // Build registry before saving to include standalone files
+  // Phase 3 Fix: Commit registry after load (not during render)
   if (window.Petal?.features?.fileManagement?.buildFileRegistry) {
-    window.Petal.features.fileManagement.buildFileRegistry();
+    window.Petal.features.fileManagement.buildFileRegistry(true); // commit: true after load
   } else {
     buildFileRegistry(); // Fallback
   }
@@ -3714,31 +3934,21 @@ async function verifySaveLocation() {
     const dataPath = await window.electronAPI.getDataPath();
     const vaultCheck = await window.electronAPI.checkVaultExists();
     
-    console.log('═══════════════════════════════════════');
-    console.log('📁 VAULT INFORMATION');
-    console.log('═══════════════════════════════════════');
-    console.log('Vault folder:', vaultPath);
-    console.log('Data file:', dataPath);
-    console.log('Vault exists:', vaultCheck.vaultExists);
-    console.log('Data file exists:', vaultCheck.dataFileExists);
-    
+    // Phase 3 Fix: One-line vault status (reduces noise, keeps confirmation)
     if (vaultCheck.dataFileExists) {
       // Try to read and show file info
       try {
         const data = await window.electronAPI.loadState();
         const state = data.data || data;
-        console.log('\n📊 DATA SUMMARY:');
-        console.log('  Tasks:', state.tasks?.length || 0);
-        console.log('  Projects:', state.projects?.length || 0);
-        console.log('  Open projects:', state.openProjects?.length || 0);
-        console.log('  Settings:', Object.keys(state.settings || {}).length, 'keys');
+        const displayPath = vaultPath.replace(/\\/g, '/').split('/').slice(-2).join('/');
+        console.log(`✓ Vault ready: ${displayPath} (petal.json: exists, tasks: ${state.tasks?.length || 0}, projects: ${state.projects?.length || 0})`);
       } catch (e) {
-        console.warn('Could not read data file:', e);
+        console.warn('⚠️ Could not read data file:', e);
       }
     } else {
-      console.warn('⚠️ Data file does not exist yet. Create a task or project to save data.');
+      const displayPath = vaultPath.replace(/\\/g, '/').split('/').slice(-2).join('/');
+      console.log(`✓ Vault ready: ${displayPath} (petal.json: missing)`);
     }
-    console.log('═══════════════════════════════════════');
   } catch (e) {
     console.error('Error verifying save location:', e);
   }
@@ -3814,6 +4024,7 @@ async function importData(event) {
 
 // ═══════════════════════ VIEW SWITCH ═══════════════════════
 function switchView(v) {
+  console.log('🔍 DEBUG: switchView called with:', v);
   // Always use window.currentView to avoid temporal dead zone issues
   window.currentView = v;
   
@@ -3822,13 +4033,41 @@ function switchView(v) {
   if (typeof currentView !== 'undefined') {
     currentView = v;
   }
+  
+  // Update store's currentView if available
+  if (window.Petal?.store) {
+    window.Petal.store.setState({ currentView: v });
+  }
+  
   document.getElementById('view-today').style.display    = v==='today'    ? '' : 'none';
   document.getElementById('view-tasks').style.display    = v==='tasks'    ? '' : 'none';
   const workflowViewEl = document.getElementById('view-workflow');
   if (workflowViewEl) workflowViewEl.style.display = v==='workflow' ? '' : 'none';
   const filesViewEl = document.getElementById('view-files');
   if (filesViewEl) filesViewEl.style.display = v==='files' ? '' : 'none';
-  document.getElementById('view-projects').style.display = v==='projects' ? '' : 'none';
+  const projectsViewEl = document.getElementById('view-projects');
+  if (projectsViewEl) {
+    // Always explicitly hide projects view unless it's the active view
+    if (v === 'projects') {
+      // Remove hidden class and show normally
+      projectsViewEl.classList.remove('view-projects-hidden');
+      projectsViewEl.style.display = '';
+      console.log('🔍 DEBUG: view-projects display set to: visible');
+      // Phase 3 Fix: Call render() after switching to projects view
+      console.log('🔍 DEBUG: Projects view activated, calling render()');
+      // Show project creation form if no project is selected
+      const createFormSection = document.getElementById('project-selector-create-section');
+      if (createFormSection && !selectedProjectId) {
+        createFormSection.style.display = '';
+      }
+      render();
+    } else {
+      // Explicitly hide projects view for all other views using class
+      projectsViewEl.classList.add('view-projects-hidden');
+      projectsViewEl.style.display = 'none';
+      console.log('🔍 DEBUG: view-projects display set to: none (view:', v, ')');
+    }
+  }
   const plannerViewEl = document.getElementById('view-planner');
   if (plannerViewEl) {
     if (v === 'planner') {
@@ -5909,7 +6148,7 @@ async function renderFilesTab(tab, project) {
     html += '</div>';
     html += '</div>';
     html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">';
-    html += `<button onclick="openFile(JSON.parse(this.getAttribute('data-file-link')))" data-file-link='${fileDataAttr}' style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">Open</button>`;
+    html += `<button class="file-open-btn" data-path="${escAttr(JSON.stringify(fileLink))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">Open</button>`;
     if (tab === 'pinned') {
       html += `<button onclick="toggleFilePinned(${selectedProjectId}, '${fileDataAttr}')" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:10px;cursor:pointer;color:var(--text-dim);">Unpin</button>`;
     } else {
@@ -6068,7 +6307,7 @@ async function renderProjectFilesSidebar(tab, project) {
     html += '</div>';
     html += '</div>';
     html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">';
-    html += `<button onclick="openFile(JSON.parse(this.getAttribute('data-file-link')))" data-file-link='${fileDataAttr}' style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">Open</button>`;
+    html += `<button class="file-open-btn" data-path="${escAttr(JSON.stringify(fileLink))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">Open</button>`;
     if (tab === 'pinned') {
       html += `<button onclick="toggleFilePinned(${selectedProjectId}, '${fileDataAttr}')" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:10px;cursor:pointer;color:var(--text-dim);">Unpin</button>`;
     } else {
@@ -6372,7 +6611,7 @@ async function renderProjectFiles() {
       const safeLink = escJsonForAttr(file);
       const icon = fileIcon(file.abs_path || file.onedrive_rel || file.share_url || '');
       const fileIdAttr = escJsonForDataAttr(file);
-      html += `<div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg2);border-radius:6px;margin-bottom:6px;cursor:pointer;" data-file-link='${fileIdAttr}' onclick="openFile(JSON.parse(this.getAttribute('data-file-link')))">`;
+      html += `<div class="file-open-div" style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg2);border-radius:6px;margin-bottom:6px;cursor:pointer;" data-path="${escAttr(JSON.stringify(file))}">`;
       html += `<span style="font-size:16px;">${icon}</span>`;
       html += `<div style="flex:1;min-width:0;"><div style="font-size:12px;color:var(--text);">${esc(label)}</div><div style="font-size:10px;color:var(--text-dim);">${esc(file.onedrive_rel || file.abs_path || '')}</div></div>`;
       html += '</div>';
@@ -6391,7 +6630,7 @@ async function renderProjectFiles() {
       const label = f.label || f.name || 'File';
       const icon = fileIcon(fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url || '');
       const fileDataAttr = escJsonForDataAttr(fileLink);
-      html += `<div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg2);border-radius:6px;margin-bottom:6px;cursor:pointer;" data-file-link='${fileDataAttr}' onclick="openFile(JSON.parse(this.getAttribute('data-file-link')))">`;
+      html += `<div class="file-open-div" style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg2);border-radius:6px;margin-bottom:6px;cursor:pointer;" data-path="${escAttr(JSON.stringify(fileLink))}">`;
       html += `<span style="font-size:16px;">${icon}</span>`;
       html += `<div style="flex:1;min-width:0;"><div style="font-size:12px;color:var(--text);">${esc(label)}</div></div>`;
       html += `<button onclick="event.stopPropagation();removePinnedFile(${selectedProjectId}, '${fileDataAttr}')" style="padding:2px 6px;background:var(--rose-pale);border:1px solid var(--rose-soft);border-radius:4px;color:var(--rose);font-size:10px;cursor:pointer;">Remove</button>`;
@@ -6411,7 +6650,7 @@ async function renderProjectFiles() {
       const safeLink = escJsonForAttr(file);
       const icon = fileIcon(file.abs_path || file.onedrive_rel || file.share_url || '');
       const fileIdAttr = escJsonForDataAttr(file);
-      html += `<div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg2);border-radius:6px;margin-bottom:6px;cursor:pointer;" data-file-link='${fileIdAttr}' onclick="openFile(JSON.parse(this.getAttribute('data-file-link')))">`;
+      html += `<div class="file-open-div" style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg2);border-radius:6px;margin-bottom:6px;cursor:pointer;" data-path="${escAttr(JSON.stringify(file))}">`;
       html += `<span style="font-size:16px;">${icon}</span>`;
       html += `<div style="flex:1;min-width:0;"><div style="font-size:12px;color:var(--text);">${esc(label)}</div><div style="font-size:10px;color:var(--text-dim);">${esc(task)}</div></div>`;
       html += '</div>';
@@ -7440,6 +7679,17 @@ function escJsonForDataAttr(jsonObj) {
   return jsonStr.replace(/'/g, '&#39;');
 }
 
+// Escape a string for safe use in HTML attributes
+function escAttr(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 function groupKey(task){
   const due=parseDate(task.due);
   if(!due)return{label:'Someday',sort:'9999'};
@@ -7566,16 +7816,9 @@ async function render(){
     renderProjects();
   }
   else {
-    // Default fallback - render projects
-    // Sync data from store before rendering
-    if (window.Petal?.store) {
-      const state = window.Petal.store.getState();
-      tasks = state.tasks || [];
-      projects = state.projects || [];
-      // NOTE: window.tasks, window.projects are now read-only getters - no assignment needed
-      openProjects = state.openProjects instanceof Set ? state.openProjects : new Set(state.openProjects || []);
-    }
-    renderProjects();
+    // Default fallback - do nothing (don't render projects on other views)
+    // Only render projects when explicitly on projects view
+    console.log('⚠️ render() fallback: currentView not handled:', currentView);
   }
   
   // Always hide all forms after rendering (use setTimeout to ensure DOM is updated)
@@ -7754,7 +7997,7 @@ async function renderTaskList(){
           const safeLink = escJsonForAttr(fileLink);
           const icon = fileIcon(fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url || '');
           const warning = fileLink.warning ? `<span style="color:var(--soon);" title="${esc(fileLink.warning)}">⚠️</span>` : '';
-          return `<a href="#" class="file-chip" onclick="event.preventDefault();openFile(${safeLink})">${icon} ${esc(label)}${warning}</a>`;
+          return `<a href="#" class="file-chip" data-path="${escAttr(JSON.stringify(fileLink))}">${icon} ${esc(label)}${warning}</a>`;
         }));
         filesHtml = `<div class="task-files">${fileHtmls.join('')}</div>`;
       }
@@ -7858,7 +8101,28 @@ async function openFile(fileLink) {
           window.open(resolved.path, '_blank');
         } else {
           // Open local file
-          await window.electronAPI.openFile(resolved.path);
+          try {
+            // Step 3: Prove renderer is calling the API we think it is
+            console.log('🖱️ renderer calling openFile', resolved.path, window.electronAPI);
+            const result = await window.electronAPI.openFile(resolved.path);
+            if (result && result.success === false) {
+              console.error('Failed to open file:', result.error);
+              // Fallback to share_url if available
+              if (fileLink.share_url) {
+                window.open(fileLink.share_url, '_blank');
+              } else {
+                alert('Could not open file: ' + (result.error || 'Unknown error'));
+              }
+            }
+          } catch (openError) {
+            console.error('Error calling openFile:', openError);
+            // Fallback to share_url if available
+            if (fileLink.share_url) {
+              window.open(fileLink.share_url, '_blank');
+            } else {
+              alert('Could not open file: ' + (openError.message || 'Unknown error'));
+            }
+          }
         }
       } else {
         // Fallback: try share_url or show error
@@ -7940,29 +8204,56 @@ async function saveWorkflowLanes(projectId) {
 }
 
 function renderProjects(){
+  console.log('🔍 DEBUG: renderProjects() called');
+  
+  // ═══════════════════════ GUARD: Only render if projects view is visible ═══════════════════════
+  const projectsViewEl = document.getElementById('view-projects');
+  if (!projectsViewEl) {
+    console.warn('⚠️ renderProjects: view-projects element not found, skipping render');
+    return;
+  }
+  
+  // Check current view from store
+  const store = window.Petal?.store;
+  if (!store) {
+    console.error('❌ renderProjects: Store not available!');
+    return;
+  }
+  
+  const state = store.getState();
+  const currentViewFromStore = state?.currentView;
+  
+  // Only render if projects view is the current view
+  if (currentViewFromStore !== 'projects') {
+    console.log('⚠️ renderProjects: Projects view not active, skipping render. currentView:', currentViewFromStore);
+    return;
+  }
+  
+  // Double-check that view-projects is visible
+  if (projectsViewEl.style.display === 'none') {
+    console.log('⚠️ renderProjects: view-projects is hidden, skipping render');
+    return;
+  }
+  
   // ═══════════════════════ PHASE 3 FIX: Read from store only ═══════════════════════
   try {
-    // DEBUG: Confirm store has projects when blank happens
-    const store = window.Petal?.store;
-    if (!store) {
-      console.error('❌ renderProjects: Store not available!');
-      return;
-    }
-    
-    const state = store.getState();
     console.log('🔍 DEBUG projects snapshot (renderProjects):', {
       storeProjects: state.projects?.length || 0,
       storeProjectIds: (state.projects || []).map(p => p.id),
-      openProjects: state.openProjects instanceof Set ? Array.from(state.openProjects) : state.openProjects,
+      openProjects: Array.isArray(state.openProjects) ? state.openProjects : (state.openProjects instanceof Set ? Array.from(state.openProjects) : []),
       currentProjFilter: state.currentProjFilter || currentProjFilter,
-      localProjectsVar: projects?.length || 0, // For comparison
-      windowProjectsGetter: window.projects?.length || 0 // For comparison
+      containerExists: !!document.getElementById('project-container'),
+      viewProjectsDisplay: document.getElementById('view-projects')?.style.display,
+      currentView: state.currentView
     });
     
     // Phase 3: Read ONLY from store (single source of truth)
     const projectsFromStore = state.projects || [];
     const currentProjFilterFromStore = state.currentProjFilter || currentProjFilter;
-    const openProjectsFromStore = state.openProjects instanceof Set ? state.openProjects : new Set(state.openProjects || []);
+    // Phase 3 Fix: openProjects is Array in store, derive Set locally
+    const openProjectsFromStore = Array.isArray(state.openProjects) 
+      ? new Set(state.openProjects) 
+      : (state.openProjects instanceof Set ? state.openProjects : new Set());
     
     // Sync local variables for backward compatibility (but don't use them for rendering)
     projects = projectsFromStore;
@@ -8148,7 +8439,7 @@ function projectHTML(p, tasksFromStore = null, openProjectsFromStore = null){
       const label = f.label || f.name || 'File';
       const safeLink = escJsonForAttr(fileLink);
       const icon = fileIcon(fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url || '');
-              return `<a href="#" class="file-chip" onclick="event.preventDefault();openFile(${safeLink})" style="font-size:9px;padding:3px 6px;background:var(--bg2);border:1px solid var(--border);border-radius:3px;color:var(--text-dim);text-decoration:none;display:inline-flex;align-items:center;gap:3px;">${icon} ${esc(label)}</a>`;
+              return `<a href="#" class="file-chip" data-path="${escAttr(JSON.stringify(fileLink))}" style="font-size:9px;padding:3px 6px;background:var(--bg2);border:1px solid var(--border);border-radius:3px;color:var(--text-dim);text-decoration:none;display:inline-flex;align-items:center;gap:3px;">${icon} ${esc(label)}</a>`;
             }).join('') : '';
             return `<div class="subtask-item ${st.done?'done':''}" style="margin-left:24px;margin-top:6px;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px;">
               <div style="display:flex;align-items:flex-start;gap:8px;">
@@ -8181,7 +8472,7 @@ function projectHTML(p, tasksFromStore = null, openProjectsFromStore = null){
             const label = f.label || f.name || 'File';
             const safeLink = escJsonForAttr(fileLink);
             const icon = fileIcon(fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url || '');
-            return `<a href="#" class="file-chip" onclick="event.preventDefault();openFile(${safeLink})" style="font-size:10px;padding:4px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);text-decoration:none;display:inline-flex;align-items:center;gap:4px;">${icon} ${esc(label)}</a>`;
+            return `<a href="#" class="file-chip" data-path="${escAttr(JSON.stringify(fileLink))}" style="font-size:10px;padding:4px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);text-decoration:none;display:inline-flex;align-items:center;gap:4px;">${icon} ${esc(label)}</a>`;
           }).join('') : '';
           
           const tdl = dueLabel(t.due, true, t.done);
@@ -8273,7 +8564,7 @@ function projectHTML(p, tasksFromStore = null, openProjectsFromStore = null){
         const fileNote = f.note || '';
         return `<div class="file-entry" style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px;">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:${fileNote ? '6px' : '0'};">
-            <a href="#" class="file-chip" onclick="event.preventDefault();openFile(${safeLink})" style="flex:1;display:flex;align-items:center;gap:6px;text-decoration:none;">${icon} ${esc(label)}</a>
+            <a href="#" class="file-chip" data-path="${escAttr(JSON.stringify(fileLink))}" style="flex:1;display:flex;align-items:center;gap:6px;text-decoration:none;">${icon} ${esc(label)}</a>
             ${fileNote ? `<span class="file-note-icon" title="Has note">📝</span>` : ''}
             <button class="file-note-toggle-btn" onclick="toggleFileNote('${fileId}', this)" style="padding:4px 8px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:10px;cursor:pointer;">${fileNote ? '📝 Note' : '📝 Add note'}</button>
           </div>
@@ -8302,13 +8593,18 @@ function getMatrixStage(task) {
 // Select project for matrix view
 function selectProjectForMatrix(projectId) {
   selectedProjectId = projectId ? parseInt(projectId) : null;
+  const createFormSection = document.getElementById('project-selector-create-section');
   if (selectedProjectId) {
     document.getElementById('workflow-matrix-view').style.display = '';
     document.getElementById('project-list-view').style.display = 'none';
+    // Hide project creation form when viewing a project
+    if (createFormSection) createFormSection.style.display = 'none';
     renderWorkflowMatrix();
   } else {
     document.getElementById('workflow-matrix-view').style.display = 'none';
     document.getElementById('project-list-view').style.display = '';
+    // Show project creation form when back to project list
+    if (createFormSection) createFormSection.style.display = '';
     renderProjects();
   }
 }
@@ -8324,6 +8620,9 @@ function openProjectView(projectId) {
   selectedProjectId = parseInt(projectId);
   document.getElementById('workflow-matrix-view').style.display = '';
   document.getElementById('project-list-view').style.display = 'none';
+  // Hide project creation form when viewing a project
+  const createFormSection = document.getElementById('project-selector-create-section');
+  if (createFormSection) createFormSection.style.display = 'none';
   renderWorkflowMatrix();
 }
 
@@ -8957,7 +9256,7 @@ function renderFileItem(file, project, type) {
     html += `<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">Linked to ${linkedTasks.length} task${linkedTasks.length > 1 ? 's' : ''}</div>`;
   }
   html += '</div>';
-  html += `<button onclick="openFile(JSON.parse(this.getAttribute('data-file-link')))" data-file-link='${fileDataAttr}' style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">Open</button>`;
+  html += `<button class="file-open-btn" data-path="${escAttr(JSON.stringify(fileObj))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">Open</button>`;
   html += '</div>';
   return html;
 }
@@ -9345,7 +9644,7 @@ function openArtifactDetail(artifactId) {
       }
       html += `</div>`;
       html += `<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">`;
-      html += `<button onclick="openFile(JSON.parse('${safeLink}'))" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">Open</button>`;
+      html += `<button class="file-open-btn" data-path="${escAttr(JSON.stringify(file))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">Open</button>`;
       html += `<button onclick="editFileNotes('${file.id}')" style="padding:4px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;font-size:10px;cursor:pointer;color:var(--text-dim);">Notes</button>`;
       html += `</div>`;
       html += `</div></div>`;
@@ -10038,7 +10337,7 @@ function renderMatrixTaskCard(task, isSubtaskTask = false, subtaskId = null, ord
       const fileLink = typeof f === 'string' ? { abs_path: f } : f;
       const safeLink = escJsonForAttr(fileLink);
       const icon = fileIcon(fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url || '');
-      return `<a href="#" onclick="event.preventDefault();openFile(${safeLink})" style="font-size:9px;color:var(--text-dim);">${icon}</a>`;
+      return `<a href="#" class="file-chip" data-path="${escAttr(JSON.stringify(fileLink))}" style="font-size:9px;color:var(--text-dim);">${icon}</a>`;
     }).join('');
   }
   
@@ -10396,7 +10695,7 @@ async function renderMatrixSidebar(project, projectTasks) {
     const safeLink = esc(JSON.stringify(file).replace(/'/g, "\\'"));
     const icon = fileIcon(file.abs_path || file.onedrive_rel || file.share_url || '');
     const sourceLabel = source === 'project' ? 'Project file' : esc(task);
-    return `<div class="matrix-sidebar-item" onclick="openFile(${safeLink})">
+    return `<div class="matrix-sidebar-item file-open-div" data-path="${escAttr(JSON.stringify(file))}">
       <div class="matrix-sidebar-item-title">${icon} ${esc(label)}</div>
       <div class="matrix-sidebar-item-meta">${sourceLabel}</div>
     </div>`;
@@ -10446,7 +10745,7 @@ async function renderMatrixSidebar(project, projectTasks) {
       const label = file.label || file.name || 'File';
       const safeLink = escJsonForAttr(file);
       const icon = fileIcon(file.abs_path || file.onedrive_rel || file.share_url || '');
-      return `<div class="matrix-sidebar-item" onclick="openFile(${safeLink})">
+      return `<div class="matrix-sidebar-item file-open-div" data-path="${escAttr(JSON.stringify(file))}">
         <div class="matrix-sidebar-item-title">${icon} ${esc(label)}</div>
         <div class="matrix-sidebar-item-meta">${esc(task)}</div>
       </div>`;
@@ -10523,9 +10822,46 @@ async function refreshFileHistory() {
 // Set file view filter
 function setFileView(view, btn) {
   currentFileView = view;
-  document.querySelectorAll('.file-view-tab').forEach(b => b.classList.remove('active'));
+  // Update store
+  if (window.Petal?.store) {
+    window.Petal.store.setState({ currentFileView: view });
+  }
+  document.querySelectorAll('.file-view-tab').forEach(b => {
+    b.classList.remove('active');
+    b.style.borderBottomColor = 'transparent';
+    b.style.color = 'var(--text-dim)';
+  });
   btn.classList.add('active');
-  renderFiles();
+  btn.style.borderBottomColor = 'var(--rose)';
+  btn.style.color = 'var(--rose)';
+  
+  // Use new renderFiles if available
+  if (window.Petal?.ui?.renderFiles) {
+    const containerEl = document.getElementById('files-view-container');
+    const state = window.Petal.store?.getState() || {};
+    window.Petal.ui.renderFiles(containerEl, state, window.Petal.handlers);
+  } else {
+    // Fallback to old function
+    renderFiles();
+  }
+}
+
+// Set file project filter
+function setFileProjectFilter(projectId) {
+  // Update store
+  if (window.Petal?.store) {
+    window.Petal.store.setState({ currentFileProjectFilter: projectId || 'all' });
+  }
+  
+  // Re-render files with new filter
+  if (window.Petal?.ui?.renderFiles) {
+    const containerEl = document.getElementById('files-view-container');
+    const state = window.Petal.store?.getState() || {};
+    window.Petal.ui.renderFiles(containerEl, state, window.Petal.handlers);
+  } else {
+    // Fallback to old function
+    renderFiles();
+  }
 }
 
 // Render files view
@@ -10645,7 +10981,7 @@ async function renderFiles() {
       </div>
       
       <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn-export" style="font-size:11px;padding:6px 12px;" onclick="openFile(${esc(JSON.stringify(f).replace(/'/g, "\\'"))})">Open</button>
+        <button class="file-open-btn btn-export" data-path="${escAttr(JSON.stringify(f))}" style="font-size:11px;padding:6px 12px;">Open</button>
         <button class="btn-export" style="font-size:11px;padding:6px 12px;" onclick="showFileRelations('${esc(f.key)}')">View Relations</button>
         <button class="btn-export" style="font-size:11px;padding:6px 12px;" onclick="editFileNote('${esc(f.key)}')">${f.note && f.note.trim() ? 'Edit Note' : 'Add Note'}</button>
         ${f.submissionMeta ? '' : `<button class="btn-export" style="font-size:11px;padding:6px 12px;" onclick="editSubmissionMeta('${esc(f.key)}')">Add Submission Info</button>`}
@@ -10714,54 +11050,51 @@ async function addFileToRegistry() {
     // Get file metadata
     const metadata = await refreshFileMetadata(fileLink);
     
-    // Add file to a special "Unlinked Files" project or create a standalone file entry
-    // For now, we'll create a temporary task to hold the file, then user can link it properly
-    // Or we could add it directly to the registry
-    
-    // Actually, let's add it to a special "Files" project or just track it standalone
-    // The simplest approach: create a minimal task with status "Inbox" that just holds the file
-    // But better: add it directly to registry and show it in files view
-    
-    const key = fileLink.onedrive_rel || fileLink.abs_path || fileLink.share_url || JSON.stringify(fileLink);
-    
-    // Initialize file in registry
-    if (!fileRegistry[key]) {
-      fileRegistry[key] = {
-        ...fileLink,
-        key,
-        status: 'draft',
-        tasks: [],
-        projects: [],
-        lastOpened: null,
-        submissionMeta: null,
-        standalone: true // Mark as standalone file
-      };
-    } else {
-      // Update existing file, preserve standalone flag
-      fileRegistry[key] = {
-        ...fileRegistry[key],
-        ...fileLink,
-        standalone: fileRegistry[key].standalone || true
-      };
+    // Phase 3 Fix: Add to persisted files list (not computed registry)
+    const store = window.Petal?.store;
+    if (!store) {
+      console.error('Store not available');
+      return;
     }
     
-    // Track file open
-    await trackFileOpen(fileLink);
+    const state = store.getState();
+    const nextFiles = [...(state.files || [])];
     
-    // Save the registry state (standalone files need to persist)
-    await save();
+    // Create file entry
+    const filePath = fileLink.onedrive_rel || fileLink.abs_path || fileLink.share_url || '';
+    const entry = {
+      id: crypto.randomUUID?.() || String(Date.now()),
+      name: fileLink.label || fileLink.name || 'File',
+      path: filePath,
+      fileLink: fileLink, // Store full fileLink for compatibility
+      addedAt: new Date().toISOString(),
+      status: 'active',
+      note: '',
+      tags: []
+    };
     
-    // Refresh file view
-    if (currentView === 'files') {
-      await renderFiles();
+    // Check if file already exists (by path)
+    const already = nextFiles.some(f => f.path === entry.path);
+    if (!already) {
+      nextFiles.unshift(entry); // Add to beginning
+      store.setState({ files: nextFiles });
+      
+      // Track file open
+      await trackFileOpen(fileLink);
+      
+      // Refresh file view
+      if (currentView === 'files') {
+        render();
+      } else {
+        // Switch to files view
+        switchView('files');
+      }
+      
+      // Show success message
+      console.log(`✓ Added file: ${entry.name}`);
     } else {
-      // Switch to files view
-      switchView('files');
+      console.log(`File already exists: ${entry.name}`);
     }
-    
-    // Show success message
-    const label = fileLink.label || fileLink.name || 'File';
-    console.log(`✓ Added file: ${label}`);
     
   } catch (e) {
     console.error('Error adding file:', e);
@@ -10776,9 +11109,34 @@ window.openFile = async function(fileLink) {
   if (originalOpenFile) {
     return originalOpenFile(fileLink);
   } else if (window.electronAPI && window.electronAPI.openFile) {
-    const resolved = await window.electronAPI.resolveFilePath(fileLink);
-    if (resolved && resolved.success) {
-      await window.electronAPI.openFile(resolved.path);
+    try {
+      const resolved = await window.electronAPI.resolveFilePath(fileLink);
+      if (resolved && resolved.success) {
+        const result = await window.electronAPI.openFile(resolved.path);
+        if (result && result.success === false) {
+          console.error('Failed to open file:', result.error);
+          // Fallback to share_url if available
+          if (fileLink.share_url) {
+            window.open(fileLink.share_url, '_blank');
+          }
+        }
+      } else {
+        // Fallback to share_url if resolve failed
+        if (fileLink.share_url) {
+          window.open(fileLink.share_url, '_blank');
+        }
+      }
+    } catch (e) {
+      console.error('Error in window.openFile override:', e);
+      // Fallback to share_url if available
+      if (fileLink.share_url) {
+        window.open(fileLink.share_url, '_blank');
+      }
+    }
+  } else {
+    // No electronAPI - browser fallback
+    if (fileLink.share_url) {
+      window.open(fileLink.share_url, '_blank');
     }
   }
 };
@@ -10979,7 +11337,7 @@ async function renderLane(laneName, allTasks) {
         const fileLink = typeof f === 'string' ? { abs_path: f } : f;
         const safeLink = escJsonForAttr(fileLink);
         const icon = fileIcon(fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url || '');
-        return `<a href="#" class="file-chip" onclick="event.preventDefault();openFile(${safeLink})" style="font-size:10px;padding:2px 6px;">${icon} ${esc(label)}</a>`;
+        return `<a href="#" class="file-chip" data-path="${escAttr(JSON.stringify(fileLink))}" style="font-size:10px;padding:2px 6px;">${icon} ${esc(label)}</a>`;
       }));
       filesHtml = `<div class="task-files" style="margin-top:6px;">${fileHtmls.join('')}</div>`;
     }
@@ -11071,7 +11429,7 @@ async function renderUnassignedLane(allTasks) {
         const fileLink = typeof f === 'string' ? { abs_path: f } : f;
         const safeLink = escJsonForAttr(fileLink);
         const icon = fileIcon(fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url || '');
-        return `<a href="#" class="file-chip" onclick="event.preventDefault();openFile(${safeLink})" style="font-size:10px;padding:2px 6px;">${icon} ${esc(label)}</a>`;
+        return `<a href="#" class="file-chip" data-path="${escAttr(JSON.stringify(fileLink))}" style="font-size:10px;padding:2px 6px;">${icon} ${esc(label)}</a>`;
       }));
       filesHtml = `<div class="task-files" style="margin-top:6px;">${fileHtmls.join('')}</div>`;
     }
@@ -11305,7 +11663,7 @@ function updateActiveFilesPanel() {
     return `<div style="padding:8px;margin-bottom:8px;background:var(--bg2);border-radius:6px;">
       <div style="font-size:12px;font-weight:500;margin-bottom:4px;">${icon} ${esc(label)}</div>
       <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;">${esc(item.task.title)}</div>
-      <button onclick="openFile(${safeLink})" style="background:var(--rose);color:white;border:none;border-radius:4px;padding:4px 8px;font-size:10px;cursor:pointer;">Open</button>
+      <button class="file-open-btn" data-path="${escAttr(JSON.stringify(f))}" style="background:var(--rose);color:white;border:none;border-radius:4px;padding:4px 8px;font-size:10px;cursor:pointer;">Open</button>
     </div>`;
   }).join('');
 }
@@ -11405,6 +11763,59 @@ if (document.readyState === 'loading') {
   setTimeout(forceHideAllForms, 50);
   setTimeout(forceHideAllForms, 200);
 }
+
+// ═══════════════════════ FILE OPEN EVENT DELEGATION ═══════════════════════
+// Event delegation for file-open buttons - eliminates inline onclick handlers
+// This prevents SyntaxError from apostrophes/quotes in file paths
+document.addEventListener('click', (e) => {
+  // Handle file-open-btn buttons
+  const btn = e.target.closest('.file-open-btn');
+  if (btn) {
+    e.preventDefault();
+    const path = btn.dataset.path;
+    if (path) {
+      try {
+        const fileLink = JSON.parse(path);
+        window.openFile(fileLink);
+      } catch (err) {
+        console.error('Error parsing file link from data-path:', err);
+      }
+    }
+    return;
+  }
+  
+  // Handle file-chip links (for file chips in tasks/projects)
+  const chip = e.target.closest('.file-chip');
+  if (chip) {
+    e.preventDefault();
+    const path = chip.dataset.path;
+    if (path) {
+      try {
+        const fileLink = JSON.parse(path);
+        window.openFile(fileLink);
+      } catch (err) {
+        console.error('Error parsing file link from data-path:', err);
+      }
+    }
+    return;
+  }
+  
+  // Handle file-open-div divs (for clickable file rows)
+  const div = e.target.closest('.file-open-div');
+  if (div) {
+    e.preventDefault();
+    const path = div.dataset.path;
+    if (path) {
+      try {
+        const fileLink = JSON.parse(path);
+        window.openFile(fileLink);
+      } catch (err) {
+        console.error('Error parsing file link from data-path:', err);
+      }
+    }
+    return;
+  }
+});
 
 // ═══════════════════════ PLANNER ═══════════════════════
 // Planner state
