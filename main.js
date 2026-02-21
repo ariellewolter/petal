@@ -111,6 +111,7 @@ const path = require('path');
 const fs = require('fs');
 const fsPromises = require('fs').promises;
 const os = require('os');
+const VaultManager = require('./vault-manager');
 
 // Store original console methods and override them IMMEDIATELY
 // This must happen before any console.log calls in the codebase
@@ -295,6 +296,9 @@ console.warn = function(...args) {
 // No need to set them up again here
 
 let mainWindow;
+let vaultManager;
+let dataFileWatcher = null;
+let lastKnownMtime = null;
 const VAULT_FOLDER_NAME = 'PetalVault';
 const DATA_FILE_NAME = 'petal.json';
 const BACKUP_FILE_NAME = 'petal.json.bak';
@@ -449,8 +453,13 @@ function storeOneDriveRoot(onedriveRoot) {
   return storePreferences({ onedriveRoot });
 }
 
-// Get the current vault path (stored preference or default)
+// Get the current vault path (uses VaultManager if available, otherwise fallback)
 function getVaultPath() {
+  if (vaultManager && vaultManager.getActiveVaultPath()) {
+    return vaultManager.getActiveVaultPath();
+  }
+  
+  // Fallback to old system
   const stored = getStoredVaultPath();
   if (stored) return stored;
   
@@ -591,7 +600,7 @@ async function readDataFile() {
   }
 }
 
-// Write data file atomically with backup
+// Write data file atomically with backup and fsync
 async function writeDataFile(data) {
   const paths = ensureVaultStructure();
   
@@ -601,10 +610,17 @@ async function writeDataFile(data) {
     // 1. Create backup of existing file if it exists
     if (fs.existsSync(paths.dataFile)) {
       await fsPromises.copyFile(paths.dataFile, paths.backupFile);
+      // Sync backup to disk
+      const backupFd = await fsPromises.open(paths.backupFile, 'r+');
+      await backupFd.sync();
+      await backupFd.close();
     }
     
     // 2. Write to temp file first (atomic write)
-    await fsPromises.writeFile(paths.tempFile, jsonData, 'utf-8');
+    const tempFd = await fsPromises.open(paths.tempFile, 'w');
+    await tempFd.writeFile(jsonData, 'utf-8');
+    await tempFd.sync(); // Force write to disk
+    await tempFd.close();
     
     // 3. Check for conflicts (file modified while we were writing)
     let conflictDetected = false;
@@ -632,6 +648,19 @@ async function writeDataFile(data) {
     // 5. Atomic rename: temp → data file
     await fsPromises.rename(paths.tempFile, paths.dataFile);
     
+    // 6. Final sync to ensure data is on disk
+    const dataFd = await fsPromises.open(paths.dataFile, 'r+');
+    await dataFd.sync();
+    await dataFd.close();
+    
+    // Update last known mtime for watcher
+    try {
+      const stats = await fsPromises.stat(paths.dataFile);
+      lastKnownMtime = stats.mtime.getTime();
+    } catch (e) {
+      // Ignore
+    }
+    
     return { success: true };
   } catch (error) {
     // Clean up temp file on error
@@ -645,7 +674,79 @@ async function writeDataFile(data) {
     }
     
     safeError('Error writing data file:', error);
+    if (vaultManager && vaultManager.logger) {
+      vaultManager.logger.error('Error writing data file:', error);
+    }
     return { success: false, error: error.message };
+  }
+}
+
+// Start watching data file for external modifications
+function startWatchingDataFile(vaultPath) {
+  // Stop existing watcher if any
+  if (dataFileWatcher) {
+    dataFileWatcher.close();
+    dataFileWatcher = null;
+  }
+  
+  if (!vaultPath) return;
+  
+  const dataFilePath = path.join(vaultPath, DATA_FILE_NAME);
+  
+  // Initialize last known mtime
+  if (fs.existsSync(dataFilePath)) {
+    try {
+      const stats = fs.statSync(dataFilePath);
+      lastKnownMtime = stats.mtime.getTime();
+    } catch (e) {
+      safeWarn('Could not get initial mtime for watcher:', e);
+    }
+  }
+  
+  // Watch the vault directory (more reliable than watching file directly)
+  try {
+    dataFileWatcher = fs.watch(vaultPath, { recursive: false }, async (eventType, filename) => {
+      // Only react to changes to petal.json
+      if (filename !== DATA_FILE_NAME) return;
+      
+      // Debounce: wait a bit to avoid multiple rapid events
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      try {
+        if (fs.existsSync(dataFilePath)) {
+          const stats = fs.statSync(dataFilePath);
+          const currentMtime = stats.mtime.getTime();
+          
+          // Check if file was modified externally (mtime changed)
+          if (lastKnownMtime && currentMtime > lastKnownMtime + 1000) {
+            // File was modified externally (1 second buffer to avoid false positives)
+            safeLog('⚠️ External modification detected on petal.json');
+            safeLog(`  Previous mtime: ${new Date(lastKnownMtime).toISOString()}`);
+            safeLog(`  Current mtime: ${new Date(currentMtime).toISOString()}`);
+            
+            // Notify renderer
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.send('vault:externalModification', {
+                filePath: dataFilePath,
+                previousMtime: lastKnownMtime,
+                currentMtime: currentMtime
+              });
+            }
+            
+            lastKnownMtime = currentMtime;
+          } else if (currentMtime !== lastKnownMtime) {
+            // Update mtime (could be our own write)
+            lastKnownMtime = currentMtime;
+          }
+        }
+      } catch (e) {
+        safeWarn('Error checking file modification:', e);
+      }
+    });
+    
+    safeLog(`✓ Started watching data file: ${dataFilePath}`);
+  } catch (e) {
+    safeWarn('Could not start file watcher:', e);
   }
 }
 
@@ -672,12 +773,53 @@ function createWindow() {
   }
 
   mainWindow.on('closed', () => {
+    if (dataFileWatcher) {
+      dataFileWatcher.close();
+      dataFileWatcher = null;
+    }
     mainWindow = null;
   });
 }
 
-app.whenReady().then(() => {
+// Initialize vault system on app ready
+app.whenReady().then(async () => {
+  // Step 1: Initialize VaultManager and logger
+  vaultManager = new VaultManager(app);
+  vaultManager.initializeLogger();
+  
+  // Step 2: Load config
+  vaultManager.loadConfig();
+  
+  // Step 3: Resolve vault (config → discovery → prompt)
+  const vaultResolution = await vaultManager.resolveVault();
+  
+  if (!vaultResolution.success) {
+    // No vault found - will need to prompt user
+    vaultManager.logger?.log('No vault found - app will prompt user on first load');
+  }
+  
+  // Step 4: Create window
   createWindow();
+  
+  // Step 5: Send vault status to renderer
+  if (mainWindow && vaultResolution.success) {
+    mainWindow.webContents.once('did-finish-load', () => {
+      mainWindow.webContents.send('vault:resolved', {
+        vaultPath: vaultResolution.vaultPath,
+        manifest: vaultResolution.manifest,
+        source: vaultResolution.source
+      });
+      
+      // Start watching for external file modifications
+      startWatchingDataFile(vaultResolution.vaultPath);
+    });
+  } else if (mainWindow && vaultResolution.needsUserChoice) {
+    mainWindow.webContents.once('did-finish-load', () => {
+      mainWindow.webContents.send('vault:needsChoice', {
+        discovered: vaultResolution.discovered || []
+      });
+    });
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -695,11 +837,22 @@ app.on('window-all-closed', () => {
 // IPC handlers for file operations
 ipcMain.handle('storage:load', async () => {
   try {
+    // CRITICAL: Require vault to be resolved before loading
+    if (!vaultManager || !vaultManager.getActiveVaultPath()) {
+      safeWarn('⚠️ storage:load called but vault not resolved');
+      return {
+        ok: false,
+        error: 'Vault not resolved',
+        data: { tasks: [], projects: [], openProjects: [], settings: {} },
+        hasConflicts: false,
+        conflicts: [],
+        newerConflicts: []
+      };
+    }
+    
     const paths = getVaultPaths();
     const vaultPath = getVaultPath();
-    const isStored = getStoredVaultPath() !== null;
     safeLog(`📂 Loading from vault: ${vaultPath}`);
-    safeLog(`  ${isStored ? '✓ Using user-selected vault' : '⚠ Using default vault (no user selection)'}`);
     safeLog(`  Data file: ${paths.dataFile}`);
     
     const result = await readDataFile();
@@ -708,10 +861,12 @@ ipcMain.handle('storage:load', async () => {
       safeLog(`  ✓ Loaded ${result.data.tasks?.length || 0} tasks, ${result.data.projects?.length || 0} projects`);
     }
     
-    return result;
+    return { ...result, ok: true };
   } catch (error) {
     safeError('Error loading data:', error);
     return {
+      ok: false,
+      error: error.message,
       data: { tasks: [], projects: [], openProjects: [], settings: {} },
       hasConflicts: false,
       conflicts: [],
@@ -762,26 +917,31 @@ ipcMain.handle('storage:resolveConflict', async (event, action, conflictFilePath
 
 ipcMain.handle('storage:save', async (event, state) => {
   try {
+    // CRITICAL: Require vault to be resolved before saving
+    if (!vaultManager || !vaultManager.getActiveVaultPath()) {
+      safeWarn('⚠️ storage:save called but vault not resolved');
+      return { ok: false, error: 'Vault not resolved' };
+    }
+    
     const vaultPath = getVaultPath();
-    const isStored = getStoredVaultPath() !== null;
     const result = await writeDataFile(state);
     if (result.success) {
       const paths = getVaultPaths();
       const stats = fs.existsSync(paths.dataFile) ? fs.statSync(paths.dataFile) : null;
       safeLog(`💾 Saved successfully to vault: ${vaultPath}`);
-      safeLog(`  ${isStored ? '✓ Using user-selected vault' : '⚠ Using default vault (no user selection)'}`);
       safeLog(`  Data file: ${paths.dataFile}`);
       safeLog(`  Tasks: ${state.tasks?.length || 0}, Projects: ${state.projects?.length || 0}`);
       if (stats) {
         safeLog(`  File size: ${stats.size} bytes, Modified: ${stats.mtime.toISOString()}`);
       }
+      return { ok: true };
     } else {
       safeError('✗ Save failed:', result);
+      return { ok: false, error: result.error || 'Unknown error', conflict: result.conflict };
     }
-    return result.success || false;
   } catch (error) {
     safeError('Error saving data:', error);
-    return false;
+    return { ok: false, error: error.message };
   }
 });
 
@@ -1013,6 +1173,151 @@ ipcMain.handle('storage:checkVaultExists', () => {
     vaultExists: fs.existsSync(paths.vaultPath),
     dataFileExists: fs.existsSync(paths.dataFile),
     vaultPath: paths.vaultPath
+  };
+});
+
+// New vault system IPC handlers
+ipcMain.handle('vault:getDiagnostics', () => {
+  if (vaultManager) {
+    return vaultManager.getDiagnostics();
+  }
+  return {
+    error: 'VaultManager not initialized',
+    app_version: app.getVersion(),
+    platform: process.platform
+  };
+});
+
+ipcMain.handle('vault:discover', async () => {
+  if (!vaultManager) {
+    return { success: false, error: 'VaultManager not initialized' };
+  }
+  try {
+    const discovered = await vaultManager.discoverVaults();
+    return { success: true, vaults: discovered };
+  } catch (error) {
+    vaultManager.logger?.error('Error discovering vaults:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('vault:create', async (event, vaultPath) => {
+  if (!vaultManager) {
+    return { success: false, error: 'VaultManager not initialized' };
+  }
+  try {
+    const result = await vaultManager.createVault(vaultPath);
+    return result;
+  } catch (error) {
+    vaultManager.logger?.error('Error creating vault:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('vault:choose', async () => {
+  if (!vaultManager || !mainWindow) {
+    return { success: false, error: 'VaultManager or window not initialized' };
+  }
+  
+  try {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openDirectory', 'createDirectory'],
+      title: 'Choose or Create Petal Vault Folder',
+      defaultPath: getDefaultVaultPath(),
+      message: 'Select a folder for your Petal vault. If the folder doesn\'t exist, it will be created.'
+    });
+    
+    if (!result.canceled && result.filePaths.length > 0) {
+      const chosenPath = result.filePaths[0];
+      
+      // Check if it's already a vault
+      if (vaultManager.isVaultPath(chosenPath)) {
+        const manifest = await vaultManager.setActiveVault(chosenPath);
+        
+        // Send vault:resolved event to renderer
+        mainWindow.webContents.send('vault:resolved', {
+          vaultPath: chosenPath,
+          manifest: manifest,
+          source: 'user-choice'
+        });
+        
+        return {
+          success: true,
+          vaultPath: chosenPath,
+          wasExisting: true,
+          manifest: manifest
+        };
+      } else {
+        // Create new vault
+        const createResult = await vaultManager.createVault(chosenPath);
+        
+        if (createResult.success) {
+          // Start watching the new vault
+          startWatchingDataFile(createResult.vaultPath);
+          
+          // Send vault:resolved event to renderer
+          mainWindow.webContents.send('vault:resolved', {
+            vaultPath: createResult.vaultPath,
+            manifest: createResult.manifest,
+            source: 'user-creation'
+          });
+        }
+        
+        return createResult;
+      }
+    }
+    
+    return { success: false, canceled: true };
+  } catch (error) {
+    vaultManager.logger?.error('Error choosing vault:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('vault:setActive', async (event, vaultPath) => {
+  if (!vaultManager) {
+    return { success: false, error: 'VaultManager not initialized' };
+  }
+  try {
+    const manifest = await vaultManager.setActiveVault(vaultPath);
+    
+    // Start watching the new vault
+    startWatchingDataFile(vaultPath);
+    
+    // Send vault:resolved event to renderer
+    if (mainWindow) {
+      mainWindow.webContents.send('vault:resolved', {
+        vaultPath: vaultPath,
+        manifest: manifest,
+        source: 'user-choice'
+      });
+    }
+    
+    return { success: true, vaultPath, manifest };
+  } catch (error) {
+    vaultManager.logger?.error('Error setting active vault:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('vault:getStatus', () => {
+  if (!vaultManager) {
+    return {
+      initialized: false,
+      activeVault: null
+    };
+  }
+  
+  const activePath = vaultManager.getActiveVaultPath();
+  return {
+    initialized: true,
+    activeVault: activePath ? {
+      path: activePath,
+      exists: fs.existsSync(activePath),
+      isValid: vaultManager.isVaultPath(activePath),
+      manifest: vaultManager.readVaultManifest(activePath)
+    } : null,
+    config: vaultManager.config
   };
 });
 
