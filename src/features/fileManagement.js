@@ -21,8 +21,12 @@ export const FILE_STATUSES = {
 let lastRegistryBuild = {
   cacheKey: null,
   registry: null,
-  buildTime: null
+  buildTime: null,
+  result: null // Store full result for re-entrancy guard
 };
+
+// Phase 3 Fix: Re-entrancy guard to prevent render → setState → render loops
+let _buildingRegistry = false;
 
 // Debug mode flag (set via window.Petal.debug = true)
 const DEBUG_MODE = typeof window !== 'undefined' && window.Petal?.debug === true;
@@ -45,35 +49,16 @@ function getFileKey(fileLink) {
  * This is bulletproof: cache invalidates whenever any task/project changes
  * Format: tasks.length_maxTasksUpdatedAt_projects.length_maxProjectsUpdatedAt
  */
+/**
+ * Phase 3 Fix: Cheaper cache key - uses IDs + updatedAt only (no deep traversal)
+ * Prevents expensive stringification during recursion
+ * Format: tasks.length#projects.length#taskIds#projectIds
+ */
 function computeCacheKey(tasks, projects) {
-  // Get max updatedAt from tasks (or use 0 if none)
-  let maxTaskUpdatedAt = 0;
-  if (tasks && tasks.length > 0) {
-    maxTaskUpdatedAt = Math.max(...tasks.map(t => {
-      // Support multiple timestamp field names for backward compatibility
-      return t.updatedAt || t.updated || t.modifiedAt || t.modified || t.createdAt || t.created || 0;
-    }).filter(t => t > 0));
-  }
-  
-  // Get max updatedAt from projects (or use 0 if none)
-  let maxProjectUpdatedAt = 0;
-  if (projects && projects.length > 0) {
-    maxProjectUpdatedAt = Math.max(...projects.map(p => {
-      return p.updatedAt || p.updated || p.modifiedAt || p.modified || p.createdAt || p.created || 0;
-    }).filter(p => p > 0));
-  }
-  
-  // Also include file references in cache key (critical for file attachment changes)
-  // Count tasks/projects with files to catch file attachment changes
-  const tasksWithFiles = tasks ? tasks.filter(t => t.files && t.files.length > 0).length : 0;
-  const projectsWithFiles = projects ? projects.filter(p => {
-    const hasProjectFiles = p.files && p.files.length > 0;
-    const hasSubtaskFiles = p.subtasks && p.subtasks.some(st => st.files && st.files.length > 0);
-    return hasProjectFiles || hasSubtaskFiles;
-  }).length : 0;
-  
-  // Cache key: length, max updatedAt, and file reference counts
-  return `${tasks?.length || 0}_${maxTaskUpdatedAt}_${tasksWithFiles}_${projects?.length || 0}_${maxProjectUpdatedAt}_${projectsWithFiles}`;
+  // Use IDs + updatedAt only (fast, non-recursive)
+  const tKey = (tasks || []).map(t => `${t.id}:${t.updatedAt || t.createdAt || 0}`).join('|');
+  const pKey = (projects || []).map(p => `${p.id}:${p.updatedAt || p.createdAt || 0}:${(p.subtasks?.length || 0)}`).join('|');
+  return `${(tasks || []).length}#${(projects || []).length}#${tKey}#${pKey}`;
 }
 
 /**
@@ -225,30 +210,46 @@ function buildFileRegistryFull(tasks, projects, existingRegistry, fileHistory) {
  * Build file registry from all tasks and projects
  * OPTIMIZED: Uses updatedAt-based cache invalidation (bulletproof)
  * Guarantees: Always returns valid registry, never undefined
+ * 
+ * Phase 3 Fix: Pure function when called from render (no setState during render)
+ * @param {Object} ctx - Context with tasks, projects, fileRegistry, fileHistory
+ * @param {Object} options - Options object
+ * @param {boolean} options.commit - If true, commit to store (default: false for render calls)
  */
-export function buildFileRegistry(ctx) {
+export function buildFileRegistry(ctx, options = {}) {
+  const { commit = false } = options;
   const startTime = DEBUG_MODE ? performance.now() : 0;
   metrics.buildFileRegistry.calls++;
   
-  // Defensive: ensure ctx has required fields
-  const { tasks = [], projects = [], fileRegistry: registry, fileHistory: history = {} } = ctx || {};
-  
-  // Compute cache key using updatedAt timestamps (bulletproof invalidation)
-  const cacheKey = computeCacheKey(tasks, projects);
-  
-  // Cache check: if cache key matches, return cached registry
-  if (lastRegistryBuild.cacheKey === cacheKey && lastRegistryBuild.registry) {
-    if (DEBUG_MODE) {
-      metrics.buildFileRegistry.cacheHits++;
-      const duration = performance.now() - startTime;
-      console.log(`[Registry] Cache HIT (${duration.toFixed(2)}ms)`);
-    }
-    // Ensure we return valid objects
-    return { 
-      fileRegistry: lastRegistryBuild.registry || {}, 
-      fileHistory: history || {} 
-    };
+  // Phase 3 Fix: Re-entrancy guard (prevents render loops)
+  if (_buildingRegistry) {
+    console.warn('[Registry] Re-entrancy detected - returning cached result');
+    return lastRegistryBuild?.result || { fileRegistry: {}, fileHistory: {} };
   }
+  
+  _buildingRegistry = true;
+  try {
+    // Defensive: ensure ctx has required fields
+    const { tasks = [], projects = [], fileRegistry: registry, fileHistory: history = {} } = ctx || {};
+    
+    // Compute cache key using updatedAt timestamps (bulletproof invalidation)
+    const cacheKey = computeCacheKey(tasks, projects);
+    
+    // Cache check: if cache key matches, return cached registry
+    if (lastRegistryBuild.cacheKey === cacheKey && lastRegistryBuild.registry) {
+      if (DEBUG_MODE) {
+        metrics.buildFileRegistry.cacheHits++;
+        const duration = performance.now() - startTime;
+        console.log(`[Registry] Cache HIT (${duration.toFixed(2)}ms)`);
+      }
+      // Ensure we return valid objects
+      const result = { 
+        fileRegistry: lastRegistryBuild.registry || {}, 
+        fileHistory: history || {} 
+      };
+      lastRegistryBuild.result = result; // Cache full result
+      return result;
+    }
   
   if (DEBUG_MODE) {
     metrics.buildFileRegistry.cacheMisses++;
@@ -272,33 +273,50 @@ export function buildFileRegistry(ctx) {
   // Full rebuild from source truth (prevents ghost references)
   const fileRegistry = buildFileRegistryFull(tasks, projects, existingRegistry, fileHistory);
   
-  // GUARANTEE: Always return valid objects, never undefined
-  const result = {
-    fileRegistry: fileRegistry || {},
-    fileHistory: fileHistory || {}
-  };
-  
-  // Update store directly (store-as-source-of-truth)
-  if (typeof window !== 'undefined' && window.Petal?.store) {
-    window.Petal.store.setState({
-      fileRegistry: result.fileRegistry,
-      fileHistory: result.fileHistory
-    });
+    // GUARANTEE: Always return valid objects, never undefined
+    const result = {
+      fileRegistry: fileRegistry || {},
+      fileHistory: fileHistory || {}
+    };
+    
+    // Phase 3 Fix: Only commit to store when explicitly requested (not during render)
+    // Use setEphemeralState to prevent triggering saves (fileRegistry/fileHistory are derived data)
+    if (commit && typeof window !== 'undefined' && window.Petal?.store) {
+      queueMicrotask(() => {
+        // Use setEphemeralState to update without triggering persistence saves
+        // fileRegistry/fileHistory are computed from tasks/projects, not persisted
+        if (window.Petal.store.setEphemeralState) {
+          window.Petal.store.setEphemeralState({
+            fileRegistry: result.fileRegistry,
+            fileHistory: result.fileHistory
+          });
+        } else {
+          // Fallback: use setState (will trigger save, but better than nothing)
+          window.Petal.store.setState({
+            fileRegistry: result.fileRegistry,
+            fileHistory: result.fileHistory
+          });
+        }
+      });
+    }
+    
+    // Update cache
+    lastRegistryBuild = {
+      cacheKey,
+      registry: result.fileRegistry,
+      buildTime: Date.now(),
+      result // Cache full result for re-entrancy guard
+    };
+    
+    if (DEBUG_MODE) {
+      const duration = performance.now() - startTime;
+      console.log(`[Registry] Rebuild complete (${duration.toFixed(2)}ms, ${Object.keys(result.fileRegistry).length} files, commit: ${commit})`);
+    }
+    
+    return result;
+  } finally {
+    _buildingRegistry = false;
   }
-  
-  // Update cache
-  lastRegistryBuild = {
-    cacheKey,
-    registry: result.fileRegistry,
-    buildTime: Date.now()
-  };
-  
-  if (DEBUG_MODE) {
-    const duration = performance.now() - startTime;
-    console.log(`[Registry] Rebuild complete (${duration.toFixed(2)}ms, ${Object.keys(result.fileRegistry).length} files)`);
-  }
-  
-  return result;
 }
 
 /**
@@ -696,9 +714,14 @@ export async function updateFileStatus(fileKey, status, ctx) {
     });
   }
   
-  // Update store
+  // Update store (use setEphemeralState to prevent save spam)
   if (typeof window !== 'undefined' && window.Petal?.store) {
-    window.Petal.store.setState({ fileRegistry });
+    if (window.Petal.store.setEphemeralState) {
+      window.Petal.store.setEphemeralState({ fileRegistry });
+    } else {
+      // Fallback
+      window.Petal.store.setState({ fileRegistry });
+    }
   }
   
   // Invalidate cache (file status changed)
@@ -728,13 +751,21 @@ export function ensureRegistryInitialized() {
   if (typeof window !== 'undefined' && window.Petal?.store) {
     window.Petal.store.ensureRegistryInitialized();
     
-    // Also ensure they're in the state
+    // Also ensure they're in the state (use setEphemeralState to prevent saves)
     const state = window.Petal.store.getState();
     if (!state.fileRegistry || typeof state.fileRegistry !== 'object') {
-      window.Petal.store.setState({ fileRegistry: {} });
+      if (window.Petal.store.setEphemeralState) {
+        window.Petal.store.setEphemeralState({ fileRegistry: {} });
+      } else {
+        window.Petal.store.setState({ fileRegistry: {} });
+      }
     }
     if (!state.fileHistory || typeof state.fileHistory !== 'object') {
-      window.Petal.store.setState({ fileHistory: {} });
+      if (window.Petal.store.setEphemeralState) {
+        window.Petal.store.setEphemeralState({ fileHistory: {} });
+      } else {
+        window.Petal.store.setState({ fileHistory: {} });
+      }
     }
   }
 }
@@ -878,9 +909,14 @@ export async function editSubmissionMeta(fileKey, ctx) {
     });
   }
   
-  // Update store
+  // Update store (use setEphemeralState to prevent save spam)
   if (typeof window !== 'undefined' && window.Petal?.store) {
-    window.Petal.store.setState({ fileRegistry });
+    if (window.Petal.store.setEphemeralState) {
+      window.Petal.store.setEphemeralState({ fileRegistry });
+    } else {
+      // Fallback
+      window.Petal.store.setState({ fileRegistry });
+    }
   }
   
   // Only save if we actually made changes

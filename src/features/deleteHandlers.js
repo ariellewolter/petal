@@ -193,9 +193,19 @@ export async function delProject(ctx, id) {
   if (index === -1) return;
   projects.splice(index, 1);
   
-  // Remove from open projects
-  if (window.openProjects && window.openProjects.delete) {
-    window.openProjects.delete(id);
+  // Phase 3 Fix: Remove from open projects (Array, not Set)
+  const store = window.Petal?.store;
+  if (store) {
+    const state = store.getState();
+    const open = Array.isArray(state.openProjects) ? state.openProjects : [];
+    const next = open.filter(pid => pid !== id);
+    store.setState({ openProjects: next });
+  } else if (window.openProjects) {
+    // Fallback: update local variable
+    const open = Array.isArray(window.openProjects) 
+      ? window.openProjects 
+      : (window.openProjects instanceof Set ? Array.from(window.openProjects) : []);
+    window.openProjects = open.filter(pid => pid !== id);
   }
   
   // Clear projectId from tasks
@@ -218,7 +228,13 @@ export async function delProject(ctx, id) {
   }
   
   // Refresh project selects
-  if (typeof refreshProjectSelects === 'function') {
+  // Phase 3 Fix: Prefer handler pattern if available, fallback to global
+  if (window.Petal?.handlers?.refreshProjectSelects) {
+    const state = window.Petal.store?.getState();
+    if (state) {
+      window.Petal.handlers.refreshProjectSelects(state);
+    }
+  } else if (typeof refreshProjectSelects === 'function') {
     refreshProjectSelects();
   }
   
