@@ -1861,7 +1861,10 @@ window.Petal.features.fileManagement = {
     const ctx = createPageContext();
     await FileManagement.trackFileOpen(fileLink, {
       ...ctx,
-      fileHistory: window.fileHistory || {}
+      // ctx already includes fileRegistry and fileHistory from createPageContext()
+      // but ensure they're objects as fallback
+      fileRegistry: ctx.fileRegistry || {},
+      fileHistory: ctx.fileHistory || {}
     });
   },
   refreshFileMetadata: async (fileLink) => {
