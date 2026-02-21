@@ -24,6 +24,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   vaultChoose: () => ipcRenderer.invoke('vault:choose'),
   vaultSetActive: (vaultPath) => ipcRenderer.invoke('vault:setActive', vaultPath),
   vaultGetStatus: () => ipcRenderer.invoke('vault:getStatus'),
+  vaultEnsureResolved: () => ipcRenderer.invoke('vault:ensureResolved'),
+  vaultOpenFolder: (vaultPath) => ipcRenderer.invoke('vault:openFolder', vaultPath),
   
   // Vault events
   onVaultResolved: (callback) => {
@@ -35,6 +37,25 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onVaultExternalModification: (callback) => {
     ipcRenderer.on('vault:externalModification', (event, data) => callback(data));
   },
+  onVaultCorruptionRecovered: (callback) => {
+    ipcRenderer.on('vault:corruptionRecovered', (event, data) => callback(data));
+  },
+  onVaultRelocated: (callback) => {
+    ipcRenderer.on('vault:relocated', (event, data) => callback(data));
+  },
+  onVaultNeedsRelocation: (callback) => {
+    ipcRenderer.on('vault:needsRelocation', (event, data) => callback(data));
+  },
+  
+  // Support bundle utilities
+  supportCopyDiagnostics: () => ipcRenderer.invoke('support:copyDiagnostics'),
+  supportOpenLogsFolder: () => ipcRenderer.invoke('support:openLogsFolder'),
+  supportOpenVaultFolder: () => ipcRenderer.invoke('support:openVaultFolder'),
+  supportReloadExternalChanges: () => ipcRenderer.invoke('support:reloadExternalChanges'),
+  supportExportCurrentState: (exportPath) => ipcRenderer.invoke('support:exportCurrentState', exportPath),
+  
+  // Mark state as dirty (unsaved changes)
+  markStateDirty: () => ipcRenderer.invoke('storage:markDirty'),
   
   // File operations
   openFile: (filePath) => ipcRenderer.invoke('file:open', filePath),
