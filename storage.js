@@ -34,6 +34,7 @@ class StorageAdapter {
             projects: result.data.projects || [],
             openProjects: result.data.openProjects || [],
             settings: result.data.settings || {},
+            files: result.data.files || [], // ✅ Persisted files list
             fileHistory: result.data.fileHistory || {},
             fileRegistry: result.data.fileRegistry || {},
             events: result.data.events || [],
@@ -48,6 +49,7 @@ class StorageAdapter {
               projects: result.projects || [],
               openProjects: result.openProjects || [],
               settings: result.settings || {},
+              files: result.files || [], // ✅ Persisted files list
               fileHistory: result.fileHistory || {},
               fileRegistry: result.fileRegistry || {},
               events: result.events || [],
@@ -66,6 +68,7 @@ class StorageAdapter {
             projects: [], 
             openProjects: [], 
             settings: {},
+            files: [], // ✅ Persisted files list
             fileHistory: {},
             fileRegistry: {},
             events: [],
@@ -84,6 +87,7 @@ class StorageAdapter {
           projects: JSON.parse(localStorage.getItem('petal-projects') || '[]'),
           openProjects: JSON.parse(localStorage.getItem('petal-open-proj') || '[]'),
           settings: JSON.parse(localStorage.getItem('petal-settings') || '{}'),
+          files: JSON.parse(localStorage.getItem('petal-files') || '[]'), // ✅ Persisted files list
           fileHistory: JSON.parse(localStorage.getItem('petal-file-history') || '{}'),
           fileRegistry: JSON.parse(localStorage.getItem('petal-file-registry') || '{}'),
           events: JSON.parse(localStorage.getItem('petal-events') || '[]'),
@@ -96,6 +100,7 @@ class StorageAdapter {
           projects: [], 
           openProjects: [], 
           settings: {},
+          files: [], // ✅ Persisted files list
           fileHistory: {},
           fileRegistry: {},
           events: [],
@@ -119,6 +124,7 @@ class StorageAdapter {
           settings: state.settings || {},
           events: state.events || [],
           recurringRules: state.recurringRules || [],
+          files: state.files || [], // ✅ Persisted files list
           fileHistory: state.fileHistory || {},
           fileRegistry: state.fileRegistry || {}
         });
@@ -153,6 +159,7 @@ class StorageAdapter {
         localStorage.setItem('petal-settings', JSON.stringify(state.settings || {}));
         localStorage.setItem('petal-events', JSON.stringify(state.events || []));
         localStorage.setItem('petal-recurring-rules', JSON.stringify(state.recurringRules || []));
+        localStorage.setItem('petal-files', JSON.stringify(state.files || [])); // ✅ Persisted files list
         localStorage.setItem('petal-file-history', JSON.stringify(state.fileHistory || {}));
         localStorage.setItem('petal-file-registry', JSON.stringify(state.fileRegistry || {}));
         

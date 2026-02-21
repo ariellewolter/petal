@@ -33,3 +33,17 @@ export function escJsonForDataAttr(jsonObj) {
   // HTML entities are not needed in data attributes - they're safe as-is
   return jsonStr.replace(/'/g, '&#39;');
 }
+
+/**
+ * Escape a string for safe use in HTML attributes
+ * Escapes quotes, apostrophes, and other attribute-sensitive characters
+ */
+export function escAttr(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}

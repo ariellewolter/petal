@@ -1,7 +1,7 @@
 // ═══════════════════════ TASK DRAWER ═══════════════════════
 // Handles the task drawer UI for viewing/editing task details, notes, files, and subtasks
 
-import { esc, escJsonForAttr, fileIcon } from '../utils/strings.js';
+import { esc, escAttr, fileIcon } from '../utils/strings.js';
 
 // Store drawer state in window (shared across module and main script)
 if (typeof window !== 'undefined') {
@@ -255,7 +255,7 @@ export function renderTaskDrawerFiles(ctx) {
           ${note}
         </div>
         <div class="task-drawer-file-actions">
-          <button onclick="openFile(${escJsonForAttr(file)})" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;">Open</button>
+          <button class="file-open-btn" data-path="${escAttr(JSON.stringify(file))}" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;">Open</button>
           <button onclick="window.Petal?.features?.taskDrawer?.unlinkFileFromTask('${file.id}')" style="padding:4px 8px;background:none;border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;color:var(--text-dim);">Unlink</button>
         </div>
       </div>

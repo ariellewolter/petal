@@ -2,6 +2,14 @@
 // SET UP ERROR HANDLING FIRST - before any other code runs
 // This prevents EPIPE errors from crashing the app
 
+// Step 1: Prove which main process we're running
+console.log('🚀 MAIN BOOT', {
+  pid: process.pid,
+  mainFile: __filename,
+  dir: __dirname,
+  time: new Date().toISOString()
+});
+
 function isBrokenPipeError(error) {
   if (!error) return false;
   // Check multiple ways EPIPE might be represented
@@ -1421,6 +1429,42 @@ ipcMain.handle('file:getMetadata', async (event, fileLink) => {
   }
 });
 
+// File operations - open file with system default application
+// Phase 3 Fix: Register early with other file handlers to ensure availability
+ipcMain.handle('file:open', async (event, filePath) => {
+  try {
+    if (!filePath || typeof filePath !== 'string') {
+      safeWarn('file:open called with invalid file path:', filePath);
+      throw new Error('file:open requires a filePath string');
+    }
+    
+    // Remove file:// prefix if present
+    const cleanPath = filePath.replace(/^file:\/\//, '').replace(/^file:\/\/\//, '');
+    
+    // Open file with system default application
+    // shell.openPath returns empty string on success, error message on failure
+    const error = await shell.openPath(cleanPath);
+    if (error) {
+      safeError(`file:open failed: ${error}`);
+      throw new Error(error);
+    }
+    
+    return { ok: true };
+  } catch (error) {
+    safeError('Error opening file:', error);
+    throw error; // Re-throw so renderer gets proper error
+  }
+});
+
+console.log('✅ IPC registered: file:open');
+
+// Step 3: Debug IPC - prove which main process renderer is talking to
+// Register immediately after file:open to ensure it's in the same execution path
+ipcMain.handle('debug:pid', async () => {
+  return { pid: process.pid, time: Date.now() };
+});
+console.log('✅ IPC registered: debug:pid');
+
 ipcMain.handle('storage:export', async (event, data) => {
   try {
     const paths = ensureVaultStructure();
@@ -1866,14 +1910,4 @@ ipcMain.handle('support:exportCurrentState', async (event, exportPath) => {
   }
 });
 
-ipcMain.handle('file:open', async (event, filePath) => {
-  try {
-    // Remove file:// prefix if present
-    const cleanPath = filePath.replace(/^file:\/\//, '').replace(/^file:\/\/\//, '');
-    await shell.openPath(cleanPath);
-    return true;
-  } catch (error) {
-    safeError('Error opening file:', error);
-    return false;
-  }
-});
+// Note: debug:pid handler moved earlier (right after file:open) to ensure registration

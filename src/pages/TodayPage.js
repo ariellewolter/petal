@@ -1,7 +1,7 @@
 // ═══════════════════════ TODAY PAGE ═══════════════════════
 // Self-contained page module for Today View tab
 
-import { esc, escJsonForDataAttr, fileIcon } from '../utils/strings.js';
+import { esc, escAttr, fileIcon } from '../utils/strings.js';
 import { getAllTasks } from '../domain/models.js';
 import { getTaskFiles } from '../features/fileManagement.js';
 
@@ -96,7 +96,7 @@ export async function renderTodayTask(ctx, t, dl, proj) {
       const fileLink = typeof f === 'string' ? { abs_path: f } : f;
       const fileDataAttr = escJsonForDataAttr(fileLink);
       const icon = fileIcon(fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url || '');
-      return `<a href="#" class="file-chip" data-file-link='${fileDataAttr}' onclick="event.preventDefault();window.openFile(JSON.parse(this.getAttribute('data-file-link')))">${icon} ${esc(label)}</a>`;
+      return `<a href="#" class="file-chip" data-path="${escAttr(JSON.stringify(fileLink))}">${icon} ${esc(label)}</a>`;
     }));
     filesHtml = `<div class="task-files">${fileHtmls.join('')}</div>`;
   }
