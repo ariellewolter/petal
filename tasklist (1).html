@@ -1726,23 +1726,31 @@ function createPageContext() {
   let tasks = [];
   let projects = [];
   let settings = {};
+  let fileRegistry = {};
+  let fileHistory = {};
   
   if (window.Petal?.store) {
     const state = window.Petal.store.getState();
     tasks = state.tasks || [];
     projects = state.projects || [];
     settings = state.settings || {};
+    fileRegistry = state.fileRegistry || {};
+    fileHistory = state.fileHistory || {};
   } else {
     // Fallback to window globals (backward compatibility)
     tasks = window.tasks || [];
     projects = window.projects || [];
     settings = window.settings || {};
+    fileRegistry = window.fileRegistry || {};
+    fileHistory = window.fileHistory || {};
   }
   
   return {
     tasks,
     projects,
     settings,
+    fileRegistry,
+    fileHistory,
     save: async () => {
       // Call the global save function if it exists
       if (typeof window.save === 'function') {
