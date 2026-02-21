@@ -5468,8 +5468,23 @@ async function delProject(id) {
 async function toggleProjectDone(id){const p=projects.find(p=>p.id===id);if(p)p.done=!p.done;await save();render();}
 
 async function toggleProjectOpen(id){
-  if(openProjects.has(id)) openProjects.delete(id);
-  else openProjects.add(id);
+  // Phase 3 Fix: openProjects is Array, not Set
+  const store = window.Petal?.store;
+  if (store) {
+    const state = store.getState();
+    const open = Array.isArray(state.openProjects) ? state.openProjects : [];
+    const next = open.includes(id) 
+      ? open.filter(x => x !== id) 
+      : [...open, id];
+    store.setState({ openProjects: next });
+  } else {
+    // Fallback: update local variable
+    const open = Array.isArray(openProjects) ? openProjects : (openProjects instanceof Set ? Array.from(openProjects) : []);
+    const next = open.includes(id) 
+      ? open.filter(x => x !== id) 
+      : [...open, id];
+    openProjects = next;
+  }
   await save();
   render();
 }
