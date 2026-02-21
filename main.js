@@ -307,7 +307,7 @@ const VAULT_FOLDER_NAME = 'PetalVault';
 const DATA_FILE_NAME = 'petal.json';
 const BACKUP_FILE_NAME = 'petal.json.bak';
 const WATCH_IGNORE_WINDOW_MS = 2000; // Ignore watch events within 2s of our own write
-const POLL_INTERVAL_MS = 3000; // Poll every 3 seconds as fallback
+const POLL_INTERVAL_MS = 10000; // Poll every 10 seconds as fallback (reduced frequency for better performance)
 
 // Get the default vault path (OneDrive on Windows, iCloud Drive on Mac)
 function getDefaultVaultPath() {
@@ -758,20 +758,32 @@ async function writeDataFile(data) {
   }
 }
 
+// Track last check time to avoid double-work between watcher and poller
+let lastExternalCheckTime = 0;
+const EXTERNAL_CHECK_COOLDOWN_MS = 2000; // Don't check again within 2s
+
 // Check for external modification (used by both watcher and poller)
+// COORDINATED: Avoids double-work when both watcher and poller trigger
 function checkForExternalModification(dataFilePath) {
   if (!fs.existsSync(dataFilePath)) return;
+  
+  const now = Date.now();
+  
+  // COORDINATION: Skip if we checked recently (avoid double-work)
+  if (now - lastExternalCheckTime < EXTERNAL_CHECK_COOLDOWN_MS) {
+    return; // Recent check, skip this one
+  }
   
   try {
     const stats = fs.statSync(dataFilePath);
     const currentMtime = stats.mtime.getTime();
-    const now = Date.now();
     
     // Ignore if this is likely our own write (within ignore window)
     if (lastWriteTime && (now - lastWriteTime) < WATCH_IGNORE_WINDOW_MS) {
       if (lastWriteMtime && Math.abs(currentMtime - lastWriteMtime) < 1000) {
         // This matches our write - ignore it
         lastKnownMtime = currentMtime;
+        lastExternalCheckTime = now;
         return;
       }
     }
@@ -794,9 +806,11 @@ function checkForExternalModification(dataFilePath) {
       }
       
       lastKnownMtime = currentMtime;
+      lastExternalCheckTime = now; // Mark as checked
     } else if (currentMtime !== lastKnownMtime) {
       // Update mtime (could be our own write or legitimate change)
       lastKnownMtime = currentMtime;
+      lastExternalCheckTime = now; // Mark as checked
     }
   } catch (e) {
     safeWarn('Error checking file modification:', e);
@@ -832,14 +846,19 @@ function startWatchingDataFile(vaultPath) {
   // Watch the vault directory (more reliable than watching file directly)
   // Note: fs.watch is unreliable on macOS + network drives + cloud folders
   try {
+    let watchDebounceTimeout = null;
     dataFileWatcher = fs.watch(vaultPath, { recursive: false }, async (eventType, filename) => {
       // Only react to changes to petal.json
       if (filename !== DATA_FILE_NAME) return;
       
-      // Debounce: wait a bit to avoid multiple rapid events
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      checkForExternalModification(dataFilePath);
+      // Debounce: wait a bit to avoid multiple rapid events (optimized)
+      if (watchDebounceTimeout) {
+        clearTimeout(watchDebounceTimeout);
+      }
+      watchDebounceTimeout = setTimeout(() => {
+        checkForExternalModification(dataFilePath);
+        watchDebounceTimeout = null;
+      }, 1000); // Increased debounce to reduce CPU usage
     });
     
     safeLog(`✓ Started watching data file: ${dataFilePath}`);

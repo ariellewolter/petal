@@ -3140,10 +3140,14 @@ async function initState() {
     
     // Verify what's in the store after loading
     const storeState = window.Petal.store.getState();
-    console.log('🔍 DEBUG: Store state after load:', {
-      tasksCount: storeState.tasks?.length || 0,
+    
+    // Phase 3 Fix: Invariant logging after load (exact types)
+    console.log('INVARIANT after load:', {
       projectsCount: storeState.projects?.length || 0,
-      openProjectsSize: storeState.openProjects?.size || 0
+      tasksCount: storeState.tasks?.length || 0,
+      openProjectsType: storeState.openProjects instanceof Set ? 'Set' : Array.isArray(storeState.openProjects) ? 'Array' : typeof storeState.openProjects,
+      openProjectsValue: storeState.openProjects instanceof Set ? Array.from(storeState.openProjects) : storeState.openProjects,
+      openProjectsLength: Array.isArray(storeState.openProjects) ? storeState.openProjects.length : (storeState.openProjects?.size || 0)
     });
     
     // Wire render function to store changes (Step 2b)
@@ -3208,7 +3212,16 @@ async function initState() {
     setLoading(false);
   }
   
-  refreshProjectSelects();
+  // Phase 3 Fix: Only refresh dropdowns if store is ready and has data
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    if (state && state.projects) {
+      refreshProjectSelects();
+    }
+  } else {
+    // Fallback: refresh anyway (old behavior)
+    refreshProjectSelects();
+  }
   setupEventDelegation();
   render();
 }
@@ -3762,11 +3775,30 @@ async function importData(event) {
       const shouldMerge = confirm('Merge with existing data? (Cancel to replace)');
       const newState = await window.storage.importState(e.target.result, shouldMerge);
       
-      tasks = newState.tasks;
-      projects = newState.projects;
-      openProjects = new Set(newState.openProjects);
-      settings = newState.settings || {};
+      // Phase 3 Fix: Update store FIRST, then refresh dropdowns
+      if (window.Petal?.store) {
+        window.Petal.store.setState({
+          tasks: newState.tasks || [],
+          projects: newState.projects || [],
+          openProjects: new Set(newState.openProjects || []),
+          settings: newState.settings || {}
+        });
+        // Sync local vars for backward compatibility
+        tasks = newState.tasks;
+        projects = newState.projects;
+        openProjects = new Set(newState.openProjects || []);
+        settings = newState.settings || {};
+      } else {
+        // Fallback: update local vars directly
+        tasks = newState.tasks;
+        projects = newState.projects;
+        openProjects = new Set(newState.openProjects || []);
+        settings = newState.settings || {};
+      }
+      
       migrateTasksForKanban();
+      
+      // Refresh dropdowns AFTER store is updated
       refreshProjectSelects();
       
       await save();
@@ -7604,7 +7636,16 @@ async function renderTodayTask(t, dl, proj) {
 }
 
 async function renderTasks(){
-  refreshProjectSelects();
+  // Phase 3 Fix: Only refresh dropdowns if store is ready and has data
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    if (state && state.projects) {
+      refreshProjectSelects();
+    }
+  } else {
+    // Fallback: refresh anyway (old behavior)
+    refreshProjectSelects();
+  }
   const boardFilterEl = document.getElementById('board-project-filter');
   // Always show project filter dropdown (useful for filtering tasks by project)
   if (boardFilterEl) boardFilterEl.style.display = '';
@@ -11256,15 +11297,28 @@ function updateActiveFilesPanel() {
 
 // Force hide all forms function - call this immediately and after renders
 function forceHideAllForms() {
-  // Hide all add task and file forms
+  // Phase 3 Fix: Guard against hiding project container/view
+  // Never hide these critical UI elements
+  const projectContainer = document.getElementById('project-container');
+  const projectView = document.getElementById('view-projects');
+  if (!projectContainer || !projectView) {
+    console.warn('⚠️ forceHideAllForms: project container/view not found');
+    return;
+  }
+  
+  // Ensure project container/view are always visible
+  projectContainer.style.display = '';
+  projectView.style.display = '';
+  
+  // Hide all add task and file forms (restricted scope)
   document.querySelectorAll('[id^="add-task-section-"]').forEach(el => {
-    if (el) {
+    if (el && el.id !== 'project-container') { // Guard: never hide project container
       el.style.display = 'none';
       el.style.setProperty('display', 'none', 'important');
     }
   });
   document.querySelectorAll('[id^="file-section-"]').forEach(el => {
-    if (el) {
+    if (el && el.id !== 'project-container') { // Guard: never hide project container
       el.style.display = 'none';
       el.style.setProperty('display', 'none', 'important');
     }
