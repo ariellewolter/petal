@@ -62,6 +62,11 @@ header{display:flex;justify-content:space-between;align-items:flex-end;margin-bo
 .header-stats{text-align:right;display:flex;flex-direction:column;gap:4px;}
 .stat-pill{display:inline-flex;align-items:center;gap:7px;font-size:11px;letter-spacing:.1em;color:var(--text-dim);text-transform:uppercase;justify-content:flex-end;}
 .stat-pill .num{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:400;color:var(--rose);letter-spacing:0;}
+.vault-badge{display:inline-flex;align-items:center;gap:6px;font-size:10px;letter-spacing:.08em;color:var(--text-dim);text-transform:none;padding:4px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:all .15s;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.vault-badge:hover{background:var(--rose-pale);border-color:var(--rose-soft);color:var(--rose);}
+.vault-badge[data-status="ok"]{border-color:var(--sage);color:var(--sage);}
+.vault-badge[data-status="bad"]{border-color:var(--overdue);color:var(--overdue);}
+.vault-badge::before{content:'📁';font-size:12px;opacity:0.7;}
 
 /* ── TABS ── */
 .tabs{display:flex;gap:2px;margin-bottom:28px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px;width:fit-content;flex-wrap:wrap;}
@@ -511,6 +516,7 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
       <div class="header-stats">
         <div class="stat-pill"><span class="num" id="stat-remaining">0</span>&nbsp;remaining</div>
         <div class="stat-pill"><span class="num" id="stat-overdue">0</span>&nbsp;overdue</div>
+        <div id="vaultBadge" class="vault-badge" title="Vault location" style="display:none;"></div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
         <div style="display:flex;gap:8px;">
@@ -658,6 +664,10 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
         <button class="sort-btn"        onclick="setSort('month',this)">This Month</button>
       </div>
       <div class="toolbar-right">
+        <div id="vaultBadge" class="vault-badge" title="Click to open vault folder" style="display:none;cursor:pointer;padding:6px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--text-light);transition:all .15s;" onmouseover="this.style.background='var(--surface)';this.style.color='var(--text)'" onmouseout="this.style.background='var(--bg2)';this.style.color='var(--text-light)'" onclick="openVaultFolder()"></div>
+        <select id="board-project-filter" class="board-project-filter" onchange="setBoardProjectFilter(this.value)" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px;cursor:pointer;">
+          <option value="all">All projects</option>
+        </select>
         <div class="filter-group">
           <button class="filter-chip active" onclick="setFilter('all',this)">All</button>
           <button class="filter-chip"        onclick="setFilter('active',this)">Active</button>
@@ -802,7 +812,10 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
         Loading diagnostics...
       </div>
       
-      <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--border);margin-top:16px;">
+      <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--border);margin-top:16px;flex-wrap:wrap;">
+        <button onclick="copyDiagnostics()" class="btn-secondary" style="font-size:11px;">Copy Diagnostics</button>
+        <button onclick="openLogsFolder()" class="btn-secondary" style="font-size:11px;">Open Logs</button>
+        <button onclick="openVaultFolder()" class="btn-secondary" style="font-size:11px;">Open Vault</button>
         <button onclick="refreshDiagnostics()" class="btn-secondary">Refresh</button>
         <button onclick="closeDiagnosticsModal()" class="btn-submit">Close</button>
       </div>
@@ -1683,6 +1696,15 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 
 </div><!-- .app -->
 
+<!-- CRITICAL: Define markStateSaved guard BEFORE any scripts load -->
+<!-- This prevents "markStateSaved is not defined" errors from old code -->
+<script>
+  // Must exist before any other scripts
+  window.markStateSaved = window.markStateSaved || function () {};
+  // Create a global identifier binding for sloppy scripts (unqualified calls)
+  markStateSaved = window.markStateSaved;
+</script>
+
 <script src="storage.js"></script>
 <script type="module">
 // ═══════════════════════ PAGE MODULES ═══════════════════════
@@ -1736,6 +1758,9 @@ function createPageContext() {
     // Add other globals as needed
   };
 }
+
+// Expose to global scope so it can be accessed from non-module scripts
+window.createPageContext = createPageContext;
 
 // Wire up Cell Log page handlers to window for inline onclick handlers
 window.Petal = window.Petal || {};
@@ -2044,7 +2069,7 @@ window.Petal.features.taskDrawer = {
 
 import { appStore } from './src/state/store.js';
 import { handlers } from './src/ui/handlers.js';
-import { initPersistence } from './src/storage/persistence.js';
+import { initPersistence, setLoading } from './src/storage/persistence.js';
 import { LANE_STAGES, MATRIX_STAGES, MATRIX_LANES, DEFAULT_BOARD_COLUMNS } from './src/domain/schema.js';
 import { getMatrixStage, isTaskBlocked, getAllTasks } from './src/domain/models.js';
 import { today, parseDate, dueLabel } from './src/utils/dates.js';
@@ -2659,6 +2684,73 @@ function refreshProjectSelectsOld() {
 }
 
 // Initialize state (async)
+// Update vault badge in UI
+async function updateVaultBadge() {
+  if (typeof window === 'undefined' || !window.electronAPI) return;
+  
+  const el = document.getElementById("vaultBadge");
+  if (!el) return;
+  
+  try {
+    const s = await window.electronAPI.vaultGetStatus();
+    if (s?.resolved && s?.activeVaultPath) {
+      // Show shortened path (just folder name)
+      const pathParts = s.activeVaultPath.split(/[/\\]/);
+      const displayName = pathParts[pathParts.length - 1] || 'Vault';
+      el.textContent = displayName;
+      el.title = `Vault: ${s.activeVaultPath}\nClick to open folder`;
+      el.dataset.status = "ok";
+      el.style.display = "inline-flex";
+      
+      // Add click handler to open folder
+      el.onclick = async () => {
+        if (s.activeVaultPath) {
+          await window.electronAPI.vaultOpenFolder(s.activeVaultPath);
+        }
+      };
+    } else {
+      el.textContent = "Vault: Not resolved";
+      el.title = "Vault not resolved";
+      el.dataset.status = "bad";
+      el.style.display = "inline-flex";
+      el.onclick = null;
+    }
+  } catch (e) {
+    console.error("Error updating vault badge:", e);
+    el.textContent = "Vault: Error";
+    el.dataset.status = "bad";
+    el.style.display = "inline-flex";
+  }
+}
+
+// Deterministic vault resolution: poll until resolved (no "proceed anyway")
+async function waitForVaultResolved(timeoutMs = 15000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const status = await window.electronAPI.vaultGetStatus();
+    // Check resolved flag first, then fallback to activeVaultPath
+    if (status?.resolved && status?.activeVaultPath) {
+      return {
+        resolved: true,
+        vaultPath: status.activeVaultPath,
+        vaultId: status.vaultId,
+        source: 'polling'
+      };
+    }
+    // Also check backward compatibility shape
+    if (status?.initialized && status?.activeVault && status?.activeVault?.is_valid && status?.activeVault?.path) {
+      return {
+        resolved: true,
+        vaultPath: status.activeVault.path,
+        manifest: status.activeVault.manifest,
+        source: 'polling'
+      };
+    }
+    await new Promise(r => setTimeout(r, 250));
+  }
+  throw new Error("Vault did not resolve in time");
+}
+
 async function initState() {
   // CRITICAL: Wait for vault resolution before loading state
   let vaultResolved = false;
@@ -2667,35 +2759,42 @@ async function initState() {
   // Check vault setup if in Electron
   if (typeof window !== 'undefined' && window.electronAPI) {
     try {
-      // Set up event listeners for vault resolution
-      const vaultResolvedPromise = new Promise((resolve) => {
-        window.electronAPI.onVaultResolved((data) => {
-          console.log('✓ Vault resolved event received:', data);
-          vaultResolved = true;
-          vaultResolvedData = data;
-          resolve(data);
-        });
-        
-        window.electronAPI.onVaultNeedsChoice((data) => {
-          console.log('⚠️ Vault needs user choice:', data);
-          // Will be handled below
-        });
+      // Set up event listeners for vault resolution (for UI updates, but we poll for certainty)
+      window.electronAPI.onVaultResolved((data) => {
+        console.log('✓ Vault resolved event received:', data);
+      });
+      
+      window.electronAPI.onVaultNeedsChoice((data) => {
+        console.log('⚠️ Vault needs user choice:', data);
       });
       
       // Check vault status using new vault system
       const vaultStatus = await window.electronAPI.vaultGetStatus();
       
       // If vault is already resolved, proceed
-      if (vaultStatus.initialized && vaultStatus.activeVault && vaultStatus.activeVault.is_valid) {
-        console.log('✓ Vault already resolved:', vaultStatus.activeVault.path);
+      if (vaultStatus.resolved && vaultStatus.activeVaultPath) {
+        console.log('✓ Vault already resolved:', vaultStatus.activeVaultPath);
+        vaultResolved = true;
+        vaultResolvedData = {
+          vaultPath: vaultStatus.activeVaultPath,
+          vaultId: vaultStatus.vaultId,
+          source: 'config'
+        };
+        // Update UI badge
+        await updateVaultBadge();
+      } else if (vaultStatus.initialized && vaultStatus.activeVault && vaultStatus.activeVault.is_valid) {
+        // Backward compatibility check
+        console.log('✓ Vault already resolved (legacy format):', vaultStatus.activeVault.path);
         vaultResolved = true;
         vaultResolvedData = {
           vaultPath: vaultStatus.activeVault.path,
           manifest: vaultStatus.activeVault.manifest,
           source: 'config'
         };
+        // Update UI badge
+        await updateVaultBadge();
       } else {
-        // Wait for vault:resolved event (with timeout)
+        // Wait for vault resolution using polling (deterministic)
         console.log('⏳ Waiting for vault resolution...');
         
         // If no vault is active, prompt user to create/choose one
@@ -2721,50 +2820,30 @@ async function initState() {
           if (shouldChoose) {
             const result = await window.electronAPI.vaultChoose();
             if (!result || !result.success) {
-              // User cancelled or error - will use default
               console.log('Using default vault location');
-              // Wait a bit for event to arrive
-              await Promise.race([
-                vaultResolvedPromise,
-                new Promise(resolve => setTimeout(resolve, 1000))
-              ]);
             } else {
               console.log('Vault selected:', result.vaultPath);
-              // Event should be sent by main process
-              await Promise.race([
-                vaultResolvedPromise,
-                new Promise(resolve => setTimeout(resolve, 1000))
-              ]);
             }
-          } else {
-            // User cancelled - wait for event or timeout
-            await Promise.race([
-              vaultResolvedPromise,
-              new Promise(resolve => setTimeout(resolve, 2000))
-            ]);
           }
-        } else {
-          // Wait for event (should arrive soon)
-          await Promise.race([
-            vaultResolvedPromise,
-            new Promise(resolve => setTimeout(resolve, 2000))
-          ]);
         }
-      }
-      
-      // Final check: ensure vault is resolved
-      if (!vaultResolved) {
-        const finalStatus = await window.electronAPI.vaultGetStatus();
-        if (finalStatus.initialized && finalStatus.activeVault && finalStatus.activeVault.is_valid) {
-          console.log('✓ Vault resolved via status check:', finalStatus.activeVault.path);
+        
+        // Ensure resolution is triggered, then poll until vault is resolved (deterministic - no "proceed anyway")
+        try {
+          // Trigger resolution state machine first
+          console.log('Triggering vault resolution...');
+          await window.electronAPI.vaultEnsureResolved();
+          
+          // Poll until resolved
+          vaultResolvedData = await waitForVaultResolved();
           vaultResolved = true;
-          vaultResolvedData = {
-            vaultPath: finalStatus.activeVault.path,
-            manifest: finalStatus.activeVault.manifest,
-            source: 'status-check'
-          };
-        } else {
-          console.warn('⚠️ WARNING: Vault not resolved, but proceeding anyway');
+          console.log("✓ Vault resolved:", vaultResolvedData.vaultPath);
+          // Update UI badge
+          await updateVaultBadge();
+        } catch (e) {
+          console.error("✗ Vault resolution failed:", e);
+          // Show a blocking modal instead of proceeding
+          alert("Vault not ready. Please restart the app or choose a vault.");
+          return; // Don't proceed without a vault
         }
       }
       
@@ -2824,8 +2903,13 @@ async function initState() {
     console.warn('⚠️ WARNING: Loading state without confirmed vault resolution');
   }
   
+  // Prevent saves during initial load/migration
+  if (typeof setLoading === 'function') {
+    setLoading(true);
+  }
+  
   // Load state (with conflict detection)
-  const loadResult = await storage.loadState();
+  const loadResult = await window.storage.loadState();
   
   // Check for vault resolution errors
   if (loadResult.ok === false && loadResult.error === 'Vault not resolved') {
@@ -2839,6 +2923,12 @@ async function initState() {
   if (loadResult.hasConflicts !== undefined) {
     // Electron: has conflict info
     loadedData = loadResult.data;
+    
+    // Show corruption recovery banner if recovered from backup
+    if (loadResult.recoveredFromBackup) {
+      console.log('✅ Data recovered from backup');
+      // Banner will be shown by event listener
+    }
     
     // Show conflict banner if conflicts exist
     if (loadResult.hasConflicts && loadResult.conflicts && loadResult.conflicts.length > 0) {
@@ -2871,6 +2961,8 @@ async function initState() {
       projects: loadedData.projects || [],
       openProjects: loadedData.openProjects || [],
       settings: loadedData.settings || {},
+      events: loadedData.events || [],
+      recurringRules: loadedData.recurringRules || [],
       currentView: currentView,
       currentSort: currentSort,
       currentFilter: currentFilter,
@@ -2923,10 +3015,10 @@ async function initState() {
   projects = state.projects || [];
   openProjects = state.openProjects || new Set();
   settings = state.settings || {};
+  events = state.events || [];
+  recurringRules = state.recurringRules || [];
   fileHistory = state.fileHistory || {};
   fileRegistry = state.fileRegistry || {};
-  events = loadedData.events || []; // Events not in store yet
-  recurringRules = loadedData.recurringRules || []; // Recurring rules not in store yet
   
   // CRITICAL: Update window.tasks immediately so createPageContext() can find them
   window.tasks = tasks;
@@ -2954,6 +3046,12 @@ async function initState() {
   if (subtasksMigrated || fileRegistryMigrated) {
     await save(); // Save after migration
   }
+  
+  // Re-enable saves after migrations complete
+  if (typeof setLoading === 'function') {
+    setLoading(false);
+  }
+  
   refreshProjectSelects();
   setupEventDelegation();
   render();
@@ -3361,12 +3459,15 @@ async function save() {
   }
   
   // Step 2e: Sync globals to store (store will auto-save via persistence subscription)
+  // This is now the ONLY save path - persistence layer handles disk writes
   if (window.Petal?.store) {
     window.Petal.store.setState({
       tasks,
       projects,
       openProjects,
       settings,
+      events,
+      recurringRules,
       fileHistory,
       fileRegistry,
       currentView,
@@ -3380,31 +3481,23 @@ async function save() {
       currentFileView,
       selectedProjectId
     });
-    // Store will auto-save via persistence subscription, but we still need to save events/recurringRules
-    // TODO: Add events and recurringRules to store in future
+    // Store will auto-save via persistence subscription (debounced, single writer)
   }
   
-  // Save events and recurringRules directly (not in store yet)
-  const success = await storage.saveState({
-    tasks,
-    projects,
-    openProjects: [...openProjects],
-    settings,
-    fileHistory,
-    fileRegistry, // Save standalone files
-    events, // Save calendar events (not in store yet)
-    recurringRules // Save recurring event rules (not in store yet)
-  });
+  // Track save time for conflict policy
+  window.lastSaveTime = Date.now();
+  window.hasUnsavedChanges = false;
   
   // Update window references (in case arrays were reassigned)
+  // These are kept for backward compatibility with legacy code
   window.tasks = tasks;
   window.projects = projects;
   window.settings = settings;
   
+  // Update vault path display after a delay (persistence is debounced, so wait for it)
+  // Note: Error handling is done by persistence layer, which shows alerts on failure
   if (window.electronAPI) {
-    if (success) {
-      console.log('✓ Saved successfully');
-      // Update vault path display
+    setTimeout(async () => {
       try {
         const vaultPath = await window.electronAPI.getVaultPath();
         const dataPath = await window.electronAPI.getDataPath();
@@ -3417,10 +3510,7 @@ async function save() {
       } catch (e) {
         console.warn('Could not update path display:', e);
       }
-    } else {
-      console.error('✗ Save failed!');
-      alert('Error: Could not save data. Please check the console for details.');
-    }
+    }, 600); // Wait slightly longer than debounce (500ms) to ensure save completed
   }
 }
 
@@ -3500,7 +3590,7 @@ async function importData(event) {
   reader.onload = async (e) => {
     try {
       const shouldMerge = confirm('Merge with existing data? (Cancel to replace)');
-      const newState = await storage.importState(e.target.result, shouldMerge);
+      const newState = await window.storage.importState(e.target.result, shouldMerge);
       
       tasks = newState.tasks;
       projects = newState.projects;
@@ -3701,7 +3791,8 @@ function nextBoardOrderForNewTask(status, projectId) {
 
 function setBoardProjectFilter(value) {
   boardProjectFilter = value || 'all';
-  if (taskMode === 'kanban') render();
+  // Always render when filter changes (works for both list and kanban views)
+  render();
 }
 
 // Extract tags from text - delegates to module
@@ -4834,6 +4925,12 @@ async function refreshDiagnostics() {
         const keys = Object.keys(window.electronAPI);
         output += `  Available APIs: ${keys.length} methods\n`;
       }
+      if (diagnostics.preload) {
+        output += `\n  Preload Path Info:\n`;
+        output += `    Path: ${diagnostics.preload.path || 'N/A'}\n`;
+        output += `    Exists: ${diagnostics.preload.exists ? 'Yes' : 'No'}\n`;
+        output += `    __dirname: ${diagnostics.preload.resolved_dirname || 'N/A'}\n`;
+      }
       
       contentEl.textContent = output;
     } catch (e) {
@@ -4841,6 +4938,68 @@ async function refreshDiagnostics() {
     }
   } else {
     contentEl.textContent = 'Not running in Electron - diagnostics unavailable.';
+  }
+}
+
+async function copyDiagnostics() {
+  if (typeof window !== 'undefined' && window.electronAPI) {
+    try {
+      const result = await window.electronAPI.supportCopyDiagnostics();
+      if (result.success) {
+        alert('Diagnostics copied to clipboard!');
+      } else {
+        alert('Error copying diagnostics: ' + result.error);
+      }
+    } catch (e) {
+      alert('Error: ' + e.message);
+    }
+  }
+}
+
+async function openLogsFolder() {
+  if (typeof window !== 'undefined' && window.electronAPI) {
+    try {
+      await window.electronAPI.supportOpenLogsFolder();
+    } catch (e) {
+      alert('Error opening logs folder: ' + e.message);
+    }
+  }
+}
+
+async function openVaultFolder() {
+  if (typeof window !== 'undefined' && window.electronAPI) {
+    try {
+      await window.electronAPI.supportOpenVaultFolder();
+    } catch (e) {
+      alert('Error opening vault folder: ' + e.message);
+    }
+  }
+}
+
+
+async function openLogsFolder() {
+  if (typeof window !== 'undefined' && window.electronAPI) {
+    try {
+      const result = await window.electronAPI.supportOpenLogsFolder();
+      if (!result.success) {
+        alert('Error opening logs folder: ' + (result.error || 'Unknown error'));
+      }
+    } catch (e) {
+      console.error('Error opening logs folder:', e);
+    }
+  }
+}
+
+async function openVaultFolder() {
+  if (typeof window !== 'undefined' && window.electronAPI) {
+    try {
+      const result = await window.electronAPI.supportOpenVaultFolder();
+      if (!result.success) {
+        alert('Error opening vault folder: ' + (result.error || 'Unknown error'));
+      }
+    } catch (e) {
+      console.error('Error opening vault folder:', e);
+    }
   }
 }
 
@@ -7060,6 +7219,8 @@ async function render(){
   projects = storeProjects;
   openProjects = state.openProjects || new Set();
   settings = state.settings || {};
+  events = state.events || [];
+  recurringRules = state.recurringRules || [];
   fileHistory = state.fileHistory || {};
   fileRegistry = state.fileRegistry || {};
   currentView = state.currentView || currentView;
@@ -7077,6 +7238,8 @@ async function render(){
   window.tasks = tasks;
   window.projects = projects;
   window.settings = settings;
+  window.events = events;
+  window.recurringRules = recurringRules;
   window.fileRegistry = fileRegistry;
   window.fileHistory = fileHistory;
   window.currentView = currentView;
@@ -7139,36 +7302,12 @@ async function render(){
     }
   }
   else if(currentView==='projects') {
-    // Step 3: Use extracted render module if available
-    if (window.Petal?.ui?.renderProjects) {
-      const containerEl = document.getElementById('project-container');
-      let state = window.Petal.store?.getState() || {};
-      // Ensure openProjects is a Set
-      if (state.openProjects && !(state.openProjects instanceof Set)) {
-        state = { ...state, openProjects: new Set(state.openProjects) };
-      }
-      console.log('🔍 DEBUG: Rendering projects view, container:', containerEl, 'state projects:', state.projects?.length);
-      await window.Petal.ui.renderProjects(containerEl, state, window.Petal.handlers);
-    } else {
-      console.log('🔍 DEBUG: Using fallback renderProjects function');
-      // Fallback: old render function
-      renderProjects();
-    }
+    // Use old renderProjects function to show full project card view
+    renderProjects();
   }
   else {
     // Default fallback - render projects
-    console.log('🔍 DEBUG: Default fallback, rendering projects');
-    if (window.Petal?.ui?.renderProjects) {
-      const containerEl = document.getElementById('project-container');
-      let state = window.Petal.store?.getState() || {};
-      // Ensure openProjects is a Set
-      if (state.openProjects && !(state.openProjects instanceof Set)) {
-        state = { ...state, openProjects: new Set(state.openProjects) };
-      }
-      window.Petal.ui.renderProjects(containerEl, state, window.Petal.handlers);
-    } else {
-      renderProjects();
-    }
+    renderProjects();
   }
   
   // Always hide all forms after rendering (use setTimeout to ensure DOM is updated)
@@ -7246,11 +7385,12 @@ async function renderTodayTask(t, dl, proj) {
 async function renderTasks(){
   refreshProjectSelects();
   const boardFilterEl = document.getElementById('board-project-filter');
-  if (boardFilterEl) boardFilterEl.style.display = taskMode === 'kanban' ? '' : 'none';
+  // Always show project filter dropdown (useful for filtering tasks by project)
+  if (boardFilterEl) boardFilterEl.style.display = '';
   const filterGroup = document.querySelector('#view-tasks .filter-group');
-  if (filterGroup) filterGroup.style.display = taskMode === 'kanban' ? 'none' : '';
+  if (filterGroup) filterGroup.style.display = '';
   const sortGroup = document.querySelector('#view-tasks .sort-group');
-  if (sortGroup) sortGroup.style.display = taskMode === 'kanban' ? 'none' : '';
+  if (sortGroup) sortGroup.style.display = '';
   const taskContainer = document.getElementById('task-container');
   if (taskContainer) taskContainer.style.display = taskMode === 'list' ? '' : 'none';
   const kanbanContainer = document.getElementById('kanban-container');
@@ -7469,8 +7609,8 @@ function getWorkflowLanesDisplay(project) {
   if (lanes.length === 0) {
     return '<div style="font-size:11px;color:var(--text-dim);">All lanes allowed</div>';
   }
-  const labels = { lab: '🧪 Lab', comp: '💻 Comp', writing: '📝 Writing' };
-  return '<div style="font-size:11px;color:var(--text);">' + lanes.map(l => labels[l]).join(' • ') + '</div>';
+  const labels = { lab: '🧪 Lab', comp: '💻 Comp', writing: '📝 Writing', presentation: '📊 Presentation' };
+  return '<div style="font-size:11px;color:var(--text);">' + lanes.map(l => labels[l] || l).join(' • ') + '</div>';
 }
 
 // Toggle workflow lanes edit mode
@@ -7568,10 +7708,10 @@ function projectHTML(p){
   return`<div class="project-card" id="proj-${p.id}">
     <div class="project-header">
       <div class="project-color-bar" style="background:${color};"></div>
-      <div style="flex:1;min-width:0;padding-left:8px;cursor:pointer;" onclick="selectProjectForMatrix(${p.id})" title="Click to open Workflow Matrix">
+      <div style="flex:1;min-width:0;padding-left:8px;cursor:pointer;" onclick="openProjectView(${p.id})" title="Click to open project view">
         <div class="project-name" style="${p.done?'text-decoration:line-through;opacity:.6':''};display:flex;align-items:center;gap:8px;">
           ${esc(p.name)}
-          <span style="font-size:11px;color:var(--text-light);font-weight:normal;">→ View Matrix</span>
+          <span style="font-size:11px;color:var(--text-light);font-weight:normal;">→ View Project</span>
         </div>
         ${p.desc?`<div class="project-desc">${esc(p.desc)}</div>`:''}
         ${totalTasks > 0 ? `<div class="project-metrics">
@@ -7596,44 +7736,11 @@ function projectHTML(p){
       <div class="project-chevron ${isOpen?'open':''}" id="chev-${p.id}" onclick="event.stopPropagation();toggleProjectOpen(${p.id})" style="cursor:pointer;" title="Toggle details">▶</div>
     </div>
 
-    <!-- Workflow Lanes Section - Collapsible -->
+    <!-- Workflow Lanes Section -->
     <div style="padding:12px 20px 12px 32px;border-top:1px solid var(--border);margin-top:8px;">
-      <button onclick="toggleWorkflowLanesSection(${p.id})" style="width:100%;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:all .15s;" onmouseover="this.style.background='var(--rose-pale)';this.style.borderColor='var(--rose-soft)'" onmouseout="this.style.background='var(--bg2)';this.style.borderColor='var(--border)'">
-        <span>🛤️ Workflow Lanes</span>
-        <span id="workflow-lanes-toggle-${p.id}" style="font-size:14px;transition:transform .2s;">▶</span>
-      </button>
-      <div id="workflow-lanes-section-${p.id}" style="display:none;margin-top:12px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <div style="font-size:11px;color:var(--text-dim);font-weight:500;">Workflow Lanes</div>
-          <button onclick="toggleWorkflowLanesEdit(${p.id})" style="font-size:10px;padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);cursor:pointer;">Edit</button>
-        </div>
-        <div id="workflow-lanes-display-${p.id}">
-          ${getWorkflowLanesDisplay(p)}
-        </div>
-        <div id="workflow-lanes-edit-${p.id}" style="display:none;">
-        <div style="display:flex;gap:16px;margin-bottom:8px;">
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;">
-            <input type="checkbox" id="edit-workflow-lab-${p.id}" value="lab" ${(p.workflowLanes || []).includes('lab') ? 'checked' : ''} style="cursor:pointer;">
-            <span>🧪 Lab</span>
-          </label>
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;">
-            <input type="checkbox" id="edit-workflow-comp-${p.id}" value="comp" ${(p.workflowLanes || []).includes('comp') ? 'checked' : ''} style="cursor:pointer;">
-            <span>💻 Computational</span>
-          </label>
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;">
-            <input type="checkbox" id="edit-workflow-writing-${p.id}" value="writing" ${(p.workflowLanes || []).includes('writing') ? 'checked' : ''} style="cursor:pointer;">
-            <span>📝 Writing</span>
-          </label>
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;">
-            <input type="checkbox" id="edit-workflow-presentation-${p.id}" value="presentation" ${(p.workflowLanes || []).includes('presentation') ? 'checked' : ''} style="cursor:pointer;">
-            <span>📊 Presentation</span>
-          </label>
-        </div>
-        <div style="display:flex;gap:8px;">
-          <button onclick="saveWorkflowLanes(${p.id})" style="font-size:11px;padding:6px 12px;background:var(--rose);color:white;border:none;border-radius:4px;cursor:pointer;">Save</button>
-          <button onclick="cancelWorkflowLanesEdit(${p.id})" style="font-size:11px;padding:6px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);cursor:pointer;">Cancel</button>
-        </div>
-      </div>
+      <div style="font-size:11px;color:var(--text-dim);font-weight:500;margin-bottom:6px;">🛤️ Workflow Lanes</div>
+      <div id="workflow-lanes-display-${p.id}">
+        ${getWorkflowLanesDisplay(p)}
       </div>
     </div>
 
@@ -7854,6 +7961,20 @@ function selectProjectForMatrix(projectId) {
     document.getElementById('project-list-view').style.display = '';
     renderProjects();
   }
+}
+
+// Open project view (switches to projects view and opens the project)
+function openProjectView(projectId) {
+  if (!projectId) return;
+  
+  // Switch to projects view
+  switchView('projects');
+  
+  // Set the selected project and open the matrix view
+  selectedProjectId = parseInt(projectId);
+  document.getElementById('workflow-matrix-view').style.display = '';
+  document.getElementById('project-list-view').style.display = 'none';
+  renderWorkflowMatrix();
 }
 
 // Toggle create project form

@@ -1,6 +1,17 @@
 // ═══════════════════════ STORAGE ADAPTER ═══════════════════════
 // Abstract storage layer - uses file system in Electron, localStorage in browser
 
+// Debug: Identify which storage.js is actually running
+console.log("✅ storage.js loaded from:", document.currentScript && document.currentScript.src);
+console.log("✅ storage.js version marker:", "2026-02-20-A");
+
+// Global guard function to prevent markStateSaved errors
+// This ensures even old code won't crash if markStateSaved is called
+window.markStateSaved = window.markStateSaved || function () {
+  // Silently do nothing - this is just a guard to prevent crashes
+  console.debug('markStateSaved called (no-op guard)');
+};
+
 class StorageAdapter {
   constructor() {
     this.listeners = [];
@@ -95,11 +106,13 @@ class StorageAdapter {
   }
 
   // Save all state to storage
+  // Returns: {ok: true} on success, {ok: false, error: string} on failure
+  // Pure persistence module - no UI dependencies
   async saveState(state) {
     if (this.isElectron) {
-      // Electron: save to JSON file
+      // Electron: save to JSON file via IPC
       try {
-        const success = await window.electronAPI.saveState({
+        const result = await window.electronAPI.saveState({
           tasks: state.tasks || [],
           projects: state.projects || [],
           openProjects: state.openProjects || [],
@@ -110,13 +123,26 @@ class StorageAdapter {
           fileRegistry: state.fileRegistry || {}
         });
         
-        if (success) {
-          this.listeners.forEach(cb => cb(state));
+        // Handle new format: {ok: true/false, error?: string}
+        if (result && result.ok === true) {
+          // Success - notify listeners (guard against errors in callbacks)
+          this.listeners.forEach(cb => {
+            try {
+              cb(state);
+            } catch (listenerError) {
+              console.error('Error in storage listener callback:', listenerError);
+            }
+          });
+          return { ok: true };
+        } else {
+          // Failure - return error (caller handles UI)
+          const errorMsg = result?.error || 'Unknown save error';
+          console.error('❌ Save failed:', errorMsg);
+          return { ok: false, error: errorMsg };
         }
-        return success;
       } catch (e) {
         console.error('Error saving state to file:', e);
-        return false;
+        return { ok: false, error: e.message || 'Unknown error' };
       }
     } else {
       // Browser: save to localStorage
@@ -131,11 +157,17 @@ class StorageAdapter {
         localStorage.setItem('petal-file-registry', JSON.stringify(state.fileRegistry || {}));
         
         // Notify listeners of changes
-        this.listeners.forEach(cb => cb(state));
-        return true;
+        this.listeners.forEach(cb => {
+          try {
+            cb(state);
+          } catch (listenerError) {
+            console.error('Error in storage listener callback:', listenerError);
+          }
+        });
+        return { ok: true };
       } catch (e) {
         console.error('Error saving state:', e);
-        return false;
+        return { ok: false, error: e.message || 'Unknown error' };
       }
     }
   }
@@ -191,8 +223,10 @@ class StorageAdapter {
   }
 }
 
-// Create singleton instance
+// Create singleton instance and make it globally available
+// This file is loaded as a regular script (not a module), so we use window.storage
 const storage = new StorageAdapter();
+window.storage = storage;
 
-// Export the storage instance
-export { storage };
+// Also create a const alias for backwards compatibility in the same script context
+// Note: For module scripts, use window.storage to access it

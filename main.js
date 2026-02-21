@@ -298,10 +298,16 @@ console.warn = function(...args) {
 let mainWindow;
 let vaultManager;
 let dataFileWatcher = null;
+let dataFilePollInterval = null;
 let lastKnownMtime = null;
+let lastWriteTime = null;
+let lastWriteMtime = null;
+let hasUnsavedChanges = false;
 const VAULT_FOLDER_NAME = 'PetalVault';
 const DATA_FILE_NAME = 'petal.json';
 const BACKUP_FILE_NAME = 'petal.json.bak';
+const WATCH_IGNORE_WINDOW_MS = 2000; // Ignore watch events within 2s of our own write
+const POLL_INTERVAL_MS = 3000; // Poll every 3 seconds as fallback
 
 // Get the default vault path (OneDrive on Windows, iCloud Drive on Mac)
 function getDefaultVaultPath() {
@@ -488,12 +494,23 @@ function getVaultPaths() {
 function ensureVaultStructure() {
   const paths = getVaultPaths();
   
-  // Create directories
+  // Create directories with error handling
   [paths.vaultPath, paths.exportsDir, paths.attachmentsDir].forEach(dir => {
     if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+      try {
+        fs.mkdirSync(dir, { recursive: true });
+        safeLog(`✓ Created directory: ${dir}`);
+      } catch (error) {
+        safeError(`✗ Failed to create directory: ${dir}`, error);
+        throw new Error(`Failed to create vault directory: ${dir}. Error: ${error.message}`);
+      }
     }
   });
+  
+  // Verify vault path exists and is accessible
+  if (!fs.existsSync(paths.vaultPath)) {
+    throw new Error(`Vault path does not exist and could not be created: ${paths.vaultPath}`);
+  }
   
   return paths;
 }
@@ -519,7 +536,7 @@ function detectOneDriveConflicts(vaultPath) {
   }).sort((a, b) => b.mtime - a.mtime); // Most recent first
 }
 
-// Read data file with conflict detection
+// Read data file with conflict detection and corruption recovery
 async function readDataFile() {
   const paths = ensureVaultStructure();
   
@@ -554,22 +571,68 @@ async function readDataFile() {
       ...appConflictFiles
     ].sort((a, b) => b.mtime - a.mtime);
     
-    // Read main data file
+    // Read main data file with corruption recovery
     let mainData = null;
     let mainMtime = null;
+    let recoveredFromBackup = false;
     
     if (fs.existsSync(paths.dataFile)) {
       const stats = await fsPromises.stat(paths.dataFile);
       mainMtime = stats.mtime;
-      const data = await fsPromises.readFile(paths.dataFile, 'utf-8');
-      mainData = JSON.parse(data);
       
-      // DEBUG: Log what was loaded
-      safeLog(`🔍 DEBUG: Loaded data from file:`);
-      safeLog(`  Tasks: ${mainData.tasks?.length || 0}`);
-      safeLog(`  Projects: ${mainData.projects?.length || 0}`);
-      safeLog(`  Events: ${mainData.events?.length || 0}`);
-      safeLog(`  Open Projects: ${mainData.openProjects?.length || 0}`);
+      try {
+        const data = await fsPromises.readFile(paths.dataFile, 'utf-8');
+        mainData = JSON.parse(data);
+        
+        // DEBUG: Log what was loaded
+        safeLog(`🔍 DEBUG: Loaded data from file:`);
+        safeLog(`  Tasks: ${mainData.tasks?.length || 0}`);
+        safeLog(`  Projects: ${mainData.projects?.length || 0}`);
+        safeLog(`  Events: ${mainData.events?.length || 0}`);
+        safeLog(`  Open Projects: ${mainData.openProjects?.length || 0}`);
+      } catch (parseError) {
+        // JSON parse failed - attempt recovery from backup
+        safeError('❌ JSON parse error in petal.json:', parseError);
+        safeLog('🔄 Attempting recovery from backup...');
+        
+        // Archive corrupted file
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+        const corruptPath = path.join(paths.vaultPath, `petal.json.corrupt.${timestamp}`);
+        try {
+          await fsPromises.copyFile(paths.dataFile, corruptPath);
+          safeLog(`  Archived corrupted file to: ${corruptPath}`);
+        } catch (e) {
+          safeWarn('  Could not archive corrupted file:', e);
+        }
+        
+        // Try to load from backup
+        if (fs.existsSync(paths.backupFile)) {
+          try {
+            const backupData = await fsPromises.readFile(paths.backupFile, 'utf-8');
+            mainData = JSON.parse(backupData);
+            recoveredFromBackup = true;
+            
+            // Restore backup to main file
+            await fsPromises.copyFile(paths.backupFile, paths.dataFile);
+            safeLog('✅ Recovered from backup and restored to petal.json');
+            
+            // Notify renderer
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.send('vault:corruptionRecovered', {
+                corruptFile: corruptPath,
+                recoveredFrom: paths.backupFile
+              });
+            }
+          } catch (backupError) {
+            safeError('❌ Backup file also corrupted:', backupError);
+            // Fall back to empty state
+            mainData = { tasks: [], projects: [], openProjects: [], settings: {} };
+          }
+        } else {
+          safeWarn('⚠️ No backup file found - using empty state');
+          mainData = { tasks: [], projects: [], openProjects: [], settings: {} };
+        }
+      }
     } else {
       safeWarn(`⚠️ WARNING: Data file not found at ${paths.dataFile}`);
     }
@@ -579,13 +642,14 @@ async function readDataFile() {
       return mainMtime ? c.mtime > mainMtime : true;
     });
     
-    // Return data with conflict info
+    // Return data with conflict info and recovery status
     return {
       data: mainData || { tasks: [], projects: [], openProjects: [], settings: {} },
       hasConflicts: allConflicts.length > 0,
       conflicts: allConflicts,
       newerConflicts: newerConflicts,
-      mainFileMtime: mainMtime
+      mainFileMtime: mainMtime,
+      recoveredFromBackup: recoveredFromBackup
     };
   } catch (error) {
     if (error.code === 'ENOENT') {
@@ -593,7 +657,8 @@ async function readDataFile() {
         data: { tasks: [], projects: [], openProjects: [], settings: {} },
         hasConflicts: false,
         conflicts: [],
-        newerConflicts: []
+        newerConflicts: [],
+        recoveredFromBackup: false
       };
     }
     throw error;
@@ -617,6 +682,12 @@ async function writeDataFile(data) {
     }
     
     // 2. Write to temp file first (atomic write)
+    // Ensure parent directory exists (defensive check)
+    const tempDir = path.dirname(paths.tempFile);
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+    
     const tempFd = await fsPromises.open(paths.tempFile, 'w');
     await tempFd.writeFile(jsonData, 'utf-8');
     await tempFd.sync(); // Force write to disk
@@ -653,12 +724,18 @@ async function writeDataFile(data) {
     await dataFd.sync();
     await dataFd.close();
     
-    // Update last known mtime for watcher
+    // Record write time and mtime for watcher write-lock
+    // This prevents watcher from thinking our own writes are "external modifications"
+    const now = Date.now();
     try {
       const stats = await fsPromises.stat(paths.dataFile);
-      lastKnownMtime = stats.mtime.getTime();
+      lastWriteTime = now;
+      lastWriteMtime = stats.mtime.getTime();
+      lastKnownMtime = lastWriteMtime;
     } catch (e) {
       // Ignore
+      lastWriteTime = now;
+      lastWriteMtime = null;
     }
     
     return { success: true };
@@ -681,12 +758,61 @@ async function writeDataFile(data) {
   }
 }
 
+// Check for external modification (used by both watcher and poller)
+function checkForExternalModification(dataFilePath) {
+  if (!fs.existsSync(dataFilePath)) return;
+  
+  try {
+    const stats = fs.statSync(dataFilePath);
+    const currentMtime = stats.mtime.getTime();
+    const now = Date.now();
+    
+    // Ignore if this is likely our own write (within ignore window)
+    if (lastWriteTime && (now - lastWriteTime) < WATCH_IGNORE_WINDOW_MS) {
+      if (lastWriteMtime && Math.abs(currentMtime - lastWriteMtime) < 1000) {
+        // This matches our write - ignore it
+        lastKnownMtime = currentMtime;
+        return;
+      }
+    }
+    
+    // Check if file was modified externally (mtime changed)
+    if (lastKnownMtime && currentMtime > lastKnownMtime + 1000) {
+      // File was modified externally (1 second buffer to avoid false positives)
+      safeLog('⚠️ External modification detected on petal.json');
+      safeLog(`  Previous mtime: ${new Date(lastKnownMtime).toISOString()}`);
+      safeLog(`  Current mtime: ${new Date(currentMtime).toISOString()}`);
+      
+      // Notify renderer with conflict policy info
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('vault:externalModification', {
+          filePath: dataFilePath,
+          previousMtime: lastKnownMtime,
+          currentMtime: currentMtime,
+          hasUnsavedChanges: hasUnsavedChanges
+        });
+      }
+      
+      lastKnownMtime = currentMtime;
+    } else if (currentMtime !== lastKnownMtime) {
+      // Update mtime (could be our own write or legitimate change)
+      lastKnownMtime = currentMtime;
+    }
+  } catch (e) {
+    safeWarn('Error checking file modification:', e);
+  }
+}
+
 // Start watching data file for external modifications
 function startWatchingDataFile(vaultPath) {
-  // Stop existing watcher if any
+  // Stop existing watcher and poller if any
   if (dataFileWatcher) {
     dataFileWatcher.close();
     dataFileWatcher = null;
+  }
+  if (dataFilePollInterval) {
+    clearInterval(dataFilePollInterval);
+    dataFilePollInterval = null;
   }
   
   if (!vaultPath) return;
@@ -704,6 +830,7 @@ function startWatchingDataFile(vaultPath) {
   }
   
   // Watch the vault directory (more reliable than watching file directly)
+  // Note: fs.watch is unreliable on macOS + network drives + cloud folders
   try {
     dataFileWatcher = fs.watch(vaultPath, { recursive: false }, async (eventType, filename) => {
       // Only react to changes to petal.json
@@ -712,42 +839,21 @@ function startWatchingDataFile(vaultPath) {
       // Debounce: wait a bit to avoid multiple rapid events
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      try {
-        if (fs.existsSync(dataFilePath)) {
-          const stats = fs.statSync(dataFilePath);
-          const currentMtime = stats.mtime.getTime();
-          
-          // Check if file was modified externally (mtime changed)
-          if (lastKnownMtime && currentMtime > lastKnownMtime + 1000) {
-            // File was modified externally (1 second buffer to avoid false positives)
-            safeLog('⚠️ External modification detected on petal.json');
-            safeLog(`  Previous mtime: ${new Date(lastKnownMtime).toISOString()}`);
-            safeLog(`  Current mtime: ${new Date(currentMtime).toISOString()}`);
-            
-            // Notify renderer
-            if (mainWindow && !mainWindow.isDestroyed()) {
-              mainWindow.webContents.send('vault:externalModification', {
-                filePath: dataFilePath,
-                previousMtime: lastKnownMtime,
-                currentMtime: currentMtime
-              });
-            }
-            
-            lastKnownMtime = currentMtime;
-          } else if (currentMtime !== lastKnownMtime) {
-            // Update mtime (could be our own write)
-            lastKnownMtime = currentMtime;
-          }
-        }
-      } catch (e) {
-        safeWarn('Error checking file modification:', e);
-      }
+      checkForExternalModification(dataFilePath);
     });
     
     safeLog(`✓ Started watching data file: ${dataFilePath}`);
   } catch (e) {
     safeWarn('Could not start file watcher:', e);
   }
+  
+  // Polling fallback: Check mtime every few seconds
+  // This catches cloud-sync changes that fs.watch misses
+  dataFilePollInterval = setInterval(() => {
+    checkForExternalModification(dataFilePath);
+  }, POLL_INTERVAL_MS);
+  
+  safeLog(`✓ Started polling fallback (every ${POLL_INTERVAL_MS}ms)`);
 }
 
 function createWindow() {
@@ -777,7 +883,28 @@ function createWindow() {
       dataFileWatcher.close();
       dataFileWatcher = null;
     }
+    if (dataFilePollInterval) {
+      clearInterval(dataFilePollInterval);
+      dataFilePollInterval = null;
+    }
     mainWindow = null;
+  });
+}
+
+// Single instance lock: prevent multiple app instances
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  // Another instance is already running - focus it and quit
+  app.quit();
+} else {
+  // Handle second instance launch
+  app.on('second-instance', () => {
+    // Focus existing window
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
   });
 }
 
@@ -791,7 +918,41 @@ app.whenReady().then(async () => {
   vaultManager.loadConfig();
   
   // Step 3: Resolve vault (config → discovery → prompt)
-  const vaultResolution = await vaultManager.resolveVault();
+  // Check for vault relocation (configured vault path doesn't exist)
+  let vaultResolution = await vaultManager.resolveVault();
+  
+  // If vault path in config doesn't exist, try to find it
+  if (vaultResolution.success && vaultResolution.vaultPath) {
+    if (!fs.existsSync(vaultResolution.vaultPath)) {
+      safeWarn(`⚠️ Configured vault path doesn't exist: ${vaultResolution.vaultPath}`);
+      safeLog('🔍 Attempting to discover vault in new location...');
+      
+      // Try discovery
+      const discovered = await vaultManager.discoverVaults();
+      if (discovered.length > 0) {
+        // Found vault in new location
+        const foundVault = discovered[0];
+        safeLog(`✓ Found vault at new location: ${foundVault.path}`);
+        vaultResolution = {
+          success: true,
+          vaultPath: foundVault.path,
+          manifest: foundVault.manifest,
+          source: 'relocated-discovery',
+          wasRelocated: true
+        };
+        vaultManager.setActiveVault(foundVault.path);
+      } else {
+        // Vault moved - will need user to select new location
+        safeWarn('⚠️ Vault not found - will prompt user to select new location');
+        vaultResolution = {
+          success: false,
+          needsUserChoice: true,
+          wasRelocated: true,
+          oldPath: vaultResolution.vaultPath
+        };
+      }
+    }
+  }
   
   if (!vaultResolution.success) {
     // No vault found - will need to prompt user
@@ -807,17 +968,33 @@ app.whenReady().then(async () => {
       mainWindow.webContents.send('vault:resolved', {
         vaultPath: vaultResolution.vaultPath,
         manifest: vaultResolution.manifest,
-        source: vaultResolution.source
+        source: vaultResolution.source,
+        wasRelocated: vaultResolution.wasRelocated || false
       });
       
       // Start watching for external file modifications
       startWatchingDataFile(vaultResolution.vaultPath);
+      
+      // Notify if vault was relocated
+      if (vaultResolution.wasRelocated) {
+        mainWindow.webContents.send('vault:relocated', {
+          oldPath: vaultResolution.oldPath,
+          newPath: vaultResolution.vaultPath
+        });
+      }
     });
   } else if (mainWindow && vaultResolution.needsUserChoice) {
     mainWindow.webContents.once('did-finish-load', () => {
-      mainWindow.webContents.send('vault:needsChoice', {
-        discovered: vaultResolution.discovered || []
-      });
+      if (vaultResolution.wasRelocated) {
+        mainWindow.webContents.send('vault:needsRelocation', {
+          oldPath: vaultResolution.oldPath,
+          discovered: vaultResolution.discovered || []
+        });
+      } else {
+        mainWindow.webContents.send('vault:needsChoice', {
+          discovered: vaultResolution.discovered || []
+        });
+      }
     });
   }
 
@@ -915,6 +1092,34 @@ ipcMain.handle('storage:resolveConflict', async (event, action, conflictFilePath
   }
 });
 
+// Mark state as saved (update write time tracking and clear unsaved flag)
+function markStateSaved(state) {
+  try {
+    const paths = getVaultPaths();
+    const now = Date.now();
+    
+    try {
+      if (fs.existsSync(paths.dataFile)) {
+        const stats = fs.statSync(paths.dataFile);
+        lastWriteTime = now;
+        lastWriteMtime = stats.mtime.getTime();
+        lastKnownMtime = lastWriteMtime;
+      } else {
+        lastWriteTime = now;
+        lastWriteMtime = null;
+      }
+    } catch (e) {
+      lastWriteTime = now;
+      lastWriteMtime = null;
+    }
+    
+    hasUnsavedChanges = false;
+  } catch (error) {
+    // Log but don't throw - this is a non-critical operation
+    safeWarn('Error in markStateSaved:', error);
+  }
+}
+
 ipcMain.handle('storage:save', async (event, state) => {
   try {
     // CRITICAL: Require vault to be resolved before saving
@@ -924,6 +1129,15 @@ ipcMain.handle('storage:save', async (event, state) => {
     }
     
     const vaultPath = getVaultPath();
+    
+    // Ensure vault directory exists before attempting to save
+    try {
+      ensureVaultStructure();
+    } catch (structureError) {
+      safeError('Failed to ensure vault structure:', structureError);
+      return { ok: false, error: `Failed to create vault directory: ${structureError.message}` };
+    }
+    
     const result = await writeDataFile(state);
     if (result.success) {
       const paths = getVaultPaths();
@@ -934,15 +1148,49 @@ ipcMain.handle('storage:save', async (event, state) => {
       if (stats) {
         safeLog(`  File size: ${stats.size} bytes, Modified: ${stats.mtime.toISOString()}`);
       }
+      
+      // Mark state as saved (for conflict policy)
+      // Check if function exists before calling (defensive programming)
+      if (typeof markStateSaved === 'function') {
+        try {
+          markStateSaved(state);
+        } catch (markError) {
+          safeWarn('Warning: Could not mark state as saved:', markError);
+          // Don't fail the save if marking fails
+        }
+      } else {
+        safeWarn('Warning: markStateSaved function not available');
+      }
+      
       return { ok: true };
     } else {
-      safeError('✗ Save failed:', result);
-      return { ok: false, error: result.error || 'Unknown error', conflict: result.conflict };
+      const errorMsg = result.error || 'Unknown error';
+      safeError('✗ Save failed:', errorMsg);
+      if (result.conflict) {
+        safeWarn('  Conflict detected - file was modified externally');
+      }
+      return { ok: false, error: errorMsg, conflict: result.conflict };
     }
   } catch (error) {
+    const errorMsg = error.message || String(error);
     safeError('Error saving data:', error);
-    return { ok: false, error: error.message };
+    safeError('Error details:', errorMsg);
+    if (error.stack) {
+      safeError('Error stack:', error.stack);
+    }
+    // Provide user-friendly error message
+    let userError = errorMsg;
+    if (errorMsg.includes('ENOENT') || errorMsg.includes('no such file')) {
+      userError = `Vault directory does not exist: ${getVaultPath()}. Please check your vault location.`;
+    }
+    return { ok: false, error: userError };
   }
+});
+
+// Track unsaved changes (called from renderer when state changes)
+ipcMain.handle('storage:markDirty', () => {
+  hasUnsavedChanges = true;
+  return { ok: true };
 });
 
 ipcMain.handle('storage:getPath', () => {
@@ -1178,14 +1426,77 @@ ipcMain.handle('storage:checkVaultExists', () => {
 
 // New vault system IPC handlers
 ipcMain.handle('vault:getDiagnostics', () => {
-  if (vaultManager) {
-    return vaultManager.getDiagnostics();
-  }
-  return {
+  const diagnostics = vaultManager ? vaultManager.getDiagnostics() : {
     error: 'VaultManager not initialized',
     app_version: app.getVersion(),
     platform: process.platform
   };
+  
+  // Add preload path information
+  const preloadPath = path.join(__dirname, 'preload.js');
+  diagnostics.preload = {
+    path: preloadPath,
+    exists: fs.existsSync(preloadPath),
+    resolved_dirname: __dirname
+  };
+  
+  return diagnostics;
+});
+
+// Support bundle utilities
+ipcMain.handle('support:copyDiagnostics', async () => {
+  try {
+    const diagnostics = vaultManager ? vaultManager.getDiagnostics() : {};
+    const diagnosticsJson = JSON.stringify(diagnostics, null, 2);
+    // Copy to clipboard
+    const { clipboard } = require('electron');
+    clipboard.writeText(diagnosticsJson);
+    return { success: true, data: diagnosticsJson };
+  } catch (error) {
+    safeError('Error copying diagnostics:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('support:openLogsFolder', async () => {
+  try {
+    if (vaultManager && vaultManager.logPath) {
+      const logsDir = path.dirname(vaultManager.logPath);
+      await shell.openPath(logsDir);
+      return { success: true };
+    }
+    return { success: false, error: 'Log path not available' };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('support:openVaultFolder', async () => {
+  try {
+    const vaultPath = vaultManager ? vaultManager.getActiveVaultPath() : null;
+    if (vaultPath && fs.existsSync(vaultPath)) {
+      await shell.openPath(vaultPath);
+      return { success: true };
+    }
+    return { success: false, error: 'Vault path not available or does not exist' };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('support:exportBundle', async () => {
+  try {
+    // For now, return paths - actual zip creation would require archiver package
+    const bundle = {
+      diagnostics: vaultManager ? vaultManager.getDiagnostics() : {},
+      logPath: vaultManager ? vaultManager.logPath : null,
+      vaultPath: vaultManager ? vaultManager.getActiveVaultPath() : null,
+      timestamp: new Date().toISOString()
+    };
+    return { success: true, bundle };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
 });
 
 ipcMain.handle('vault:discover', async () => {
@@ -1303,13 +1614,46 @@ ipcMain.handle('vault:setActive', async (event, vaultPath) => {
 ipcMain.handle('vault:getStatus', () => {
   if (!vaultManager) {
     return {
-      initialized: false,
-      activeVault: null
+      resolved: false,
+      activeVaultPath: null,
+      vaultId: null,
+      lastError: 'VaultManager not initialized'
     };
   }
   
   const activePath = vaultManager.getActiveVaultPath();
+  
+  // Determine if vault is resolved (has active path and is valid)
+  const resolved = activePath && 
+                   fs.existsSync(activePath) && 
+                   vaultManager.isVaultPath(activePath);
+  
+  let vaultId = null;
+  let lastError = null;
+  
+  if (activePath) {
+    if (!fs.existsSync(activePath)) {
+      lastError = 'Vault path does not exist';
+    } else if (!vaultManager.isVaultPath(activePath)) {
+      lastError = 'Path is not a valid vault';
+    } else {
+      const manifest = vaultManager.readVaultManifest(activePath);
+      if (manifest) {
+        vaultId = manifest.vault_id;
+      } else {
+        lastError = 'Could not read vault manifest';
+      }
+    }
+  } else {
+    lastError = 'No active vault path set';
+  }
+  
   return {
+    resolved: resolved,
+    activeVaultPath: activePath,
+    vaultId: vaultId,
+    lastError: resolved ? null : lastError,
+    // Keep backward compatibility fields
     initialized: true,
     activeVault: activePath ? {
       path: activePath,
@@ -1319,6 +1663,188 @@ ipcMain.handle('vault:getStatus', () => {
     } : null,
     config: vaultManager.config
   };
+});
+
+// Ensure vault is resolved (trigger resolution if needed)
+ipcMain.handle('vault:ensureResolved', async () => {
+  if (!vaultManager) {
+    return {
+      resolved: false,
+      activeVaultPath: null,
+      vaultId: null,
+      lastError: 'VaultManager not initialized'
+    };
+  }
+  
+  // Check if vault is already resolved
+  const activePath = vaultManager.getActiveVaultPath();
+  const isResolved = activePath && 
+                     fs.existsSync(activePath) && 
+                     vaultManager.isVaultPath(activePath);
+  
+  if (isResolved) {
+    // Already resolved, return status
+    const manifest = vaultManager.readVaultManifest(activePath);
+    return {
+      resolved: true,
+      activeVaultPath: activePath,
+      vaultId: manifest ? manifest.vault_id : null,
+      lastError: null
+    };
+  }
+  
+  // Not resolved - trigger resolution
+  try {
+    const resolution = await vaultManager.resolveVault();
+    
+    if (resolution.success && resolution.vaultPath) {
+      const manifest = resolution.manifest || vaultManager.readVaultManifest(resolution.vaultPath);
+      
+      // Send event to renderer
+      if (mainWindow) {
+        mainWindow.webContents.send('vault:resolved', {
+          vaultPath: resolution.vaultPath,
+          manifest: manifest,
+          source: resolution.source || 'ensureResolved'
+        });
+      }
+      
+      return {
+        resolved: true,
+        activeVaultPath: resolution.vaultPath,
+        vaultId: manifest ? manifest.vault_id : null,
+        lastError: null
+      };
+    } else {
+      // Resolution failed or needs user choice
+      return {
+        resolved: false,
+        activeVaultPath: null,
+        vaultId: null,
+        lastError: resolution.needsUserChoice ? 'User choice required' : 'Vault resolution failed'
+      };
+    }
+  } catch (error) {
+    safeError('Error ensuring vault resolution:', error);
+    return {
+      resolved: false,
+      activeVaultPath: null,
+      vaultId: null,
+      lastError: error.message || 'Unknown error during resolution'
+    };
+  }
+});
+
+// Open vault folder in file manager
+ipcMain.handle('vault:openFolder', async (event, vaultPath) => {
+  if (!vaultManager) {
+    return { success: false, error: 'VaultManager not initialized' };
+  }
+  
+  try {
+    const pathToOpen = vaultPath || vaultManager.getActiveVaultPath();
+    
+    if (!pathToOpen) {
+      return { success: false, error: 'No vault path specified' };
+    }
+    
+    if (!fs.existsSync(pathToOpen)) {
+      return { success: false, error: 'Vault path does not exist' };
+    }
+    
+    await shell.openPath(pathToOpen);
+    
+    return { success: true };
+  } catch (error) {
+    safeError('Error opening vault folder:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Support bundle utilities
+ipcMain.handle('support:copyDiagnostics', async () => {
+  if (!vaultManager) {
+    return { success: false, error: 'VaultManager not initialized' };
+  }
+  try {
+    const diagnostics = vaultManager.getDiagnostics();
+    const diagnosticsJson = JSON.stringify(diagnostics, null, 2);
+    // Copy to clipboard (requires clipboard API)
+    const { clipboard } = require('electron');
+    clipboard.writeText(diagnosticsJson);
+    return { success: true, data: diagnosticsJson };
+  } catch (error) {
+    safeError('Error copying diagnostics:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('support:openLogsFolder', () => {
+  try {
+    if (!vaultManager) {
+      return { success: false, error: 'VaultManager not initialized' };
+    }
+    const logsDir = path.dirname(vaultManager.logPath);
+    shell.openPath(logsDir);
+    return { success: true, path: logsDir };
+  } catch (error) {
+    safeError('Error opening logs folder:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('support:openVaultFolder', () => {
+  try {
+    const vaultPath = getVaultPath();
+    if (!vaultPath || !fs.existsSync(vaultPath)) {
+      return { success: false, error: 'Vault path not available or does not exist' };
+    }
+    shell.openPath(vaultPath);
+    return { success: true, path: vaultPath };
+  } catch (error) {
+    safeError('Error opening vault folder:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('support:reloadExternalChanges', async () => {
+  try {
+    // Reload data from file
+    const result = await readDataFile();
+    
+    // Notify renderer to reload state
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('vault:reloadState', {
+        data: result.data,
+        recoveredFromBackup: result.recoveredFromBackup
+      });
+    }
+    
+    return { success: true, data: result.data };
+  } catch (error) {
+    safeError('Error reloading external changes:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('support:exportCurrentState', async (event, exportPath) => {
+  try {
+    // Get current state from renderer (they should pass it)
+    // For now, read from file
+    const result = await readDataFile();
+    const exportData = {
+      ...result.data,
+      exportedAt: new Date().toISOString(),
+      exportedBy: 'user-conflict-resolution',
+      note: 'Exported during external modification conflict'
+    };
+    
+    await fsPromises.writeFile(exportPath, JSON.stringify(exportData, null, 2), 'utf-8');
+    return { success: true, path: exportPath };
+  } catch (error) {
+    safeError('Error exporting current state:', error);
+    return { success: false, error: error.message };
+  }
 });
 
 ipcMain.handle('file:open', async (event, filePath) => {

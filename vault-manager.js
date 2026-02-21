@@ -129,23 +129,99 @@ class VaultManager {
         const configData = fs.readFileSync(this.configPath, 'utf-8');
         this.config = JSON.parse(configData);
         this.logger?.log('Config loaded from:', this.configPath);
+        
+        // If config has vault_path, validate it exists
+        if (this.config.vault_path && !fs.existsSync(this.config.vault_path)) {
+          this.logger?.warn(`Configured vault path doesn't exist: ${this.config.vault_path}`);
+          // Don't clear it yet - let resolveVault() handle relocation
+        }
+        
         return this.config;
       }
     } catch (error) {
       this.logger?.error('Error loading config:', error);
     }
     
-    // Return default config
-    this.config = {
+    // No config found - try to migrate from old preferences.json
+    this.config = this.migrateFromOldPreferences();
+    
+    // If migration found a vault path, save it
+    if (this.config.vault_path) {
+      this.logger?.log('Migrated vault path from old preferences:', this.config.vault_path);
+      this.saveConfig();
+    } else {
+      // Return default config
+      this.config = {
+        vault_path: null,
+        sync_mode: 'cloud',
+        last_seen_vault_id: null,
+        last_sync_time: null,
+        app_version: this.app.getVersion()
+      };
+      this.logger?.log('Using default config (no existing config found)');
+    }
+    
+    return this.config;
+  }
+
+  // Migrate vault path from old preferences.json system
+  migrateFromOldPreferences() {
+    try {
+      const userDataPath = this.app.getPath('userData');
+      const prefsFile = path.join(userDataPath, 'preferences.json');
+      
+      if (fs.existsSync(prefsFile)) {
+        const prefsData = fs.readFileSync(prefsFile, 'utf-8');
+        const prefs = JSON.parse(prefsData);
+        
+        // Check if old preferences has a vault path
+        if (prefs.vaultPath && fs.existsSync(prefs.vaultPath)) {
+          // Check if it's a valid vault (has manifest)
+          if (this.isVaultPath(prefs.vaultPath)) {
+            const manifest = this.readVaultManifest(prefs.vaultPath);
+            if (manifest) {
+              this.logger?.log('Found vault in old preferences, migrating to new config');
+              return {
+                vault_path: prefs.vaultPath,
+                sync_mode: 'cloud',
+                last_seen_vault_id: manifest.vault_id,
+                last_sync_time: null,
+                app_version: this.app.getVersion()
+              };
+            }
+          }
+          
+          // Check if it's an old-style vault (has petal.json but no manifest)
+          const dataFile = path.join(prefs.vaultPath, 'petal.json');
+          if (fs.existsSync(dataFile)) {
+            this.logger?.log('Found old-style vault in preferences (has petal.json), creating manifest');
+            try {
+              const manifest = this.createVaultManifest(prefs.vaultPath);
+              return {
+                vault_path: prefs.vaultPath,
+                sync_mode: 'cloud',
+                last_seen_vault_id: manifest.vault_id,
+                last_sync_time: null,
+                app_version: this.app.getVersion()
+              };
+            } catch (error) {
+              this.logger?.error('Failed to create manifest for old vault:', error);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      this.logger?.warn('Error checking old preferences for migration:', error);
+    }
+    
+    // No migration found
+    return {
       vault_path: null,
       sync_mode: 'cloud',
       last_seen_vault_id: null,
       last_sync_time: null,
       app_version: this.app.getVersion()
     };
-    
-    this.logger?.log('Using default config (no existing config found)');
-    return this.config;
   }
 
   // Save config to Application Support
@@ -228,17 +304,37 @@ class VaultManager {
     const searchPaths = [];
     
     if (platform === 'darwin') {
-      // macOS
+      // macOS - check multiple OneDrive locations
+      const cloudStorageDir = path.join(os.homedir(), 'Library', 'CloudStorage');
       searchPaths.push(
         path.join(os.homedir(), 'Documents', 'PetalVault'),
         path.join(os.homedir(), 'Library', 'Mobile Documents', 'com~apple~CloudDocs', 'PetalVault'),
         path.join(os.homedir(), 'OneDrive', 'PetalVault'),
         path.join(os.homedir(), 'OneDrive - Personal', 'PetalVault'),
         path.join(os.homedir(), 'OneDrive - Organization', 'PetalVault'),
-        path.join(os.homedir(), 'Library', 'CloudStorage', 'OneDrive-Personal', 'PetalVault'),
-        path.join(os.homedir(), 'Library', 'CloudStorage', 'OneDrive-Organization', 'PetalVault'),
+        path.join(cloudStorageDir, 'OneDrive-Personal', 'PetalVault'),
+        path.join(cloudStorageDir, 'OneDrive-Organization', 'PetalVault'),
+        path.join(cloudStorageDir, 'OneDrivePersonal', 'PetalVault'),
+        path.join(cloudStorageDir, 'OneDriveBusiness', 'PetalVault'),
         path.join(os.homedir(), 'Dropbox', 'PetalVault')
       );
+      
+      // Also check for any OneDrive-* folders in CloudStorage (for organization-specific OneDrive)
+      if (fs.existsSync(cloudStorageDir)) {
+        try {
+          const entries = fs.readdirSync(cloudStorageDir);
+          for (const entry of entries) {
+            if (entry.startsWith('OneDrive-') || entry.startsWith('OneDrive')) {
+              const oneDrivePath = path.join(cloudStorageDir, entry, 'PetalVault');
+              if (!searchPaths.includes(oneDrivePath)) {
+                searchPaths.push(oneDrivePath);
+              }
+            }
+          }
+        } catch (e) {
+          this.logger?.warn('Error scanning CloudStorage directory:', e);
+        }
+      }
     } else if (platform === 'win32') {
       // Windows
       const oneDrive = process.env.ONEDRIVE || process.env.ONEDRIVECONSUMER;
@@ -262,7 +358,12 @@ class VaultManager {
     
     // Check each path
     for (const searchPath of searchPaths) {
-      if (fs.existsSync(searchPath) && this.isVaultPath(searchPath)) {
+      if (!fs.existsSync(searchPath)) {
+        continue;
+      }
+      
+      // Check if it's a valid vault (has manifest)
+      if (this.isVaultPath(searchPath)) {
         const manifest = this.readVaultManifest(searchPath);
         if (manifest) {
           candidates.push({
@@ -270,6 +371,27 @@ class VaultManager {
             manifest: manifest,
             discovered_at: new Date().toISOString()
           });
+          continue;
+        }
+      }
+      
+      // Also check for old-style vaults (has petal.json but no manifest)
+      // This handles migration from old system
+      const dataFile = path.join(searchPath, 'petal.json');
+      if (fs.existsSync(dataFile)) {
+        this.logger?.log(`Found old-style vault at ${searchPath} (has petal.json but no manifest)`);
+        // Create manifest for old vault
+        try {
+          const manifest = this.createVaultManifest(searchPath);
+          candidates.push({
+            path: searchPath,
+            manifest: manifest,
+            discovered_at: new Date().toISOString(),
+            wasMigrated: true
+          });
+          this.logger?.log(`Created manifest for old vault at ${searchPath}`);
+        } catch (error) {
+          this.logger?.error(`Failed to create manifest for old vault at ${searchPath}:`, error);
         }
       }
     }
@@ -283,8 +405,8 @@ class VaultManager {
     this.logger?.log('=== Starting Vault Resolution ===');
     
     // Step 1: Check config for existing vault path
-    if (this.config.vault_path && fs.existsSync(this.config.vault_path)) {
-      if (this.isVaultPath(this.config.vault_path)) {
+    if (this.config.vault_path) {
+      if (fs.existsSync(this.config.vault_path) && this.isVaultPath(this.config.vault_path)) {
         const manifest = this.readVaultManifest(this.config.vault_path);
         if (manifest) {
           // Validate schema version
@@ -305,11 +427,38 @@ class VaultManager {
             this.logger?.warn(`Schema version mismatch: expected ${SCHEMA_VERSION}, got ${manifest.schema_version}`);
           }
         }
+      } else if (!fs.existsSync(this.config.vault_path)) {
+        // Vault was moved - need to relocate
+        this.logger?.warn(`Configured vault path does not exist: ${this.config.vault_path}`);
+        this.logger?.log('Vault may have been moved - will attempt discovery and prompt if needed');
       }
     }
     
-    // Step 2: Discover existing vaults
+    // Step 2: Discover existing vaults (includes vault relocation support)
     const discovered = await this.discoverVaults();
+    
+    // If we had a configured vault but it's missing, check if discovered vaults match by ID
+    if (this.config.vault_path && !fs.existsSync(this.config.vault_path) && this.config.last_seen_vault_id) {
+      const matchingVault = discovered.find(v => v.manifest.vault_id === this.config.last_seen_vault_id);
+      if (matchingVault) {
+        // Found vault by ID - it was moved
+        this.activeVaultPath = matchingVault.path;
+        this.config.vault_path = matchingVault.path;
+        this.config.last_seen_vault_id = matchingVault.manifest.vault_id;
+        this.saveConfig();
+        
+        this.logger?.log(`✓ Vault relocated: ${this.activeVaultPath}`);
+        this.logger?.log(`  Vault ID: ${matchingVault.manifest.vault_id}`);
+        return {
+          success: true,
+          vaultPath: this.activeVaultPath,
+          manifest: matchingVault.manifest,
+          source: 'relocated',
+          wasRelocated: true,
+          oldPath: this.config.vault_path
+        };
+      }
+    }
     
     if (discovered.length > 0) {
       // Use first discovered vault (or could prompt user)
@@ -334,7 +483,8 @@ class VaultManager {
     this.logger?.log('No vault found - user will be prompted to create/choose one');
     return {
       success: false,
-      needsUserChoice: true
+      needsUserChoice: true,
+      vaultMoved: this.config.vault_path && !fs.existsSync(this.config.vault_path)
     };
   }
 
@@ -410,6 +560,21 @@ class VaultManager {
     if (!manifest) {
       throw new Error('Could not read vault manifest');
     }
+    
+    // Ensure vault directory structure exists (exports, attachments)
+    const exportsDir = path.join(vaultPath, 'exports');
+    const attachmentsDir = path.join(vaultPath, 'attachments');
+    [exportsDir, attachmentsDir].forEach(dir => {
+      if (!fs.existsSync(dir)) {
+        try {
+          fs.mkdirSync(dir, { recursive: true });
+          this.logger?.log(`✓ Created directory: ${dir}`);
+        } catch (error) {
+          this.logger?.error(`✗ Failed to create directory: ${dir}`, error);
+          throw new Error(`Failed to create vault directory: ${dir}. Error: ${error.message}`);
+        }
+      }
+    });
     
     // CANARY WRITE TEST: Verify filesystem access on activation
     const canaryPath = path.join(vaultPath, '.petal_canary');
