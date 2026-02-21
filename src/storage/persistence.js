@@ -105,12 +105,27 @@ async function performSave() {
       first: (stateToSave.files || [])[0]?.name 
     });
     
+    // Release-Safe: Explicit files count logging to catch persistence issues
+    const filesCount = stateToSave.files?.length ?? 0;
+    const tasksCount = stateToSave.tasks?.length ?? 0;
+    const projectsCount = stateToSave.projects?.length ?? 0;
+    
     console.log('💾 SAVE start:', {
-      tasks: stateToSave.tasks?.length || 0,
-      projects: stateToSave.projects?.length || 0,
-      files: stateToSave.files?.length || 0,
+      tasks: tasksCount,
+      projects: projectsCount,
+      files: filesCount, // ✅ Explicit files count
+      filesFirst: filesCount > 0 ? stateToSave.files[0]?.name : null,
       timestamp: new Date().toISOString()
     });
+    
+    // Warn if files should exist but don't
+    if (filesCount === 0 && typeof window !== 'undefined' && window.Petal?.store) {
+      const currentState = window.Petal.store.getState();
+      const currentFilesCount = currentState.files?.length ?? 0;
+      if (currentFilesCount > 0) {
+        console.warn('⚠️ WARNING: files count mismatch! Store has', currentFilesCount, 'files but snapshot has', filesCount);
+      }
+    }
     
     // Phase 3.3: Save ONLY store state (no fallbacks to window globals)
     // This is now illegal - store must be the single source of truth
@@ -137,9 +152,10 @@ async function performSave() {
       lastSaveError = null;
       console.log('✅ SAVE success:', {
         timestamp: new Date().toISOString(),
-        tasks: stateToSave.tasks?.length || 0,
-        projects: stateToSave.projects?.length || 0,
-        files: stateToSave.files?.length || 0
+        tasks: tasksCount,
+        projects: projectsCount,
+        files: filesCount, // ✅ Explicit files count
+        filesFirst: filesCount > 0 ? stateToSave.files[0]?.name : null
       });
       
       // Update UI indicator - only called when write actually succeeded

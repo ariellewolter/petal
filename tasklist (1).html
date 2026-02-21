@@ -103,6 +103,7 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 .btn-submit:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(201,139,139,.3);}
 .btn-secondary{background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Jost',sans-serif;font-size:13px;font-weight:400;padding:10px 20px;cursor:pointer;transition:all .15s;}
 .btn-secondary:hover{background:var(--bg);border-color:var(--border2);}
+.btn-add-task-toggle:hover{background:var(--rose-pale);border-color:var(--rose-soft);color:var(--rose);}
 
 /* ── TOOLBAR ── */
 .toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap;}
@@ -495,6 +496,14 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 #view-planner{display:none;height:calc(100vh - 200px);overflow:hidden;flex-direction:column;}
 #view-planner[style*="display:flex"]{display:flex!important;}
 
+/* Drag and drop styles */
+.routine-draggable:hover,.habit-draggable:hover{background:var(--bg2);border:1px dashed var(--rose-soft);}
+.routine-draggable:active,.habit-draggable:active{cursor:grabbing!important;}
+.routine-draggable,.habit-draggable{cursor:grab!important;}
+.routine-item[draggable="true"]:hover,.habit-item[draggable="true"]:hover{background:var(--bg2);border:1px dashed var(--rose-soft);}
+.t-slot[draggable="true"]{cursor:copy;}
+.t-slot.drag-over{background:var(--rose-pale)!important;border:2px dashed var(--rose);}
+
 /* Calendar grid */
 .cal-daylabel{text-align:center;font-size:7px;color:var(--text-muted);letter-spacing:0.07em;padding-bottom:4px;font-family:'Jost',sans-serif;font-weight:700;}
 .cal-day{text-align:center;font-size:10px;padding:4px 1px;border-radius:5px;cursor:pointer;color:var(--text-dim);transition:all 0.11s;position:relative;line-height:1.2;}
@@ -666,8 +675,21 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
   </div>
 
   <!-- ═══════════════════════════════════ TASKS VIEW ═══ -->
-  <div id="view-tasks" style="display:none;">
-    <div class="form-card">
+  <div id="view-tasks" style="display:none;padding:20px;">
+    <!-- Add Task Button -->
+    <div style="margin-bottom:20px;display:flex;gap:12px;align-items:center;">
+      <button onclick="openAddTaskModal()" style="background:linear-gradient(135deg,#d4a0a0 0%,#c98b8b 100%) !important;border:none !important;border-radius:10px !important;color:white !important;font-size:14px !important;padding:12px 24px !important;cursor:pointer !important;display:flex !important;align-items:center !important;gap:8px !important;box-shadow:0 4px 14px rgba(201,139,139,.25) !important;font-family:'Jost',sans-serif;font-weight:500;">
+        <span style="font-size:18px;">+</span>
+        <span>Add Task</span>
+      </button>
+      <button id="toggle-add-task-btn" class="btn-add-task-toggle" onclick="toggleAddTaskForm()" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text-dim);font-family:'Jost',sans-serif;font-size:12px;font-weight:400;letter-spacing:.1em;text-transform:uppercase;padding:8px 16px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px;">
+        <span id="toggle-add-task-icon">+</span>
+        <span id="toggle-add-task-text">Quick Add</span>
+      </button>
+    </div>
+    
+    <!-- Add Task Form (hidden by default) -->
+    <div class="form-card" id="add-task-form" style="display:none;">
       <div class="form-title">Add a new task</div>
       <div class="field-row">
         <div class="field" style="flex:3">
@@ -1013,6 +1035,26 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
     </div>
   </div>
 
+  <!-- ═══════════════════════════════════ FILE NOTES MODAL ═══ -->
+  <div class="quick-capture-modal" id="file-notes-modal" style="display:none;" onclick="if(event.target===this)closeFileNotesModal()" onkeydown="if(event.key==='Escape')closeFileNotesModal()" tabindex="-1">
+    <div class="quick-capture-box" style="max-width:600px;" onclick="event.stopPropagation()">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
+        <h3 id="file-notes-modal-title" style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;font-style:italic;color:var(--rose);margin:0;">File Notes</h3>
+        <button onclick="closeFileNotesModal()" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
+      </div>
+      
+      <div class="field" style="margin-bottom:16px;">
+        <label id="file-notes-file-name" style="font-size:14px;color:var(--text);margin-bottom:8px;font-weight:500;"></label>
+        <textarea id="file-notes-content" placeholder="Add notes about this file..." style="width:100%;min-height:200px;resize:vertical;font-family:'Jost',sans-serif;font-size:13px;line-height:1.6;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);"></textarea>
+      </div>
+      
+      <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:8px;border-top:1px solid var(--border);">
+        <button onclick="closeFileNotesModal()" class="btn-secondary">Cancel</button>
+        <button onclick="saveFileNotes()" class="btn-submit">Save Notes</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ═══════════════════════════════════ EVENT MODAL ═══ -->
   <div class="quick-capture-modal" id="event-modal" style="display:none;" onclick="if(event.target===this)closeEventModal()" onkeydown="if(event.key==='Escape')closeEventModal()" tabindex="-1">
     <div class="quick-capture-box" style="max-width:520px;" onclick="event.stopPropagation()">
@@ -1031,13 +1073,20 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
           <label>Date</label>
           <input type="date" id="event-date" style="width:100%;">
         </div>
+      </div>
+      
+      <div class="field-row" style="margin-bottom:16px;">
         <div class="field" style="flex:1;">
           <label>Start Time</label>
-          <input type="time" id="event-start-time" style="width:100%;">
+          <input type="time" id="event-start-time" style="width:100%;" onchange="updateEventEndTimeFromDuration()">
         </div>
         <div class="field" style="flex:1;">
           <label>Duration (minutes)</label>
-          <input type="number" id="event-duration" placeholder="60" min="1" step="5" style="width:100%;">
+          <input type="number" id="event-duration" placeholder="60" min="1" step="5" style="width:100%;" oninput="updateEventEndTimeFromDuration()">
+        </div>
+        <div class="field" style="flex:1;">
+          <label>End Time (or duration)</label>
+          <input type="time" id="event-end-time" style="width:100%;" onchange="updateEventDurationFromEndTime()">
         </div>
       </div>
       
@@ -1073,15 +1122,53 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
       <div class="field-row" style="margin-bottom:16px;">
         <div class="field" style="flex:1;">
           <label>Link to Project (optional)</label>
-          <select id="event-linked-project" style="width:100%;">
+          <select id="event-linked-project" style="width:100%;" onchange="updateEventTaskOptions();updateEventCreateTaskOptions()">
             <option value="">No project</option>
           </select>
         </div>
         <div class="field" style="flex:1;">
-          <label>Link to Task (optional)</label>
+          <label>Link to Existing Task (optional)</label>
           <select id="event-linked-task" style="width:100%;">
             <option value="">No task</option>
           </select>
+        </div>
+      </div>
+      
+      <!-- Create Task Option -->
+      <div class="field" style="margin-bottom:16px;padding:12px;background:var(--bg2);border-radius:8px;border:1px solid var(--border);">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:12px;">
+          <input type="checkbox" id="event-create-task" style="cursor:pointer;" onchange="toggleEventCreateTaskFields()">
+          <span style="font-size:13px;font-weight:500;color:var(--text);">Create new task for this event</span>
+        </label>
+        <div id="event-create-task-fields" style="display:none;">
+          <div class="field-row" style="margin-bottom:12px;">
+            <div class="field" style="flex:1;">
+              <label style="font-size:11px;color:var(--text-dim);">Task Project</label>
+              <select id="event-task-project" style="width:100%;" onchange="updateEventTaskParentOptions()">
+                <option value="">No project</option>
+              </select>
+            </div>
+            <div class="field" style="flex:1;">
+              <label style="font-size:11px;color:var(--text-dim);">Parent Task (optional)</label>
+              <select id="event-task-parent" style="width:100%;">
+                <option value="">No parent task</option>
+              </select>
+            </div>
+          </div>
+          <div class="field-row" style="margin-bottom:0;">
+            <div class="field" style="flex:1;">
+              <label style="font-size:11px;color:var(--text-dim);">Priority</label>
+              <select id="event-task-priority" style="width:100%;">
+                <option value="2">Medium</option>
+                <option value="3">High</option>
+                <option value="1">Low</option>
+              </select>
+            </div>
+            <div class="field" style="flex:1;">
+              <label style="font-size:11px;color:var(--text-dim);">Due Date (optional)</label>
+              <input type="date" id="event-task-due" style="width:100%;">
+            </div>
+          </div>
         </div>
       </div>
       
@@ -1090,9 +1177,20 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
         <textarea id="event-notes" placeholder="Additional details..." style="width:100%;min-height:60px;resize:vertical;"></textarea>
       </div>
       
-      <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:8px;border-top:1px solid var(--border);">
-        <button onclick="closeEventModal()" class="btn-secondary">Cancel</button>
-        <button onclick="submitEventModal()" class="btn-submit">Save Event</button>
+      <div style="display:flex;gap:10px;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid var(--border);">
+        <div>
+          <button id="event-delete-btn" onclick="if(confirm('Delete this event?')){deleteEvent(editingEventId);closeEventModal();}" 
+                  class="btn-secondary" 
+                  style="display:none;background:var(--overdue);color:white;border-color:var(--overdue);"
+                  onmouseover="this.style.background='var(--overdue)';this.style.opacity='0.9';" 
+                  onmouseout="this.style.background='var(--overdue)';this.style.opacity='1';">
+            Delete Event
+          </button>
+        </div>
+        <div style="display:flex;gap:10px;">
+          <button onclick="closeEventModal()" class="btn-secondary">Cancel</button>
+          <button onclick="submitEventModal()" class="btn-submit">Save Event</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1113,11 +1211,15 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
       <div class="field-row" style="margin-bottom:16px;">
         <div class="field" style="flex:1;">
           <label>Start Time</label>
-          <input type="time" id="recurring-start-time" style="width:100%;">
+          <input type="time" id="recurring-start-time" style="width:100%;" onchange="updateRecurringEndTimeFromDuration()">
         </div>
         <div class="field" style="flex:1;">
           <label>Duration (minutes)</label>
-          <input type="number" id="recurring-duration" placeholder="60" min="1" step="5" style="width:100%;">
+          <input type="number" id="recurring-duration" placeholder="60" min="1" step="5" style="width:100%;" oninput="updateRecurringEndTimeFromDuration()">
+        </div>
+        <div class="field" style="flex:1;">
+          <label>End Time (or duration)</label>
+          <input type="time" id="recurring-end-time" style="width:100%;" onchange="updateRecurringDurationFromEndTime()">
         </div>
       </div>
       
@@ -1518,10 +1620,10 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
         </div>
 
         <!-- Habits Card -->
-        <div id="planner-habits-card" style="flex-shrink:0;padding:8px 10px;border-bottom:1px solid var(--border);"></div>
+        <div id="planner-habits-card" style="flex-shrink:0;padding:8px 10px;border-bottom:1px solid var(--border);min-height:60px;"></div>
 
         <!-- Routines Card -->
-        <div id="planner-routines-card" style="flex-shrink:0;padding:8px 10px;border-bottom:1px solid var(--border);"></div>
+        <div id="planner-routines-card" style="flex-shrink:0;padding:8px 10px;border-bottom:1px solid var(--border);min-height:60px;"></div>
 
         <!-- Upcoming Events -->
         <div class="sidebar-section-header" style="padding:12px 16px 8px;font-family:'Jost',sans-serif;font-size:8px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
@@ -1558,6 +1660,144 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
       </div>
     </div>
   </div>
+
+  <!-- ═══════════════════════ HABIT MODAL ═══════════════════════ -->
+  <div class="quick-capture-modal" id="habit-modal" style="display:none;" onclick="if(event.target===this)closeHabitModal()" onkeydown="if(event.key==='Escape')closeHabitModal()" tabindex="-1">
+    <div class="quick-capture-box" style="max-width:420px;" onclick="event.stopPropagation()">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
+        <h3 id="habit-modal-title" style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;font-style:italic;color:var(--rose);margin:0;">Add Habit</h3>
+        <button onclick="closeHabitModal()" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
+      </div>
+      
+      <div class="field" style="margin-bottom:16px;">
+        <label>Habit Name</label>
+        <input type="text" id="habit-name" placeholder="e.g., Write 30 min, Stretch, Read 10 pages" style="width:100%;">
+      </div>
+      
+      <div class="field" style="margin-bottom:16px;">
+        <label>Frequency</label>
+        <select id="habit-cadence" style="width:100%;" onchange="toggleHabitDaysOfWeek()">
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+        </select>
+      </div>
+      
+      <div class="field" id="habit-days-of-week-field" style="margin-bottom:16px;display:none;">
+        <label>Days of Week (optional - leave all unchecked for all days)</label>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" class="habit-day" value="0" style="cursor:pointer;">
+            <span>Sun</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" class="habit-day" value="1" style="cursor:pointer;">
+            <span>Mon</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" class="habit-day" value="2" style="cursor:pointer;">
+            <span>Tue</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" class="habit-day" value="3" style="cursor:pointer;">
+            <span>Wed</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" class="habit-day" value="4" style="cursor:pointer;">
+            <span>Thu</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" class="habit-day" value="5" style="cursor:pointer;">
+            <span>Fri</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" class="habit-day" value="6" style="cursor:pointer;">
+            <span>Sat</span>
+          </label>
+        </div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:6px;">If no days are selected, habit will show on all days</div>
+      </div>
+      
+      <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:8px;border-top:1px solid var(--border);">
+        <button onclick="closeHabitModal()" class="btn-secondary">Cancel</button>
+        <button onclick="submitHabitModal()" class="btn-submit">Add Habit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════ ROUTINE MODAL ═══════════════════════ -->
+  <div class="quick-capture-modal" id="routine-modal" style="display:none;" onclick="if(event.target===this)closeRoutineModal()" onkeydown="if(event.key==='Escape')closeRoutineModal()" tabindex="-1">
+    <div class="quick-capture-box" style="max-width:420px;" onclick="event.stopPropagation()">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
+        <h3 id="routine-modal-title" style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;font-style:italic;color:var(--rose);margin:0;">Add Routine</h3>
+        <button onclick="closeRoutineModal()" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
+      </div>
+      
+      <div class="field" style="margin-bottom:16px;">
+        <label>Routine Name</label>
+        <input type="text" id="routine-name" placeholder="e.g., Email cleanup, Plan tomorrow" style="width:100%;">
+      </div>
+      
+      <div class="field" style="margin-bottom:16px;">
+        <label>Frequency</label>
+        <select id="routine-cadence" style="width:100%;" onchange="toggleRoutineDaysOfWeek()">
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+        </select>
+      </div>
+      
+      <div class="field" id="routine-days-of-week-field" style="margin-bottom:16px;display:none;">
+        <label>Days of Week (optional - leave all unchecked for all days)</label>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" class="routine-day" value="0" style="cursor:pointer;">
+            <span>Sun</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" class="routine-day" value="1" style="cursor:pointer;">
+            <span>Mon</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" class="routine-day" value="2" style="cursor:pointer;">
+            <span>Tue</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" class="routine-day" value="3" style="cursor:pointer;">
+            <span>Wed</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" class="routine-day" value="4" style="cursor:pointer;">
+            <span>Thu</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" class="routine-day" value="5" style="cursor:pointer;">
+            <span>Fri</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" class="routine-day" value="6" style="cursor:pointer;">
+            <span>Sat</span>
+          </label>
+        </div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:6px;">If no days are selected, routine will show on all days</div>
+      </div>
+      
+      <div class="field-row" style="margin-bottom:16px;">
+        <div class="field" style="flex:1;">
+          <label>Time of Day (optional)</label>
+          <input type="time" id="routine-time" style="width:100%;">
+        </div>
+        <div class="field" style="flex:1;">
+          <label>Duration (minutes, optional)</label>
+          <input type="number" id="routine-duration" placeholder="15" min="1" step="5" style="width:100%;">
+        </div>
+      </div>
+      
+      <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:8px;border-top:1px solid var(--border);">
+        <button onclick="closeRoutineModal()" class="btn-secondary">Cancel</button>
+        <button onclick="submitRoutineModal()" class="btn-submit">Add Routine</button>
+      </div>
+    </div>
+  </div>
+
 
   <!-- ═══════════════════════════════════ CELL LOG VIEW ═══ -->
   <div id="view-cell-log" style="display:none;padding:20px;box-sizing:border-box;width:100%;max-width:100%;">
@@ -4116,6 +4356,30 @@ function switchView(v) {
       renderPlanner();
       buildPlannerSidebar();
       buildPlannerCalendar();
+      
+      // Ensure habits/routines render (in case modules loaded after initial render)
+      setTimeout(() => {
+        const habitsContainer = document.getElementById('planner-habits-card');
+        const routinesContainer = document.getElementById('planner-routines-card');
+        console.log('Planner view opened - checking containers:', {
+          habitsContainer: !!habitsContainer,
+          routinesContainer: !!routinesContainer,
+          hasRenderHabits: !!window.Petal?.ui?.renderPlannerHabits,
+          hasRenderRoutines: !!window.Petal?.ui?.renderPlannerRoutines,
+          hasStore: !!window.Petal?.store
+        });
+        
+        if (window.Petal?.ui?.renderPlannerHabits && window.Petal?.store) {
+          const state = window.Petal.store.getState();
+          const viewDate = plannerViewDate || new Date();
+          window.Petal.ui.renderPlannerHabits(null, state, viewDate);
+        }
+        if (window.Petal?.ui?.renderPlannerRoutines && window.Petal?.store) {
+          const state = window.Petal.store.getState();
+          const viewDate = plannerViewDate || new Date();
+          window.Petal.ui.renderPlannerRoutines(null, state, viewDate);
+        }
+      }, 100);
     } else {
       plannerViewEl.style.display = 'none';
     }
@@ -4276,6 +4540,13 @@ function removeTags(text) {
 async function addTask(titleOverride = null, statusOverride = null) {
   if (window.Petal?.features?.taskOperations?.addTask) {
     await window.Petal.features.taskOperations.addTask(titleOverride, statusOverride);
+    // Close the add task form after adding (unless using override)
+    if (!titleOverride) {
+      const form = document.getElementById('add-task-form');
+      if (form && form.style.display !== 'none') {
+        toggleAddTaskForm();
+      }
+    }
     return;
   } else {
     console.error('Task operations module not loaded');
@@ -6907,10 +7178,33 @@ function closeAddTaskModal() {
   currentModalContext = null;
 }
 
+// Open Add Task Modal (general - no project required)
+function openAddTaskModal() {
+  currentModalProjectId = null;
+  currentModalContext = 'general';
+  
+  document.getElementById('add-task-modal-title').textContent = 'Add Task';
+  
+  // Hide lane field for general tasks
+  const laneField = document.getElementById('modal-task-lane-field');
+  if (laneField) laneField.style.display = 'none';
+  
+  // Reset form
+  document.getElementById('modal-task-title').value = '';
+  document.getElementById('modal-task-priority').value = 'medium';
+  document.getElementById('modal-task-due').value = '';
+  
+  // Show modal
+  const modal = document.getElementById('add-task-modal');
+  modal.style.display = 'flex';
+  modal.focus();
+  setTimeout(() => {
+    document.getElementById('modal-task-title').focus();
+  }, 100);
+}
+
 // Submit Add Task Modal
 function submitAddTaskModal() {
-  if (!currentModalProjectId) return;
-  
   const title = document.getElementById('modal-task-title').value.trim();
   if (!title) {
     alert('Please enter a task title');
@@ -6921,13 +7215,79 @@ function submitAddTaskModal() {
   const due = document.getElementById('modal-task-due').value || null;
   const lane = document.getElementById('modal-task-lane')?.value || '';
   
-  if (currentModalContext === 'project') {
+  if (currentModalContext === 'project' && currentModalProjectId) {
     addTaskToProjectFromModal(currentModalProjectId, title, priority, due, lane);
-  } else if (currentModalContext === 'matrix') {
+  } else if (currentModalContext === 'matrix' && currentModalProjectId) {
     addTaskToMatrixFromModal(title, priority, due, lane);
+  } else if (currentModalContext === 'general') {
+    // Add task without project
+    addTaskFromModal(title, priority, due, lane);
+  } else {
+    alert('Unable to add task - no context specified');
+    return;
   }
   
   closeAddTaskModal();
+}
+
+// Add Task from Modal (general - no project)
+async function addTaskFromModal(title, priority, due, lane) {
+  if (!window.Petal?.store) {
+    console.error('Store not available');
+    return;
+  }
+  
+  const state = window.Petal.store.getState();
+  const tasks = state.tasks || [];
+  
+  // Convert priority string to number
+  const priorityMap = { low: 1, medium: 2, high: 3 };
+  const priorityNum = priorityMap[priority] || 2;
+  
+  // Determine stage based on lane
+  const getStageForLane = (lane) => {
+    if (!lane) return null;
+    const laneToStage = {
+      'lab': 'lab',
+      'comp': 'comp',
+      'writing': 'writing',
+      'presentation': 'presentation'
+    };
+    return laneToStage[lane] || null;
+  };
+  
+  const newTask = {
+    id: Date.now(),
+    title: title,
+    notes: '',
+    note: '',
+    noteUpdatedAt: null,
+    log: [],
+    priority: priorityNum,
+    due: due || '',
+    done: false,
+    status: 'Todo',
+    lane: lane || null,
+    stage: getStageForLane(lane),
+    projectId: null,
+    dependsOn: null,
+    tags: [],
+    fileIds: [],
+    files: []
+  };
+  
+  // Update store
+  const updatedTasks = [newTask, ...tasks];
+  window.Petal.store.setState({ tasks: updatedTasks });
+  
+  // Re-render tasks view
+  if (window.Petal?.ui?.renderTasks) {
+    const newState = window.Petal.store.getState();
+    const container = document.getElementById('view-tasks');
+    if (container) {
+      await window.Petal.ui.renderTasks(container, newState, window.Petal.handlers);
+    }
+  }
 }
 
 // Add Task to Project from Modal
@@ -7323,6 +7683,274 @@ async function addFileToMatrixFromModal(filesToAdd) {
   
   await save();
   renderWorkflowMatrix();
+}
+
+// ═══════════════════════ FILE NOTES MODAL ═══════════════════════
+
+// Current file being edited (stores file ID/key)
+let currentFileNotesId = null;
+
+// Open File Notes Modal
+function openFileNotesModal(fileId) {
+  if (!window.Petal?.store) {
+    console.error('Store not available');
+    return;
+  }
+  
+  const state = window.Petal.store.getState();
+  const files = state.files || [];
+  const registry = state.fileRegistry || {};
+  
+  // Helper to compute file key (same logic as in renderFiles)
+  function getFileKey(file) {
+    return file.key || 
+           file.fileLink?.abs_path || 
+           file.fileLink?.onedrive_rel || 
+           file.fileLink?.share_url ||
+           file.id ||
+           '';
+  }
+  
+  // First, try to find in persisted files
+  let file = files.find(f => {
+    const fKey = getFileKey(f);
+    return f.id === fileId || 
+           f.key === fileId || 
+           fKey === fileId ||
+           (f.fileLink && (
+             f.fileLink.abs_path === fileId || 
+             f.fileLink.onedrive_rel === fileId || 
+             f.fileLink.share_url === fileId
+           ));
+  });
+  
+  // If not found in persisted files, try registry
+  if (!file) {
+    // Try direct lookup
+    let registryFile = registry[fileId];
+    
+    // If not found, search all registry entries
+    if (!registryFile) {
+      for (const key in registry) {
+        const regFile = registry[key];
+        const regKey = getFileKey(regFile);
+        if (key === fileId || regKey === fileId || 
+            regFile.abs_path === fileId || 
+            regFile.onedrive_rel === fileId || 
+            regFile.share_url === fileId) {
+          registryFile = regFile;
+          fileId = key; // Update to use the registry key
+          break;
+        }
+      }
+    }
+    
+    if (registryFile) {
+      // Check if there's a persisted file with this key
+      const fileKey = getFileKey(registryFile);
+      const persistedFile = files.find(f => getFileKey(f) === fileKey);
+      
+      if (persistedFile) {
+        // Use persisted file (has notes)
+        file = persistedFile;
+      } else {
+        // Create a temporary file entry from registry
+        file = {
+          key: fileId,
+          fileLink: registryFile,
+          name: registryFile.label || registryFile.name || 'File',
+          notes: registryFile.notes || ''
+        };
+      }
+    }
+  }
+  
+  if (!file) {
+    console.error('File not found:', fileId, { 
+      persistedFilesCount: files.length, 
+      registryKeysCount: Object.keys(registry).length,
+      sampleFileKeys: files.slice(0, 3).map(f => ({
+        id: f.id,
+        key: f.key,
+        fileLink: f.fileLink ? {
+          abs_path: f.fileLink.abs_path,
+          onedrive_rel: f.fileLink.onedrive_rel,
+          share_url: f.fileLink.share_url
+        } : null
+      })),
+      registrySample: Object.keys(registry).slice(0, 3)
+    });
+    alert('File not found. Please try refreshing the file list.');
+    return;
+  }
+  
+  // Determine the identifier to use for saving
+  currentFileNotesId = file.id || file.key || getFileKey(file) || fileId;
+  populateFileNotesModal(file);
+}
+
+// Populate File Notes Modal
+function populateFileNotesModal(file) {
+  const modal = document.getElementById('file-notes-modal');
+  const titleEl = document.getElementById('file-notes-modal-title');
+  const fileNameEl = document.getElementById('file-notes-file-name');
+  const notesTextarea = document.getElementById('file-notes-content');
+  
+  if (!modal || !titleEl || !fileNameEl || !notesTextarea) {
+    console.error('File notes modal elements not found');
+    return;
+  }
+  
+  // Get file name
+  const fileName = file.name || 
+                   file.fileLink?.label || 
+                   file.fileLink?.name || 
+                   file.fileLink?.onedrive_rel || 
+                   file.fileLink?.abs_path || 
+                   file.fileLink?.share_url || 
+                   'File';
+  
+  fileNameEl.textContent = fileName;
+  notesTextarea.value = file.notes || '';
+  
+  // Show modal
+  modal.style.display = 'flex';
+  modal.focus();
+  
+  // Focus textarea
+  setTimeout(() => notesTextarea.focus(), 100);
+}
+
+// Close File Notes Modal
+function closeFileNotesModal() {
+  const modal = document.getElementById('file-notes-modal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+  currentFileNotesId = null;
+  
+  // Clear textarea
+  const notesTextarea = document.getElementById('file-notes-content');
+  if (notesTextarea) {
+    notesTextarea.value = '';
+  }
+}
+
+// Save File Notes
+async function saveFileNotes() {
+  if (!window.Petal?.store || !currentFileNotesId) {
+    console.error('Store not available or no file selected');
+    return;
+  }
+  
+  const notesTextarea = document.getElementById('file-notes-content');
+  if (!notesTextarea) {
+    console.error('Notes textarea not found');
+    return;
+  }
+  
+  const notes = notesTextarea.value.trim();
+  const state = window.Petal.store.getState();
+  const files = state.files || [];
+  const registry = state.fileRegistry || {};
+  
+  // Helper to compute file key (same logic as in renderFiles)
+  function getFileKey(file) {
+    return file.key || 
+           file.fileLink?.abs_path || 
+           file.fileLink?.onedrive_rel || 
+           file.fileLink?.share_url ||
+           file.id ||
+           '';
+  }
+  
+  // Find the file in persisted files
+  let fileIndex = files.findIndex(f => {
+    const fKey = getFileKey(f);
+    return f.id === currentFileNotesId || 
+           f.key === currentFileNotesId || 
+           fKey === currentFileNotesId ||
+           (f.fileLink && (
+             f.fileLink.abs_path === currentFileNotesId || 
+             f.fileLink.onedrive_rel === currentFileNotesId || 
+             f.fileLink.share_url === currentFileNotesId
+           ));
+  });
+  
+  if (fileIndex === -1) {
+    // File not in persisted files, check registry
+    let registryFile = registry[currentFileNotesId];
+    let registryKey = currentFileNotesId;
+    
+    // If not found, search all registry entries
+    if (!registryFile) {
+      for (const key in registry) {
+        const regFile = registry[key];
+        const regKey = getFileKey(regFile);
+        if (key === currentFileNotesId || regKey === currentFileNotesId || 
+            regFile.abs_path === currentFileNotesId || 
+            regFile.onedrive_rel === currentFileNotesId || 
+            regFile.share_url === currentFileNotesId) {
+          registryFile = regFile;
+          registryKey = key;
+          break;
+        }
+      }
+    }
+    
+    if (registryFile) {
+      // Create a new persisted file entry for this file
+      const newFile = {
+        id: Date.now() + Math.random(),
+        key: registryKey,
+        fileLink: registryFile,
+        name: registryFile.label || registryFile.name || 'File',
+        notes: notes,
+        addedAt: Date.now()
+      };
+      
+      // Add to files array
+      const updatedFiles = [...files, newFile];
+      window.Petal.store.setState({ files: updatedFiles });
+      
+      closeFileNotesModal();
+      
+      // Re-render files view
+      if (window.Petal?.ui?.renderFiles) {
+        const newState = window.Petal.store.getState();
+        const container = document.getElementById('files-view-container');
+        if (container) {
+          window.Petal.ui.renderFiles(container, newState, window.Petal.handlers);
+        }
+      }
+      
+      return;
+    } else {
+      console.error('File not found in registry:', currentFileNotesId);
+      alert('File not found. Please try refreshing the file list.');
+      return;
+    }
+  }
+  
+  // Update existing file
+  const updatedFiles = [...files];
+  updatedFiles[fileIndex] = {
+    ...updatedFiles[fileIndex],
+    notes: notes
+  };
+  
+  window.Petal.store.setState({ files: updatedFiles });
+  
+  closeFileNotesModal();
+  
+  // Re-render files view
+  if (window.Petal?.ui?.renderFiles) {
+    const newState = window.Petal.store.getState();
+    const container = document.getElementById('files-view-container');
+    if (container) {
+      window.Petal.ui.renderFiles(container, newState, window.Petal.handlers);
+    }
+  }
 }
 
 // ═══════════════════════ DRAG AND DROP HANDLERS ═══════════════════════
@@ -8641,6 +9269,31 @@ function openProjectView(projectId) {
   const createFormSection = document.getElementById('project-selector-create-section');
   if (createFormSection) createFormSection.style.display = 'none';
   renderWorkflowMatrix();
+}
+
+// Toggle add task form
+function toggleAddTaskForm() {
+  const form = document.getElementById('add-task-form');
+  const btn = document.getElementById('toggle-add-task-btn');
+  const icon = document.getElementById('toggle-add-task-icon');
+  const text = document.getElementById('toggle-add-task-text');
+  
+  if (!form || !btn || !icon || !text) return;
+  
+  const isVisible = form.style.display !== 'none';
+  form.style.display = isVisible ? 'none' : 'block';
+  icon.textContent = isVisible ? '+' : '−';
+  text.textContent = isVisible ? 'Add Task' : 'Hide Form';
+  
+  // Update button style when expanded
+  if (isVisible) {
+    btn.style.background = 'var(--surface)';
+    btn.style.color = 'var(--text-dim)';
+  } else {
+    btn.style.background = 'var(--rose-pale)';
+    btn.style.color = 'var(--rose)';
+    btn.style.borderColor = 'var(--rose-soft)';
+  }
 }
 
 // Toggle create project form
@@ -11079,10 +11732,13 @@ async function addFileToRegistry() {
     
     // Create file entry
     const filePath = fileLink.onedrive_rel || fileLink.abs_path || fileLink.share_url || '';
+    // Release-Safe: Standardize canonical key for reliable registry linking
+    const key = fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url || filePath;
     const entry = {
       id: crypto.randomUUID?.() || String(Date.now()),
       name: fileLink.label || fileLink.name || 'File',
       path: filePath,
+      key: key, // ✅ Canonical key for registry matching
       fileLink: fileLink, // Store full fileLink for compatibility
       addedAt: new Date().toISOString(),
       status: 'active',
@@ -11096,6 +11752,23 @@ async function addFileToRegistry() {
       nextFiles.unshift(entry); // Add to beginning
       store.setState({ files: nextFiles });
       
+      // Release-Safe: Verify file was actually added to store
+      const verifyState = store.getState();
+      const verifyFiles = verifyState.files || [];
+      const verifyCount = verifyFiles.length;
+      const verifyFirst = verifyFiles[0]?.name;
+      
+      console.log(`✓ Added file: ${entry.name}`);
+      console.log(`🔍 Store verification: ${verifyCount} files in store`, verifyCount > 0 ? `(first: ${verifyFirst})` : '⚠️ WARNING: Store is empty!');
+      
+      if (verifyCount === 0) {
+        console.error('❌ CRITICAL: File was not added to store!', {
+          entry,
+          nextFilesLength: nextFiles.length,
+          stateFilesLength: verifyState.files?.length
+        });
+      }
+      
       // Track file open
       await trackFileOpen(fileLink);
       
@@ -11106,9 +11779,6 @@ async function addFileToRegistry() {
         // Switch to files view
         switchView('files');
       }
-      
-      // Show success message
-      console.log(`✓ Added file: ${entry.name}`);
     } else {
       console.log(`File already exists: ${entry.name}`);
     }
@@ -12083,16 +12753,30 @@ function buildPlannerSidebar() {
   renderSection('Upcoming', futureEvents);
   
   // Render habits and routines
-  if (window.Petal?.ui?.renderPlannerHabits && window.Petal?.store) {
-    const state = window.Petal.store.getState();
-    const viewDate = plannerViewDate || new Date();
-    window.Petal.ui.renderPlannerHabits(null, state, viewDate);
-  }
-  
-  if (window.Petal?.ui?.renderPlannerRoutines && window.Petal?.store) {
-    const state = window.Petal.store.getState();
-    const viewDate = plannerViewDate || new Date();
-    window.Petal.ui.renderPlannerRoutines(null, state, viewDate);
+  try {
+    if (window.Petal?.ui?.renderPlannerHabits && window.Petal?.store) {
+      const state = window.Petal.store.getState();
+      const viewDate = plannerViewDate || new Date();
+      window.Petal.ui.renderPlannerHabits(null, state, viewDate);
+    } else {
+      console.warn('Habits render not available:', {
+        hasRender: !!window.Petal?.ui?.renderPlannerHabits,
+        hasStore: !!window.Petal?.store
+      });
+    }
+    
+    if (window.Petal?.ui?.renderPlannerRoutines && window.Petal?.store) {
+      const state = window.Petal.store.getState();
+      const viewDate = plannerViewDate || new Date();
+      window.Petal.ui.renderPlannerRoutines(null, state, viewDate);
+    } else {
+      console.warn('Routines render not available:', {
+        hasRender: !!window.Petal?.ui?.renderPlannerRoutines,
+        hasStore: !!window.Petal?.store
+      });
+    }
+  } catch (error) {
+    console.error('Error rendering habits/routines:', error);
   }
 }
 
@@ -12167,6 +12851,74 @@ function formatTime(minutes) {
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
   return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+}
+
+// Update end time when start time or duration changes (for events)
+function updateEventEndTimeFromDuration() {
+  const startTime = document.getElementById('event-start-time').value;
+  const duration = parseInt(document.getElementById('event-duration').value);
+  const endTimeInput = document.getElementById('event-end-time');
+  
+  if (startTime && duration && duration > 0 && endTimeInput) {
+    const startMins = parseTime(startTime);
+    const endMins = startMins + duration;
+    endTimeInput.value = formatTime(endMins);
+  }
+}
+
+// Update duration when end time changes (for events)
+function updateEventDurationFromEndTime() {
+  const startTime = document.getElementById('event-start-time').value;
+  const endTime = document.getElementById('event-end-time').value;
+  const durationInput = document.getElementById('event-duration');
+  
+  if (startTime && endTime && durationInput) {
+    const startMins = parseTime(startTime);
+    const endMins = parseTime(endTime);
+    const duration = endMins - startMins;
+    
+    if (duration > 0) {
+      durationInput.value = duration;
+    } else if (duration < 0) {
+      // End time is before start time (crosses midnight)
+      const durationNextDay = (24 * 60) + duration;
+      durationInput.value = durationNextDay;
+    }
+  }
+}
+
+// Update end time when start time or duration changes (for recurring events)
+function updateRecurringEndTimeFromDuration() {
+  const startTime = document.getElementById('recurring-start-time').value;
+  const duration = parseInt(document.getElementById('recurring-duration').value);
+  const endTimeInput = document.getElementById('recurring-end-time');
+  
+  if (startTime && duration && duration > 0 && endTimeInput) {
+    const startMins = parseTime(startTime);
+    const endMins = startMins + duration;
+    endTimeInput.value = formatTime(endMins);
+  }
+}
+
+// Update duration when end time changes (for recurring events)
+function updateRecurringDurationFromEndTime() {
+  const startTime = document.getElementById('recurring-start-time').value;
+  const endTime = document.getElementById('recurring-end-time').value;
+  const durationInput = document.getElementById('recurring-duration');
+  
+  if (startTime && endTime && durationInput) {
+    const startMins = parseTime(startTime);
+    const endMins = parseTime(endTime);
+    const duration = endMins - startMins;
+    
+    if (duration > 0) {
+      durationInput.value = duration;
+    } else if (duration < 0) {
+      // End time is before start time (crosses midnight)
+      const durationNextDay = (24 * 60) + duration;
+      durationInput.value = durationNextDay;
+    }
+  }
 }
 
 // Calculate available time blocks for a day
@@ -12472,6 +13224,23 @@ async function renderDailyPlanner() {
     const slot = document.createElement('div');
     slot.className = 't-slot';
     slot.style.position = 'relative';
+    slot.style.minHeight = '60px';
+    slot.ondragover = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      slot.classList.add('drag-over');
+    };
+    slot.ondragleave = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      slot.classList.remove('drag-over');
+    };
+    slot.ondrop = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      slot.classList.remove('drag-over');
+      handleTimelineDrop(e, h, dateStr);
+    };
     
     // Add ghost button for this hour
     const ghost = document.createElement('button');
@@ -12584,32 +13353,46 @@ function openAddEventModal(dateStr = null) {
   editingEventId = null;
   const modal = document.getElementById('event-modal');
   const titleEl = document.getElementById('event-modal-title');
+  const deleteBtn = document.getElementById('event-delete-btn');
   if (!modal || !titleEl) return;
   
   titleEl.textContent = 'Add Event';
+  if (deleteBtn) deleteBtn.style.display = 'none';
   document.getElementById('event-title').value = '';
   document.getElementById('event-date').value = dateStr || new Date().toISOString().split('T')[0];
   document.getElementById('event-start-time').value = '09:00';
   document.getElementById('event-duration').value = '60';
+  document.getElementById('event-end-time').value = '10:00';
   document.getElementById('event-category').value = 'personal';
   document.getElementById('event-location').value = '';
   document.getElementById('event-buffer-before').value = '0';
   document.getElementById('event-buffer-after').value = '0';
   document.getElementById('event-notes').value = '';
+  document.getElementById('event-create-task').checked = false;
+  document.getElementById('event-task-priority').value = '2';
+  document.getElementById('event-task-due').value = '';
   
   // Populate project dropdown
   const projectSelect = document.getElementById('event-linked-project');
   if (projectSelect) {
     projectSelect.innerHTML = '<option value="">No project</option>';
-    (projects || []).filter(p => !p.done).forEach(p => {
+    const state = window.Petal?.store?.getState();
+    const projects = state?.projects || [];
+    projects.filter(p => !p.done).forEach(p => {
       const opt = document.createElement('option');
       opt.value = p.id;
       opt.textContent = esc(p.name);
       projectSelect.appendChild(opt);
     });
     projectSelect.value = '';
-    projectSelect.onchange = updateEventTaskOptions;
+    projectSelect.onchange = () => {
+      updateEventTaskOptions();
+      updateEventCreateTaskOptions();
+    };
   }
+  
+  // Initialize create task fields
+  toggleEventCreateTaskFields();
   
   // Populate task dropdown
   const taskSelect = document.getElementById('event-linked-task');
@@ -12631,21 +13414,89 @@ function updateEventTaskOptions() {
   const projectId = projectSelect.value;
   taskSelect.innerHTML = '<option value="">No task</option>';
   
+  const state = window.Petal?.store?.getState();
+  const tasks = state?.tasks || [];
+  
   if (projectId) {
-    const projectTasks = (tasks || []).filter(t => String(t.projectId) === String(projectId) && !t.done);
+    const projectTasks = tasks.filter(t => String(t.projectId) === String(projectId) && !t.done);
     projectTasks.forEach(t => {
       const opt = document.createElement('option');
       opt.value = t.id;
-      opt.textContent = esc(t.title);
+      opt.textContent = esc(t.title || 'Untitled');
       taskSelect.appendChild(opt);
     });
   }
   taskSelect.value = '';
 }
 
+// Toggle create task fields visibility
+function toggleEventCreateTaskFields() {
+  const checkbox = document.getElementById('event-create-task');
+  const fields = document.getElementById('event-create-task-fields');
+  if (!checkbox || !fields) return;
+  
+  fields.style.display = checkbox.checked ? 'block' : 'none';
+  
+  if (checkbox.checked) {
+    updateEventCreateTaskOptions();
+  }
+}
+
+// Update create task project dropdown
+function updateEventCreateTaskOptions() {
+  const projectSelect = document.getElementById('event-task-project');
+  if (!projectSelect) return;
+  
+  const state = window.Petal?.store?.getState();
+  const projects = state?.projects || [];
+  
+  projectSelect.innerHTML = '<option value="">No project</option>';
+  projects.filter(p => !p.done).forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = esc(p.name);
+    projectSelect.appendChild(opt);
+  });
+  
+  // If event-linked-project is set, pre-select it
+  const eventProject = document.getElementById('event-linked-project')?.value;
+  if (eventProject) {
+    projectSelect.value = eventProject;
+    updateEventTaskParentOptions();
+  }
+}
+
+// Update parent task options for create task
+function updateEventTaskParentOptions() {
+  const projectSelect = document.getElementById('event-task-project');
+  const parentSelect = document.getElementById('event-task-parent');
+  if (!projectSelect || !parentSelect) return;
+  
+  const projectId = projectSelect.value;
+  parentSelect.innerHTML = '<option value="">No parent task</option>';
+  
+  const state = window.Petal?.store?.getState();
+  const tasks = state?.tasks || [];
+  
+  const availableTasks = projectId 
+    ? tasks.filter(t => String(t.projectId) === String(projectId) && !t.done && !t.parentTaskId)
+    : tasks.filter(t => !t.done && !t.parentTaskId);
+  
+  availableTasks.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t.id;
+    opt.textContent = esc(t.title || 'Untitled');
+    parentSelect.appendChild(opt);
+  });
+  
+  parentSelect.value = '';
+}
+
 function closeEventModal() {
   const modal = document.getElementById('event-modal');
+  const deleteBtn = document.getElementById('event-delete-btn');
   if (modal) modal.style.display = 'none';
+  if (deleteBtn) deleteBtn.style.display = 'none';
   editingEventId = null;
 }
 
@@ -12668,9 +13519,26 @@ async function submitEventModal() {
     return;
   }
   
-  const duration = parseInt(document.getElementById('event-duration').value);
+  // Calculate duration from either duration input or end time
+  let duration = parseInt(document.getElementById('event-duration').value);
+  const endTime = document.getElementById('event-end-time').value;
+  
   if (!duration || duration < 1) {
-    alert('Please enter a valid duration');
+    // Try to calculate from end time
+    if (endTime) {
+      const startMins = parseTime(startTime);
+      const endMins = parseTime(endTime);
+      duration = endMins - startMins;
+      
+      // Handle case where end time is before start time (crosses midnight)
+      if (duration < 0) {
+        duration = (24 * 60) + duration;
+      }
+    }
+  }
+  
+  if (!duration || duration < 1) {
+    alert('Please enter either a valid duration or an end time');
     return;
   }
   
@@ -12692,13 +13560,73 @@ async function submitEventModal() {
     linkedTaskId: linkedTaskId ? parseInt(linkedTaskId) : null
   };
   
+  // Update both global array and store
+  let updatedEvents;
   if (editingEventId) {
     const index = events.findIndex(e => e.id === editingEventId);
     if (index !== -1) {
       events[index] = event;
+      updatedEvents = [...events];
+    } else {
+      updatedEvents = [...events, event];
+      events = updatedEvents;
     }
   } else {
     events.push(event);
+    updatedEvents = [...events];
+  }
+  
+  // Sync to store (this will auto-save via persistence)
+  if (window.Petal?.store) {
+    window.Petal.store.setState({ events: updatedEvents });
+  } else {
+    // Fallback to old save method if store not available
+    await save();
+  }
+  
+  // Create task if checkbox is checked
+  const createTask = document.getElementById('event-create-task')?.checked;
+  if (createTask && !editingEventId) {
+    const state = window.Petal?.store?.getState();
+    if (state) {
+      const tasks = state.tasks || [];
+      const taskProjectId = document.getElementById('event-task-project')?.value || null;
+      const taskParentId = document.getElementById('event-task-parent')?.value || null;
+      const taskPriority = parseInt(document.getElementById('event-task-priority')?.value) || 2;
+      const taskDue = document.getElementById('event-task-due')?.value || '';
+      
+      // Calculate board order
+      const boardOrder = window.Petal?.features?.taskOperations?.nextBoardOrderForNewTask
+        ? window.Petal.features.taskOperations.nextBoardOrderForNewTask(tasks, 'Todo', taskProjectId || 'all')
+        : 1024;
+      
+      const newTask = {
+        id: Date.now(),
+        title: title,
+        note: document.getElementById('event-notes').value.trim() || '',
+        noteUpdatedAt: null,
+        log: [],
+        notes: document.getElementById('event-notes').value.trim() || '',
+        priority: taskPriority,
+        due: taskDue,
+        fileIds: [],
+        files: [],
+        tags: [],
+        done: false,
+        status: 'Todo',
+        lane: null,
+        stage: 'Todo',
+        projectId: taskProjectId ? parseInt(taskProjectId) : null,
+        parentTaskId: taskParentId ? parseInt(taskParentId) : null,
+        boardOrder: boardOrder
+      };
+      
+      // Link the event to the newly created task
+      event.linkedTaskId = newTask.id;
+      
+      // Update store with new task
+      window.Petal.store.setState({ ...state, tasks: [newTask, ...tasks] });
+    }
   }
   
   await save();
@@ -12706,6 +13634,9 @@ async function submitEventModal() {
   renderPlanner();
   buildPlannerSidebar();
   buildPlannerCalendar();
+  
+  // Refresh main view if render function exists
+  if (window.render) window.render();
 }
 
 function editEvent(eventId) {
@@ -12715,13 +13646,21 @@ function editEvent(eventId) {
   editingEventId = eventId;
   const modal = document.getElementById('event-modal');
   const titleEl = document.getElementById('event-modal-title');
+  const deleteBtn = document.getElementById('event-delete-btn');
   if (!modal || !titleEl) return;
   
   titleEl.textContent = 'Edit Event';
+  if (deleteBtn) deleteBtn.style.display = 'block';
   document.getElementById('event-title').value = event.title;
   document.getElementById('event-date').value = event.date;
   document.getElementById('event-start-time').value = event.startTime;
   document.getElementById('event-duration').value = event.durationMin;
+  // Calculate and populate end time
+  if (event.startTime && event.durationMin) {
+    const startMins = parseTime(event.startTime);
+    const endMins = startMins + event.durationMin;
+    document.getElementById('event-end-time').value = formatTime(endMins);
+  }
   document.getElementById('event-category').value = event.category;
   document.getElementById('event-location').value = event.location || '';
   document.getElementById('event-buffer-before').value = event.bufferBeforeMin || 0;
@@ -12760,8 +13699,17 @@ function editEvent(eventId) {
 
 function deleteEvent(eventId) {
   if (confirm('Delete this event?')) {
-    events = events.filter(e => e.id !== eventId);
-    save();
+    const updatedEvents = events.filter(e => e.id !== eventId);
+    events = updatedEvents;
+    
+    // Sync to store
+    if (window.Petal?.store) {
+      window.Petal.store.setState({ events: updatedEvents });
+    } else {
+      // Fallback to old save method if store not available
+      save();
+    }
+    
     renderPlanner();
     buildPlannerSidebar();
     buildPlannerCalendar();
@@ -12779,6 +13727,7 @@ function openAddRecurringModal() {
   document.getElementById('recurring-title').value = '';
   document.getElementById('recurring-start-time').value = '09:00';
   document.getElementById('recurring-duration').value = '60';
+  document.getElementById('recurring-end-time').value = '10:00';
   document.querySelectorAll('.recurring-day').forEach(cb => cb.checked = false);
   document.getElementById('recurring-category').value = 'personal';
   document.getElementById('recurring-location').value = '';
@@ -12809,9 +13758,26 @@ async function submitRecurringModal() {
     return;
   }
   
-  const duration = parseInt(document.getElementById('recurring-duration').value);
+  // Calculate duration from either duration input or end time
+  let duration = parseInt(document.getElementById('recurring-duration').value);
+  const endTime = document.getElementById('recurring-end-time').value;
+  
   if (!duration || duration < 1) {
-    alert('Please enter a valid duration');
+    // Try to calculate from end time
+    if (endTime) {
+      const startMins = parseTime(startTime);
+      const endMins = parseTime(endTime);
+      duration = endMins - startMins;
+      
+      // Handle case where end time is before start time (crosses midnight)
+      if (duration < 0) {
+        duration = (24 * 60) + duration;
+      }
+    }
+  }
+  
+  if (!duration || duration < 1) {
+    alert('Please enter either a valid duration or an end time');
     return;
   }
   
@@ -12866,6 +13832,12 @@ function editRecurringRule(ruleId) {
   document.getElementById('recurring-title').value = rule.title;
   document.getElementById('recurring-start-time').value = rule.startTime;
   document.getElementById('recurring-duration').value = rule.durationMin;
+  // Calculate and populate end time
+  if (rule.startTime && rule.durationMin) {
+    const startMins = parseTime(rule.startTime);
+    const endMins = startMins + rule.durationMin;
+    document.getElementById('recurring-end-time').value = formatTime(endMins);
+  }
   document.querySelectorAll('.recurring-day').forEach(cb => {
     cb.checked = rule.daysOfWeek.includes(parseInt(cb.value));
   });
@@ -12890,52 +13862,259 @@ function deleteRecurringRule(ruleId) {
 
 // ═══════════════════════ HABITS & ROUTINES MODALS ═══════════════════════
 function openAddHabitModal() {
-  const name = prompt('Habit name:');
-  if (!name || !name.trim()) return;
+  const modal = document.getElementById('habit-modal');
+  const titleEl = document.getElementById('habit-modal-title');
+  if (!modal || !titleEl) return;
   
-  const cadence = confirm('Is this a weekly habit? (OK = weekly, Cancel = daily)') ? 'weekly' : 'daily';
+  titleEl.textContent = 'Add Habit';
+  document.getElementById('habit-name').value = '';
+  document.getElementById('habit-cadence').value = 'daily';
+  document.querySelectorAll('.habit-day').forEach(cb => cb.checked = false);
+  document.getElementById('habit-days-of-week-field').style.display = 'none';
   
+  modal.style.display = 'flex';
+  document.getElementById('habit-name').focus();
+}
+
+function closeHabitModal() {
+  const modal = document.getElementById('habit-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function toggleHabitDaysOfWeek() {
+  const cadence = document.getElementById('habit-cadence').value;
+  const field = document.getElementById('habit-days-of-week-field');
+  if (field) {
+    field.style.display = cadence === 'weekly' ? 'block' : 'none';
+  }
+}
+
+function submitHabitModal() {
+  const name = document.getElementById('habit-name').value.trim();
+  if (!name) {
+    alert('Please enter a habit name');
+    return;
+  }
+  
+  const cadence = document.getElementById('habit-cadence').value;
+  const dayCheckboxes = document.querySelectorAll('.habit-day:checked');
   let daysOfWeek = null;
-  if (cadence === 'weekly') {
-    const daysInput = prompt('Days of week (0=Sun, 1=Mon, ..., 6=Sat). Leave empty for all days, or enter comma-separated: e.g., 1,3,5');
-    if (daysInput && daysInput.trim()) {
-      daysOfWeek = daysInput.split(',').map(d => parseInt(d.trim())).filter(d => !isNaN(d) && d >= 0 && d <= 6);
-      if (daysOfWeek.length === 0) daysOfWeek = null;
-    }
+  
+  if (cadence === 'weekly' && dayCheckboxes.length > 0) {
+    daysOfWeek = Array.from(dayCheckboxes).map(cb => parseInt(cb.value));
   }
   
   if (window.Petal?.features?.habits?.addHabit) {
-    window.Petal.features.habits.addHabit({ name: name.trim(), cadence, daysOfWeek });
+    window.Petal.features.habits.addHabit({ name, cadence, daysOfWeek });
+    closeHabitModal();
     buildPlannerSidebar();
   }
 }
 
 function openAddRoutineModal() {
-  const name = prompt('Routine name:');
-  if (!name || !name.trim()) return;
+  const modal = document.getElementById('routine-modal');
+  const titleEl = document.getElementById('routine-modal-title');
+  if (!modal || !titleEl) return;
   
-  const cadence = confirm('Is this a weekly routine? (OK = weekly, Cancel = daily)') ? 'weekly' : 'daily';
+  titleEl.textContent = 'Add Routine';
+  document.getElementById('routine-name').value = '';
+  document.getElementById('routine-cadence').value = 'daily';
+  document.getElementById('routine-time').value = '';
+  document.getElementById('routine-duration').value = '';
+  document.querySelectorAll('.routine-day').forEach(cb => cb.checked = false);
+  document.getElementById('routine-days-of-week-field').style.display = 'none';
   
-  let daysOfWeek = null;
-  if (cadence === 'weekly') {
-    const daysInput = prompt('Days of week (0=Sun, 1=Mon, ..., 6=Sat). Leave empty for all days, or enter comma-separated: e.g., 1,3,5');
-    if (daysInput && daysInput.trim()) {
-      daysOfWeek = daysInput.split(',').map(d => parseInt(d.trim())).filter(d => !isNaN(d) && d >= 0 && d <= 6);
-      if (daysOfWeek.length === 0) daysOfWeek = null;
-    }
+  modal.style.display = 'flex';
+  document.getElementById('routine-name').focus();
+}
+
+function closeRoutineModal() {
+  const modal = document.getElementById('routine-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function toggleRoutineDaysOfWeek() {
+  const cadence = document.getElementById('routine-cadence').value;
+  const field = document.getElementById('routine-days-of-week-field');
+  if (field) {
+    field.style.display = cadence === 'weekly' ? 'block' : 'none';
+  }
+}
+
+function submitRoutineModal() {
+  const name = document.getElementById('routine-name').value.trim();
+  if (!name) {
+    alert('Please enter a routine name');
+    return;
   }
   
-  const timeInput = prompt('Time of day (HH:MM format, optional). Leave empty to skip:');
-  const timeOfDay = timeInput && /^\d{2}:\d{2}$/.test(timeInput.trim()) ? timeInput.trim() : undefined;
+  const cadence = document.getElementById('routine-cadence').value;
+  const dayCheckboxes = document.querySelectorAll('.routine-day:checked');
+  let daysOfWeek = null;
   
-  const durationInput = prompt('Duration in minutes (optional). Leave empty to skip:');
-  const durationMin = durationInput && !isNaN(parseInt(durationInput)) ? parseInt(durationInput) : undefined;
+  if (cadence === 'weekly' && dayCheckboxes.length > 0) {
+    daysOfWeek = Array.from(dayCheckboxes).map(cb => parseInt(cb.value));
+  }
+  
+  const timeValue = document.getElementById('routine-time').value;
+  const timeOfDay = timeValue && /^\d{2}:\d{2}$/.test(timeValue) ? timeValue : undefined;
+  
+  const durationValue = document.getElementById('routine-duration').value;
+  const durationMin = durationValue && !isNaN(parseInt(durationValue)) && parseInt(durationValue) > 0 ? parseInt(durationValue) : undefined;
   
   if (window.Petal?.features?.routines?.addRoutine) {
-    window.Petal.features.routines.addRoutine({ name: name.trim(), cadence, timeOfDay, durationMin, daysOfWeek });
+    window.Petal.features.routines.addRoutine({ name, cadence, timeOfDay, durationMin, daysOfWeek });
+    closeRoutineModal();
     buildPlannerSidebar();
   }
 }
+
+// ═══════════════════════ DRAG & DROP HANDLERS ═══════════════════════
+let draggedRoutine = null;
+let draggedHabit = null;
+
+function handleRoutineDragStart(event) {
+  // Don't drag if clicking on checkbox or button
+  if (event.target.tagName === 'INPUT' || event.target.tagName === 'BUTTON') {
+    event.preventDefault();
+    return false;
+  }
+  
+  const routineItem = event.target.closest('.routine-item');
+  if (!routineItem) {
+    event.preventDefault();
+    return false;
+  }
+  
+  draggedRoutine = {
+    id: routineItem.dataset.routineId,
+    name: routineItem.dataset.routineName,
+    timeOfDay: routineItem.dataset.routineTime,
+    durationMin: parseInt(routineItem.dataset.routineDuration) || null
+  };
+  
+  event.dataTransfer.effectAllowed = 'copy';
+  event.dataTransfer.setData('text/plain', draggedRoutine.name);
+  const item = event.target.closest('.routine-item');
+  if (item) item.style.opacity = '0.5';
+  
+  console.log('Routine drag started:', draggedRoutine);
+}
+
+function handleRoutineDragEnd(event) {
+  const item = event.target.closest('.routine-item');
+  if (item) item.style.opacity = '';
+  draggedRoutine = null;
+}
+
+function handleHabitDragStart(event) {
+  // Don't drag if clicking on checkbox or button
+  if (event.target.tagName === 'INPUT' || event.target.tagName === 'BUTTON') {
+    event.preventDefault();
+    return false;
+  }
+  
+  const habitItem = event.target.closest('.habit-item');
+  if (!habitItem) {
+    event.preventDefault();
+    return false;
+  }
+  
+  draggedHabit = {
+    id: habitItem.dataset.habitId,
+    name: habitItem.dataset.habitName
+  };
+  
+  event.dataTransfer.effectAllowed = 'copy';
+  event.dataTransfer.setData('text/plain', draggedHabit.name);
+  const item = event.target.closest('.habit-item');
+  if (item) item.style.opacity = '0.5';
+  
+  console.log('Habit drag started:', draggedHabit);
+}
+
+function handleHabitDragEnd(event) {
+  const item = event.target.closest('.habit-item');
+  if (item) item.style.opacity = '';
+  draggedHabit = null;
+}
+
+function handleTimelineDrop(event, hour, dateStr) {
+  console.log('Timeline drop:', { draggedRoutine, draggedHabit, hour, dateStr });
+  if (!draggedRoutine && !draggedHabit) {
+    console.warn('No dragged item');
+    return;
+  }
+  
+  // Calculate exact time based on drop position within the hour slot
+  const slot = event.currentTarget;
+  const slotRect = slot.getBoundingClientRect();
+  const dropY = event.clientY - slotRect.top;
+  const PIXELS_PER_MINUTE = 1;
+  const minutesIntoHour = Math.max(0, Math.min(59, Math.round(dropY / PIXELS_PER_MINUTE)));
+  
+  const startTime = formatTime(hour * 60 + minutesIntoHour);
+  let duration = 60; // Default 1 hour
+  let title = '';
+  let category = 'personal';
+  
+  if (draggedRoutine) {
+    title = draggedRoutine.name;
+    duration = draggedRoutine.durationMin || 60;
+    category = 'personal'; // Routines default to personal category
+  } else if (draggedHabit) {
+    title = draggedHabit.name;
+    duration = 30; // Habits default to 30 minutes
+    category = 'personal';
+  }
+  
+  // Create event from routine/habit
+  const eventObj = {
+    id: `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    title: title,
+    date: dateStr,
+    startTime: startTime,
+    durationMin: duration,
+    category: category,
+    location: null,
+    bufferBeforeMin: 0,
+    bufferAfterMin: 0,
+    notes: `From ${draggedRoutine ? 'routine' : 'habit'}: ${title}`,
+    linkedProjectId: null,
+    linkedTaskId: null
+  };
+  
+  // Add event - update both global array and store
+  if (Array.isArray(events)) {
+    events.push(eventObj);
+  } else {
+    events = [eventObj];
+  }
+  
+  const updatedEvents = [...events];
+  
+  // Sync to store (this will auto-save via persistence)
+  if (window.Petal?.store) {
+    window.Petal.store.setState({ events: updatedEvents });
+  } else {
+    // Fallback to old save method if store not available
+    save().then(() => {
+      renderPlanner();
+      buildPlannerSidebar();
+      buildPlannerCalendar();
+      return;
+    });
+  }
+  
+  // Re-render planner
+  renderPlanner();
+  buildPlannerSidebar();
+  buildPlannerCalendar();
+  
+  draggedRoutine = null;
+  draggedHabit = null;
+}
+
 
 // ═══════════════════════ KEYBOARD SHORTCUTS ═══════════════════════
 document.addEventListener('keydown', (e) => {

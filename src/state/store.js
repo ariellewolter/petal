@@ -2,6 +2,8 @@
 // Centralized app state - single source of truth
 // Uses getState/setState/subscribe pattern for clean separation
 
+import { migrateData, CURRENT_SCHEMA_VERSION } from '../utils/migrations.js';
+
 class AppStore {
   constructor() {
     // Internal state (private)
@@ -92,8 +94,52 @@ class AppStore {
   /**
    * Update state (merges partial update and notifies listeners)
    * Phase 3 Fix: Normalize openProjects to Array (accepts Set or Array)
+   * Release-Safe: Files regression guard prevents accidental file clearing
    */
   setState(partial) {
+    const prev = this._state;
+    const prevFilesCount = prev.files?.length ?? 0;
+    
+    // Release-Safe: Files regression guard - prevent accidental clobber of files
+    // If patch includes files but it's invalid (not an array), block it
+    if (Object.prototype.hasOwnProperty.call(partial, 'files')) {
+      if (!Array.isArray(partial.files)) {
+        console.warn('⚠️ Blocked invalid files patch:', {
+          type: typeof partial.files,
+          value: partial.files,
+          patchKeys: Object.keys(partial)
+        });
+        // Remove invalid files from patch
+        const { files, ...safePatch } = partial;
+        partial = safePatch;
+      } else {
+        // Release-Safe: Trace ANY explicit files patch to catch who's clearing files
+        const newLen = partial.files.length;
+        console.log('🧨 files explicitly patched', {
+          newLen: newLen,
+          prevLen: prevFilesCount,
+          willDecrease: newLen < prevFilesCount,
+          willClear: newLen === 0 && prevFilesCount > 0,
+          patchKeys: Object.keys(partial)
+        });
+        console.trace('files patch trace');
+        
+        // Extra protection: Block clearing files without explicit allow flag
+        const allow = partial.__allowFilesOverwrite === true;
+        if (!allow && newLen === 0 && prevFilesCount > 0) {
+          console.warn('⚠️ Blocked files clear without explicit allow flag', {
+            prevCount: prevFilesCount,
+            patchKeys: Object.keys(partial),
+            stackTrace: new Error().stack
+          });
+          // Remove files from patch to prevent clearing
+          const { files, ...rest } = partial;
+          partial = rest;
+          // Don't update files count - keep previous
+        }
+      }
+    }
+    
     // Merge partial update
     Object.keys(partial).forEach(key => {
       if (key === 'openProjects') {
@@ -109,6 +155,33 @@ class AppStore {
         this._state[key] = partial[key];
       }
     });
+    
+    // Release-Safe: Detect unexpected files drops (files cleared without explicit patch)
+    const nextFilesCount = this._state.files?.length ?? 0;
+    if (prevFilesCount > 0 && nextFilesCount === 0 && !Object.prototype.hasOwnProperty.call(partial, 'files')) {
+      console.warn('⚠️ files dropped without explicit patch.files — blocking overwrite', {
+        prevCount: prevFilesCount,
+        patchKeys: Object.keys(partial),
+        stackTrace: new Error().stack
+      });
+      // Restore previous files
+      this._state.files = prev.files;
+    }
+    
+    // Diagnostic: Log when files count changes (helps identify the offender)
+    const finalFilesCount = this._state.files?.length ?? 0;
+    if (prevFilesCount !== finalFilesCount) {
+      console.log('🧪 files count changed', {
+        prev: prevFilesCount,
+        next: finalFilesCount,
+        patchKeys: Object.keys(partial),
+        explicitFilesPatch: Object.prototype.hasOwnProperty.call(partial, 'files')
+      });
+      // Only show trace if files decreased (potential bug)
+      if (finalFilesCount < prevFilesCount) {
+        console.trace('Files count decreased - trace:');
+      }
+    }
     
     // Notify all listeners
     this._notify();
@@ -167,8 +240,18 @@ class AppStore {
    * Load state from storage (for initialization)
    * GUARANTEE: Always initializes fileRegistry and fileHistory (never undefined)
    * Phase 3 Fix: Prevents empty overwrites and normalizes openProjects to Array
+   * Release-Safe: Runs migrations and merges defaults to handle schema changes
    */
   loadState(state) {
+    // Run migrations if needed (handles schema versioning)
+    const migrationResult = migrateData(state);
+    if (migrationResult.migrated) {
+      console.log(`🔄 Schema migration applied: ${migrationResult.fromVersion} → ${migrationResult.toVersion}`);
+      // Store migration info for potential backup creation
+      this._lastMigration = migrationResult;
+    }
+    // Use migrated data (which already has defaults merged)
+    state = migrationResult.data;
     // Phase 3 Fix: Guard against empty project overwrites
     const incomingProjects = Array.isArray(state.projects) ? state.projects : [];
     const currentProjects = this._state.projects || [];
@@ -182,12 +265,37 @@ class AppStore {
     
     // Phase 3 Fix: Normalize openProjects to Array (JSON-friendly, single representation)
     // Store always uses Array, renderers derive Set locally if needed
-    const openProjectsArray = Array.isArray(state.openProjects) 
+    let openProjectsArray = Array.isArray(state.openProjects) 
       ? state.openProjects 
       : (state.openProjects instanceof Set ? Array.from(state.openProjects) : []);
     
+    // Release-Safe: Filter out openProjects IDs that don't exist in projects
+    // Prevents stale references from breaking the UI
+    const projectIds = new Set((state.projects || []).map(p => p.id));
+    openProjectsArray = openProjectsArray.filter(id => projectIds.has(id));
+    if (openProjectsArray.length !== (state.openProjects?.length || 0)) {
+      console.log(`🧹 Cleaned openProjects: removed ${(state.openProjects?.length || 0) - openProjectsArray.length} non-existent project IDs`);
+    }
+    
+    // Release-Safe: Guard against duplicate tasks (prevent seeding issues)
+    // Remove duplicate tasks by ID (keep first occurrence)
+    const tasks = Array.isArray(state.tasks) ? state.tasks : [];
+    const seenTaskIds = new Set();
+    const uniqueTasks = tasks.filter(task => {
+      if (!task || !task.id) return false;
+      if (seenTaskIds.has(task.id)) {
+        console.warn(`⚠️ Duplicate task detected (ID: ${task.id}, title: "${task.title}") - keeping first occurrence`);
+        return false;
+      }
+      seenTaskIds.add(task.id);
+      return true;
+    });
+    if (uniqueTasks.length !== tasks.length) {
+      console.log(`🧹 Cleaned tasks: removed ${tasks.length - uniqueTasks.length} duplicate tasks`);
+    }
+    
     this._state = {
-      tasks: state.tasks || [],
+      tasks: uniqueTasks,
       projects: state.projects || [],
       openProjects: openProjectsArray, // Store as Array, not Set
       settings: state.settings || {},
@@ -286,9 +394,21 @@ class AppStore {
    * Export state for saving to storage
    * Phase 3 Fix: openProjects is already Array, no conversion needed
    * Phase 3 Fix: Exclude fileRegistry/fileHistory from persistence (derived data, recomputed on load)
+   * Release-Safe: Always includes schemaVersion for migration tracking
    */
   exportState() {
+    // Release-Safe: Truth log - this is the save payload source
+    const filesCount = Array.isArray(this._state.files) ? this._state.files.length : 'not-array';
+    const firstFile = this._state.files?.[0]?.name ?? null;
+    console.log('📦 exportState snapshot', {
+      files: filesCount,
+      first: firstFile,
+      filesType: typeof this._state.files,
+      filesIsArray: Array.isArray(this._state.files)
+    });
+    
     return {
+      schemaVersion: CURRENT_SCHEMA_VERSION, // Always include current schema version
       tasks: this._state.tasks,
       projects: this._state.projects,
       openProjects: Array.isArray(this._state.openProjects) 
@@ -331,6 +451,13 @@ class AppStore {
       // fileRegistry: this._state.fileRegistry,
       // fileHistory: this._state.fileHistory
     };
+  }
+  
+  /**
+   * Get last migration info (for backup creation)
+   */
+  getLastMigration() {
+    return this._lastMigration || null;
   }
 }
 
