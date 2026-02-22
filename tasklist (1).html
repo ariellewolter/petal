@@ -156,7 +156,7 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 .task-card.done .task-title{text-decoration:line-through;text-decoration-color:var(--rose-soft);}
 .task-top{display:flex;align-items:center;gap:14px;padding:18px 20px;cursor:pointer;user-select:none;position:relative;justify-content:space-between;}
 .task-content{display:flex;align-items:center;gap:14px;flex:1;min-width:0;}
-.task-actions{display:flex;gap:4px;margin-left:8px;flex-shrink:0;}
+.task-actions{display:flex;gap:4px;margin-left:8px;flex-shrink:0;opacity:1;visibility:visible;}
 .check-box{width:18px;height:18px;border:1.5px solid var(--border2);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .18s;background:white;flex-shrink:0;margin-top:0;}
 .check-box:hover{border-color:var(--rose-soft);background:var(--rose-pale);}
 .check-box.checked{background:var(--rose);border-color:var(--rose);}
@@ -214,8 +214,9 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 .tag-chip[data-tag="#analysis"]{background:#e8f4f8;border-color:#7db8d1;color:#5a9bb8;}
 .tag-chip[data-tag="#admin"]{background:#f5f0e8;border-color:#d4c4a8;color:#b89d7a;}
 .tag-chip[data-tag="#experiment"]{background:#f0e8f5;border-color:#c4a8d4;color:#9d7ab8;}
-.quick-capture-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);display:none;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(2px);}
+.quick-capture-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);display:none;align-items:center;justify-content:center;z-index:10000;backdrop-filter:blur(2px);overflow-y:auto;padding:20px;}
 .quick-capture-modal.active{display:flex;}
+.quick-capture-modal .quick-capture-box{position:relative;margin:auto;max-height:90vh;overflow-y:auto;}
 #edit-modal.active{display:flex;}
 .quick-capture-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;width:90%;max-width:500px;box-shadow:0 8px 32px rgba(0,0,0,0.2);animation:fadeSlide .2s ease-out;}
 .quick-capture-box input{width:100%;font-size:16px;padding:12px 16px;margin-bottom:12px;}
@@ -353,8 +354,10 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 .task-files{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
 .file-chip{display:inline-flex;align-items:center;gap:5px;background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:11px;color:var(--text-dim);text-decoration:none;transition:all .15s;max-width:200px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
 .file-chip:hover{background:var(--rose-pale);border-color:var(--rose-soft);color:var(--rose);}
-.btn-del{width:28px;height:28px;background:none;border:1px solid transparent;border-radius:50%;color:var(--text-light);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;margin-top:1px;}
+.btn-del{width:28px;height:28px;background:none;border:1px solid transparent;border-radius:50%;color:var(--text-dim);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;margin-top:1px;opacity:1;}
 .btn-del:hover{border-color:var(--rose-soft);color:var(--rose);background:var(--rose-pale);}
+.btn-del.btn-delete{color:var(--text-dim);font-size:16px;font-weight:bold;opacity:1;}
+.btn-del.btn-delete:hover{color:var(--overdue);border-color:var(--overdue);}
 .btn-export,.btn-import{background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text-dim);font-family:'Jost',sans-serif;font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:8px 14px;cursor:pointer;transition:all .15s;white-space:nowrap;}
 .btn-export:hover,.btn-import:hover{border-color:var(--rose-soft);color:var(--rose);background:var(--rose-pale);}
 .conflict-banner{background:linear-gradient(135deg,#f5d0a0 0%,#f0c060 100%);border-bottom:2px solid var(--soon);padding:14px 20px;margin-bottom:20px;box-shadow:0 2px 12px rgba(201,160,96,.2);animation:slideDown .3s ease;}
@@ -677,14 +680,10 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
   <!-- ═══════════════════════════════════ TASKS VIEW ═══ -->
   <div id="view-tasks" style="display:none;padding:20px;">
     <!-- Add Task Button -->
-    <div style="margin-bottom:20px;display:flex;gap:12px;align-items:center;">
-      <button onclick="openAddTaskModal()" style="background:linear-gradient(135deg,#d4a0a0 0%,#c98b8b 100%) !important;border:none !important;border-radius:10px !important;color:white !important;font-size:14px !important;padding:12px 24px !important;cursor:pointer !important;display:flex !important;align-items:center !important;gap:8px !important;box-shadow:0 4px 14px rgba(201,139,139,.25) !important;font-family:'Jost',sans-serif;font-weight:500;">
-        <span style="font-size:18px;">+</span>
-        <span>Add Task</span>
-      </button>
+    <div style="margin-bottom:20px;">
       <button id="toggle-add-task-btn" class="btn-add-task-toggle" onclick="toggleAddTaskForm()" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text-dim);font-family:'Jost',sans-serif;font-size:12px;font-weight:400;letter-spacing:.1em;text-transform:uppercase;padding:8px 16px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px;">
         <span id="toggle-add-task-icon">+</span>
-        <span id="toggle-add-task-text">Quick Add</span>
+        <span id="toggle-add-task-text">Add Task</span>
       </button>
     </div>
     
@@ -1421,7 +1420,7 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
   <div id="view-workflow" style="display:none;padding:20px;box-sizing:border-box;width:100%;max-width:100%;overflow-x:hidden;">
     <div style="margin-bottom:20px;">
       <h2 style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:400;color:var(--rose);margin-bottom:8px;">Workflow</h2>
-      <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px;">Lab • Computational • Writing • Presentation</p>
+      <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px;">Lab • Computational • Writing • Presentation • Personal • Product</p>
       
       <!-- Project Filter -->
       <div style="margin-bottom:16px;display:flex;gap:12px;align-items:center;">
@@ -1545,6 +1544,60 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
           <div class="wf-group wf-done">
             <div class="wf-group-title" onclick="toggleDone('presentation')">Done ▾</div>
             <div class="wf-cards" id="wf-presentation-done" style="display:none;"></div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Personal Lane -->
+      <div class="wf-lane">
+        <div class="wf-lane-head">
+          <div class="wf-lane-title">👤 Personal</div>
+          <div class="wf-lane-meta" id="wf-personal-meta"></div>
+          <button class="wf-collapse" onclick="toggleLane('personal')">Hide</button>
+        </div>
+        <div class="wf-lane-body" id="wf-personal-body">
+          <div class="wf-group">
+            <div class="wf-group-title">Next</div>
+            <div class="wf-cards" id="wf-personal-next"></div>
+          </div>
+          <div class="wf-group">
+            <div class="wf-group-title">Scheduled</div>
+            <div class="wf-cards" id="wf-personal-scheduled"></div>
+          </div>
+          <div class="wf-group">
+            <div class="wf-group-title">Later</div>
+            <div class="wf-cards" id="wf-personal-later"></div>
+          </div>
+          <div class="wf-group wf-done">
+            <div class="wf-group-title" onclick="toggleDone('personal')">Done ▾</div>
+            <div class="wf-cards" id="wf-personal-done" style="display:none;"></div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Product Lane -->
+      <div class="wf-lane">
+        <div class="wf-lane-head">
+          <div class="wf-lane-title">🚀 Product</div>
+          <div class="wf-lane-meta" id="wf-product-meta"></div>
+          <button class="wf-collapse" onclick="toggleLane('product')">Hide</button>
+        </div>
+        <div class="wf-lane-body" id="wf-product-body">
+          <div class="wf-group">
+            <div class="wf-group-title">Next</div>
+            <div class="wf-cards" id="wf-product-next"></div>
+          </div>
+          <div class="wf-group">
+            <div class="wf-group-title">Scheduled</div>
+            <div class="wf-cards" id="wf-product-scheduled"></div>
+          </div>
+          <div class="wf-group">
+            <div class="wf-group-title">Later</div>
+            <div class="wf-cards" id="wf-product-later"></div>
+          </div>
+          <div class="wf-group wf-done">
+            <div class="wf-group-title" onclick="toggleDone('product')">Done ▾</div>
+            <div class="wf-cards" id="wf-product-done" style="display:none;"></div>
           </div>
         </div>
       </div>
@@ -1961,6 +2014,8 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
           <label>Template</label>
           <select id="pr-template" onchange="applyProjectTemplate(this.value)">
             <option value="">Custom (blank)</option>
+            <option value="personal">Personal</option>
+            <option value="product">Product</option>
             <option value="integrated">Integrated: Lab + Comp + Writing</option>
             <option value="wetlab">Wet Lab Project</option>
             <option value="computational">Computational Project</option>
@@ -2002,6 +2057,14 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
             <input type="checkbox" id="pr-workflow-presentation" value="presentation" style="cursor:pointer;">
             <span>📊 Presentation</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" id="pr-workflow-personal" value="personal" style="cursor:pointer;">
+            <span>👤 Personal</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" id="pr-workflow-product" value="product" style="cursor:pointer;">
+            <span>🚀 Product</span>
           </label>
         </div>
         <div style="font-size:11px;color:var(--text-dim);margin-top:6px;">Tasks in this project will be restricted to selected lanes</div>
@@ -2437,8 +2500,38 @@ window.Petal.features.taskOperations = {
     TaskOperations.updateTagPreview();
   },
   editTask: (id) => {
+    console.log('🔍 editTask wrapper called with id:', id, 'type:', typeof id);
     const ctx = createPageContext();
-    TaskOperations.editTask(ctx, id);
+    console.log('🔍 Context created:', { tasksCount: ctx.tasks?.length, projectsCount: ctx.projects?.length });
+    try {
+      TaskOperations.editTask(ctx, id);
+      console.log('🔍 TaskOperations.editTask completed');
+    } catch (error) {
+      console.error('❌ Error in TaskOperations.editTask:', error);
+      throw error;
+    }
+  },
+  deleteTask: (taskId, isSubtask = false, projectId = null, parentTaskId = null) => {
+    console.log('🗑️ deleteTask wrapper called', { taskId, isSubtask, projectId, parentTaskId });
+    // Build context from store at click time (guarantees fresh state)
+    const store = window.Petal?.store;
+    const state = store?.getState?.() || {};
+    const ctx = {
+      store,
+      state,
+      tasks: Array.isArray(state.tasks) ? state.tasks : [],
+      projects: Array.isArray(state.projects) ? state.projects : [],
+      save: window.Petal?.handlers?.save || window.save,
+      render: window.Petal?.handlers?.render || window.render,
+    };
+    console.log('🗑️ delete ctx counts', { tasks: ctx.tasks.length, projects: ctx.projects.length });
+    
+    // Call the delete handler with proper context
+    if (window.Petal?.features?.deleteHandlers?.confirmDeleteTask) {
+      window.Petal.features.deleteHandlers.confirmDeleteTask(ctx, taskId, isSubtask, projectId, parentTaskId);
+    } else {
+      console.error('❌ deleteHandlers.confirmDeleteTask not available');
+    }
   }
 };
 
@@ -2448,8 +2541,22 @@ window.removeTags = TaskOperations.removeTags;
 
 // Wire up delete handlers
 window.Petal.features.deleteHandlers = {
-  confirmDeleteTask: (taskId, isSubtask, projectId, parentTaskId) => {
-    DeleteHandlers.confirmDeleteTask(createPageContext(), taskId, isSubtask, projectId, parentTaskId);
+  confirmDeleteTask: (ctx, taskId, isSubtask, projectId, parentTaskId) => {
+    // Use provided context, or create one from store
+    const finalCtx = ctx || (() => {
+      const store = window.Petal?.store;
+      const state = store?.getState?.() || {};
+      return {
+        store,
+        state,
+        tasks: Array.isArray(state.tasks) ? state.tasks : [],
+        projects: Array.isArray(state.projects) ? state.projects : [],
+        save: window.Petal?.handlers?.save,
+        render: window.Petal?.handlers?.render || window.render,
+      };
+    })();
+    console.log('🗑️ delete ctx counts', { tasks: finalCtx.tasks.length, projects: finalCtx.projects.length });
+    DeleteHandlers.confirmDeleteTask(finalCtx, taskId, isSubtask, projectId, parentTaskId);
   },
   confirmDeleteFile: (projectId, fileId) => {
     DeleteHandlers.confirmDeleteFile(createPageContext(), projectId, fileId);
@@ -2458,8 +2565,17 @@ window.Petal.features.deleteHandlers = {
     DeleteHandlers.closeDeleteConfirmModal();
   },
   executeDelete: async () => {
-    const ctx = createPageContext();
-    ctx.render = window.render;
+    // Build context from store (required by executeDelete)
+    const store = window.Petal?.store;
+    const state = store?.getState?.() || {};
+    const ctx = {
+      store,
+      state,
+      tasks: Array.isArray(state.tasks) ? state.tasks : [],
+      projects: Array.isArray(state.projects) ? state.projects : [],
+      save: window.Petal?.handlers?.save || window.save,
+      render: window.Petal?.handlers?.render || window.render,
+    };
     await DeleteHandlers.executeDelete(ctx);
   },
   softDeleteTask: async (taskId) => {
@@ -2717,6 +2833,174 @@ Object.assign(window.Petal.utils, migrations);
 // Wire render function to store changes (will be set up after render is defined)
 // This will be done in the initState function after render is available
 console.log('✓ Store, handlers, and UI modules initialized');
+
+// Set up event delegation for edit buttons in task-container and project views
+function setupTaskContainerEventDelegation() {
+  // Tasks view container
+  const tc = document.getElementById('task-container');
+  if (tc && !tc.__editDelegationBound) {
+    tc.__editDelegationBound = true;
+    tc.addEventListener('click', (e) => {
+      // Handle edit button
+      const editBtn = e.target.closest('.btn-edit');
+      if (editBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const taskId = editBtn.dataset.taskId || editBtn.getAttribute('data-task-id');
+        if (!taskId) {
+          console.warn('Edit button missing data-task-id', editBtn);
+          return;
+        }
+        console.log('🖱️ Edit button clicked via delegation (tasks view)', { taskId, hasTaskOps: !!window.Petal?.features?.taskOperations, hasEditTask: !!window.Petal?.features?.taskOperations?.editTask });
+        if (window.Petal?.features?.taskOperations?.editTask) {
+          try {
+            console.log('🔍 Calling editTask with taskId:', taskId, 'type:', typeof taskId);
+            const result = window.Petal.features.taskOperations.editTask(taskId);
+            console.log('🔍 editTask returned:', result);
+          } catch (error) {
+            console.error('❌ Error calling editTask:', error);
+          }
+        } else {
+          console.error('window.Petal.features.taskOperations.editTask not available');
+        }
+        return;
+      }
+      
+      // Handle delete button
+      const deleteBtn = e.target.closest('.btn-delete');
+      if (deleteBtn) {
+        // Guard: prevent double handling if renderTasks.js already processed this
+        if (e.__petalDeleteHandled) {
+          console.log('🛡️ Delete event already handled by renderTasks.js, skipping');
+          return;
+        }
+        e.__petalDeleteHandled = true;
+        e.preventDefault();
+        e.stopPropagation();
+        const taskId = deleteBtn.dataset.taskId || deleteBtn.getAttribute('data-task-id') || deleteBtn.getAttribute('data-id');
+        if (!taskId) {
+          console.warn('Delete button missing task ID', deleteBtn);
+          return;
+        }
+        console.log('🖱️ Delete button clicked via delegation (tasks view)', { taskId });
+        // Use taskOperations wrapper directly (builds context from store)
+        const isSubtask = deleteBtn.getAttribute('data-is-subtask') === 'true';
+        // Only use projectId from attribute, never derive from taskId
+        const projectIdAttr = deleteBtn.getAttribute('data-project-id');
+        const projectId = projectIdAttr && projectIdAttr !== '' && projectIdAttr !== 'null' ? projectIdAttr : null;
+        const parentTaskId = deleteBtn.getAttribute('data-parent-task-id') || null;
+        // Keep taskId as string - never truncate
+        const taskIdStr = String(taskId);
+        if (window.Petal?.features?.taskOperations?.deleteTask) {
+          window.Petal.features.taskOperations.deleteTask(taskIdStr, isSubtask, projectId, parentTaskId);
+        } else if (window.Petal?.features?.deleteHandlers?.confirmDeleteTask) {
+          const store = window.Petal?.store;
+          const state = store?.getState?.() || {};
+          const ctx = {
+            store,
+            state,
+            tasks: Array.isArray(state.tasks) ? state.tasks : [],
+            projects: Array.isArray(state.projects) ? state.projects : [],
+            save: window.Petal?.handlers?.save || window.save,
+            render: window.Petal?.handlers?.render || window.render,
+          };
+          window.Petal.features.deleteHandlers.confirmDeleteTask(ctx, taskIdStr, isSubtask, projectId, parentTaskId);
+        }
+        return;
+      }
+    });
+    console.log('✅ Task container event delegation set up');
+  }
+  
+  // Project views - use document-level delegation to catch all project task buttons
+  if (!document.__projectEditDelegationBound) {
+    document.__projectEditDelegationBound = true;
+    document.addEventListener('click', (e) => {
+      // Check for buttons with data-action="edit-task" (used in project views)
+      const editBtn = e.target.closest('[data-action="edit-task"]');
+      if (editBtn) {
+        // Don't handle if it's in task-container (already handled above)
+        if (editBtn.closest('#task-container')) return;
+        
+        e.preventDefault();
+        e.stopPropagation();
+        const taskId = editBtn.dataset.taskId || editBtn.getAttribute('data-task-id');
+        if (!taskId) {
+          console.warn('Edit button missing data-task-id', editBtn);
+          return;
+        }
+        console.log('🖱️ Edit button clicked via delegation (project view)', { taskId, hasTaskOps: !!window.Petal?.features?.taskOperations, hasEditTask: !!window.Petal?.features?.taskOperations?.editTask });
+        if (window.Petal?.features?.taskOperations?.editTask) {
+          try {
+            console.log('🔍 Calling editTask with taskId:', taskId, 'type:', typeof taskId);
+            const result = window.Petal.features.taskOperations.editTask(taskId);
+            console.log('🔍 editTask returned:', result);
+          } catch (error) {
+            console.error('❌ Error calling editTask:', error);
+          }
+        } else {
+          console.error('window.Petal.features.taskOperations.editTask not available');
+        }
+        return;
+      }
+      
+      // Check for buttons with data-action="delete" or "delete-task" (used in project views and subtasks)
+      const deleteBtn = e.target.closest('[data-action="delete"], [data-action="delete-task"]');
+      if (deleteBtn) {
+        // Don't handle if it's in task-container (already handled above)
+        if (deleteBtn.closest('#task-container')) return;
+        
+        // Guard: prevent double handling if renderProjects.js already processed this
+        if (e.__petalDeleteHandled) {
+          console.log('🛡️ Delete event already handled by renderProjects.js, skipping');
+          return;
+        }
+        e.__petalDeleteHandled = true;
+        
+        e.preventDefault();
+        e.stopPropagation();
+        const taskId = deleteBtn.dataset.taskId || deleteBtn.getAttribute('data-task-id') || deleteBtn.getAttribute('data-id');
+        if (!taskId) {
+          console.warn('Delete button missing task ID', deleteBtn);
+          return;
+        }
+        console.log('🖱️ Delete button clicked via delegation (project view)', { taskId });
+        // Use taskOperations wrapper directly (builds context from store)
+        const isSubtask = deleteBtn.getAttribute('data-is-subtask') === 'true';
+        // Only use projectId from attribute, never derive from taskId
+        const projectIdAttr = deleteBtn.getAttribute('data-project-id');
+        const projectId = projectIdAttr && projectIdAttr !== '' && projectIdAttr !== 'null' ? projectIdAttr : null;
+        const parentTaskId = deleteBtn.getAttribute('data-parent-task-id') || null;
+        // Keep taskId as string - never truncate
+        const taskIdStr = String(taskId);
+        if (window.Petal?.features?.taskOperations?.deleteTask) {
+          window.Petal.features.taskOperations.deleteTask(taskIdStr, isSubtask, projectId, parentTaskId);
+        } else if (window.Petal?.features?.deleteHandlers?.confirmDeleteTask) {
+          const store = window.Petal?.store;
+          const state = store?.getState?.() || {};
+          const ctx = {
+            store,
+            state,
+            tasks: Array.isArray(state.tasks) ? state.tasks : [],
+            projects: Array.isArray(state.projects) ? state.projects : [],
+            save: window.Petal?.handlers?.save || window.save,
+            render: window.Petal?.handlers?.render || window.render,
+          };
+          window.Petal.features.deleteHandlers.confirmDeleteTask(ctx, taskIdStr, isSubtask, projectId, parentTaskId);
+        }
+        return;
+      }
+    }, true); // Use capture phase to catch before other handlers
+    console.log('✅ Project views event delegation set up');
+  }
+}
+
+// Set up delegation when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', setupTaskContainerEventDelegation);
+} else {
+  setupTaskContainerEventDelegation();
+}
 </script>
 <script>
 // ═══════════════════════ STATE ═══════════════════════
@@ -2766,7 +3050,7 @@ if (window.currentView && window.currentView !== currentView && window.currentVi
 // ═══════════════════════ FALLBACK CONSTANTS ═══════════════════════
 // Prevent crashes if constants aren't loaded from modules
 if (typeof window.MATRIX_LANES === 'undefined') {
-  window.MATRIX_LANES = ['lab', 'comp', 'writing', 'presentation'];
+  window.MATRIX_LANES = ['lab', 'comp', 'writing', 'presentation', 'personal', 'product'];
 }
 if (typeof window.MATRIX_STAGES === 'undefined') {
   window.MATRIX_STAGES = ['planned', 'in_progress', 'blocked', 'ready', 'done'];
@@ -2783,7 +3067,9 @@ if (typeof window.LANE_STAGES === 'undefined') {
 const PROJECT_MATRIX_LANES = [
   { id: 'lab', label: 'Wet Lab', icon: '🧪', color: '#d4a0a0' },
   { id: 'comp', label: 'Computational', icon: '💻', color: '#a0a0d4' },
-  { id: 'writing', label: 'Writing', icon: '📝', color: '#a0d4a0' }
+  { id: 'writing', label: 'Writing', icon: '📝', color: '#a0d4a0' },
+  { id: 'personal', label: 'Personal', icon: '👤', color: '#d4a0d4' },
+  { id: 'product', label: 'Product', icon: '🚀', color: '#a0d4a0' }
 ];
 const PROJECT_MATRIX_STAGES = ['planned', 'in_progress', 'blocked', 'ready', 'done'];
 const PROJECT_STAGE_LABELS = {
@@ -2830,6 +3116,25 @@ const PROJECT_TEMPLATES = {
     starterTasks: [
       { title: 'Create manuscript outline', lane: 'writing' },
       { title: 'Draft abstract v1', lane: 'writing' }
+    ]
+  },
+  personal: {
+    lanes: ['personal'],
+    briefFocus: 'Organize and track personal goals and tasks',
+    milestones: ['Planning complete', 'In progress', 'Completed'],
+    starterTasks: [
+      { title: 'Define project goals', lane: 'personal' },
+      { title: 'Break down into actionable steps', lane: 'personal' }
+    ]
+  },
+  product: {
+    lanes: ['comp', 'product'],
+    briefFocus: 'Build and ship a product or feature',
+    milestones: ['Requirements defined', 'Design complete', 'Development started', 'Testing complete', 'Launched'],
+    starterTasks: [
+      { title: 'Define product requirements', lane: 'comp' },
+      { title: 'Build product features', lane: 'product' },
+      { title: 'Test and iterate', lane: 'product' }
     ]
   }
 };
@@ -2903,8 +3208,8 @@ function normalizeProjectStructure(project) {
     done: !!ms.done
   })).filter(ms => ms.title) : [];
   normalized.workflowLanes = Array.isArray(project.workflowLanes) && project.workflowLanes.length
-    ? project.workflowLanes.filter(l => ['lab', 'comp', 'writing'].includes(l))
-    : ['lab', 'comp', 'writing'];
+    ? project.workflowLanes.filter(l => ['lab', 'comp', 'writing', 'presentation', 'personal', 'product'].includes(l))
+    : ['lab', 'comp', 'writing', 'presentation', 'personal', 'product'];
   normalized.templateId = project.templateId || '';
   normalized.checkpoints = Array.isArray(project.checkpoints) ? project.checkpoints : [];
   
@@ -3092,16 +3397,20 @@ function updateLaneOptions() {
       <option value="comp">💻 Computational</option>
       <option value="writing">📝 Writing</option>
       <option value="presentation">📊 Presentation</option>
+      <option value="personal">👤 Personal</option>
+      <option value="product">🚀 Product</option>
     `;
   } else {
     const project = projects.find(p => String(p.id) === String(projectId));
-    const allowedLanes = project?.workflowLanes || ['lab', 'comp', 'writing', 'presentation'];
+    const allowedLanes = project?.workflowLanes || ['lab', 'comp', 'writing', 'presentation', 'personal', 'product'];
     
     const laneLabels = {
       lab: '🧪 Lab',
       comp: '💻 Computational',
       writing: '📝 Writing',
-      presentation: '📊 Presentation'
+      presentation: '📊 Presentation',
+      personal: '👤 Personal',
+      product: '🚀 Product'
     };
     
     laneSelect.innerHTML = '<option value="">None</option>' +
@@ -4935,7 +5244,11 @@ function editSubtask(projId,subId){
 }
 
 function closeEditModal() {
-  document.getElementById('edit-modal').classList.remove('active');
+  const modal = document.getElementById('edit-modal');
+  if (modal) {
+    modal.classList.remove('active');
+    modal.style.display = 'none'; // Explicitly hide modal
+  }
   editingTaskId = null;
   editingSubtaskInfo = null;
 }
@@ -4947,17 +5260,21 @@ async function saveEditModal() {
     return;
   }
   
-  if(editingSubtaskInfo) {
+  // Support both window.editingTaskId (from TaskOperations) and global editingTaskId
+  const currentEditingTaskId = window.editingTaskId !== undefined ? window.editingTaskId : editingTaskId;
+  const currentEditingSubtaskInfo = window.editingSubtaskInfo !== undefined ? window.editingSubtaskInfo : editingSubtaskInfo;
+  
+  if(currentEditingSubtaskInfo) {
     // Check if it's a task subtask or project subtask
-    if(editingSubtaskInfo.taskId) {
+    if(currentEditingSubtaskInfo.taskId) {
       // Editing a task subtask
-      const t = tasks.find(task => task.id === editingSubtaskInfo.taskId);
+      const t = tasks.find(task => task.id === currentEditingSubtaskInfo.taskId);
       if(!t || !t.subtasks) {
         alert('Task not found.');
         closeEditModal();
         return;
       }
-      const s = t.subtasks.find(sub => sub.id === editingSubtaskInfo.subtaskId);
+      const s = t.subtasks.find(sub => sub.id === currentEditingSubtaskInfo.subtaskId);
       if(!s) {
         alert('Subtask not found.');
         closeEditModal();
@@ -4980,13 +5297,13 @@ async function saveEditModal() {
       closeEditModal();
     } else {
       // Editing a project subtask (legacy - should be removed eventually)
-      const p = projects.find(proj => proj.id === editingSubtaskInfo.projectId);
+      const p = projects.find(proj => proj.id === currentEditingSubtaskInfo.projectId);
       if(!p) {
         alert('Project not found.');
         closeEditModal();
         return;
       }
-      const s = (p.subtasks||[]).find(sub => sub.id === editingSubtaskInfo.subtaskId);
+      const s = (p.subtasks||[]).find(sub => sub.id === currentEditingSubtaskInfo.subtaskId);
       if(!s) {
         alert('Subtask not found.');
         closeEditModal();
@@ -5008,9 +5325,12 @@ async function saveEditModal() {
       render();
       closeEditModal();
     }
-  } else if(editingTaskId) {
+  } else if(currentEditingTaskId) {
     // Editing a regular task - exclude deleted tasks
-    const t = tasks.find(task => task.id === editingTaskId && !task.deletedAt);
+    // Get task from store if available, otherwise from global tasks array
+    const state = window.Petal?.store?.getState();
+    const tasksArray = state?.tasks || tasks;
+    const t = tasksArray.find(task => task.id === currentEditingTaskId && !task.deletedAt);
     if(!t) {
       alert('Task not found or has been deleted.');
       closeEditModal();
@@ -5031,28 +5351,31 @@ async function saveEditModal() {
       return;
     }
     
-    t.title = cleanTitle;
-    t.tags = extractTags(titleInput);
-    t.notes = notesInput;
-    // Handle priority: convert to number (1-3) if it's a string, or keep as number
-    const priorityInput = document.getElementById('edit-priority').value;
-    t.priority = parseInt(priorityInput) || 2;
-    t.estimatedMinutes = parseInt(document.getElementById('edit-estimated-minutes').value) || null;
-    t.timeBlock = document.getElementById('edit-time-block').value || null;
-    t.artifactTag = document.getElementById('edit-artifact-tag')?.value.trim() || null;
-    t.due = normalizedDue || '';
-    t.updatedAt = Date.now(); // Track when task was last modified
+    // Build updated task object
+    const updatedTask = {
+      ...t,
+      title: cleanTitle,
+      tags: extractTags(titleInput),
+      notes: notesInput,
+      priority: parseInt(document.getElementById('edit-priority').value) || 2,
+      estimatedMinutes: parseInt(document.getElementById('edit-estimated-minutes').value) || null,
+      timeBlock: document.getElementById('edit-time-block').value || null,
+      artifactTag: document.getElementById('edit-artifact-tag')?.value.trim() || null,
+      due: normalizedDue || '',
+      updatedAt: Date.now()
+    };
     
     // Update fileIds from project files select
     const editFilesSelect = document.getElementById('edit-project-files-select');
-    if (editFilesSelect && t.projectId) {
+    if (editFilesSelect && updatedTask.projectId) {
       const selectedFileIds = Array.from(editFilesSelect.selectedOptions)
         .map(option => option.value)
         .filter(id => id);
       
       // Merge with existing fileIds (keep any that aren't in project files)
-      const existingFileIds = t.fileIds || [];
-      const project = projects.find(p => p.id === t.projectId);
+      const existingFileIds = updatedTask.fileIds || [];
+      const projectsArray = state?.projects || projects;
+      const project = projectsArray.find(p => p.id === updatedTask.projectId);
       const projectFileIds = project && project.files ? project.files.map(f => f && f.id).filter(Boolean) : [];
       
       // Keep existing fileIds that are still valid, add new selections
@@ -5061,46 +5384,62 @@ async function saveEditModal() {
         ...selectedFileIds
       ])];
       
-      t.fileIds = newFileIds;
+      updatedTask.fileIds = newFileIds;
     }
     
     // Save protocol settings
-    const protocolEnabled = document.getElementById('edit-protocol-enabled').checked;
+    const protocolEnabled = document.getElementById('edit-protocol-enabled')?.checked;
     if (protocolEnabled) {
-      if (!t.protocol) {
-        t.protocol = { enabled: true, dailyLog: [], steps: [] };
+      if (!updatedTask.protocol) {
+        updatedTask.protocol = { enabled: true, dailyLog: [], steps: [] };
       }
-      t.protocol.enabled = true;
+      updatedTask.protocol.enabled = true;
       
-      const startInput = document.getElementById('edit-protocol-start').value;
-      const endInput = document.getElementById('edit-protocol-end').value;
-      const dayIndexInput = document.getElementById('edit-protocol-day-index').value;
+      const startInput = document.getElementById('edit-protocol-start')?.value;
+      const endInput = document.getElementById('edit-protocol-end')?.value;
+      const dayIndexInput = document.getElementById('edit-protocol-day-index')?.value;
       
       if (startInput) {
-        t.protocol.startAt = new Date(startInput).toISOString();
+        updatedTask.protocol.startAt = new Date(startInput).toISOString();
       }
       if (endInput) {
-        t.protocol.expectedEndAt = new Date(endInput).toISOString();
+        updatedTask.protocol.expectedEndAt = new Date(endInput).toISOString();
       }
       if (dayIndexInput) {
-        t.protocol.dayIndex = parseInt(dayIndexInput) || calculateProtocolDayIndex(t.protocol.startAt);
-      } else if (t.protocol.startAt) {
-        t.protocol.dayIndex = calculateProtocolDayIndex(t.protocol.startAt);
+        updatedTask.protocol.dayIndex = parseInt(dayIndexInput) || calculateProtocolDayIndex(updatedTask.protocol.startAt);
+      } else if (updatedTask.protocol.startAt) {
+        updatedTask.protocol.dayIndex = calculateProtocolDayIndex(updatedTask.protocol.startAt);
       }
       
       // Ensure dailyLog and steps arrays exist
-      if (!t.protocol.dailyLog) t.protocol.dailyLog = [];
-      if (!t.protocol.steps) t.protocol.steps = [];
+      if (!updatedTask.protocol.dailyLog) updatedTask.protocol.dailyLog = [];
+      if (!updatedTask.protocol.steps) updatedTask.protocol.steps = [];
     } else {
       // Disable protocol (but keep data in case user re-enables)
-      if (t.protocol) {
-        t.protocol.enabled = false;
+      if (updatedTask.protocol) {
+        updatedTask.protocol.enabled = false;
       }
     }
     
-    await save();
-    render();
+    // Update task in store if available, otherwise use legacy save
+    if (window.Petal?.store) {
+      const currentState = window.Petal.store.getState();
+      const updatedTasks = currentState.tasks.map(task => 
+        task.id === currentEditingTaskId ? updatedTask : task
+      );
+      window.Petal.store.setState({ tasks: updatedTasks });
+      // Store will auto-save and auto-render
+    } else {
+      // Legacy: directly mutate and save
+      Object.assign(t, updatedTask);
+      await save();
+      render();
+    }
+    
     closeEditModal();
+  } else {
+    console.warn('saveEditModal: No editingTaskId or editingSubtaskInfo found');
+    alert('No task is being edited.');
   }
 }
 
@@ -5451,18 +5790,15 @@ function handleEditTaskAction(event, buttonElement) {
     return;
   }
   
-  const taskId = parseInt(taskIdAttr);
-  if (isNaN(taskId)) {
-    console.error('Invalid task ID:', taskIdAttr);
-    return;
-  }
+  // Keep ID as string - never truncate with parseInt/Number
+  const taskId = String(taskIdAttr);
   
   const isSubtask = btn.getAttribute('data-is-subtask') === 'true';
   const projectId = btn.getAttribute('data-project-id');
   
   try {
     if (isSubtask && projectId) {
-      editSubtask(parseInt(projectId), taskId);
+      editSubtask(String(projectId), taskId);
     } else if (taskId) {
       editTask(taskId);
     }
@@ -5497,26 +5833,52 @@ function handleDeleteTaskAction(event, buttonElement) {
     btn = event.currentTarget;
   }
   
-  if (!btn || btn.getAttribute('data-action') !== 'delete-task') {
-    console.warn('Could not find delete button element', { event, buttonElement, btn });
+  // Try multiple selectors for compatibility
+  if (!btn) {
+    btn = event?.target?.closest?.('button.btn-del, button.btn-delete, [data-action="delete"], [data-action="delete-task"]');
+  }
+  
+  if (!btn || (btn.getAttribute('data-action') !== 'delete-task' && btn.getAttribute('data-action') !== 'delete')) {
+    // Silently return - this is likely from an old handler, don't log as error
     return;
   }
   
-  const taskIdAttr = btn.getAttribute('data-task-id');
+  const taskIdAttr = btn.getAttribute('data-task-id') || btn.getAttribute('data-id');
   if (!taskIdAttr) {
     return;
   }
   
-  const taskId = parseInt(taskIdAttr);
-  if (isNaN(taskId)) {
-    return;
-  }
+  // Keep ID as string - never truncate with parseInt/Number
+  const taskId = String(taskIdAttr);
   
   const isSubtask = btn.getAttribute('data-is-subtask') === 'true';
-  const projectId = btn.getAttribute('data-project-id');
-  const parentTaskId = btn.getAttribute('data-parent-task-id');
+  const projectId = btn.getAttribute('data-project-id') || null;
+  const parentTaskId = btn.getAttribute('data-parent-task-id') || null;
   
-  confirmDeleteTask(taskId, isSubtask, projectId, parentTaskId);
+  console.log('handleDeleteTaskAction calling deleteTask wrapper', { taskId, isSubtask, projectId, parentTaskId });
+  
+  // Use the taskOperations wrapper (like edit does) - builds context from store at click time
+  if (window.Petal?.features?.taskOperations?.deleteTask) {
+    window.Petal.features.taskOperations.deleteTask(taskId, isSubtask, projectId, parentTaskId);
+  } else if (window.Petal?.features?.deleteHandlers?.confirmDeleteTask) {
+    // Fallback: build context from store
+    const store = window.Petal?.store;
+    const state = store?.getState?.() || {};
+    const ctx = {
+      store,
+      state,
+      tasks: Array.isArray(state.tasks) ? state.tasks : [],
+      projects: Array.isArray(state.projects) ? state.projects : [],
+      save: window.Petal?.handlers?.save || window.save,
+      render: window.Petal?.handlers?.render || window.render,
+    };
+    window.Petal.features.deleteHandlers.confirmDeleteTask(ctx, taskId, isSubtask, projectId, parentTaskId);
+  } else if (window.confirmDeleteTask) {
+    window.confirmDeleteTask(taskId, isSubtask, projectId, parentTaskId);
+  } else {
+    console.error('No delete handler available');
+    alert('Delete functionality not available. Please refresh the page.');
+  }
 }
 
 // Make helpers globally accessible
@@ -5532,7 +5894,8 @@ window.pendingDelete = null;
 
 function confirmDeleteTask(taskId, isSubtask, projectId, parentTaskId) {
   if (window.Petal?.features?.deleteHandlers?.confirmDeleteTask) {
-    window.Petal.features.deleteHandlers.confirmDeleteTask(taskId, isSubtask, projectId, parentTaskId);
+    const ctx = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
+    window.Petal.features.deleteHandlers.confirmDeleteTask(ctx, taskId, isSubtask, projectId, parentTaskId);
   } else {
     console.error('Delete handlers module not loaded');
   }
@@ -5555,10 +5918,24 @@ function closeDeleteConfirmModal() {
 }
 
 async function executeDelete() {
+  console.log('🗑️ executeDelete called', { pendingDelete: window.pendingDelete });
+  
   if (window.Petal?.features?.deleteHandlers?.executeDelete) {
-    await window.Petal.features.deleteHandlers.executeDelete();
+    // Build context from store (required by executeDelete)
+    const store = window.Petal?.store;
+    const state = store?.getState?.() || {};
+    const ctx = {
+      store,
+      state,
+      tasks: Array.isArray(state.tasks) ? state.tasks : [],
+      projects: Array.isArray(state.projects) ? state.projects : [],
+      save: window.Petal?.handlers?.save || window.save,
+      render: window.Petal?.handlers?.render || window.render,
+    };
+    console.log('🗑️ Calling executeDelete with ctx', { tasksCount: ctx.tasks.length });
+    await window.Petal.features.deleteHandlers.executeDelete(ctx);
   } else {
-    console.error('Delete handlers module not loaded');
+    console.error('❌ Delete handlers module not loaded');
   }
 }
 
@@ -5882,11 +6259,15 @@ async function addProject(){
   const compCheckbox = document.getElementById('pr-workflow-comp');
   const writingCheckbox = document.getElementById('pr-workflow-writing');
   const presentationCheckbox = document.getElementById('pr-workflow-presentation');
+  const personalCheckbox = document.getElementById('pr-workflow-personal');
+  const productCheckbox = document.getElementById('pr-workflow-product');
   
   if (labCheckbox?.checked) workflowLanes.push('lab');
   if (compCheckbox?.checked) workflowLanes.push('comp');
   if (writingCheckbox?.checked) workflowLanes.push('writing');
   if (presentationCheckbox?.checked) workflowLanes.push('presentation');
+  if (personalCheckbox?.checked) workflowLanes.push('personal');
+  if (productCheckbox?.checked) workflowLanes.push('product');
   
   // Get project brief fields
   const brief = {
@@ -5908,27 +6289,30 @@ async function addProject(){
   let milestones = [];
   if (templateId && PROJECT_TEMPLATES[templateId]) {
     milestones = defaultMilestonesFromTemplate(templateId);
-    // Create starter tasks from template
+    // Create starter tasks from template - ONLY for selected workflow lanes
     const template = PROJECT_TEMPLATES[templateId];
-    if (template.starterTasks) {
+    if (template.starterTasks && workflowLanes.length > 0) {
       const newProjectId = Date.now();
-      template.starterTasks.forEach(st => {
-        const newTask = {
-          id: Date.now() + Math.random(),
-          title: st.title,
-          notes: '',
-          priority: 'medium',
-          due: '',
-          files: [],
-          done: false,
-          status: 'Todo',
-          lane: st.lane || null,
-          stage: 'planned',
-          projectId: newProjectId,
-          boardOrder: 1024
-        };
-        tasks.push(newTask);
-      });
+      // Filter starter tasks to only include those matching selected workflow lanes
+      template.starterTasks
+        .filter(st => st.lane && workflowLanes.includes(st.lane))
+        .forEach(st => {
+          const newTask = {
+            id: Date.now() + Math.random(),
+            title: st.title,
+            notes: '',
+            priority: 'medium',
+            due: '',
+            files: [],
+            done: false,
+            status: 'Todo',
+            lane: st.lane || null,
+            stage: 'planned',
+            projectId: newProjectId,
+            boardOrder: 1024
+          };
+          tasks.push(newTask);
+        });
     }
   }
   
@@ -6022,16 +6406,29 @@ function applyProjectTemplate(templateId) {
   
   const template = PROJECT_TEMPLATES[templateId];
   
-  // Set workflow lanes (with null checks)
+  // DO NOT override user's workflow lane selections - preserve their choices
+  // Only suggest lanes if none are selected yet
   const labCheckbox = document.getElementById('pr-workflow-lab');
   const compCheckbox = document.getElementById('pr-workflow-comp');
   const writingCheckbox = document.getElementById('pr-workflow-writing');
   const presentationCheckbox = document.getElementById('pr-workflow-presentation');
+  const personalCheckbox = document.getElementById('pr-workflow-personal');
+  const productCheckbox = document.getElementById('pr-workflow-product');
   
-  if (labCheckbox) labCheckbox.checked = template.lanes.includes('lab');
-  if (compCheckbox) compCheckbox.checked = template.lanes.includes('comp');
-  if (writingCheckbox) writingCheckbox.checked = template.lanes.includes('writing');
-  if (presentationCheckbox) presentationCheckbox.checked = template.lanes.includes('presentation');
+  // Check if any lanes are already selected
+  const hasSelectedLanes = (labCheckbox?.checked) || (compCheckbox?.checked) || 
+                           (writingCheckbox?.checked) || (presentationCheckbox?.checked) ||
+                           (personalCheckbox?.checked) || (productCheckbox?.checked);
+  
+  // Only set lanes from template if user hasn't selected any yet
+  if (!hasSelectedLanes) {
+    if (labCheckbox) labCheckbox.checked = template.lanes.includes('lab');
+    if (compCheckbox) compCheckbox.checked = template.lanes.includes('comp');
+    if (writingCheckbox) writingCheckbox.checked = template.lanes.includes('writing');
+    if (presentationCheckbox) presentationCheckbox.checked = template.lanes.includes('presentation');
+    if (personalCheckbox) personalCheckbox.checked = template.lanes.includes('personal');
+    if (productCheckbox) productCheckbox.checked = template.lanes.includes('product');
+  }
   
   // Set brief focus
   const briefFocusEl = document.getElementById('pr-brief-focus');
@@ -7108,7 +7505,7 @@ function openProjectAddTaskModal(projId) {
   const laneField = document.getElementById('modal-task-lane-field');
   const laneSelect = document.getElementById('modal-task-lane');
   if (laneField && laneSelect) {
-    const allowedLanes = p.workflowLanes || ['lab', 'comp', 'writing', 'presentation'];
+    const allowedLanes = p.workflowLanes || ['lab', 'comp', 'writing', 'presentation', 'personal', 'product'];
     if (allowedLanes.length > 0) {
       laneField.style.display = 'block';
       laneSelect.innerHTML = '<option value="">No lane</option>' + allowedLanes.map(lane => {
@@ -7144,7 +7541,7 @@ function openMatrixAddTaskModal() {
   const laneField = document.getElementById('modal-task-lane-field');
   const laneSelect = document.getElementById('modal-task-lane');
   if (laneField && laneSelect) {
-    const allowedLanes = p.workflowLanes || ['lab', 'comp', 'writing', 'presentation'];
+    const allowedLanes = p.workflowLanes || ['lab', 'comp', 'writing', 'presentation', 'personal', 'product'];
     if (allowedLanes.length > 0) {
       laneField.style.display = 'block';
       laneSelect.innerHTML = '<option value="">No lane</option>' + allowedLanes.map(lane => {
@@ -7591,6 +7988,7 @@ function closeAddFileModal() {
   document.getElementById('add-file-modal').style.display = 'none';
   currentModalProjectId = null;
   currentModalContext = null;
+  if (window.currentModalTaskId) window.currentModalTaskId = null;
   
   // Clear file container
   const container = document.getElementById('modal-files-container');
@@ -7642,6 +8040,11 @@ async function submitAddFileModal() {
   
   if (currentModalContext === 'project') {
     await addFileToProjectFromModal(currentModalProjectId, filesToAdd);
+    // If we're adding files from a task drawer, link them to the task
+    if (window.currentModalTaskId) {
+      await linkFilesToTaskFromModal(window.currentModalTaskId, filesToAdd);
+      window.currentModalTaskId = null; // Clear after use
+    }
   } else if (currentModalContext === 'matrix') {
     await addFileToMatrixFromModal(filesToAdd);
   }
@@ -7683,6 +8086,36 @@ async function addFileToMatrixFromModal(filesToAdd) {
   
   await save();
   renderWorkflowMatrix();
+}
+
+// Link files to task after they're added to project (called from task drawer)
+async function linkFilesToTaskFromModal(taskId, filesToAdd) {
+  const state = window.Petal?.store?.getState();
+  const tasks = state?.tasks || [];
+  const task = tasks.find(t => t.id === taskId && !t.deletedAt);
+  if (!task) return;
+  
+  if (!task.fileIds) task.fileIds = [];
+  
+  // Link all added files to the task
+  filesToAdd.forEach(fileLink => {
+    if (fileLink.id && !task.fileIds.includes(fileLink.id)) {
+      task.fileIds.push(fileLink.id);
+    }
+  });
+  
+  // Update task in store
+  if (window.Petal?.store) {
+    const updatedTasks = tasks.map(t => t.id === taskId ? task : t);
+    window.Petal.store.setState({ tasks: updatedTasks });
+    // Refresh task drawer files if it's open
+    if (window.Petal?.features?.taskDrawer?.renderTaskDrawerFiles) {
+      const ctx = window.Petal.handlers?.createPageContext?.() || { tasks, projects: state?.projects || [] };
+      window.Petal.features.taskDrawer.renderTaskDrawerFiles(ctx);
+    }
+  } else {
+    await save();
+  }
 }
 
 // ═══════════════════════ FILE NOTES MODAL ═══════════════════════
@@ -8591,12 +9024,16 @@ function clearSearch() {
 }
 
 async function renderTaskList(){
+  console.log("✅ INLINE renderTaskList() LOADED — EDITBTN TEST 2026-02-21");
   const c=document.getElementById('task-container');
   // Get ALL tasks including those with projectId (project tasks) and without projectId (standalone tasks)
   const allTasks = getAllTasks(); // Already filters deleted tasks, includes all tasks regardless of projectId
   let list=allTasks.filter(t=>{
     // Additional filter: exclude deleted (should already be filtered, but double-check)
     if(t.deletedAt)return false;
+    // Exclude subtasks (tasks with parentTaskId) from main task list
+    // Subtasks should only appear in their parent task's subtask section
+    if(t.parentTaskId)return false;
     if(currentFilter==='active'&&t.done)return false;
     if(currentFilter==='done'&&!t.done)return false;
     if(!inRange(t))return false;
@@ -8698,7 +9135,7 @@ async function renderTaskList(){
           <div class="task-actions">
             <button class="btn-del" onclick="openTaskDrawer(${t.id})" title="Open drawer (Notes, Files, Subtasks)">📝</button>
             <button class="btn-del" data-action="edit-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" onclick="handleEditTaskAction(event, this)" title="Edit">✎</button>
-            <button class="btn-del" data-action="delete-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" onclick="handleDeleteTaskAction(event, this)" title="Delete">✕</button>
+            <button class="btn-del btn-delete" data-action="delete" data-id="${String(t.id)}" data-task-id="${String(t.id)}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" title="Delete">×</button>
           </div>
         </div>
       </div>`;
@@ -8969,8 +9406,8 @@ function projectHTML(p, tasksFromStore = null, openProjectsFromStore = null){
   const dl=dueLabel(p.due,true);
   const isOpen=openProjectsToUse.has(p.id);
   
-  // Project metrics: tasks in this project
-  const projectTasks = tasksToUse.filter(t => String(t.projectId) === String(p.id));
+  // Project metrics: tasks in this project (exclude deleted tasks)
+  const projectTasks = tasksToUse.filter(t => String(t.projectId) === String(p.id) && !t.deletedAt);
   const totalTasks = projectTasks.length;
   const inProgressTasks = projectTasks.filter(t => t.status === 'Doing' && !t.done).length;
   const doneTasks = projectTasks.filter(t => t.done).length;
@@ -9065,7 +9502,7 @@ function projectHTML(p, tasksFromStore = null, openProjectsFromStore = null){
           const taskSubtasksOpen = openTaskSubtasks && openTaskSubtasks.has(t.id);
           
           // Get allowed lanes for this project
-          const allowedLanes = p.workflowLanes || ['lab', 'comp', 'writing', 'presentation'];
+          const allowedLanes = p.workflowLanes || ['lab', 'comp', 'writing', 'presentation', 'personal', 'product'];
           const laneOptions = [];
           laneOptions.push(`<option value="" ${!t.lane || t.lane === 'none' ? 'selected' : ''}>No lane</option>`);
           if (allowedLanes.includes('lab')) laneOptions.push(`<option value="lab" ${t.lane === 'lab' ? 'selected' : ''}>🧪 Lab</option>`);
@@ -9104,7 +9541,7 @@ function projectHTML(p, tasksFromStore = null, openProjectsFromStore = null){
                 </div>
                 <div style="display:flex;gap:4px;flex-shrink:0;">
                   <button class="btn-del" data-action="edit-task" data-task-id="${st.id}" data-is-subtask="false" data-project-id="${t.projectId || ''}" onclick="handleEditTaskAction(event, this)" title="Edit">✎</button>
-                  <button class="btn-del" data-action="delete-task" data-task-id="${st.id}" data-parent-task-id="${t.id}" data-is-subtask="false" data-project-id="${t.projectId || ''}" onclick="handleDeleteTaskAction(event, this)" title="Delete">✕</button>
+                  <button class="btn-del btn-delete" data-action="delete" data-id="${String(st.id)}" data-task-id="${String(st.id)}" data-parent-task-id="${String(t.id)}" data-is-subtask="false" data-project-id="${t.projectId || ''}" title="Delete">×</button>
                 </div>
               </div>
             </div>`;
@@ -9122,36 +9559,49 @@ function projectHTML(p, tasksFromStore = null, openProjectsFromStore = null){
           
           const tdl = dueLabel(t.due, true, t.done);
           
-          return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:8px;">
-            <div style="display:flex;align-items:flex-start;gap:8px;">
-              <input type="checkbox" class="task-select-checkbox" data-project-id="${p.id}" data-task-id="${t.id}" onchange="updateSelection(${p.id})" style="cursor:pointer;flex-shrink:0;width:18px;height:18px;margin-top:2px;">
-            <div style="flex:1;min-width:0;">
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-                  <div style="flex:1;min-width:0;">
-                    <div style="font-weight:500;font-size:14px;${t.done ? 'text-decoration:line-through;opacity:0.6;' : ''}">${esc(t.title)}</div>
-                    <div style="font-size:11px;color:var(--text-dim);margin-top:4px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-                      <span class="priority-tag ${t.priority}" style="font-size:10px;">${t.priority}</span>
-                      ${esc(laneLabel)} ${t.lane ? '• ' + esc(stageLabel) : ''}
-                      ${tdl ? `<span class="due-tag ${tdl.cls}" style="font-size:10px;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${esc(tdl.text)}</span>` : ''}
-            </div>
+          const priorityClass = t.priority === 3 ? 'high' : t.priority === 1 ? 'low' : 'medium';
+          return `<div class="task-card ${t.done ? 'done' : ''}" data-id="${t.id}" data-priority="${priorityClass}">
+            <div class="task-top">
+              <div class="task-content">
+                <input type="checkbox" class="task-select-checkbox" data-project-id="${p.id}" data-task-id="${t.id}" onchange="updateSelection(${p.id})" style="cursor:pointer;flex-shrink:0;width:18px;height:18px;margin-top:2px;display:none;">
+                <div class="check-box ${t.done ? 'checked' : ''}" onclick="window.Petal?.handlers?.toggleTask(${t.id})"></div>
+                
+                <div class="task-body">
+                  <div class="task-title">
+                    ${esc(t.title || 'Untitled')}
+                    ${laneLabel && laneLabel !== 'No lane' ? `<span class="tag-chip">${esc(laneLabel)}</span>` : ''}
+                    ${(t.tags || []).map(tag => 
+                      `<span class="tag-chip" data-tag="${esc(tag)}">${esc(tag)}</span>`
+                    ).join('')}
                   </div>
-                  <div style="display:flex;gap:4px;flex-shrink:0;">
-            <select onchange="updateTaskLane(${t.id}, this.value); renderProjects();" style="font-size:11px;padding:6px 8px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);cursor:pointer;" title="Assign lane">
-                      ${laneOptions.join('')}
-            </select>
-            ${t.lane && t.lane !== 'none' && LANE_STAGES[t.lane] ? `<select onchange="updateTaskStage(${t.id}, '${t.lane}', this.value); renderProjects();" style="font-size:11px;padding:6px 8px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);cursor:pointer;" title="Change stage">
-              ${LANE_STAGES[t.lane].map(s => `<option value="${s}" ${t.stage === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}
-            </select>` : ''}
-                    <button class="btn-del" onclick="event.stopPropagation();toggleTaskSubtaskSection(${t.id})" title="Toggle subtasks" style="font-size:12px;">${taskSubtasks.length > 0 ? (taskSubtasksOpen ? '▼' : '▶') : ''}</button>
-                    <button class="btn-del" onclick="event.stopPropagation();editTask(${t.id})" title="Edit task">✎</button>
-      </div>
+                  
+                  <div class="task-meta-row">
+                    <span class="priority-tag ${priorityClass}">${priorityClass}</span>
+                    ${tdl ? `<span class="due-tag ${tdl.class || tdl.cls}">${esc(tdl.label || tdl.text)}</span>` : ''}
+                    ${t.lane && t.lane !== 'none' && stageLabel !== 'No stage' ? `<span style="font-size:10px;color:var(--text-dim);">• ${esc(stageLabel)}</span>` : ''}
+                  </div>
+                  
+                  ${t.notes ? `<div class="task-notes">${esc(t.notes)}</div>` : ''}
                 </div>
-                ${taskFilesHTML ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:6px;">
-                  <span style="font-size:10px;color:var(--text-dim);margin-right:4px;">📎 Files:</span>
-                  ${taskFilesHTML}
-    </div>` : ''}
+              </div>
+              
+              <div class="task-actions" style="display:flex;gap:4px;align-items:center;">
+                <select onchange="updateTaskLane(${t.id}, this.value); renderProjects();" style="font-size:11px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);cursor:pointer;" title="Assign lane">
+                  ${laneOptions.join('')}
+                </select>
+                ${t.lane && t.lane !== 'none' && LANE_STAGES[t.lane] ? `<select onchange="updateTaskStage(${t.id}, '${t.lane}', this.value); renderProjects();" style="font-size:11px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);cursor:pointer;" title="Change stage">
+                  ${LANE_STAGES[t.lane].map(s => `<option value="${s}" ${t.stage === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}
+                </select>` : ''}
+                <button class="btn-del" onclick="if(window.Petal?.features?.taskDrawer?.openTaskDrawer){window.Petal.features.taskDrawer.openTaskDrawer(${t.id})}else if(typeof openTaskDrawer==='function'){openTaskDrawer(${t.id})}" title="Open drawer (Notes, Files, Subtasks)" style="font-size:13px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);">📝</button>
+                <button class="btn-del" onclick="event.stopPropagation();toggleTaskSubtaskSection(${t.id})" title="Toggle subtasks" style="font-size:12px;">${taskSubtasks.length > 0 ? (taskSubtasksOpen ? '▼' : '▶') : ''}</button>
+                <button class="btn-del btn-edit" data-action="edit-task" data-task-id="${String(t.id)}" onclick="event.stopPropagation();editTask(${t.id})" title="Edit" style="font-size:13px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);">✎</button>
+                <button class="btn-del btn-delete" data-action="delete" data-id="${String(t.id)}" data-task-id="${String(t.id)}" data-is-subtask="false" data-project-id="${t.projectId || ''}" title="Delete" style="font-size:16px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:bold;opacity:1;">×</button>
               </div>
             </div>
+            ${taskFilesHTML ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:6px;">
+              <span style="font-size:10px;color:var(--text-dim);margin-right:4px;">📎 Files:</span>
+              ${taskFilesHTML}
+            </div>` : ''}
             ${taskSubtasks.length > 0 ? `<div id="task-subtasks-${t.id}" style="display:${taskSubtasksOpen ? 'block' : 'none'};margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">
               ${subtasksHTML}
               <button onclick="toggleAddSubtaskToTask(${t.id})" style="width:100%;padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:11px;margin-top:8px;cursor:pointer;">+ Add Subtask</button>
@@ -9752,6 +10202,9 @@ function renderTaskItemCompact(task) {
   const protocolBadge = task.protocol?.enabled ? getProtocolBadge(task) : '';
   const estimated = task.estimatedMinutes ? `<span style="font-size:10px;color:var(--text-dim);margin-left:8px;">(${task.estimatedMinutes} min)</span>` : '';
   
+  const projectId = task.projectId || '';
+  const isSubtask = task.isSubtask || false;
+  
   let html = '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;">';
   html += `<div class="check-box ${task.done?'checked':''}" onclick="toggleTask(${task.id})" style="flex-shrink:0;"></div>`;
   html += '<div style="flex:1;min-width:0;">';
@@ -9760,7 +10213,8 @@ function renderTaskItemCompact(task) {
           html += `<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">${esc(tdl.text)}</div>`;
         }
   html += '</div>';
-  html += `<button data-action="edit-task" data-task-id="${task.id}" onclick="handleEditTaskAction(event, this)" style="padding:4px 8px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:10px;cursor:pointer;">Edit</button>`;
+  html += `<button data-action="edit-task" data-task-id="${task.id}" data-is-subtask="${isSubtask}" data-project-id="${projectId}" onclick="handleEditTaskAction(event, this)" style="padding:4px 8px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:10px;cursor:pointer;">Edit</button>`;
+  html += `<button class="btn-del btn-delete" data-action="delete" data-id="${String(task.id)}" data-task-id="${String(task.id)}" data-is-subtask="${isSubtask}" data-project-id="${projectId || ''}" style="padding:4px 8px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:10px;cursor:pointer;margin-left:4px;opacity:1;" title="Delete">×</button>`;
   html += '</div>';
   return html;
 }
@@ -11018,16 +11472,25 @@ function renderMatrixTaskCard(task, isSubtaskTask = false, subtaskId = null, ord
     </div>
   ` : '';
 
+  const projectId = task.projectId || selectedProjectId || '';
+  const isSubtask = task.isSubtask || false;
+  
   return `<div class="matrix-task-card ${task.done ? 'done' : ''} ${blocked ? 'blocked' : ''} ${isTaskSubtask ? 'subtask-task' : ''}" 
     draggable="true" 
     data-task-id="${task.id}"
     data-subtask-id="${subtaskId || ''}"
     ondragstart="onMatrixDragStart(event, ${task.id})"
     ondragend="onMatrixDragEnd(event)">
-    <div class="matrix-task-title">
-      ${isTaskSubtask && parentTask ? `<span style="opacity:0.6;font-size:9px;color:var(--text-dim);">↳ ${esc(parentTask.title)} → </span>` : ''}
-      ${esc(task.title)}
-      ${isTaskSubtask ? `<span style="font-size:8px;color:var(--text-light);margin-left:4px;">(subtask)</span>` : ''}
+    <div class="matrix-task-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+      <div style="flex:1;min-width:0;">
+        ${isTaskSubtask && parentTask ? `<span style="opacity:0.6;font-size:9px;color:var(--text-dim);">↳ ${esc(parentTask.title)} → </span>` : ''}
+        ${esc(task.title)}
+        ${isTaskSubtask ? `<span style="font-size:8px;color:var(--text-light);margin-left:4px;">(subtask)</span>` : ''}
+      </div>
+      <div style="display:flex;gap:4px;flex-shrink:0;">
+        <button class="btn-del" data-action="edit-task" data-task-id="${task.id}" data-is-subtask="${isSubtask}" data-project-id="${projectId}" onclick="event.stopPropagation();handleEditTaskAction(event, this)" title="Edit" style="background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:11px;padding:2px 4px;border-radius:3px;transition:all 0.15s;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='transparent';this.style.color='var(--text-dim)'">✎</button>
+        <button class="btn-del btn-delete" data-action="delete" data-id="${String(task.id)}" data-task-id="${String(task.id)}" data-is-subtask="${isSubtask}" data-project-id="${projectId || ''}" title="Delete" style="background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;font-weight:bold;padding:2px 4px;border-radius:3px;transition:all 0.15s;opacity:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--overdue)'" onmouseout="this.style.background='transparent';this.style.color='var(--text-dim)'">×</button>
+      </div>
     </div>
     <div class="matrix-task-meta">
       ${task.priority ? `<span class="priority-tag ${task.priority}">${task.priority}</span>` : ''}
@@ -12054,7 +12517,7 @@ async function renderLane(laneName, allTasks) {
         <div class="task-actions">
           <button type="button" class="btn-del" onclick="openTaskDrawer(${t.id})" title="Open drawer" style="font-size:11px;">📝</button>
           <button type="button" class="btn-del" data-action="edit-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" onclick="handleEditTaskAction(event, this)" title="Edit">✎</button>
-          <button type="button" class="btn-del" data-action="delete-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" onclick="handleDeleteTaskAction(event, this)" title="Delete">✕</button>
+          <button type="button" class="btn-del btn-delete" data-action="delete" data-id="${String(t.id)}" data-task-id="${String(t.id)}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" title="Delete">×</button>
         </div>
       </div>
     </div>`;
@@ -12144,7 +12607,7 @@ async function renderUnassignedLane(allTasks) {
         <div class="task-actions">
           <button type="button" class="btn-del" onclick="openTaskDrawer(${t.id})" title="Open drawer" style="font-size:11px;">📝</button>
           <button type="button" class="btn-del" data-action="edit-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" onclick="handleEditTaskAction(event, this)" title="Edit">✎</button>
-          <button type="button" class="btn-del" data-action="delete-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" onclick="handleDeleteTaskAction(event, this)" title="Delete">✕</button>
+          <button type="button" class="btn-del btn-delete" data-action="delete" data-id="${String(t.id)}" data-task-id="${String(t.id)}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" title="Delete">×</button>
         </div>
       </div>
     </div>`;

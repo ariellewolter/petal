@@ -261,6 +261,11 @@ export function renderTaskDrawerFiles(ctx) {
       </div>
     `;
   }).join('');
+  
+  // Re-hydrate Lucide icons after innerHTML (fixes "halo" issue)
+  if (window.lucide?.createIcons) {
+    window.lucide.createIcons();
+  }
 }
 
 /**
@@ -277,26 +282,78 @@ export async function linkExistingFileToTask(ctx) {
   
   const project = projects.find(p => p.id === task.projectId);
   if (!project || !project.files || project.files.length === 0) {
-    alert('No files available in this project');
+    alert('No files available in this project. Add files to the project first.');
     return;
   }
   
-  // Simple prompt for now - could be enhanced with a modal
-  const fileLabels = project.files.map((f, i) => `${i + 1}. ${f.label || f.name || 'File'}`).join('\n');
-  const choice = prompt(`Select file number:\n\n${fileLabels}`);
-  const index = parseInt(choice) - 1;
+  // Create a modal for file selection
+  const modal = document.createElement('div');
+  modal.className = 'quick-capture-modal';
+  modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:10000;';
+  modal.onclick = (e) => {
+    if (e.target === modal) {
+      document.body.removeChild(modal);
+    }
+  };
   
-  if (isNaN(index) || index < 0 || index >= project.files.length) return;
+  const existingFileIds = task.fileIds || [];
+  const availableFiles = project.files.filter(f => f.id && !existingFileIds.includes(f.id));
   
-  const file = project.files[index];
-  if (!file || !file.id) return;
+  if (availableFiles.length === 0) {
+    alert('All project files are already linked to this task');
+    return;
+  }
   
-  if (!task.fileIds) task.fileIds = [];
-  if (!task.fileIds.includes(file.id)) {
-    task.fileIds.push(file.id);
+  const checkboxes = availableFiles.map((file, i) => {
+    const label = file.label || file.name || 'File';
+    return `
+      <label style="display:flex;align-items:center;gap:8px;padding:8px;cursor:pointer;border-radius:4px;transition:background 0.15s;" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='transparent'">
+        <input type="checkbox" value="${file.id}" style="cursor:pointer;">
+        <span>${esc(label)}</span>
+      </label>
+    `;
+  }).join('');
+  
+  modal.innerHTML = `
+    <div class="quick-capture-box" style="max-width:500px;background:var(--surface);border-radius:12px;padding:24px;" onclick="event.stopPropagation()">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
+        <h3 style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;color:var(--rose);margin:0;">Link Files to Task</h3>
+        <button onclick="this.closest('.quick-capture-modal').remove()" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
+      </div>
+      <div style="max-height:400px;overflow-y:auto;margin-bottom:20px;border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--bg);">
+        ${checkboxes}
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:8px;border-top:1px solid var(--border);">
+        <button onclick="this.closest('.quick-capture-modal').remove()" class="btn-secondary">Cancel</button>
+        <button class="btn-submit" id="link-files-submit">Link Selected</button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  // Handle submit
+  const submitBtn = modal.querySelector('#link-files-submit');
+  submitBtn.onclick = async () => {
+    const selected = Array.from(modal.querySelectorAll('input[type="checkbox"]:checked'))
+      .map(cb => cb.value);
+    
+    if (selected.length === 0) {
+      alert('Please select at least one file');
+      return;
+    }
+    
+    if (!task.fileIds) task.fileIds = [];
+    selected.forEach(fileId => {
+      if (!task.fileIds.includes(fileId)) {
+        task.fileIds.push(fileId);
+      }
+    });
+    
     await save();
     renderTaskDrawerFiles(ctx);
-  }
+    document.body.removeChild(modal);
+  };
 }
 
 /**
@@ -304,8 +361,23 @@ export async function linkExistingFileToTask(ctx) {
  */
 export function addNewFileToTask() {
   if (!window.currentDrawerTaskId) return;
-  // For now, just show a message
-  alert('Use the Files view to add files to the project, then link them here');
+  const { tasks, projects } = window.Petal?.store?.getState() || {};
+  const task = (tasks || []).find(t => t.id === window.currentDrawerTaskId && !t.deletedAt);
+  if (!task) return;
+  
+  // If task is in a project, add file to project and link it
+  // If task is standalone, we'll need to handle it differently
+  if (task.projectId) {
+    // Use the existing add file modal for the project
+    if (typeof window.openProjectAddFileModal === 'function') {
+      window.currentModalTaskId = window.currentDrawerTaskId; // Store task ID for linking after file is added
+      window.openProjectAddFileModal(task.projectId);
+    } else {
+      alert('Unable to open file modal. Please add files to the project first, then link them to the task.');
+    }
+  } else {
+    alert('Standalone tasks cannot have files. Add the task to a project first.');
+  }
 }
 
 /**
@@ -347,11 +419,16 @@ export function renderTaskDrawerSubtasks(ctx) {
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center;">
       <span style="font-size:13px;color:var(--text);">${esc(st.title)}</span>
       <div style="display:flex;gap:6px;">
-        <button data-action="edit-task" data-task-id="${st.id}" onclick="handleEditTaskAction(event, this)" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;">Edit</button>
-        <button data-action="delete-task" data-task-id="${st.id}" onclick="handleDeleteTaskAction(event, this)" style="padding:4px 8px;background:none;border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;color:var(--text-dim);">Delete</button>
+        <button data-action="edit-task" data-task-id="${st.id}" onclick="if(window.handleEditTaskAction){window.handleEditTaskAction(event, this)}" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;color:var(--text-dim);">Edit</button>
+        <button class="btn-del btn-delete" data-action="delete-task" data-task-id="${st.id}" data-is-subtask="false" data-project-id="${st.projectId || ''}" data-parent-task-id="${st.parentTaskId || ''}" onclick="if(window.handleDeleteTaskAction){window.handleDeleteTaskAction(event, this)}" title="Delete" style="padding:4px 8px;min-width:28px;min-height:28px;background:none;border:1px solid var(--border);border-radius:4px;font-size:13px;cursor:pointer;color:var(--text-dim);display:flex;align-items:center;justify-content:center;">✕</button>
       </div>
     </div>
   `).join('');
+  
+  // Re-hydrate Lucide icons after innerHTML (fixes "halo" issue)
+  if (window.lucide?.createIcons) {
+    window.lucide.createIcons();
+  }
 }
 
 /**
@@ -395,7 +472,8 @@ export async function addSubtaskToTask(ctx) {
     inputEl.value = '';
     
     await save();
-    if (render) render();
+    // Don't call render() here - it re-renders the entire page and can affect the drawer
+    // We only need to update the subtasks list, which renderTaskDrawerSubtasks does
     renderTaskDrawerSubtasks(ctx);
   } catch (error) {
     console.error('Error in addSubtaskToTask:', error);

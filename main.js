@@ -314,8 +314,40 @@ let hasUnsavedChanges = false;
 const VAULT_FOLDER_NAME = 'PetalVault';
 const DATA_FILE_NAME = 'petal.json';
 const BACKUP_FILE_NAME = 'petal.json.bak';
+const CURRENT_SCHEMA_VERSION = 1; // Must match migrations.js
 const WATCH_IGNORE_WINDOW_MS = 2000; // Ignore watch events within 2s of our own write
 const POLL_INTERVAL_MS = 10000; // Poll every 10 seconds as fallback (reduced frequency for better performance)
+
+/**
+ * Create timestamped backup before migration
+ * Format: petal.backup.YYYYMMDD-HHMMSS.json
+ */
+async function createTimestampedBackup(vaultPath, dataFile) {
+  if (!fs.existsSync(dataFile)) {
+    return null;
+  }
+  
+  try {
+    const timestamp = new Date().toISOString()
+      .replace(/[:.]/g, '-')
+      .slice(0, 19) // YYYY-MM-DDTHH-MM-SS
+      .replace('T', '-'); // YYYY-MM-DD-HH-MM-SS
+    
+    const backupPath = path.join(vaultPath, `petal.backup.${timestamp}.json`);
+    await fsPromises.copyFile(dataFile, backupPath);
+    
+    // Sync backup to disk
+    const backupFd = await fsPromises.open(backupPath, 'r+');
+    await backupFd.sync();
+    await backupFd.close();
+    
+    safeLog(`✅ Created timestamped backup: ${path.basename(backupPath)}`);
+    return backupPath;
+  } catch (error) {
+    safeError('Error creating timestamped backup:', error);
+    return null;
+  }
+}
 
 // Get the default vault path (OneDrive on Windows, iCloud Drive on Mac)
 function getDefaultVaultPath() {
@@ -592,8 +624,22 @@ async function readDataFile() {
         const data = await fsPromises.readFile(paths.dataFile, 'utf-8');
         mainData = JSON.parse(data);
         
+        // Release-Safe: Check schema version and create backup if migration needed
+        const loadedVersion = mainData.schemaVersion || 0; // 0 = legacy (no version)
+        if (loadedVersion < CURRENT_SCHEMA_VERSION) {
+          safeLog(`🔄 Schema version mismatch detected: ${loadedVersion} < ${CURRENT_SCHEMA_VERSION}`);
+          safeLog(`   Creating timestamped backup before migration...`);
+          const backupPath = await createTimestampedBackup(paths.vaultPath, paths.dataFile);
+          if (backupPath) {
+            safeLog(`   Backup created: ${path.basename(backupPath)}`);
+          } else {
+            safeWarn(`   ⚠️ Failed to create backup - migration will proceed anyway`);
+          }
+        }
+        
         // DEBUG: Log what was loaded
         safeLog(`🔍 DEBUG: Loaded data from file:`);
+        safeLog(`  Schema Version: ${loadedVersion} (current: ${CURRENT_SCHEMA_VERSION})`);
         safeLog(`  Tasks: ${mainData.tasks?.length || 0}`);
         safeLog(`  Projects: ${mainData.projects?.length || 0}`);
         safeLog(`  Events: ${mainData.events?.length || 0}`);
@@ -681,6 +727,7 @@ async function writeDataFile(data) {
     const jsonData = JSON.stringify(data, null, 2);
     
     // 1. Create backup of existing file if it exists
+    // Release-Safe: Always create backup before write (standard .bak file)
     if (fs.existsSync(paths.dataFile)) {
       await fsPromises.copyFile(paths.dataFile, paths.backupFile);
       // Sync backup to disk
@@ -1165,13 +1212,17 @@ ipcMain.handle('storage:save', async (event, state) => {
       return { ok: false, error: `Failed to create vault directory: ${structureError.message}` };
     }
     
+    // Release-Safe: Log payload keys and files to verify IPC transmission
+    safeLog('📝 main save payload keys:', Object.keys(state));
+    safeLog('📝 main save files:', Array.isArray(state.files) ? state.files.length : (state.files !== undefined ? typeof state.files : 'undefined'));
+    
     const result = await writeDataFile(state);
     if (result.success) {
       const paths = getVaultPaths();
       const stats = fs.existsSync(paths.dataFile) ? fs.statSync(paths.dataFile) : null;
       safeLog(`💾 Saved successfully to vault: ${vaultPath}`);
       safeLog(`  Data file: ${paths.dataFile}`);
-      safeLog(`  Tasks: ${state.tasks?.length || 0}, Projects: ${state.projects?.length || 0}`);
+      safeLog(`  Tasks: ${state.tasks?.length || 0}, Projects: ${state.projects?.length || 0}, Files: ${state.files?.length || 0}`);
       if (stats) {
         safeLog(`  File size: ${stats.size} bytes, Modified: ${stats.mtime.toISOString()}`);
       }

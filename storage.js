@@ -117,14 +117,31 @@ class StorageAdapter {
     if (this.isElectron) {
       // Electron: save to JSON file via IPC
       try {
+        // Release-Safe: Log what we're about to send to main process
+        const filesCount = Array.isArray(state.files) ? state.files.length : (state.files !== undefined ? typeof state.files : 'undefined');
+        console.log('📤 storage.js saveState payload', {
+          files: filesCount,
+          filesFirst: state.files?.[0]?.name ?? null,
+          stateKeys: Object.keys(state),
+          hasFiles: 'files' in state
+        });
+        
         const result = await window.electronAPI.saveState({
+          schemaVersion: state.schemaVersion, // ✅ Include schema version
           tasks: state.tasks || [],
           projects: state.projects || [],
           openProjects: state.openProjects || [],
           settings: state.settings || {},
           events: state.events || [],
           recurringRules: state.recurringRules || [],
+          habits: state.habits || [],
+          habitCheckins: state.habitCheckins || {},
+          routines: state.routines || [],
+          routineCheckins: state.routineCheckins || {},
           files: state.files || [], // ✅ Persisted files list
+          workflow: state.workflow || {},
+          // Note: fileHistory and fileRegistry are derived data, but including for backward compatibility
+          // They will be excluded from exportState() but may be in state object
           fileHistory: state.fileHistory || {},
           fileRegistry: state.fileRegistry || {}
         });
@@ -212,7 +229,10 @@ class StorageAdapter {
           tasks: [...current.tasks, ...(imported.tasks || [])],
           projects: [...current.projects, ...(imported.projects || [])],
           openProjects: [...new Set([...current.openProjects, ...(imported.openProjects || [])])],
-          settings: { ...(current.settings || {}), ...(imported.settings || {}) }
+          settings: { ...(current.settings || {}), ...(imported.settings || {}) },
+          files: [...(current.files || []), ...(imported.files || [])], // ✅ Include files
+          events: [...(current.events || []), ...(imported.events || [])],
+          recurringRules: [...(current.recurringRules || []), ...(imported.recurringRules || [])]
         };
       } else {
         // Replace: use imported data
@@ -220,7 +240,10 @@ class StorageAdapter {
           tasks: imported.tasks || [],
           projects: imported.projects || [],
           openProjects: imported.openProjects || [],
-          settings: imported.settings || {}
+          settings: imported.settings || {},
+          files: imported.files || [], // ✅ Include files
+          events: imported.events || [],
+          recurringRules: imported.recurringRules || []
         };
       }
     } catch (e) {

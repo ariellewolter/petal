@@ -1,6 +1,7 @@
 // ═══════════════════════ RENDER TASKS ═══════════════════════
 // Pure rendering function for tasks view
 // Takes state and handlers as parameters - no store peeking
+console.log("✅ renderTasks.js LOADED — EDITBTN TEST 2026-02-21");
 
 import { esc } from '../utils/strings.js';
 import { today, parseDate, dueLabel } from '../utils/dates.js';
@@ -15,9 +16,10 @@ import { getAllTasks } from '../domain/models.js';
 export async function renderTasks(containerEl, state, handlers) {
   const { tasks, projects, currentFilter, currentSort, searchQuery, taskMode, boardProjectFilter } = state;
   
-  // Refresh project selects (this is a side effect, but needed for UI)
-  if (typeof refreshProjectSelects === 'function') {
-    refreshProjectSelects();
+  // Phase 3 Fix: Move side effect to handlers (keeps render deterministic)
+  // Refresh project selects via handler if provided, otherwise skip (don't call global)
+  if (handlers?.refreshProjectSelects) {
+    handlers.refreshProjectSelects();
   }
   
   // Update UI based on task mode
@@ -59,19 +61,93 @@ async function renderTaskList(containerEl, state, handlers) {
     containerEl: !!containerEl
   });
   
-  const c = containerEl || document.getElementById('task-container');
+  // Find task-container inside the provided container, or use it directly if it's task-container
+  let c = null;
+  if (containerEl) {
+    // If containerEl is task-container itself, use it
+    if (containerEl.id === 'task-container') {
+      c = containerEl;
+    } else {
+      // Otherwise, look for task-container inside it
+      c = containerEl.querySelector('#task-container') || containerEl.querySelector('.task-container');
+    }
+  }
+  
+  // Fallback: find by ID
+  if (!c) {
+    c = document.getElementById('task-container');
+  }
+  
   if (!c) {
     console.error('❌ ERROR: task-container element not found!');
     return;
   }
   
+  // Diagnostic: Check if container is visible and clickable
+  const computedStyle = window.getComputedStyle(c);
+  console.log('🔍 task-container diagnostics:', {
+    display: computedStyle.display,
+    visibility: computedStyle.visibility,
+    pointerEvents: computedStyle.pointerEvents,
+    opacity: computedStyle.opacity,
+    hasContent: c.innerHTML.length > 0,
+  });
+  
   // Get all tasks including project tasks
   const allTasks = getAllTasks(tasks || [], projects || []);
+  
+  // ═══════════════════════ DEBUG: allTasks breakdown ═══════════════════════
+  // Phase 3 Debug: Identify source of task count mismatch
+  const id = (t) => t.id || t.taskId || t.uuid || '(no-id)';
+  const src = (t) => {
+    if (t.isSubtask) return 'project-subtask';
+    if (t.projectId) return 'tasks-array-with-project';
+    return 'tasks-array-standalone';
+  };
+  
+  const storeTasks = tasks || [];
+  const projectSubtasks = (projects || []).flatMap(p => (p.subtasks || []).map(st => ({
+    ...st,
+    projectId: p.id,
+    isSubtask: true
+  })));
+  
+  const duplicates = (() => {
+    const seen = new Set();
+    const dups = [];
+    for (const t of allTasks) {
+      const k = id(t);
+      if (seen.has(k)) dups.push(k);
+      else seen.add(k);
+    }
+    return dups;
+  })();
+  
+  console.log('🔍 DEBUG allTasks breakdown:', {
+    storeTasksCount: storeTasks.length,
+    storeTaskIds: storeTasks.map(id),
+    projectSubtasksCount: projectSubtasks.length,
+    projectSubtaskIds: projectSubtasks.map(id),
+    allTasksCount: allTasks.length,
+    allTaskIds: allTasks.map(id),
+    duplicates: duplicates.length > 0 ? duplicates : 'none',
+    sample: allTasks.slice(0, 5).map(t => ({
+      id: id(t),
+      title: t.title || t.name || '(no title)',
+      projectId: t.projectId,
+      isSubtask: t.isSubtask || false,
+      src: src(t),
+    })),
+  });
+  
   console.log('🔍 DEBUG: allTasks count:', allTasks.length);
   
   // Filter tasks
   let list = allTasks.filter(t => {
     if (t.deletedAt) return false;
+    // Exclude subtasks (tasks with parentTaskId) from main task list
+    // Subtasks should only appear in their parent task's subtask section
+    if (t.parentTaskId) return false;
     if (currentFilter === 'active' && t.done) return false;
     if (currentFilter === 'done' && !t.done) return false;
     
@@ -121,44 +197,132 @@ async function renderTaskList(containerEl, state, handlers) {
   
   console.log('🔍 DEBUG: Rendering', list.length, 'tasks');
   c.innerHTML = list.map(t => renderTaskItem(t, state)).join('');
+  
+  // Re-hydrate Lucide icons after innerHTML (fixes "halo" issue)
+  if (window.lucide?.createIcons) {
+    window.lucide.createIcons();
+  }
+  
+  // DEBUG: Prove clicks reach the task list container
+  if (!c.__clickProbeInstalled) {
+    c.__clickProbeInstalled = true;
+    c.addEventListener('click', (e) => {
+      const btn = e.target.closest?.('button');
+      console.log('🧪 task list click probe:', {
+        target: e.target?.tagName,
+        buttonClass: btn?.className || null,
+        buttonText: btn?.textContent?.trim() || null,
+        hasDataAction: btn?.getAttribute('data-action') || null,
+      });
+    }, true); // capture=true to beat overlays/bubbling issues
+  }
+  
+  // Install event delegation for task actions (delete, edit, etc.)
+  if (!c.__taskActionsInstalled) {
+    c.__taskActionsInstalled = true;
+    
+    c.addEventListener('click', (e) => {
+      // Guard: prevent double handling if another handler already processed this event
+      if (e.__petalDeleteHandled) return;
+      
+      const btn = e.target.closest?.('[data-action]');
+      if (!btn) return;
+      
+      const action = btn.getAttribute('data-action');
+      const taskId = btn.getAttribute('data-id') || btn.getAttribute('data-task-id');
+      
+      console.log('🧨 task action click:', { action, taskId, button: btn });
+      
+        if (action === 'delete' || action === 'delete-task') {
+          // Mark as handled to prevent duplicate processing
+          e.__petalDeleteHandled = true;
+          e.preventDefault();
+          e.stopPropagation();
+          
+          const isSubtask = btn.getAttribute('data-is-subtask') === 'true';
+          // Only use projectId from attribute, never derive from taskId
+          const projectIdAttr = btn.getAttribute('data-project-id');
+          const projectId = projectIdAttr && projectIdAttr !== '' && projectIdAttr !== 'null' ? projectIdAttr : null;
+          const parentTaskId = btn.getAttribute('data-parent-task-id') || null;
+          
+          console.log('🧨 delete action:', { taskId, isSubtask, projectId, parentTaskId });
+          
+          // Use the taskOperations wrapper (like edit does)
+          if (window.Petal?.features?.taskOperations?.deleteTask) {
+            window.Petal.features.taskOperations.deleteTask(taskId, isSubtask, projectId, parentTaskId);
+          } else if (window.Petal?.features?.deleteHandlers?.confirmDeleteTask) {
+            // Fallback: build context from store
+            const store = window.Petal?.store;
+            const state = store?.getState?.() || {};
+            const ctx = {
+              store,
+              state,
+              tasks: Array.isArray(state.tasks) ? state.tasks : [],
+              projects: Array.isArray(state.projects) ? state.projects : [],
+              save: window.Petal?.handlers?.save || window.save,
+              render: window.Petal?.handlers?.render || window.render,
+            };
+            console.log('🧨 calling confirmDeleteTask with ctx:', ctx);
+            window.Petal.features.deleteHandlers.confirmDeleteTask(ctx, taskId, isSubtask, projectId, parentTaskId);
+          } else {
+            console.error('❌ No delete handler available');
+            alert('Delete functionality not available. Please check console for details.');
+          }
+        }
+    });
+  }
 }
 
 /**
  * Render a single task item
+ * Phase 3 Fix: Uses task-card CSS classes to match design system
  * @param {Object} task - Task object
  * @param {Object} state - Current app state
  */
 function renderTaskItem(task, state) {
+  // Debug: Log when rendering task item (to confirm new code is running)
+  console.log('🔍 renderTaskItem called for task:', task.id, 'with 3 buttons (Drawer 📝, Edit ✎, Delete ✕)');
+  
   const { projects } = state;
   const dl = dueLabel(task.due, true);
-  const project = projects.find(p => String(p.id) === String(task.projectId));
-  const projectName = project ? project.name : '';
+  const project = (projects || []).find(p => String(p.id) === String(task.projectId));
+  const projectName = project?.name || '';
   const projectColor = project ? `var(--proj-${project.color})` : '';
   
   const priorityClass = task.priority === 3 ? 'high' : task.priority === 1 ? 'low' : 'medium';
-  const statusClass = task.status?.toLowerCase() || 'todo';
+  const dueClass = dl?.class || '';
+  const dueText = dl?.label || '';
   
-  return `<div class="task-item ${task.done ? 'done' : ''}" data-id="${task.id}">
-    <input type="checkbox" ${task.done ? 'checked' : ''} 
-           onclick="window.Petal?.features?.taskOperations?.toggleTask(${task.id})"
-           style="margin-right:12px;">
-    <div class="task-content" style="flex:1;">
-      <div class="task-title" style="display:flex;align-items:center;gap:8px;">
-        <span>${esc(task.title || '')}</span>
-        ${task.tags && task.tags.length > 0 ? task.tags.map(tag => 
-          `<span class="tag-chip" style="font-size:10px;padding:2px 6px;background:var(--bg2);border-radius:4px;">${esc(tag)}</span>`
-        ).join('') : ''}
-        ${projectName ? `<span class="project-badge" style="background:${projectColor};color:white;padding:2px 6px;border-radius:4px;font-size:10px;">${esc(projectName)}</span>` : ''}
+  return `<div class="task-card ${task.done ? 'done' : ''}" data-id="${task.id}" data-priority="${priorityClass}">
+    <div class="task-top">
+      <div class="task-content">
+        <div class="check-box ${task.done ? 'checked' : ''}"
+             onclick="window.Petal?.handlers?.toggleTask(${task.id})"></div>
+        
+        <div class="task-body">
+          <div class="task-title">
+            ${esc(task.title || '')}
+            ${projectName ? `<span class="tag-chip">${esc(projectName)}</span>` : ''}
+            ${(task.tags || []).map(tag => 
+              `<span class="tag-chip" data-tag="${esc(tag)}">${esc(tag)}</span>`
+            ).join('')}
+          </div>
+          
+          <div class="task-meta-row">
+            <span class="priority-tag ${priorityClass}">${priorityClass}</span>
+            ${dueText ? `<span class="due-tag ${dueClass}">${esc(dueText)}</span>` : ''}
+          </div>
+          
+          ${task.notes ? `<div class="task-notes">${esc(task.notes)}</div>` : ''}
+        </div>
       </div>
-      ${task.notes ? `<div class="task-notes" style="font-size:12px;color:var(--text-dim);margin-top:4px;">${esc(task.notes)}</div>` : ''}
-      <div class="task-meta" style="display:flex;gap:8px;margin-top:8px;font-size:11px;color:var(--text-dim);">
-        ${dl ? `<span class="due-date ${dl.class}">${dl.label}</span>` : ''}
-        <span class="priority ${priorityClass}">${priorityClass}</span>
-        <span class="status ${statusClass}">${task.status || 'Todo'}</span>
+      
+      <div class="task-actions" style="display:flex;gap:4px;align-items:center;">
+        <button class="btn-del" onclick="if(window.Petal?.features?.taskDrawer?.openTaskDrawer){window.Petal.features.taskDrawer.openTaskDrawer(${task.id})}else if(typeof openTaskDrawer==='function'){openTaskDrawer(${task.id})}" title="Open drawer (Notes, Files, Subtasks)" style="font-size:13px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);">📝</button>
+        <button class="btn-del btn-edit" data-task-id="${String(task.id)}" title="Edit" style="font-size:13px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);">✎</button>
+        <button class="btn-del btn-delete" data-action="delete" data-id="${String(task.id)}" data-task-id="${String(task.id)}" data-is-subtask="false" data-project-id="${task.projectId || ''}" title="Delete" style="font-size:16px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:bold;opacity:1;">×</button>
       </div>
     </div>
-    <button onclick="window.Petal?.features?.taskOperations?.editTask(${task.id})" 
-            class="btn-edit" style="padding:4px 8px;font-size:11px;">Edit</button>
   </div>`;
 }
 

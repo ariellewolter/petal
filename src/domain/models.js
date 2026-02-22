@@ -56,13 +56,62 @@ export function calculateFloatOrder(prevTask, nextTask) {
 }
 
 /**
+ * Generate a stable key for a task/subtask for deduplication
+ * Phase 3 Fix: Handles tasks with IDs, subtasks with IDs, and anonymous tasks
+ */
+function stableTaskKey(t) {
+  // Prefer explicit ids
+  if (t.id != null) return `task:${t.id}`;
+  if (t.taskId != null) return `task:${t.taskId}`;
+  
+  // Fallback for subtasks without ids (use project + title as composite key)
+  if (t.projectId != null && t.title) {
+    return `sub:${t.projectId}:${t.title}`;
+  }
+  
+  // Last resort: use multiple fields to create a stable key
+  return `anon:${JSON.stringify([t.projectId, t.title, t.due, t.createdAt])}`;
+}
+
+/**
+ * Deduplicate tasks by stable key
+ * Phase 3 Fix: Prevents double-counting even with missing IDs or legacy duplicates
+ */
+function dedupeTasks(list) {
+  const seen = new Set();
+  const out = [];
+  for (const t of list) {
+    const k = stableTaskKey(t);
+    if (seen.has(k)) {
+      console.warn('⚠️ Duplicate task detected (deduplicated):', k, t);
+      continue;
+    }
+    seen.add(k);
+    out.push(t);
+  }
+  return out;
+}
+
+/**
  * Get all tasks including subtasks with projectId attached
  * Takes explicit tasks and projects arrays - no store peeking
+ * 
+ * Phase 3 Fix: Deduplicates to prevent double-counting
+ * Uses stable keys to handle tasks with/without IDs, subtasks, and legacy duplicates
  */
 export function getAllTasks(tasks, projects) {
   const allTasks = [...tasks];
+  const taskIds = new Set(tasks.map(t => t.id).filter(id => id != null));
+  
+  // Add project subtasks, but only if they're not already in tasks array
   projects.forEach(p => {
     (p.subtasks || []).forEach(st => {
+      // Skip if this subtask is already in the tasks array (by ID)
+      // This prevents double-counting when subtasks have been migrated to tasks
+      if (st.id && taskIds.has(st.id)) {
+        return; // Already in tasks array, skip
+      }
+      
       allTasks.push({
         ...st,
         projectId: p.id,
@@ -71,7 +120,9 @@ export function getAllTasks(tasks, projects) {
       });
     });
   });
-  return allTasks;
+  
+  // Phase 3 Fix: Deduplicate by stable key (handles edge cases)
+  return dedupeTasks(allTasks);
 }
 
 /**

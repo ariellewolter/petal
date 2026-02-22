@@ -1,6 +1,9 @@
 // ═══════════════════════ ELECTRON PRELOAD SCRIPT ═══════════════════════
 // Exposes safe APIs to the renderer process
 
+// Step 3: Prove preload actually ran
+console.log('🧩 PRELOAD LOADED', { pid: process.pid, time: new Date().toISOString() });
+
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -58,7 +61,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   markStateDirty: () => ipcRenderer.invoke('storage:markDirty'),
   
   // File operations
-  openFile: (filePath) => ipcRenderer.invoke('file:open', filePath),
+  openFile: (filePath) => {
+    console.log('➡️ preload openFile invoke', filePath);
+    return ipcRenderer.invoke('file:open', filePath);
+  },
   chooseFile: () => ipcRenderer.invoke('file:chooseFile'),
   resolveFilePath: (fileLink) => ipcRenderer.invoke('file:resolvePath', fileLink),
   getFileMetadata: (fileLink) => ipcRenderer.invoke('file:getMetadata', fileLink),
@@ -68,5 +74,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   chooseOneDriveRoot: () => ipcRenderer.invoke('onedrive:chooseRoot'),
   
   // Platform info
-  platform: process.platform
+  platform: process.platform,
+  
+  // Step 3: Debug IPC - prove which main process we're talking to
+  debugPid: () => ipcRenderer.invoke('debug:pid')
 });

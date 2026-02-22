@@ -6,19 +6,39 @@
  */
 export function confirmDeleteTask(ctx, taskId, isSubtask, projectId, parentTaskId) {
   const { tasks } = ctx;
+  console.log('🔍 confirmDeleteTask called', { taskId, tasksCount: tasks.length, taskIdType: typeof taskId });
+  
   // Find task even if deleted (we want to show delete confirmation for recently deleted tasks)
   // But check if it's already deleted to avoid double-deletion
-  const idNum = typeof taskId === 'string' ? parseInt(taskId) : Number(taskId);
+  // Normalize IDs to strings for reliable matching (handles both number and string IDs)
+  const taskIdStr = String(taskId);
   const task = tasks.find(t => {
     if (!t || !t.id) return false;
-    const tId = Number(t.id);
-    return tId === idNum || t.id === taskId || String(t.id) === String(taskId);
+    // Try multiple matching strategies for reliability
+    const tIdStr = String(t.id);
+    const tIdNum = Number(t.id);
+    const taskIdNum = Number(taskId);
+    const matches = tIdStr === taskIdStr || 
+           t.id === taskId || 
+           (tIdNum === taskIdNum && !isNaN(tIdNum) && !isNaN(taskIdNum));
+    if (matches) {
+      console.log('✅ Task found:', { taskId: t.id, taskIdStr: tIdStr, matches });
+    }
+    return matches;
   });
   
   if (!task) {
+    console.error('❌ Task not found', { 
+      taskId, 
+      taskIdStr, 
+      taskIds: tasks.map(t => t?.id).slice(0, 5),
+      allTaskIds: tasks.map(t => String(t?.id))
+    });
     alert('Task not found');
     return;
   }
+  
+  console.log('✅ Task found for deletion:', { id: task.id, title: task.title, deletedAt: task.deletedAt });
   
   // If already deleted, inform user
   if (task.deletedAt) {
@@ -26,8 +46,14 @@ export function confirmDeleteTask(ctx, taskId, isSubtask, projectId, parentTaskI
     return;
   }
   
-  // Check for subtasks
-  const subtasks = tasks.filter(t => t.parentTaskId === taskId);
+  // Check for subtasks (normalize ID for matching)
+  const taskIdStrForSubtask = String(taskId);
+  const subtasks = tasks.filter(t => {
+    if (!t || !t.parentTaskId) return false;
+    return String(t.parentTaskId) === taskIdStrForSubtask || 
+           t.parentTaskId === taskId ||
+           Number(t.parentTaskId) === Number(taskId);
+  });
   const hasSubtasks = subtasks.length > 0;
   
   const title = task.title || 'Untitled Task';
@@ -45,13 +71,45 @@ export function confirmDeleteTask(ctx, taskId, isSubtask, projectId, parentTaskI
     parentTaskId: parentTaskId
   };
   
+  console.log('📋 Opening delete modal', { title, message, hasSubtasks });
+  
+  // Clear any existing pending delete first (prevent double-open)
+  if (window.pendingDelete && window.pendingDelete.taskId !== taskId) {
+    console.warn('⚠️ Clearing existing pending delete before opening new one');
+  }
+  
   const titleEl = document.getElementById('delete-confirm-title');
   const messageEl = document.getElementById('delete-confirm-message');
   const modal = document.getElementById('delete-confirm-modal');
   
+  console.log('🔍 Modal elements:', { 
+    titleEl: !!titleEl, 
+    messageEl: !!messageEl, 
+    modal: !!modal,
+    modalDisplay: modal ? getComputedStyle(modal).display : 'N/A'
+  });
+  
+  if (!modal) {
+    console.error('❌ Delete modal element not found!');
+    return;
+  }
+  
   if (titleEl) titleEl.textContent = 'Delete Task';
   if (messageEl) messageEl.textContent = message;
-  if (modal) modal.classList.add('active');
+  
+  // Store pending delete BEFORE opening modal
+  window.pendingDelete = {
+    type: 'task',
+    taskId: taskId,
+    isSubtask: isSubtask,
+    projectId: projectId,
+    parentTaskId: parentTaskId
+  };
+  
+  // Open modal
+  modal.classList.add('active');
+  modal.style.display = 'flex'; // Ensure it's visible
+  console.log('✅ Modal activated', { hasActiveClass: modal.classList.contains('active'), display: getComputedStyle(modal).display });
 }
 
 /**
@@ -95,35 +153,68 @@ export function confirmDeleteFile(ctx, projectId, fileId) {
  */
 export function closeDeleteConfirmModal() {
   const modal = document.getElementById('delete-confirm-modal');
-  if (modal) modal.classList.remove('active');
-  window.pendingDelete = null;
+  if (modal) {
+    modal.classList.remove('active');
+    modal.style.display = 'none'; // Force hide
+    window.pendingDelete = null;
+    console.log('✅ Delete modal closed');
+  } else {
+    console.warn('⚠️ Delete modal element not found');
+  }
 }
 
 /**
  * Execute the pending delete operation
  */
 export async function executeDelete(ctx) {
+  console.log('🗑️ executeDelete (module) called', { pendingDelete: window.pendingDelete, hasCtx: !!ctx });
+  
+  if (!ctx) {
+    console.error('❌ executeDelete called without context');
+    closeDeleteConfirmModal();
+    return;
+  }
+  
   const { tasks, projects, save, render } = ctx;
   const pendingDelete = window.pendingDelete;
   
-  if (!pendingDelete) return;
-  
-  if (pendingDelete.type === 'task') {
-    await softDeleteTask(ctx, pendingDelete.taskId);
-    
-    // If this was a subtask in the drawer, refresh the drawer
-    if (window.currentDrawerTaskId && pendingDelete.parentTaskId === window.currentDrawerTaskId) {
-      if (typeof renderTaskDrawerSubtasks === 'function') {
-        renderTaskDrawerSubtasks();
-      }
-    }
-  } else if (pendingDelete.type === 'file') {
-    await softDeleteFile(ctx, pendingDelete.projectId, pendingDelete.fileId);
+  if (!pendingDelete) {
+    console.warn('⚠️ No pending delete found');
+    closeDeleteConfirmModal();
+    return;
   }
   
-  closeDeleteConfirmModal();
-  await save();
-  if (render) render();
+  console.log('🗑️ Executing delete', { type: pendingDelete.type, taskId: pendingDelete.taskId });
+  
+  try {
+    if (pendingDelete.type === 'task') {
+      await softDeleteTask(ctx, pendingDelete.taskId);
+      
+      // If this was a subtask in the drawer, refresh the drawer
+      if (window.currentDrawerTaskId && pendingDelete.parentTaskId === window.currentDrawerTaskId) {
+        if (typeof renderTaskDrawerSubtasks === 'function') {
+          renderTaskDrawerSubtasks();
+        }
+      }
+    } else if (pendingDelete.type === 'file') {
+      await softDeleteFile(ctx, pendingDelete.projectId, pendingDelete.fileId);
+    }
+    
+    console.log('✅ Delete executed, closing modal and saving');
+    closeDeleteConfirmModal();
+    
+    if (save) {
+      await save();
+    }
+    
+    if (render) {
+      render();
+    }
+  } catch (error) {
+    console.error('❌ Error executing delete:', error);
+    closeDeleteConfirmModal();
+    alert('Error deleting item: ' + error.message);
+  }
 }
 
 /**
@@ -131,30 +222,53 @@ export async function executeDelete(ctx) {
  */
 export async function softDeleteTask(ctx, taskId) {
   const { tasks } = ctx;
+  console.log('🗑️ softDeleteTask called', { taskId, tasksCount: tasks.length, taskIdType: typeof taskId });
+  
   // Find task even if already deleted (to handle double-delete gracefully)
-  const idNum = typeof taskId === 'string' ? parseInt(taskId) : Number(taskId);
+  // Normalize IDs to strings for reliable matching
+  const taskIdStr = String(taskId);
   const task = tasks.find(t => {
     if (!t || !t.id) return false;
-    const tId = Number(t.id);
-    return tId === idNum || t.id === taskId || String(t.id) === String(taskId);
+    // Try multiple matching strategies for reliability
+    const tIdStr = String(t.id);
+    const tIdNum = Number(t.id);
+    const taskIdNum = Number(taskId);
+    const matches = tIdStr === taskIdStr || 
+           t.id === taskId || 
+           (tIdNum === taskIdNum && !isNaN(tIdNum) && !isNaN(taskIdNum));
+    if (matches) {
+      console.log('✅ Task found for deletion:', { taskId: t.id, taskIdStr: tIdStr, title: t.title });
+    }
+    return matches;
   });
   
   if (!task) {
-    console.warn('Task not found for deletion:', taskId);
+    console.error('❌ Task not found for deletion', { 
+      taskId, 
+      taskIdStr, 
+      sampleTaskIds: tasks.slice(0, 5).map(t => ({ id: t?.id, idStr: String(t?.id) }))
+    });
     return;
   }
   
   // Skip if already deleted
   if (task.deletedAt) {
-    console.warn('Task already deleted:', taskId);
+    console.warn('⚠️ Task already deleted:', { taskId: task.id, deletedAt: task.deletedAt });
     return;
   }
   
   // Mark task as deleted
-  task.deletedAt = new Date().toISOString();
+  const deletedAt = new Date().toISOString();
+  task.deletedAt = deletedAt;
+  console.log('✅ Task marked as deleted', { taskId: task.id, title: task.title, deletedAt, taskObject: task });
   
-  // Also soft delete all subtasks (only active ones)
-  const subtasks = tasks.filter(t => t.parentTaskId === taskId && !t.deletedAt);
+  // Also soft delete all subtasks (only active ones) - normalize ID for matching
+  const subtasks = tasks.filter(t => {
+    if (!t || !t.parentTaskId || t.deletedAt) return false;
+    return String(t.parentTaskId) === taskIdStr || 
+           t.parentTaskId === taskId ||
+           Number(t.parentTaskId) === Number(taskId);
+  });
   subtasks.forEach(subtask => {
     subtask.deletedAt = new Date().toISOString();
   });

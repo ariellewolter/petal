@@ -33,17 +33,30 @@ function updateStoreSafely(updates, fallbackFn) {
 function findActiveTask(tasks, id) {
   if (id === null || id === undefined) return null;
   
-  // Normalize ID to number for comparison
-  const idNum = typeof id === 'string' ? parseInt(id) : Number(id);
+  // Normalize ID - handle both integers and decimals
+  // For decimal IDs like "1771714801103.9167", try both exact match and integer truncation
+  const idNum = typeof id === 'string' ? parseFloat(id) : Number(id);
+  const idInt = Math.floor(idNum); // Truncate decimal for integer comparison
   if (isNaN(idNum)) return null;
   
+  // Try exact string match first
+  const exactMatch = tasks.find(task => {
+    if (!task || task.deletedAt) return false;
+    if (!task.id) return false;
+    return String(task.id) === String(id);
+  });
+  if (exactMatch) return exactMatch;
+  
+  // Try numeric match (handles decimal IDs by comparing integer parts)
   return tasks.find(task => {
-    if (!task || task.deletedAt) return false; // Exclude deleted tasks
+    if (!task || task.deletedAt) return false;
     if (!task.id) return false;
     
-    // Try multiple comparison methods for ID type flexibility
     const taskId = Number(task.id);
-    return taskId === idNum || task.id === id || String(task.id) === String(id);
+    const taskIdInt = Math.floor(taskId);
+    
+    // Match if integer parts match (handles decimal IDs) OR exact numeric match
+    return taskIdInt === idInt || taskId === idNum || String(task.id) === String(id);
   });
 }
 
@@ -372,10 +385,14 @@ export function updateTagPreview() {
  * Edit a task - opens the edit modal
  */
 export function editTask(ctx, id) {
+  console.log('🔍🔍🔍 TaskOperations.editTask START', { id, idType: typeof id });
   const { tasks } = ctx;
+  console.log('🔍🔍🔍 Tasks from context:', { tasksCount: tasks?.length, tasks: tasks?.slice(0, 3).map(t => ({ id: t.id, idType: typeof t.id, title: t.title?.substring(0, 20) })) });
   
   try {
+    console.log('🔍🔍🔍 About to call findActiveTask');
     const t = findActiveTask(tasks, id);
+    console.log('🔍🔍🔍 findActiveTask returned:', t ? { id: t.id, title: t.title } : 'NOT FOUND - task not found!');
     
     if (!t) {
       // Only log in development mode to reduce console noise
@@ -422,8 +439,16 @@ export function editTask(ctx, id) {
     const notesField = document.getElementById('edit-notes-field');
     const tagsHint = document.getElementById('edit-tags-hint');
     
+    console.log('🔍 Modal elements check:', {
+      modal: !!modal,
+      titleEl: !!titleEl,
+      titleInput: !!titleInput,
+      modalId: modal?.id,
+      modalClasses: modal?.className
+    });
+    
     if (!modal || !titleEl || !titleInput) {
-      console.error('Edit modal elements not found');
+      console.error('Edit modal elements not found', { modal: !!modal, titleEl: !!titleEl, titleInput: !!titleInput });
       alert('Edit modal not found. Please refresh the page.');
       return;
     }
@@ -526,13 +551,18 @@ export function editTask(ctx, id) {
       updateEditModalProjectFiles(t.projectId, t.fileIds || []);
     }
     
-    // Show modal
+    // Show modal - explicitly set display to override inline styles
+    console.log('🔍 About to show modal, current classes:', modal.className);
     modal.classList.add('active');
+    modal.style.display = 'flex'; // Explicitly set display to override inline style
+    console.log('🔍 Modal classes after adding active:', modal.className);
+    console.log('🔍 Modal display style:', window.getComputedStyle(modal).display);
     setTimeout(() => {
       titleInput.focus();
+      console.log('🔍 Focused title input');
     }, 100);
   } catch (error) {
-    console.error('Error in editTask:', error);
+    console.error('Error in editTask:', error, error.stack);
     alert('Error opening edit modal: ' + error.message);
   }
 }

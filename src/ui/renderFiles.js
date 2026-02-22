@@ -230,9 +230,11 @@ function renderFileCard(file, fileHistory) {
       ${projectsCount > 0 ? `<span>📁 ${projectsCount} project${projectsCount > 1 ? 's' : ''}</span>` : ''}
       ${file.status ? `<span>Status: ${file.status}</span>` : ''}
     </div>
+    ${file.notes ? `<div style="margin-top:12px;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--text-dim);line-height:1.5;max-height:60px;overflow:hidden;text-overflow:ellipsis;white-space:pre-wrap;">${esc(file.notes.length > 100 ? file.notes.substring(0, 100) + '...' : file.notes)}</div>` : ''}
     <div class="file-card-actions" style="margin-top:12px;display:flex;gap:8px;">
       <button class="file-open-btn btn-secondary" data-path="${escAttr(JSON.stringify(fileLink))}" style="font-size:11px;padding:6px 12px;">Open</button>
       ${file.key ? `<button onclick="window.Petal?.features?.fileManagement?.showFileRelations('${esc(file.key)}')" class="btn-secondary" style="font-size:11px;padding:6px 12px;">Relations</button>` : ''}
+      <button onclick="openFileNotesModal('${esc(file.id || file.key || filePath)}')" class="btn-secondary" style="font-size:11px;padding:6px 12px;" title="Add or edit notes for this file">${file.notes ? '📝' : '📄'} Notes</button>
     </div>
   </div>`;
 }

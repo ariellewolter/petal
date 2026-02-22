@@ -38,6 +38,16 @@ export function renderProjects(containerEl, state, handlers) {
       return;
     }
     
+    // Diagnostic: Check if container is visible and clickable
+    const computedStyle = window.getComputedStyle(c);
+    console.log('🔍 project-container diagnostics:', {
+      display: computedStyle.display,
+      visibility: computedStyle.visibility,
+      pointerEvents: computedStyle.pointerEvents,
+      opacity: computedStyle.opacity,
+      hasContent: c.innerHTML.length > 0,
+    });
+    
     // Filter projects
     let list = (projects || []).filter(p => {
       if (currentProjFilter === 'active' && p.done) return false;
@@ -47,11 +57,107 @@ export function renderProjects(containerEl, state, handlers) {
     
     if (!list.length) {
       c.innerHTML = '<div class="empty-state">No projects yet<small>Create a project above</small></div>';
+      // Re-hydrate Lucide icons after innerHTML (fixes "halo" issue)
+      if (window.lucide?.createIcons) {
+        window.lucide.createIcons();
+      }
       return;
     }
     
     // Pass openSet down so renderProjectCard never touches raw state.openProjects
     c.innerHTML = list.map(p => renderProjectCard(p, state, openSet)).join('');
+    
+    // Re-hydrate Lucide icons after innerHTML (fixes "halo" issue)
+    if (window.lucide?.createIcons) {
+      window.lucide.createIcons();
+    }
+    
+    // DEBUG: Prove clicks reach the project container
+    if (!c.__clickProbeInstalled) {
+      c.__clickProbeInstalled = true;
+      c.addEventListener('click', (e) => {
+        const btn = e.target.closest?.('button');
+        console.log('🧪 project container click probe:', {
+          target: e.target?.tagName,
+          buttonClass: btn?.className || null,
+          buttonText: btn?.textContent?.trim() || null,
+          hasDataAction: btn?.getAttribute('data-action') || null,
+        });
+      }, true); // capture=true to beat overlays/bubbling issues
+    }
+    
+    // Install event delegation for project task actions (delete, edit, etc.)
+    if (!c.__projectTaskActionsInstalled) {
+      c.__projectTaskActionsInstalled = true;
+      
+      c.addEventListener('click', (e) => {
+        const btn = e.target.closest?.('[data-action]');
+        if (!btn) return;
+        
+        // Only handle buttons inside project cards (not in task-container)
+        if (btn.closest('#task-container')) return;
+        
+        const action = btn.getAttribute('data-action');
+        const taskId = btn.getAttribute('data-id') || btn.getAttribute('data-task-id');
+        
+        console.log('🧨 project task action click:', { action, taskId, button: btn });
+        
+        if (action === 'delete' || action === 'delete-task') {
+          // Guard: prevent double handling if another handler already processed this
+          if (e.__petalDeleteHandled) {
+            console.log('🛡️ Delete event already handled, skipping');
+            return;
+          }
+          e.__petalDeleteHandled = true;
+          
+          e.preventDefault();
+          e.stopPropagation();
+          
+          const isSubtask = btn.getAttribute('data-is-subtask') === 'true';
+          // Only use projectId from attribute, never derive from taskId
+          const projectIdAttr = btn.getAttribute('data-project-id');
+          const projectId = projectIdAttr && projectIdAttr !== '' && projectIdAttr !== 'null' ? projectIdAttr : null;
+          const parentTaskId = btn.getAttribute('data-parent-task-id') || null;
+          
+          console.log('🧨 project delete action:', { taskId, isSubtask, projectId, parentTaskId });
+          
+          // Use the taskOperations wrapper (like edit does)
+          if (window.Petal?.features?.taskOperations?.deleteTask) {
+            window.Petal.features.taskOperations.deleteTask(taskId, isSubtask, projectId, parentTaskId);
+          } else if (window.Petal?.features?.deleteHandlers?.confirmDeleteTask) {
+            // Fallback: build context from store
+            const store = window.Petal?.store;
+            const state = store?.getState?.() || {};
+            const ctx = {
+              store,
+              state,
+              tasks: Array.isArray(state.tasks) ? state.tasks : [],
+              projects: Array.isArray(state.projects) ? state.projects : [],
+              save: window.Petal?.handlers?.save || window.save,
+              render: window.Petal?.handlers?.render || window.render,
+            };
+            console.log('🧨 calling confirmDeleteTask with ctx:', ctx);
+            window.Petal.features.deleteHandlers.confirmDeleteTask(ctx, taskId, isSubtask, projectId, parentTaskId);
+          } else {
+            console.error('❌ No delete handler available');
+            alert('Delete functionality not available. Please check console for details.');
+          }
+        } else if (action === 'edit-task') {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          console.log('🧨 project edit action:', { taskId });
+          
+          if (window.Petal?.features?.taskOperations?.editTask) {
+            window.Petal.features.taskOperations.editTask(taskId);
+          } else if (window.Petal?.handlers?.editTask) {
+            window.Petal.handlers.editTask(taskId);
+          } else {
+            console.error('❌ No edit handler available');
+          }
+        }
+      }, true); // Use capture phase
+    }
   
     // Phase 3 Fix: Post-render invariant check (detect "projects exist but UI blank")
     // Use queueMicrotask to check immediately after DOM update, before any other code runs
@@ -131,8 +237,8 @@ function renderProjectCard(project, state, openSet) {
   const dl = dueLabel(project.due, true);
   const isOpen = openSet.has(project.id);
   
-  // Project metrics: tasks in this project
-  const projectTasks = (tasks || []).filter(t => String(t.projectId) === String(project.id));
+  // Project metrics: tasks in this project (exclude deleted tasks)
+  const projectTasks = (tasks || []).filter(t => String(t.projectId) === String(project.id) && !t.deletedAt);
   const totalTasks = projectTasks.length;
   const inProgressTasks = projectTasks.filter(t => t.status === 'Doing' && !t.done).length;
   const doneTasks = projectTasks.filter(t => t.done).length;
@@ -174,6 +280,53 @@ function renderProjectCard(project, state, openSet) {
       </div>` : ''}
     </div>
     ${dl ? `<div class="project-due ${dl.class}">${dl.label}</div>` : ''}
-    ${isOpen ? `<div class="project-details">Project details expanded...</div>` : ''}
+    ${isOpen ? `<div class="project-details" style="padding:16px 20px;border-top:1px solid var(--border);margin-top:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h4 style="font-size:14px;font-weight:600;color:var(--text);margin:0;">📋 Tasks ${totalTasks > 0 ? `(${totalTasks})` : ''}</h4>
+        <button onclick="openProjectAddTaskModal(${project.id})" style="padding:6px 12px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;">+ Add Task</button>
+      </div>
+      ${totalTasks > 0 ? `<div>
+        ${projectTasks.map(t => {
+          const priorityClass = t.priority === 3 ? 'high' : t.priority === 1 ? 'low' : 'medium';
+          const tdl = dueLabel(t.due, true);
+          const laneLabel = t.lane === 'lab' ? '🧪 Lab' : t.lane === 'comp' ? '💻 Comp' : t.lane === 'writing' ? '📝 Writing' : t.lane === 'presentation' ? '📊 Presentation' : '';
+          const project = (state.projects || []).find(p => String(p.id) === String(t.projectId));
+          const projectName = project?.name || '';
+          
+          return `<div class="task-card ${t.done ? 'done' : ''}" data-id="${t.id}" data-priority="${priorityClass}">
+            <div class="task-top">
+              <div class="task-content">
+                <div class="check-box ${t.done ? 'checked' : ''}"
+                     onclick="window.Petal?.handlers?.toggleTask(${t.id})"></div>
+                
+                <div class="task-body">
+                  <div class="task-title">
+                    ${esc(t.title || 'Untitled')}
+                    ${projectName ? `<span class="tag-chip">${esc(projectName)}</span>` : ''}
+                    ${laneLabel ? `<span class="tag-chip">${esc(laneLabel)}</span>` : ''}
+                    ${(t.tags || []).map(tag => 
+                      `<span class="tag-chip" data-tag="${esc(tag)}">${esc(tag)}</span>`
+                    ).join('')}
+                  </div>
+                  
+                  <div class="task-meta-row">
+                    <span class="priority-tag ${priorityClass}">${priorityClass}</span>
+                    ${tdl ? `<span class="due-tag ${tdl.class}">${esc(tdl.label)}</span>` : ''}
+                  </div>
+                  
+                  ${t.notes ? `<div class="task-notes">${esc(t.notes)}</div>` : ''}
+                </div>
+              </div>
+              
+              <div class="task-actions" style="display:flex;gap:4px;align-items:center;">
+                <button class="btn-del" onclick="if(window.Petal?.features?.taskDrawer?.openTaskDrawer){window.Petal.features.taskDrawer.openTaskDrawer(${t.id})}else if(typeof openTaskDrawer==='function'){openTaskDrawer(${t.id})}" title="Open drawer (Notes, Files, Subtasks)" style="font-size:13px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);">📝</button>
+                <button class="btn-del btn-edit" data-action="edit-task" data-task-id="${String(t.id)}" title="Edit" style="font-size:13px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);">✎</button>
+                <button class="btn-del btn-delete" data-action="delete" data-id="${String(t.id)}" data-task-id="${String(t.id)}" data-is-subtask="false" data-project-id="${t.projectId || ''}" title="Delete" style="font-size:16px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:bold;opacity:1;">×</button>
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>` : '<div style="text-align:center;padding:20px;color:var(--text-light);font-size:12px;">No tasks yet</div>'}
+    </div>` : ''}
   </div>`;
 }

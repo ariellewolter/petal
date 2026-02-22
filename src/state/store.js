@@ -46,12 +46,14 @@ class AppStore {
       
       // Workflow state
       workflow: {
-        laneOrder: ["lab", "comp", "writing", "presentation", "unassigned"],
+        laneOrder: ["lab", "comp", "writing", "presentation", "personal", "product", "unassigned"],
         columns: {
           lab: ["Backlog", "Next", "Doing", "Blocked", "Done"],
           comp: ["Backlog", "Next", "Doing", "Blocked", "Done"],
           writing: ["Backlog", "Next", "Doing", "Blocked", "Done"],
           presentation: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+          personal: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+          product: ["Backlog", "Next", "Doing", "Blocked", "Done"],
           unassigned: ["Backlog", "Next", "Doing", "Blocked", "Done"],
         },
         // taskId -> { lane, column }
@@ -63,7 +65,9 @@ class AppStore {
             "#lab": "lab",
             "#analysis": "comp",
             "#paper": "writing",
-            "#slides": "presentation"
+            "#slides": "presentation",
+            "#personal": "personal",
+            "#product": "product"
           }
         },
         ui: {
@@ -323,12 +327,14 @@ class AppStore {
       files: Array.isArray(state.files) ? state.files : [],
       // Workflow state (with defaults)
       workflow: state.workflow ? {
-        laneOrder: Array.isArray(state.workflow.laneOrder) ? state.workflow.laneOrder : ["lab", "comp", "writing", "presentation", "unassigned"],
+        laneOrder: Array.isArray(state.workflow.laneOrder) ? state.workflow.laneOrder : ["lab", "comp", "writing", "presentation", "personal", "product", "unassigned"],
         columns: state.workflow.columns && typeof state.workflow.columns === 'object' ? state.workflow.columns : {
           lab: ["Backlog", "Next", "Doing", "Blocked", "Done"],
           comp: ["Backlog", "Next", "Doing", "Blocked", "Done"],
           writing: ["Backlog", "Next", "Doing", "Blocked", "Done"],
           presentation: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+          personal: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+          product: ["Backlog", "Next", "Doing", "Blocked", "Done"],
           unassigned: ["Backlog", "Next", "Doing", "Blocked", "Done"],
         },
         placement: state.workflow.placement && typeof state.workflow.placement === 'object' ? state.workflow.placement : {},
@@ -337,7 +343,9 @@ class AppStore {
             "#lab": "lab",
             "#analysis": "comp",
             "#paper": "writing",
-            "#slides": "presentation"
+            "#slides": "presentation",
+            "#personal": "personal",
+            "#product": "product"
           }
         },
         ui: state.workflow.ui && typeof state.workflow.ui === 'object' ? {
@@ -350,12 +358,14 @@ class AppStore {
           showActiveFiles: false
         }
       } : {
-        laneOrder: ["lab", "comp", "writing", "presentation", "unassigned"],
+        laneOrder: ["lab", "comp", "writing", "presentation", "personal", "product", "unassigned"],
         columns: {
           lab: ["Backlog", "Next", "Doing", "Blocked", "Done"],
           comp: ["Backlog", "Next", "Doing", "Blocked", "Done"],
           writing: ["Backlog", "Next", "Doing", "Blocked", "Done"],
           presentation: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+          personal: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+          product: ["Backlog", "Next", "Doing", "Blocked", "Done"],
           unassigned: ["Backlog", "Next", "Doing", "Blocked", "Done"],
         },
         placement: {},
@@ -364,7 +374,9 @@ class AppStore {
             "#lab": "lab",
             "#analysis": "comp",
             "#paper": "writing",
-            "#slides": "presentation"
+            "#slides": "presentation",
+            "#personal": "personal",
+            "#product": "product"
           }
         },
         ui: {
@@ -423,12 +435,14 @@ class AppStore {
       routineCheckins: this._state.routineCheckins && typeof this._state.routineCheckins === 'object' ? this._state.routineCheckins : {},
       files: Array.isArray(this._state.files) ? this._state.files : [],
       workflow: this._state.workflow || {
-        laneOrder: ["lab", "comp", "writing", "presentation", "unassigned"],
+        laneOrder: ["lab", "comp", "writing", "presentation", "personal", "product", "unassigned"],
         columns: {
           lab: ["Backlog", "Next", "Doing", "Blocked", "Done"],
           comp: ["Backlog", "Next", "Doing", "Blocked", "Done"],
           writing: ["Backlog", "Next", "Doing", "Blocked", "Done"],
           presentation: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+          personal: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+          product: ["Backlog", "Next", "Doing", "Blocked", "Done"],
           unassigned: ["Backlog", "Next", "Doing", "Blocked", "Done"],
         },
         placement: {},
@@ -437,7 +451,9 @@ class AppStore {
             "#lab": "lab",
             "#analysis": "comp",
             "#paper": "writing",
-            "#slides": "presentation"
+            "#slides": "presentation",
+            "#personal": "personal",
+            "#product": "product"
           }
         },
         ui: {
