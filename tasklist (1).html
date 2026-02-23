@@ -11514,151 +11514,9 @@ function detectConflicts(dayEvents) {
   return conflicts;
 }
 
-// Render weekly planner view
-async function renderWeeklyPlanner() {
-  const wch = document.getElementById('planner-wch');
-  const grid = document.getElementById('planner-wgrid');
-  if (!wch || !grid) return;
-  
-  const today = new Date();
-  const now = new Date();
-  const startOfWeek = new Date(plannerViewDate);
-  startOfWeek.setDate(plannerViewDate.getDate() - plannerViewDate.getDay());
-  startOfWeek.setHours(0, 0, 0, 0);
-  
-  const days = [];
-  for (let i = 0; i < 7; i++) {
-    const date = new Date(startOfWeek);
-    date.setDate(startOfWeek.getDate() + i);
-    days.push(date);
-  }
-  
-  // Column headers
-  wch.innerHTML = '<div class="wch-corner"></div>';
-  days.forEach(d => {
-    const evs = getEventsForDate(d);
-    const dotColors = [...new Set(evs.map(e => {
-      const categoryColors = {personal: 'yellow', lab: 'red', equipment: 'green', travel: 'muted', writing: 'blue', comp: 'green'};
-      return categoryColors[e.category] || 'muted';
-    }))].slice(0, 4);
-    const dots = dotColors.map(c => {
-      const colorMap = {yellow: 'var(--rose)', green: 'var(--sage)', red: 'var(--overdue)', blue: 'var(--mauve)', muted: 'var(--border2)'};
-      return `<div class="wch-dot" style="background:${colorMap[c] || 'var(--border2)'}"></div>`;
-    }).join('');
-    const col = document.createElement('div');
-    col.className = 'wch-day';
-    if (d.toDateString() === today.toDateString()) col.classList.add('is-today');
-    if (d.toDateString() === plannerViewDate.toDateString()) col.classList.add('is-selected');
-    const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-    col.innerHTML = `<div class="wch-name">${dayNames[d.getDay()]}</div><div class="wch-num">${d.getDate()}</div><div class="wch-dots">${dots}</div>`;
-    col.onclick = () => {
-      if (window.Petal?.handlers?.setPlannerViewDate) {
-        window.Petal.handlers.setPlannerViewDate(new Date(d));
-      }
-      setPlannerView('daily', document.getElementById('planner-vbtn-day'));
-    };
-    wch.appendChild(col);
-  });
-  
-  // Grid
-  grid.innerHTML = '';
-  
-  // Time gutter
-  const tg = document.createElement('div');
-  tg.className = 'wg-time-col';
-  const HOURS = Array.from({length: 24}, (_, i) => i); // 0 (midnight) - 23 (11pm) - all 24 hours
-  const S_HOUR = 0;
-  HOURS.forEach(h => {
-    const cell = document.createElement('div');
-    cell.className = 'wg-time-cell';
-    const sp = document.createElement('span');
-    if (h === 0) {
-      sp.textContent = '12am';
-    } else if (h < 12) {
-      sp.textContent = `${h}am`;
-    } else if (h === 12) {
-      sp.textContent = '12pm';
-    } else {
-      sp.textContent = `${h - 12}pm`;
-    }
-    cell.appendChild(sp);
-    tg.appendChild(cell);
-  });
-  grid.appendChild(tg);
-  
-  // Day columns
-  const nowH = now.getHours() + now.getMinutes() / 60;
-  days.forEach(d => {
-    const col = document.createElement('div');
-    col.className = 'wg-day-col';
-    if (d.toDateString() === today.toDateString()) col.classList.add('is-today');
-    
-    // Hour cells
-    HOURS.forEach(() => {
-      const c = document.createElement('div');
-      c.className = 'wg-hour';
-      col.appendChild(c);
-    });
-    
-    // Events - positioned based on exact start time and duration
-    const dayEvents = getEventsForDate(d);
-    dayEvents.forEach(e => {
-      const ev = document.createElement('div');
-      const categoryColors = {personal: 'yellow', lab: 'red', equipment: 'green', travel: 'muted', writing: 'blue', comp: 'green'};
-      const color = categoryColors[e.category] || 'muted';
-      ev.className = `w-event ${color}`;
-      const startMins = parseTime(e.startTime);
-      // Calculate top position: startMins in pixels (1px per minute)
-      // Hour cells are 60px high, so 1px per minute
-      const top = startMins;
-      // Height based on exact duration in minutes (2 hours = 120px)
-      const h = e.durationMin;
-      ev.style.cssText = `top:${top}px;height:${h}px;`;
-      const timeStr = `${formatTime(startMins)} – ${formatTime(startMins + e.durationMin)}`;
-      
-      // Get linked project and task info
-      let linkedInfo = '';
-      if (e.linkedProjectId) {
-        const project = (projects || []).find(p => String(p.id) === String(e.linkedProjectId));
-        if (project) {
-          linkedInfo += `<span style="font-size:7px;color:var(--text-dim);opacity:0.8;">📁 ${esc(project.name)}</span>`;
-        }
-      }
-      if (e.linkedTaskId) {
-        const task = (tasks || []).find(t => String(t.id) === String(e.linkedTaskId));
-        if (task) {
-          linkedInfo += `<span style="font-size:7px;color:var(--text-dim);opacity:0.8;margin-left:4px;">✓ ${esc(task.title)}</span>`;
-        }
-      }
-      
-      ev.innerHTML = `<div class="w-event-title" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(e.title)}</span>
-        <span style="font-size:7.5px;color:var(--text-dim);font-weight:400;white-space:nowrap;flex-shrink:0;">${timeStr}</span>
-      </div>
-      ${linkedInfo ? `<div class="w-event-time" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:2px;">${linkedInfo}</div>` : ''}`;
-      ev.onclick = evt => {
-        evt.stopPropagation();
-        if (window.Petal?.handlers?.setPlannerViewDate) {
-          window.Petal.handlers.setPlannerViewDate(new Date(d));
-        }
-        setPlannerView('daily', document.getElementById('planner-vbtn-day'));
-      };
-      col.appendChild(ev);
-    });
-    
-    // Now line - positioned at exact current time
-    if (d.toDateString() === today.toDateString() && nowH >= 0 && nowH < 24) {
-      const nl = document.createElement('div');
-      nl.className = 'w-nowline';
-      // Calculate exact position: (currentHour*60 + currentMinute)
-      const nowMins = now.getHours() * 60 + now.getMinutes();
-      nl.style.top = nowMins + 'px';
-      col.appendChild(nl);
-    }
-    
-    grid.appendChild(col);
-  });
-}
+// ⚠️ DEPRECATED: renderWeeklyPlanner() has been moved to PlannerPage.js
+// The version in PlannerPage.js reads from state instead of globals
+// Use router to render planner: window.routerSwitchView('planner')
 
 // Select a date for daily view
 // Now uses handlers to update store (single source of truth)
@@ -12051,7 +11909,10 @@ function deleteEvent(eventId) {
       save();
     }
     
-    renderPlanner();
+    // Re-render planner using router (single source of truth)
+    if (window.routerSwitchView) {
+      window.routerSwitchView('planner');
+    }
     buildPlannerSidebar();
     buildPlannerCalendar();
   }
