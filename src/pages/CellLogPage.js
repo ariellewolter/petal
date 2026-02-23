@@ -23,9 +23,18 @@ function ensureCellLogSettings(settings) {
 
 /**
  * Render the Cell Log page
+ * @param {HTMLElement} containerEl - Container element
+ * @param {Object} state - App state
+ * @param {Object} handlers - Event handlers
  */
-export async function renderCellLogPage(ctx) {
-  const { settings, projects, save } = ctx;
+export async function renderCellLogPage(containerEl, state, handlers) {
+  if (!containerEl) {
+    console.error('❌ renderCellLogPage: containerEl is required');
+    return;
+  }
+  
+  const settings = state.settings || {};
+  const projects = state.projects || [];
   
   ensureCellLogSettings(settings);
 
@@ -73,13 +82,21 @@ export async function renderCellLogPage(ctx) {
     window.currentCellLogTab = 'all';
   }
   renderCellLogEntries(settings, projects, window.currentCellLogTab);
+  
+  // Update store if settings were modified
+  if (window.Petal?.store && settings !== state.settings) {
+    window.Petal.store.setState({ settings });
+  }
 }
 
 /**
  * Set the active cell log tab
  */
-export function setCellLogTab(cellType, ctx) {
-  const { settings, projects } = ctx;
+export function setCellLogTab(cellType) {
+  const state = window.Petal?.store?.getState();
+  if (!state) return;
+  const settings = state.settings || {};
+  const projects = state.projects || [];
   window.currentCellLogTab = cellType;
   renderCellLogEntries(settings, projects, cellType);
 }
@@ -230,8 +247,10 @@ function renderCellLogEntries(settings, projects, selectedCellType = 'all') {
 /**
  * Add a cell type
  */
-export async function addCellType(ctx) {
-  const { settings, save } = ctx;
+export async function addCellType() {
+  const state = window.Petal?.store?.getState();
+  if (!state) return;
+  const settings = { ...state.settings };
   ensureCellLogSettings(settings);
   const input = document.getElementById('cell-type-input');
   if (!input) return;
@@ -247,26 +266,48 @@ export async function addCellType(ctx) {
   settings.cellLog.cellTypes.push(value);
   settings.cellLog.cellTypes.sort((a, b) => a.localeCompare(b));
   input.value = '';
-  await save();
-  await renderCellLogPage(ctx);
+  
+  // Update store
+  if (window.Petal?.store) {
+    window.Petal.store.setState({ settings });
+  }
+  
+  // Re-render
+  const containerEl = document.getElementById('view-cell-log');
+  if (containerEl) {
+    await renderCellLogPage(containerEl, window.Petal.store.getState(), window.Petal.handlers);
+  }
 }
 
 /**
  * Remove a cell type
  */
-export async function removeCellType(cellType, ctx) {
-  const { settings, save } = ctx;
+export async function removeCellType(cellType) {
+  const state = window.Petal?.store?.getState();
+  if (!state) return;
+  const settings = { ...state.settings };
   ensureCellLogSettings(settings);
   settings.cellLog.cellTypes = settings.cellLog.cellTypes.filter(type => type !== cellType);
-  await save();
-  await renderCellLogPage(ctx);
+  
+  // Update store
+  if (window.Petal?.store) {
+    window.Petal.store.setState({ settings });
+  }
+  
+  // Re-render
+  const containerEl = document.getElementById('view-cell-log');
+  if (containerEl) {
+    await renderCellLogPage(containerEl, window.Petal.store.getState(), window.Petal.handlers);
+  }
 }
 
 /**
  * Add a media type
  */
-export async function addMediaType(ctx) {
-  const { settings, save } = ctx;
+export async function addMediaType() {
+  const state = window.Petal?.store?.getState();
+  if (!state) return;
+  const settings = { ...state.settings };
   ensureCellLogSettings(settings);
   const input = document.getElementById('media-type-input');
   if (!input) return;
@@ -282,26 +323,48 @@ export async function addMediaType(ctx) {
   settings.cellLog.mediaTypes.push(value);
   settings.cellLog.mediaTypes.sort((a, b) => a.localeCompare(b));
   input.value = '';
-  await save();
-  await renderCellLogPage(ctx);
+  
+  // Update store
+  if (window.Petal?.store) {
+    window.Petal.store.setState({ settings });
+  }
+  
+  // Re-render
+  const containerEl = document.getElementById('view-cell-log');
+  if (containerEl) {
+    await renderCellLogPage(containerEl, window.Petal.store.getState(), window.Petal.handlers);
+  }
 }
 
 /**
  * Remove a media type
  */
-export async function removeMediaType(mediaType, ctx) {
-  const { settings, save } = ctx;
+export async function removeMediaType(mediaType) {
+  const state = window.Petal?.store?.getState();
+  if (!state) return;
+  const settings = { ...state.settings };
   ensureCellLogSettings(settings);
   settings.cellLog.mediaTypes = settings.cellLog.mediaTypes.filter(type => type !== mediaType);
-  await save();
-  await renderCellLogPage(ctx);
+  
+  // Update store
+  if (window.Petal?.store) {
+    window.Petal.store.setState({ settings });
+  }
+  
+  // Re-render
+  const containerEl = document.getElementById('view-cell-log');
+  if (containerEl) {
+    await renderCellLogPage(containerEl, window.Petal.store.getState(), window.Petal.handlers);
+  }
 }
 
 /**
  * Add or update a cell log entry
  */
-export async function addCellLogEntry(ctx) {
-  const { settings, save } = ctx;
+export async function addCellLogEntry() {
+  const state = window.Petal?.store?.getState();
+  if (!state) return;
+  const settings = { ...state.settings };
   ensureCellLogSettings(settings);
 
   const editId = document.getElementById('cell-log-edit-id')?.value || '';
@@ -319,6 +382,10 @@ export async function addCellLogEntry(ctx) {
   const mediaType = customMediaType || selectedMediaType;
   const plateType = document.getElementById('cell-log-plate-type')?.value || '';
   const wellCountValue = document.getElementById('cell-log-well-count')?.value || '';
+  const confluenceValue = document.getElementById('cell-log-confluence')?.value || '';
+  const confluence = confluenceValue === '' ? null : Number(confluenceValue);
+  const viabilityValue = document.getElementById('cell-log-viability')?.value || '';
+  const viability = viabilityValue === '' ? null : Number(viabilityValue);
   const freezeCheckbox = document.getElementById('cell-log-freeze');
   const isFrozen = freezeCheckbox ? freezeCheckbox.checked : false;
   const vialsCountValue = document.getElementById('cell-log-vials-count')?.value || '';
@@ -359,6 +426,8 @@ export async function addCellLogEntry(ctx) {
         mediaType,
         plateType,
         wellCount: wellCountValue === '' ? '' : Number(wellCountValue),
+        confluence,
+        viability,
         isFrozen,
         vialsCount,
         projectId,
@@ -377,6 +446,8 @@ export async function addCellLogEntry(ctx) {
       mediaType,
       plateType,
       wellCount: wellCountValue === '' ? '' : Number(wellCountValue),
+      confluence,
+      viability,
       isFrozen,
       vialsCount,
       projectId,
@@ -394,6 +465,8 @@ export async function addCellLogEntry(ctx) {
   document.getElementById('cell-log-media-type-custom').value = '';
   document.getElementById('cell-log-plate-type').value = '';
   document.getElementById('cell-log-well-count').value = '';
+  document.getElementById('cell-log-confluence').value = '';
+  document.getElementById('cell-log-viability').value = '';
   document.getElementById('cell-log-freeze').checked = false;
   document.getElementById('cell-log-vials-count').value = '1';
   toggleFreezeFields();
@@ -405,15 +478,25 @@ export async function addCellLogEntry(ctx) {
   if (submitBtn) submitBtn.textContent = 'Add Cell Log Entry';
   if (cancelBtn) cancelBtn.style.display = 'none';
 
-  await save();
-  await renderCellLogPage(ctx);
+  // Update store
+  if (window.Petal?.store) {
+    window.Petal.store.setState({ settings });
+  }
+  
+  // Re-render
+  const containerEl = document.getElementById('view-cell-log');
+  if (containerEl) {
+    await renderCellLogPage(containerEl, window.Petal.store.getState(), window.Petal.handlers);
+  }
 }
 
 /**
  * Edit a cell log entry
  */
-export function editCellLogEntry(entryId, ctx) {
-  const { settings } = ctx;
+export function editCellLogEntry(entryId) {
+  const state = window.Petal?.store?.getState();
+  if (!state) return;
+  const settings = state.settings || {};
   ensureCellLogSettings(settings);
   const entry = settings.cellLog.entries.find(e => String(e.id) === String(entryId));
   if (!entry) return;
@@ -449,6 +532,8 @@ export function editCellLogEntry(entryId, ctx) {
   
   document.getElementById('cell-log-plate-type').value = entry.plateType || '';
   document.getElementById('cell-log-well-count').value = entry.wellCount !== '' && entry.wellCount !== null && entry.wellCount !== undefined ? entry.wellCount : '';
+  document.getElementById('cell-log-confluence').value = entry.confluence !== null && entry.confluence !== undefined ? entry.confluence : '';
+  document.getElementById('cell-log-viability').value = entry.viability !== null && entry.viability !== undefined ? entry.viability : '';
   document.getElementById('cell-log-freeze').checked = entry.isFrozen || false;
   document.getElementById('cell-log-vials-count').value = entry.vialsCount || '1';
   toggleFreezeFields();
@@ -479,6 +564,8 @@ export function cancelEditCellLogEntry() {
   document.getElementById('cell-log-media-type-custom').value = '';
   document.getElementById('cell-log-plate-type').value = '';
   document.getElementById('cell-log-well-count').value = '';
+  document.getElementById('cell-log-confluence').value = '';
+  document.getElementById('cell-log-viability').value = '';
   document.getElementById('cell-log-freeze').checked = false;
   document.getElementById('cell-log-vials-count').value = '1';
   toggleFreezeFields();
@@ -494,10 +581,21 @@ export function cancelEditCellLogEntry() {
 /**
  * Delete a cell log entry
  */
-export async function deleteCellLogEntry(entryId, ctx) {
-  const { settings, save } = ctx;
+export async function deleteCellLogEntry(entryId) {
+  const state = window.Petal?.store?.getState();
+  if (!state) return;
+  const settings = { ...state.settings };
   ensureCellLogSettings(settings);
   settings.cellLog.entries = settings.cellLog.entries.filter(entry => String(entry.id) !== String(entryId));
-  await save();
-  await renderCellLogPage(ctx);
+  
+  // Update store
+  if (window.Petal?.store) {
+    window.Petal.store.setState({ settings });
+  }
+  
+  // Re-render
+  const containerEl = document.getElementById('view-cell-log');
+  if (containerEl) {
+    await renderCellLogPage(containerEl, window.Petal.store.getState(), window.Petal.handlers);
+  }
 }

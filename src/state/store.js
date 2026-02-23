@@ -37,6 +37,13 @@ class AppStore {
       currentFileProjectFilter: 'all', // For files view project filter
       selectedProjectId: null, // For matrix view
       
+      // Planner UI state
+      plannerViewDate: null, // Date object (stored as ISO string, converted on get/set)
+      currentPlannerView: 'daily', // 'daily' or 'weekly'
+      plannerWeekOffset: 0,
+      plannerCalYear: null,
+      plannerCalMonth: null,
+      
       // File registry (derived/computed, not persisted)
       fileRegistry: {},
       fileHistory: {},
@@ -85,14 +92,36 @@ class AppStore {
   /**
    * Get current state (returns a copy to prevent direct mutation)
    * Phase 3 Fix: openProjects is Array in store, renderers derive Set if needed
+   * Converts plannerViewDate from ISO string to Date object
    */
   getState() {
-    return {
+    const state = {
       ...this._state,
       openProjects: Array.isArray(this._state.openProjects) 
         ? [...this._state.openProjects] // Clone Array
         : []
     };
+    
+    // Convert plannerViewDate from ISO string to Date object
+    if (state.plannerViewDate) {
+      if (typeof state.plannerViewDate === 'string') {
+        state.plannerViewDate = new Date(state.plannerViewDate);
+      } else if (state.plannerViewDate instanceof Date) {
+        state.plannerViewDate = new Date(state.plannerViewDate);
+      }
+    } else {
+      // Initialize with today's date if not set
+      state.plannerViewDate = new Date();
+    }
+    
+    // Initialize plannerCalYear and plannerCalMonth if not set
+    if (state.plannerCalYear === null || state.plannerCalMonth === null) {
+      const now = new Date();
+      state.plannerCalYear = now.getFullYear();
+      state.plannerCalMonth = now.getMonth();
+    }
+    
+    return state;
   }
   
   /**
@@ -154,6 +183,18 @@ class AppStore {
           this._state[key] = partial[key];
         } else {
           this._state[key] = [];
+        }
+      } else if (key === 'plannerViewDate') {
+        // Convert Date object to ISO string for storage
+        if (partial[key] instanceof Date) {
+          this._state[key] = partial[key].toISOString();
+        } else if (typeof partial[key] === 'string') {
+          this._state[key] = partial[key];
+        } else if (partial[key] === null) {
+          this._state[key] = null;
+        } else {
+          // Invalid value, keep current or set to today
+          this._state[key] = new Date().toISOString();
         }
       } else {
         this._state[key] = partial[key];

@@ -3,17 +3,181 @@
 
 import { renderPlannerHabits } from '../ui/renderPlannerHabits.js';
 import { renderPlannerRoutines } from '../ui/renderPlannerRoutines.js';
+import { parseTime, formatTime } from '../utils/dates.js';
+import { esc } from '../utils/strings.js';
 
-// Access global planner state (defined in tasklist.html during migration)
-// These will be moved to store eventually
-function getPlannerState() {
+/**
+ * Get planner state from store state
+ * Single source of truth - reads from state parameter
+ */
+function getPlannerState(state) {
   return {
-    plannerViewDate: window.plannerViewDate || null,
-    plannerWeekOffset: window.plannerWeekOffset || 0,
-    plannerCalYear: window.plannerCalYear || null,
-    plannerCalMonth: window.plannerCalMonth || null,
-    currentPlannerView: window.currentPlannerView || 'daily'
+    plannerViewDate: state.plannerViewDate || new Date(),
+    plannerWeekOffset: state.plannerWeekOffset || 0,
+    plannerCalYear: state.plannerCalYear !== null ? state.plannerCalYear : new Date().getFullYear(),
+    plannerCalMonth: state.plannerCalMonth !== null ? state.plannerCalMonth : new Date().getMonth(),
+    currentPlannerView: state.currentPlannerView || 'daily'
   };
+}
+
+/**
+ * Expand recurring rules into events for a date range
+ * @param {Date} startDate - Start date
+ * @param {Date} endDate - End date
+ * @param {Array} recurringRules - Recurring rules from state
+ * @returns {Array} Expanded events
+ */
+function expandRecurringRules(startDate, endDate, recurringRules) {
+  const expanded = [];
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  
+  recurringRules.forEach(rule => {
+    if (!rule.enabled) return;
+    
+    const current = new Date(start);
+    while (current <= end) {
+      const dayOfWeek = current.getDay(); // 0 = Sunday, 6 = Saturday
+      if (rule.daysOfWeek && rule.daysOfWeek.includes(dayOfWeek)) {
+        const eventDate = current.toISOString().split('T')[0];
+        expanded.push({
+          id: `evt_${rule.id}_${eventDate}`,
+          title: rule.title,
+          date: eventDate,
+          startTime: rule.startTime,
+          durationMin: rule.durationMin,
+          category: rule.category,
+          location: rule.location || null,
+          bufferBeforeMin: rule.bufferBeforeMin || 0,
+          bufferAfterMin: rule.bufferAfterMin || 0,
+          recurrenceId: rule.id,
+          notes: rule.notes || '',
+          linkedProjectId: rule.linkedProjectId || null,
+          linkedTaskId: rule.linkedTaskId || null
+        });
+      }
+      current.setDate(current.getDate() + 1);
+    }
+  });
+  
+  return expanded;
+}
+
+/**
+ * Get all events for a specific date (one-off + expanded recurring)
+ * @param {Date} date - Date to get events for
+ * @param {Array} events - One-off events from state
+ * @param {Array} recurringRules - Recurring rules from state
+ * @returns {Array} Sorted events for the date
+ */
+function getEventsForDate(date, events, recurringRules) {
+  const dateStr = date.toISOString().split('T')[0];
+  const oneOff = events.filter(e => e.date === dateStr);
+  const expanded = expandRecurringRules(date, date, recurringRules);
+  const expandedForDate = expanded.filter(e => e.date === dateStr);
+  
+  return [...oneOff, ...expandedForDate].sort((a, b) => {
+    const aTime = parseTime(a.startTime);
+    const bTime = parseTime(b.startTime);
+    return aTime - bTime;
+  });
+}
+
+/**
+ * Calculate available time blocks for a day
+ * @param {Array} dayEvents - Events for the day
+ * @returns {Array} Available and fixed time blocks
+ */
+function calculateAvailableBlocks(dayEvents) {
+  const dayStart = 0; // Midnight (0:00) in minutes
+  const dayEnd = 24 * 60; // 11:59 PM (1440 minutes) - full 24-hour day
+  
+  // Sort events by start time
+  const sorted = [...dayEvents].sort((a, b) => {
+    const aStart = parseTime(a.startTime) + (a.bufferBeforeMin || 0);
+    const bStart = parseTime(b.startTime) + (b.bufferBeforeMin || 0);
+    return aStart - bStart;
+  });
+  
+  const blocks = [];
+  let current = dayStart;
+  
+  sorted.forEach(event => {
+    const eventStart = parseTime(event.startTime);
+    const bufferBefore = event.bufferBeforeMin || 0;
+    const bufferAfter = event.bufferAfterMin || 0;
+    const eventEnd = eventStart + event.durationMin + bufferAfter;
+    const actualStart = eventStart - bufferBefore;
+    
+    if (actualStart > current) {
+      blocks.push({
+        type: 'available',
+        start: current,
+        end: actualStart,
+        duration: actualStart - current
+      });
+    }
+    
+    blocks.push({
+      type: 'fixed',
+      start: actualStart,
+      end: eventEnd,
+      duration: eventEnd - actualStart,
+      event: event
+    });
+    
+    current = Math.max(current, eventEnd);
+  });
+  
+  if (current < dayEnd) {
+    blocks.push({
+      type: 'available',
+      start: current,
+      end: dayEnd,
+      duration: dayEnd - current
+    });
+  }
+  
+  return blocks;
+}
+
+/**
+ * Detect overlaps and tight transitions
+ * @param {Array} dayEvents - Events for the day
+ * @returns {Array} Conflicts detected
+ */
+function detectConflicts(dayEvents) {
+  const conflicts = [];
+  const sorted = [...dayEvents].sort((a, b) => {
+    const aStart = parseTime(a.startTime) - (a.bufferBeforeMin || 0);
+    const bStart = parseTime(b.startTime) - (b.bufferBeforeMin || 0);
+    return aStart - bStart;
+  });
+  
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const current = sorted[i];
+    const next = sorted[i + 1];
+    const currentEnd = parseTime(current.startTime) + current.durationMin + (current.bufferAfterMin || 0);
+    const nextStart = parseTime(next.startTime) - (next.bufferBeforeMin || 0);
+    
+    if (currentEnd > nextStart) {
+      conflicts.push({
+        type: 'overlap',
+        event1: current,
+        event2: next,
+        overlapMinutes: currentEnd - nextStart
+      });
+    } else if (currentEnd < nextStart && (nextStart - currentEnd) < 15) {
+      conflicts.push({
+        type: 'tight',
+        event1: current,
+        event2: next,
+        gapMinutes: nextStart - currentEnd
+      });
+    }
+  }
+  
+  return conflicts;
 }
 
 /**
@@ -29,18 +193,30 @@ export async function renderPlannerPage(containerEl, state, handlers) {
     return;
   }
 
-  // Initialize planner state if needed (using global state during migration)
-  const plannerState = getPlannerState();
+  // Get planner state from store (single source of truth)
+  const plannerState = getPlannerState(state);
+  
+  // Initialize planner state if needed
   if (!plannerState.plannerViewDate || plannerState.plannerViewDate.toString() === 'Invalid Date') {
-    window.plannerViewDate = new Date();
-    window.plannerWeekOffset = 0;
-    window.plannerCalYear = new Date().getFullYear();
-    window.plannerCalMonth = new Date().getMonth();
+    if (handlers?.setPlannerViewDate) {
+      handlers.setPlannerViewDate(new Date());
+    }
+    if (handlers?.setPlannerWeekOffset) {
+      handlers.setPlannerWeekOffset(0);
+    }
+    if (handlers?.setPlannerCalYear) {
+      handlers.setPlannerCalYear(new Date().getFullYear());
+    }
+    if (handlers?.setPlannerCalMonth) {
+      handlers.setPlannerCalMonth(new Date().getMonth());
+    }
   }
 
   // Ensure day view is active by default
   if (!plannerState.currentPlannerView || plannerState.currentPlannerView === 'weekly') {
-    window.currentPlannerView = 'daily';
+    if (handlers?.setCurrentPlannerView) {
+      handlers.setCurrentPlannerView('daily');
+    }
   }
 
   // Initialize the view switcher - MUST be scoped to containerEl
@@ -58,8 +234,8 @@ export async function renderPlannerPage(containerEl, state, handlers) {
 
   // Update period label - use container-scoped selector
   const periodLabel = containerEl.querySelector('#planner-period-label') || containerEl.querySelector('[data-planner-period-label]');
-  if (periodLabel && typeof window.updatePlannerPeriodLabel === 'function') {
-    window.updatePlannerPeriodLabel();
+  if (periodLabel) {
+    updatePlannerPeriodLabel(periodLabel, plannerState);
   }
 
   // Render planner content - use local renderPlanner function, NOT window.renderPlanner
@@ -71,6 +247,7 @@ export async function renderPlannerPage(containerEl, state, handlers) {
   }
 
   // Build sidebar and calendar in background - scoped to container
+  // Note: These functions are still global during migration, but will be extracted
   setTimeout(() => {
     if (typeof window.buildPlannerSidebar === 'function') {
       window.buildPlannerSidebar();
@@ -85,15 +262,12 @@ export async function renderPlannerPage(containerEl, state, handlers) {
     const habitsContainer = containerEl.querySelector('#planner-habits-card') || containerEl.querySelector('[data-planner-habits]');
     const routinesContainer = containerEl.querySelector('#planner-routines-card') || containerEl.querySelector('[data-planner-routines]');
     
-    if (window.Petal?.ui?.renderPlannerHabits && window.Petal?.store) {
-      const plannerState = getPlannerState();
-      const viewDate = plannerState.plannerViewDate || new Date();
-      window.Petal.ui.renderPlannerHabits(habitsContainer, state, viewDate);
+    const viewDate = plannerState.plannerViewDate || new Date();
+    if (habitsContainer && renderPlannerHabits) {
+      renderPlannerHabits(habitsContainer, state, viewDate);
     }
-    if (window.Petal?.ui?.renderPlannerRoutines && window.Petal?.store) {
-      const plannerState = getPlannerState();
-      const viewDate = plannerState.plannerViewDate || new Date();
-      window.Petal.ui.renderPlannerRoutines(routinesContainer, state, viewDate);
+    if (routinesContainer && renderPlannerRoutines) {
+      renderPlannerRoutines(routinesContainer, state, viewDate);
     }
   }, 100);
 }
@@ -106,7 +280,7 @@ export async function renderPlannerPage(containerEl, state, handlers) {
  * @param {Object} handlers - Event handlers
  */
 async function renderPlanner(containerEl, state, handlers) {
-  const plannerState = getPlannerState();
+  const plannerState = getPlannerState(state);
   const currentView = plannerState.currentPlannerView || 'daily';
   if (currentView === 'weekly') {
     await renderWeeklyPlanner(containerEl, state, handlers);
@@ -122,14 +296,159 @@ async function renderPlanner(containerEl, state, handlers) {
  * @param {Object} handlers - Event handlers
  */
 async function renderWeeklyPlanner(containerEl, state, handlers) {
-  // Delegate to global function if available (during migration)
-  // But prefer container-scoped rendering
-  if (typeof window.renderWeeklyPlanner === 'function') {
-    await window.renderWeeklyPlanner();
-  } else {
-    console.warn('Weekly planner renderer not available');
-    // TODO: Extract weekly planner rendering to this module
+  const wch = containerEl.querySelector('#planner-wch');
+  const grid = containerEl.querySelector('#planner-wgrid');
+  if (!wch || !grid) return;
+  
+  const plannerState = getPlannerState(state);
+  const plannerViewDate = plannerState.plannerViewDate || new Date();
+  const today = new Date();
+  const now = new Date();
+  const startOfWeek = new Date(plannerViewDate);
+  startOfWeek.setDate(plannerViewDate.getDate() - plannerViewDate.getDay());
+  startOfWeek.setHours(0, 0, 0, 0);
+  
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(startOfWeek);
+    date.setDate(startOfWeek.getDate() + i);
+    days.push(date);
   }
+  
+  // Get events and recurring rules from state
+  const events = state.events || [];
+  const recurringRules = state.recurringRules || [];
+  const tasks = state.tasks || [];
+  const projects = state.projects || [];
+  
+  // Column headers
+  wch.innerHTML = '<div class="wch-corner"></div>';
+  days.forEach(d => {
+    const dayEvents = getEventsForDate(d, events, recurringRules);
+    const dotColors = [...new Set(dayEvents.map(e => {
+      const categoryColors = {personal: 'yellow', lab: 'red', equipment: 'green', travel: 'muted', writing: 'blue', comp: 'green'};
+      return categoryColors[e.category] || 'muted';
+    }))].slice(0, 4);
+    const dots = dotColors.map(c => {
+      const colorMap = {yellow: 'var(--rose)', green: 'var(--sage)', red: 'var(--overdue)', blue: 'var(--mauve)', muted: 'var(--border2)'};
+      return `<div class="wch-dot" style="background:${colorMap[c] || 'var(--border2)'}"></div>`;
+    }).join('');
+    const col = document.createElement('div');
+    col.className = 'wch-day';
+    if (d.toDateString() === today.toDateString()) col.classList.add('is-today');
+    if (d.toDateString() === plannerViewDate.toDateString()) col.classList.add('is-selected');
+    const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    col.innerHTML = `<div class="wch-name">${dayNames[d.getDay()]}</div><div class="wch-num">${d.getDate()}</div><div class="wch-dots">${dots}</div>`;
+    col.onclick = () => {
+      if (handlers?.setPlannerViewDate) {
+        handlers.setPlannerViewDate(new Date(d));
+      }
+      if (handlers?.setPlannerView) {
+        handlers.setPlannerView('daily', containerEl);
+      }
+    };
+    wch.appendChild(col);
+  });
+  
+  // Grid
+  grid.innerHTML = '';
+  
+  // Time gutter
+  const tg = document.createElement('div');
+  tg.className = 'wg-time-col';
+  const HOURS = Array.from({length: 24}, (_, i) => i); // 0 (midnight) - 23 (11pm) - all 24 hours
+  HOURS.forEach(h => {
+    const cell = document.createElement('div');
+    cell.className = 'wg-time-cell';
+    const sp = document.createElement('span');
+    if (h === 0) {
+      sp.textContent = '12am';
+    } else if (h < 12) {
+      sp.textContent = `${h}am`;
+    } else if (h === 12) {
+      sp.textContent = '12pm';
+    } else {
+      sp.textContent = `${h - 12}pm`;
+    }
+    cell.appendChild(sp);
+    tg.appendChild(cell);
+  });
+  grid.appendChild(tg);
+  
+  // Day columns
+  const nowH = now.getHours() + now.getMinutes() / 60;
+  days.forEach(d => {
+    const col = document.createElement('div');
+    col.className = 'wg-day-col';
+    if (d.toDateString() === today.toDateString()) col.classList.add('is-today');
+    
+    // Hour cells
+    HOURS.forEach(() => {
+      const c = document.createElement('div');
+      c.className = 'wg-hour';
+      col.appendChild(c);
+    });
+    
+    // Events - positioned based on exact start time and duration
+    const dayEvents = getEventsForDate(d, events, recurringRules);
+    dayEvents.forEach(e => {
+      const ev = document.createElement('div');
+      const categoryColors = {personal: 'yellow', lab: 'red', equipment: 'green', travel: 'muted', writing: 'blue', comp: 'green'};
+      const color = categoryColors[e.category] || 'muted';
+      ev.className = `w-event ${color}`;
+      const startMins = parseTime(e.startTime);
+      // Calculate top position: startMins in pixels (1px per minute)
+      // Hour cells are 60px high, so 1px per minute
+      const top = startMins;
+      // Height based on exact duration in minutes (2 hours = 120px)
+      const h = e.durationMin;
+      ev.style.cssText = `top:${top}px;height:${h}px;`;
+      const timeStr = `${formatTime(startMins)} – ${formatTime(startMins + e.durationMin)}`;
+      
+      // Get linked project and task info
+      let linkedInfo = '';
+      if (e.linkedProjectId) {
+        const project = projects.find(p => String(p.id) === String(e.linkedProjectId));
+        if (project) {
+          linkedInfo += `<span style="font-size:7px;color:var(--text-dim);opacity:0.8;">📁 ${esc(project.name)}</span>`;
+        }
+      }
+      if (e.linkedTaskId) {
+        const task = tasks.find(t => String(t.id) === String(e.linkedTaskId));
+        if (task) {
+          linkedInfo += `<span style="font-size:7px;color:var(--text-dim);opacity:0.8;margin-left:4px;">✓ ${esc(task.title)}</span>`;
+        }
+      }
+      
+      ev.innerHTML = `<div class="w-event-title" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(e.title)}</span>
+        <span style="font-size:7.5px;color:var(--text-dim);font-weight:400;white-space:nowrap;flex-shrink:0;">${timeStr}</span>
+      </div>
+      ${linkedInfo ? `<div class="w-event-time" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:2px;">${linkedInfo}</div>` : ''}`;
+      ev.onclick = evt => {
+        evt.stopPropagation();
+        if (handlers?.setPlannerViewDate) {
+          handlers.setPlannerViewDate(new Date(d));
+        }
+        if (handlers?.setPlannerView) {
+          handlers.setPlannerView('daily', containerEl);
+        }
+      };
+      col.appendChild(ev);
+    });
+    
+    // Now line - positioned at exact current time
+    if (d.toDateString() === today.toDateString() && nowH >= 0 && nowH < 24) {
+      const nl = document.createElement('div');
+      nl.className = 'w-nowline';
+      // Calculate exact position: (currentHour*60 + currentMinute)
+      const nowMins = now.getHours() * 60 + now.getMinutes();
+      nl.style.top = nowMins + 'px';
+      col.appendChild(nl);
+    }
+    
+    grid.appendChild(col);
+  });
 }
 
 /**
@@ -139,23 +458,223 @@ async function renderWeeklyPlanner(containerEl, state, handlers) {
  * @param {Object} handlers - Event handlers
  */
 async function renderDailyPlanner(containerEl, state, handlers) {
-  // Delegate to global function if available (during migration)
-  // But prefer container-scoped rendering
-  if (typeof window.renderDailyPlanner === 'function') {
-    await window.renderDailyPlanner();
-  } else {
-    console.warn('Daily planner renderer not available');
-    // TODO: Extract daily planner rendering to this module
+  const dayTitle = containerEl.querySelector('#planner-day-title');
+  const dayMeta = containerEl.querySelector('#planner-day-meta');
+  const alldayEvents = containerEl.querySelector('#planner-allday-events');
+  const timeline = containerEl.querySelector('#planner-timeline');
+  
+  if (!dayTitle || !dayMeta || !alldayEvents || !timeline) return;
+  
+  const plannerState = getPlannerState(state);
+  const plannerViewDate = plannerState.plannerViewDate || new Date();
+  const date = new Date(plannerViewDate);
+  date.setHours(0, 0, 0, 0);
+  const dateStr = date.toISOString().split('T')[0];
+  
+  // Get events and recurring rules from state
+  const events = state.events || [];
+  const recurringRules = state.recurringRules || [];
+  const tasks = state.tasks || [];
+  const projects = state.projects || [];
+  
+  const dayEvents = getEventsForDate(date, events, recurringRules);
+  const blocks = calculateAvailableBlocks(dayEvents);
+  const conflicts = detectConflicts(dayEvents);
+  
+  // Header
+  dayTitle.textContent = date.toLocaleDateString('en-US', {weekday: 'long', month: 'long', day: 'numeric'});
+  const totalH = dayEvents.reduce((s, e) => s + e.durationMin, 0) / 60;
+  dayMeta.textContent = `${dayEvents.length} block${dayEvents.length !== 1 ? 's' : ''} · ${Math.round(totalH * 10) / 10}h scheduled`;
+  
+  // All-day events (currently empty, but structure ready)
+  alldayEvents.innerHTML = '';
+  
+  // Timeline
+  timeline.innerHTML = '';
+  timeline.style.position = 'relative';
+  
+  const HOURS = Array.from({length: 24}, (_, i) => i); // 0 (midnight) - 23 (11pm) - all 24 hours
+  const PIXELS_PER_MINUTE = 1; // 1px per minute for precise positioning
+  
+  // Calculate total height needed (24 hours = 1440 minutes)
+  const totalMinutes = 24 * 60;
+  timeline.style.minHeight = (totalMinutes * PIXELS_PER_MINUTE) + 'px';
+  
+  // Create hour rows as visual guides
+  HOURS.forEach(h => {
+    const row = document.createElement('div');
+    row.className = 't-row';
+    row.style.position = 'absolute';
+    row.style.top = (h * 60 * PIXELS_PER_MINUTE) + 'px';
+    row.style.left = '0';
+    row.style.right = '0';
+    row.style.zIndex = '1';
+    
+    const lbl = document.createElement('div');
+    lbl.className = 't-label';
+    if (h === 0) {
+      lbl.textContent = '12am';
+    } else if (h < 12) {
+      lbl.textContent = `${h}am`;
+    } else if (h === 12) {
+      lbl.textContent = '12pm';
+    } else {
+      lbl.textContent = `${h - 12}pm`;
+    }
+    
+    const slot = document.createElement('div');
+    slot.className = 't-slot';
+    slot.style.position = 'relative';
+    slot.style.minHeight = '60px';
+    slot.ondragover = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      slot.classList.add('drag-over');
+    };
+    slot.ondragleave = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      slot.classList.remove('drag-over');
+    };
+    slot.ondrop = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      slot.classList.remove('drag-over');
+      if (typeof window.handleTimelineDrop === 'function') {
+        window.handleTimelineDrop(e, h, dateStr);
+      }
+    };
+    
+    // Add ghost button for this hour
+    const ghost = document.createElement('button');
+    ghost.className = 't-ghost';
+    ghost.textContent = '+ Add block';
+    ghost.onclick = () => {
+      // Note: openAddEventModal is still a global function during migration
+      // This will be moved to handlers in a future refactor
+      if (typeof window.openAddEventModal === 'function') {
+        window.openAddEventModal(dateStr);
+        const startInput = document.getElementById('event-start-time');
+        if (startInput) startInput.value = formatTime(h * 60);
+        const endInput = document.getElementById('event-duration');
+        if (endInput) endInput.value = '60';
+      }
+    };
+    slot.appendChild(ghost);
+    
+    row.appendChild(lbl);
+    row.appendChild(slot);
+    timeline.appendChild(row);
+    
+    // Add 15-minute interval markers (subtle lines)
+    for (let q = 1; q < 4; q++) {
+      const marker = document.createElement('div');
+      marker.style.position = 'absolute';
+      marker.style.top = ((h * 60 * PIXELS_PER_MINUTE) + (q * 15 * PIXELS_PER_MINUTE)) + 'px';
+      marker.style.left = '52px';
+      marker.style.right = '0';
+      marker.style.height = '1px';
+      marker.style.background = 'var(--border)';
+      marker.style.opacity = '0.3';
+      marker.style.pointerEvents = 'none';
+      marker.style.zIndex = '0';
+      timeline.appendChild(marker);
+    }
+  });
+  
+  // Position events absolutely based on their exact start time and duration
+  dayEvents.forEach(e => {
+    const startMins = parseTime(e.startTime);
+    const startHour = Math.floor(startMins / 60);
+    const endMins = startMins + e.durationMin;
+    const endHour = Math.floor(endMins / 60);
+    
+    // Show all events (full 24-hour day)
+    if (startHour < 0 || startHour >= 24) return;
+    
+    const blk = document.createElement('div');
+    const categoryColors = {personal: 'yellow', lab: 'red', equipment: 'green', travel: 'muted', writing: 'blue', comp: 'green'};
+    const color = categoryColors[e.category] || 'muted';
+    blk.className = `t-block ${color}`;
+    blk.style.position = 'absolute';
+    // Position at exact start time (S_HOUR is 0, so just use startMins)
+    blk.style.top = (startMins * PIXELS_PER_MINUTE) + 'px';
+    blk.style.left = '52px';
+    blk.style.right = '0';
+    blk.style.zIndex = '2';
+    // Height based on exact duration in minutes (2 hours = 120px)
+    blk.style.height = (e.durationMin * PIXELS_PER_MINUTE) + 'px';
+    
+    const timeStr = `${formatTime(parseTime(e.startTime))} – ${formatTime(parseTime(e.startTime) + e.durationMin)}`;
+    
+    // Get linked project and task info
+    let linkedInfo = '';
+    if (e.linkedProjectId) {
+      const project = projects.find(p => String(p.id) === String(e.linkedProjectId));
+      if (project) {
+        linkedInfo += `<span style="font-size:8px;color:var(--text-dim);">📁 ${esc(project.name)}</span>`;
+      }
+    }
+    if (e.linkedTaskId) {
+      const task = tasks.find(t => String(t.id) === String(e.linkedTaskId));
+      if (task) {
+        linkedInfo += `<span style="font-size:8px;color:var(--text-dim);margin-left:6px;">✓ ${esc(task.title)}</span>`;
+      }
+    }
+    
+    blk.innerHTML = `
+      <div class="t-block-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span>${esc(e.title)}</span>
+        <span style="font-size:9px;color:var(--text-dim);font-weight:400;white-space:nowrap;">${timeStr}</span>
+      </div>
+      ${linkedInfo ? `<div class="t-block-meta" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:2px;">${linkedInfo}</div>` : ''}
+      ${e.location ? `<div class="t-block-meta">${esc(e.location)}</div>` : ''}
+      <div class="t-block-footer">
+        <span class="t-block-dur">${Math.round(e.durationMin / 60 * 10) / 10}h</span>
+      </div>`;
+    blk.onclick = (evt) => {
+      evt.stopPropagation();
+      // Note: editEvent is still a global function during migration
+      // This will be moved to handlers in a future refactor
+      if (typeof window.editEvent === 'function') {
+        window.editEvent(e.id);
+      }
+    };
+    timeline.appendChild(blk);
+  });
+  
+  // Now marker
+  const now = new Date();
+  const nowH = now.getHours() + now.getMinutes() / 60;
+  const isToday = date.toDateString() === now.toDateString();
+  if (isToday && nowH >= 0 && nowH < 24) {
+    const nm = document.createElement('div');
+    nm.className = 'now-marker';
+    nm.style.top = (nowH * 60 * PIXELS_PER_MINUTE) + 'px';
+    nm.style.zIndex = '10';
+    timeline.appendChild(nm);
   }
 }
 
 /**
  * Update planner period label
- * Delegates to global function during migration
+ * @param {HTMLElement} labelEl - Label element
+ * @param {Object} plannerState - Planner state
  */
-function updatePlannerPeriodLabel() {
-  if (typeof window.updatePlannerPeriodLabel === 'function') {
-    window.updatePlannerPeriodLabel();
+function updatePlannerPeriodLabel(labelEl, plannerState) {
+  if (!labelEl) return;
+  
+  if (plannerState.currentPlannerView === 'daily') {
+    labelEl.textContent = plannerState.plannerViewDate.toLocaleDateString('en-US', {
+      weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
+    });
+  } else {
+    const startOfWeek = new Date(plannerState.plannerViewDate);
+    startOfWeek.setDate(plannerState.plannerViewDate.getDate() - plannerState.plannerViewDate.getDay());
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    const f = d => d.toLocaleDateString('en-US', {month: 'short', day: 'numeric'});
+    labelEl.textContent = `${f(startOfWeek)} – ${f(endOfWeek)}, ${startOfWeek.getFullYear()}`;
   }
 }
 

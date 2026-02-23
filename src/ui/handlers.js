@@ -208,6 +208,115 @@ export const uiHandlers = {
 };
 
 /**
+ * Planner handlers
+ */
+export const plannerHandlers = {
+  setPlannerViewDate(date) {
+    appStore.setState({ plannerViewDate: date instanceof Date ? date : new Date(date) });
+  },
+  
+  setCurrentPlannerView(view) {
+    appStore.setState({ currentPlannerView: view });
+  },
+  
+  setPlannerWeekOffset(offset) {
+    appStore.setState({ plannerWeekOffset: offset });
+  },
+  
+  setPlannerCalYear(year) {
+    appStore.setState({ plannerCalYear: year });
+  },
+  
+  setPlannerCalMonth(month) {
+    appStore.setState({ plannerCalMonth: month });
+  },
+  
+  setPlannerView(view, containerEl) {
+    const state = appStore.getState();
+    appStore.setState({ currentPlannerView: view });
+    
+    // Update view switcher buttons if container provided
+    if (containerEl) {
+      const dayBtn = containerEl.querySelector('#planner-vbtn-day');
+      const weekBtn = containerEl.querySelector('#planner-vbtn-week');
+      if (dayBtn && weekBtn) {
+        dayBtn.classList.toggle('active', view === 'daily');
+        weekBtn.classList.toggle('active', view === 'weekly');
+      }
+      
+      // Show/hide views
+      const dayView = containerEl.querySelector('#planner-view-day');
+      const weekView = containerEl.querySelector('#planner-view-week');
+      if (dayView) dayView.style.display = view === 'daily' ? 'flex' : 'none';
+      if (weekView) weekView.style.display = view === 'weekly' ? 'flex' : 'none';
+    }
+    
+    // Trigger re-render via router
+    if (window.routerSwitchView) {
+      window.routerSwitchView('planner');
+    }
+  },
+  
+  navigatePlannerDate(direction) {
+    const state = appStore.getState();
+    const currentView = state.currentPlannerView || 'daily';
+    let newDate = new Date(state.plannerViewDate || new Date());
+    
+    if (currentView === 'daily') {
+      newDate.setDate(newDate.getDate() + direction);
+      appStore.setState({ plannerViewDate: newDate });
+    } else {
+      const offset = (state.plannerWeekOffset || 0) + direction;
+      appStore.setState({ plannerWeekOffset: offset });
+      // Recalculate plannerViewDate based on week offset
+      const today = new Date();
+      const startOfWeek = new Date(today);
+      startOfWeek.setDate(today.getDate() - today.getDay());
+      const weekDate = new Date(startOfWeek);
+      weekDate.setDate(startOfWeek.getDate() + offset * 7);
+      appStore.setState({ plannerViewDate: weekDate });
+    }
+    
+    // Trigger re-render
+    if (window.routerSwitchView) {
+      window.routerSwitchView('planner');
+    }
+  },
+  
+  navigatePlannerCalendar(direction) {
+    const state = appStore.getState();
+    let year = state.plannerCalYear || new Date().getFullYear();
+    let month = state.plannerCalMonth !== null ? state.plannerCalMonth : new Date().getMonth();
+    
+    month += direction;
+    if (month > 11) {
+      month = 0;
+      year++;
+    } else if (month < 0) {
+      month = 11;
+      year--;
+    }
+    
+    appStore.setState({ plannerCalYear: year, plannerCalMonth: month });
+  },
+  
+  resetPlannerDate() {
+    const now = new Date();
+    appStore.setState({
+      plannerViewDate: now,
+      plannerWeekOffset: 0,
+      plannerCalYear: now.getFullYear(),
+      plannerCalMonth: now.getMonth()
+    });
+    
+    // Trigger re-render
+    if (window.routerSwitchView) {
+      window.routerSwitchView('planner');
+    }
+  }
+};
+
+/**
  * Workflow handlers
  */
 export const workflowHandlers = {
@@ -240,5 +349,53 @@ export const handlers = {
   ...taskHandlers,
   ...projectHandlers,
   ...uiHandlers,
-  ...workflowHandlers
+  ...workflowHandlers,
+  ...plannerHandlers,
+  
+  // Today view specific handlers
+  switchView(view) {
+    if (window.switchView) {
+      window.switchView(view);
+    } else {
+      uiHandlers.setCurrentView(view);
+      if (window.render) {
+        window.render();
+      }
+    }
+  },
+  
+  quickAdd() {
+    // Open quick add modal
+    if (window.openAddTaskModal) {
+      window.openAddTaskModal();
+    } else if (window.Petal?.features?.taskOperations?.addTask) {
+      // Fallback: try to add task directly
+      const title = prompt('Task title:');
+      if (title) {
+        window.Petal.features.taskOperations.addTask(title);
+      }
+    }
+  },
+  
+  async toggleTask(id) {
+    // Use taskOperations if available, otherwise use handler
+    if (window.Petal?.features?.taskOperations?.toggleTask) {
+      await window.Petal.features.taskOperations.toggleTask(id);
+    } else {
+      await taskHandlers.toggleTask(id);
+    }
+    // Re-render if render function exists
+    if (window.render) {
+      await window.render();
+    }
+  },
+  
+  editTask(id) {
+    // Use taskOperations if available
+    if (window.Petal?.features?.taskOperations?.editTask) {
+      window.Petal.features.taskOperations.editTask(id);
+    } else {
+      console.warn('editTask not available');
+    }
+  }
 };
