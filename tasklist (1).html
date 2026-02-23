@@ -441,7 +441,7 @@
     <div class="quick-capture-box" style="max-width:520px;" onclick="event.stopPropagation()">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
         <h3 id="event-modal-title" style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;font-style:italic;color:var(--rose);margin:0;">Add Event</h3>
-        <button data-action="modal:close-event" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
+        <button data-action="modal:close-event" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close" onclick="event.stopPropagation();if(window.closeEventModal){window.closeEventModal();}else{const m=document.getElementById('event-modal');if(m){m.style.display='none';m.classList.remove('active');}}">✕</button>
       </div>
       
       <div class="field" style="margin-bottom:16px;">
@@ -569,8 +569,8 @@
           </button>
         </div>
         <div style="display:flex;gap:10px;">
-          <button data-action="modal:close-event" class="btn-secondary">Cancel</button>
-          <button data-action="modal:submit-event" class="btn-submit">Save Event</button>
+          <button data-action="modal:close-event" class="btn-secondary" onclick="if(window.closeEventModal){window.closeEventModal();}else{const m=document.getElementById('event-modal');if(m){m.style.display='none';m.classList.remove('active');}}">Cancel</button>
+          <button data-action="modal:submit-event" class="btn-submit" onclick="if(window.submitEventModal){window.submitEventModal();}else{console.warn('submitEventModal not found');}">Save Event</button>
         </div>
       </div>
     </div>
@@ -2046,6 +2046,18 @@ function createPageContext() {
     renderWorkflowMatrix: typeof renderWorkflowMatrix === 'function' ? renderWorkflowMatrix : undefined,
     rerenderViewIfActive: typeof rerenderViewIfActive === 'function' ? rerenderViewIfActive : undefined,
     esc: typeof esc === 'function' ? esc : undefined,
+    escAttr: typeof escAttr === 'function' ? escAttr : undefined,
+    escJsonForDataAttr: typeof escJsonForDataAttr === 'function' ? escJsonForDataAttr : undefined,
+    escJsonForAttr: typeof escJsonForAttr === 'function' ? escJsonForAttr : undefined,
+    fileIcon: typeof fileIcon === 'function' ? fileIcon : undefined,
+    parseDate: typeof parseDate === 'function' ? parseDate : undefined,
+    dueLabel: typeof dueLabel === 'function' ? dueLabel : undefined,
+    getMatrixStage: typeof getMatrixStage === 'function' ? getMatrixStage : (window.Petal?.getMatrixStage || undefined),
+    isTaskBlocked: typeof isTaskBlocked === 'function' ? isTaskBlocked : (window.Petal?.isTaskBlocked || undefined),
+    getTaskFiles: typeof getTaskFiles === 'function' ? getTaskFiles : undefined,
+    toggleAddPinnedFile: typeof toggleAddPinnedFile === 'function' ? toggleAddPinnedFile : undefined,
+    removePinnedFile: typeof removePinnedFile === 'function' ? removePinnedFile : undefined,
+    editProjectHeaderField: typeof editProjectHeaderField === 'function' ? editProjectHeaderField : undefined,
     addFileRow: typeof addFileRow === 'function' ? addFileRow : undefined,
     // Add other globals as needed
   };
@@ -4156,418 +4168,57 @@ async function removePinnedFile(projectId, fileDataAttr) {
   }
 }
 
-// Render Next Up strip (Next Up / Blocked / Stale)
+// renderNextUpStrip has been moved to src/ui/renderProjectUI.js
 function renderNextUpStrip(project, projectTasks) {
-  const stripEl = document.getElementById('next-up-strip');
-  if (!stripEl) return;
-  
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const sevenDaysAgo = new Date(today);
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  
-  // Next Up: unblocked, high priority, due soon
-  const nextUp = projectTasks
-    .filter(t => {
-      if (t.done) return false;
-      if (isTaskBlocked(t)) return false;
-      return t.priority === 'high';
-    })
-    .sort((a, b) => {
-      const aDue = parseDate(a.due) || new Date(999999999999);
-      const bDue = parseDate(b.due) || new Date(999999999999);
-      return aDue - bDue;
-    })
-    .slice(0, 3);
-  
-  // Blocked tasks
-  const blocked = projectTasks
-    .filter(t => {
-      if (t.done) return false;
-      return isTaskBlocked(t);
-    })
-    .slice(0, 3);
-  
-  // Stale: in progress > 7 days
-  const stale = projectTasks
-    .filter(t => {
-      if (t.done) return false;
-      if (t.status !== 'Doing' && getMatrixStage(t) !== 'in_progress') return false;
-      const taskDate = new Date(t.id);
-      return taskDate < sevenDaysAgo;
-    })
-    .slice(0, 3);
-  
-  let html = '';
-  
-  // Next Up card
-  html += '<div style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;">';
-  html += '<div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;">⭐ Next Up</div>';
-  if (nextUp.length > 0) {
-    nextUp.forEach(t => {
-      const dl = dueLabel(t.due);
-      html += `<div style="font-size:12px;color:var(--text);margin-bottom:4px;padding:6px;background:var(--bg2);border-radius:4px;">${esc(t.title)}${dl ? ' <span style="color:var(--text-dim);font-size:10px;">' + esc(dl.text) + '</span>' : ''}</div>`;
-    });
+  if (window.Petal?.ui?.renderNextUpStrip) {
+    const ctx = createPageContext();
+    window.Petal.ui.renderNextUpStrip(ctx, project, projectTasks);
   } else {
-    html += '<div style="font-size:11px;color:var(--text-light);font-style:italic;">No high-priority tasks</div>';
+    console.error('RenderProjectUI module not loaded');
   }
-  html += '</div>';
-  
-  // Blocked card
-  html += '<div style="flex:1;background:var(--surface);border:1px solid var(--rose-soft);border-left:3px solid var(--rose);border-radius:8px;padding:12px;">';
-  html += '<div style="font-size:10px;color:var(--overdue);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;">🔒 Blocked</div>';
-  if (blocked.length > 0) {
-    blocked.forEach(t => {
-      const depTask = t.dependsOn ? tasks.find(d => d.id === t.dependsOn) : null;
-      html += `<div style="font-size:12px;color:var(--text);margin-bottom:4px;padding:6px;background:var(--rose-pale);border-radius:4px;">${esc(t.title)}${depTask ? ' <span style="color:var(--text-dim);font-size:10px;">→ ' + esc(depTask.title) + '</span>' : ''}</div>`;
-    });
-  } else {
-    html += '<div style="font-size:11px;color:var(--text-light);font-style:italic;">No blocked tasks</div>';
-  }
-  html += '</div>';
-  
-  // Stale card
-  html += '<div style="flex:1;background:var(--surface);border:1px solid var(--sage-pale);border-left:3px solid var(--sage);border-radius:8px;padding:12px;">';
-  html += '<div style="font-size:10px;color:var(--sage);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;">🔄 Stale (>7d)</div>';
-  if (stale.length > 0) {
-    stale.forEach(t => {
-      html += `<div style="font-size:12px;color:var(--text);margin-bottom:4px;padding:6px;background:var(--sage-pale);border-radius:4px;">${esc(t.title)}</div>`;
-    });
-  } else {
-    html += '<div style="font-size:11px;color:var(--text-light);font-style:italic;">No stale tasks</div>';
-  }
-  html += '</div>';
-  
-  stripEl.innerHTML = html;
 }
 
-// Switch Files tab
+// switchFilesTab has been moved to src/ui/renderProjectUI.js
 let currentFilesTab = 'pinned';
 function switchFilesTab(tab) {
-  currentFilesTab = tab;
-  document.querySelectorAll('[id^="files-tab-"]').forEach(el => {
-    if (el.id.endsWith('-content')) {
-      el.style.display = 'none';
-    } else if (el.id.startsWith('files-tab-') && !el.id.endsWith('-content')) {
-      el.style.background = 'transparent';
-      el.style.color = 'var(--text-dim)';
-    }
-  });
-  
-  const activeBtn = document.getElementById(`files-tab-${tab}`);
-  const activeContent = document.getElementById(`files-tab-${tab}-content`);
-  
-  if (activeBtn) {
-    activeBtn.style.background = 'var(--rose-pale)';
-    activeBtn.style.color = 'var(--rose)';
-  }
-  if (activeContent) {
-    activeContent.style.display = 'flex';
-  }
-  
-  // Render the active tab content
-  if (selectedProjectId) {
-    const project = projects.find(p => p.id === selectedProjectId);
-    if (project) {
-      renderFilesTab(tab, project);
-    }
+  if (window.Petal?.ui?.switchFilesTab) {
+    const ctx = createPageContext();
+    window.Petal.ui.switchFilesTab(ctx, tab);
+  } else {
+    console.error('RenderProjectUI module not loaded');
   }
 }
 
-// Render Files tab content
+// renderFilesTab has been moved to src/ui/renderProjectUI.js
 async function renderFilesTab(tab, project) {
-  const contentEl = document.getElementById(`files-tab-${tab}-content`);
-  if (!contentEl) return;
-  
-  const projectTasks = tasks.filter(t => {
-    const taskProjectId = t.projectId ? (typeof t.projectId === 'number' ? t.projectId : parseInt(t.projectId)) : null;
-    return taskProjectId === selectedProjectId;
-  });
-  
-  let files = [];
-  
-  if (tab === 'pinned') {
-    // Pinned files (files with pinned: true), excluding deleted
-    const allFiles = (project.files || []).filter(f => {
-      const fileObj = typeof f === 'object' ? f : { abs_path: f };
-      return !fileObj.deletedAt; // Filter out deleted files
-    });
-    files = allFiles.filter(f => {
-      const fileObj = typeof f === 'object' ? f : { abs_path: f };
-      return fileObj.pinned === true;
-    }).map(f => ({ file: f, task: null }));
-  } else if (tab === 'active') {
-    // Active files = files from tasks in "In Progress"
-    const doingTasks = projectTasks.filter(t => {
-      const stage = getMatrixStage(t);
-      return (stage === 'in_progress' || stage === 'doing') && !t.done;
-    });
-    const activeFileSet = new Set();
-    doingTasks.forEach(task => {
-      if (task.files) {
-        task.files.forEach(f => {
-          const fileLink = typeof f === 'object' ? f : { abs_path: f };
-          const key = fileLink.onedrive_rel || fileLink.abs_path || fileLink.share_url || JSON.stringify(f);
-          if (!activeFileSet.has(key)) {
-            activeFileSet.add(key);
-            files.push({ file: f, task: { id: task.id, title: task.title } });
-          }
-        });
-      }
-    });
-  } else if (tab === 'recent') {
-    // Recent files = recently modified or recently linked, excluding deleted
-    const allFiles = [];
-    // From project files
-    (project.files || []).filter(f => {
-      const fileObj = typeof f === 'object' ? f : { abs_path: f };
-      return !fileObj.deletedAt; // Filter out deleted files
-    }).forEach(f => {
-      const fileLink = typeof f === 'object' ? f : { abs_path: f };
-      const key = fileLink.onedrive_rel || fileLink.abs_path || fileLink.share_url || JSON.stringify(fileLink);
-      const lastOpened = fileHistory[key]?.lastOpened || 0;
-      allFiles.push({ file: f, source: 'project', task: null, lastOpened });
-    });
-    // From tasks
-    projectTasks.forEach(t => {
-      if (t.files) {
-        t.files.forEach(f => {
-          const fileLink = typeof f === 'object' ? f : { abs_path: f };
-          const key = fileLink.onedrive_rel || fileLink.abs_path || fileLink.share_url || JSON.stringify(fileLink);
-          const lastOpened = fileHistory[key]?.lastOpened || 0;
-          allFiles.push({ file: f, source: 'task', task: { id: t.id, title: t.title }, lastOpened });
-        });
-      }
-    });
-    // Sort by last opened time
-    files = allFiles.sort((a, b) => (b.lastOpened || 0) - (a.lastOpened || 0)).slice(0, 10);
+  if (window.Petal?.ui?.renderFilesTab) {
+    const ctx = createPageContext();
+    await window.Petal.ui.renderFilesTab(ctx, tab, project);
+  } else {
+    console.error('RenderProjectUI module not loaded');
   }
-  
-  if (files.length === 0) {
-    contentEl.innerHTML = '<div style="font-size:12px;color:var(--text-dim);padding:20px;text-align:center;">No files</div>';
-    return;
-  }
-  
-  const fileHtmls = await Promise.all(files.map(async item => {
-    const f = item.file || item;
-    const fileLink = typeof f === 'string' ? { abs_path: f } : f;
-    const label = fileLink.label || fileLink.name || 'File';
-    const fileDataAttr = escJsonForDataAttr(fileLink);
-    const icon = fileIcon(fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url || '');
-    
-    const currentVersion = fileLink.version || '';
-    const versions = fileLink.versions || [];
-    const versionId = `file-version-${Date.now()}-${Math.random()}`;
-    
-    let html = '<div style="padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:8px;">';
-    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">';
-    html += `<span style="font-size:16px;">${icon}</span>`;
-    html += `<div style="flex:1;min-width:0;"><div style="font-size:12px;color:var(--text);font-weight:500;">${esc(label)}</div>`;
-    if (currentVersion) {
-      html += `<div style="font-size:10px;color:var(--rose);margin-top:2px;font-weight:500;">v${esc(currentVersion)}</div>`;
-    }
-    if (item.task) {
-      html += `<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">${esc(item.task.title)}</div>`;
-    }
-    html += '</div>';
-    html += '</div>';
-    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">';
-    html += `<button class="file-open-btn" data-path="${escAttr(JSON.stringify(fileLink))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">Open</button>`;
-    if (tab === 'pinned') {
-      html += `<button onclick="toggleFilePinned(${selectedProjectId}, '${fileDataAttr}')" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:10px;cursor:pointer;color:var(--text-dim);">Unpin</button>`;
-    } else {
-      html += `<button onclick="pinFile(${selectedProjectId}, '${fileDataAttr}')" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:10px;cursor:pointer;color:var(--text-dim);">Pin</button>`;
-    }
-    if (versions.length > 0) {
-      html += `<button onclick="toggleFileVersionHistory('${versionId}')" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:10px;cursor:pointer;color:var(--text-dim);">History</button>`;
-    }
-    html += `<button onclick="addFileVersion(${selectedProjectId}, '${fileDataAttr}')" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:10px;cursor:pointer;color:var(--text-dim);">+ Version</button>`;
-    html += '</div>';
-    
-    // Version history (collapsible)
-    if (versions.length > 0) {
-      html += `<div id="${versionId}" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">`;
-      const sortedVersions = [...versions].sort((a, b) => (b.date || 0) - (a.date || 0));
-      sortedVersions.forEach(v => {
-        const vDate = new Date(v.date || Date.now());
-        const vDateStr = vDate.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
-        html += `<div style="padding:6px;background:var(--surface);border-radius:4px;margin-bottom:4px;font-size:10px;">`;
-        html += `<div style="font-weight:500;color:var(--text);">v${esc(v.version || '')} – ${vDateStr}</div>`;
-        if (v.note) {
-          html += `<div style="color:var(--text-dim);margin-top:2px;">${esc(v.note)}</div>`;
-        }
-        html += '</div>';
-      });
-      html += '</div>';
-    }
-    
-    html += '</div>';
-    return html;
-  }));
-  
-  contentEl.innerHTML = fileHtmls.join('');
 }
 
-// Switch Project Files Sidebar tab
+// switchProjectFilesTab has been moved to src/ui/renderProjectUI.js
 let currentProjectFilesTab = 'pinned';
 function switchProjectFilesTab(tab) {
-  currentProjectFilesTab = tab;
-  document.querySelectorAll('[id^="project-files-tab-"]').forEach(el => {
-    if (el.id.endsWith('-content')) {
-      el.style.display = 'none';
-    } else if (el.id.startsWith('project-files-tab-') && !el.id.endsWith('-content')) {
-      el.style.background = 'transparent';
-      el.style.color = 'var(--text-dim)';
-    }
-  });
-  
-  const activeBtn = document.getElementById(`project-files-tab-${tab}`);
-  const activeContent = document.getElementById(`project-files-tab-${tab}-content`);
-  
-  if (activeBtn) {
-    activeBtn.style.background = 'var(--rose-pale)';
-    activeBtn.style.color = 'var(--rose)';
-  }
-  if (activeContent) {
-    activeContent.style.display = 'flex';
-  }
-  
-  const project = projects.find(p => p.id === selectedProjectId);
-  if (project) {
-    renderProjectFilesSidebar(tab, project);
+  if (window.Petal?.ui?.switchProjectFilesTab) {
+    const ctx = createPageContext();
+    window.Petal.ui.switchProjectFilesTab(ctx, tab);
+  } else {
+    console.error('RenderProjectUI module not loaded');
   }
 }
 
-// Render Project Files Sidebar
+// renderProjectFilesSidebar has been moved to src/ui/renderProjectUI.js
+// renderProjectFilesSidebar has been moved to src/ui/renderProjectUI.js
 async function renderProjectFilesSidebar(tab, project) {
-  const contentEl = document.getElementById(`project-files-tab-${tab}-content`);
-  if (!contentEl) return;
-  
-  const projectTasks = tasks.filter(t => {
-    const taskProjectId = t.projectId ? (typeof t.projectId === 'number' ? t.projectId : parseInt(t.projectId)) : null;
-    return taskProjectId === selectedProjectId;
-  });
-  
-  let files = [];
-  
-  if (tab === 'pinned') {
-    // Pinned files (files with pinned: true), excluding deleted
-    const allFiles = (project.files || []).filter(f => {
-      const fileObj = typeof f === 'object' ? f : { abs_path: f };
-      return !fileObj.deletedAt;
-    });
-    files = allFiles.filter(f => {
-      const fileObj = typeof f === 'object' ? f : { abs_path: f };
-      return fileObj.pinned === true;
-    }).map(f => ({ file: f, task: null }));
-  } else if (tab === 'active') {
-    // Active files = files from tasks in "In Progress"
-    const doingTasks = projectTasks.filter(t => {
-      const stage = getMatrixStage(t);
-      return (stage === 'in_progress' || stage === 'doing') && !t.done;
-    });
-    const activeFileSet = new Set();
-    doingTasks.forEach(task => {
-      const taskFiles = getTaskFiles(task);
-      taskFiles.forEach(f => {
-        const fileLink = typeof f === 'object' ? f : { abs_path: f };
-        const key = fileLink.onedrive_rel || fileLink.abs_path || fileLink.share_url || fileLink.id || JSON.stringify(f);
-        if (!activeFileSet.has(key)) {
-          activeFileSet.add(key);
-          files.push({ file: f, task: { id: task.id, title: task.title } });
-        }
-      });
-    });
-  } else if (tab === 'recent') {
-    // Recent files = recently modified or recently linked, excluding deleted
-    const allFiles = [];
-    (project.files || []).filter(f => {
-      const fileObj = typeof f === 'object' ? f : { abs_path: f };
-      return !fileObj.deletedAt;
-    }).forEach(f => {
-      const fileLink = typeof f === 'object' ? f : { abs_path: f };
-      const key = fileLink.onedrive_rel || fileLink.abs_path || fileLink.share_url || fileLink.id || JSON.stringify(fileLink);
-      const lastOpened = fileHistory[key]?.lastOpened || 0;
-      allFiles.push({ file: f, source: 'project', task: null, lastOpened });
-    });
-    projectTasks.forEach(t => {
-      const taskFiles = getTaskFiles(t);
-      taskFiles.forEach(f => {
-        const fileLink = typeof f === 'object' ? f : { abs_path: f };
-        const key = fileLink.onedrive_rel || fileLink.abs_path || fileLink.share_url || fileLink.id || JSON.stringify(fileLink);
-        const lastOpened = fileHistory[key]?.lastOpened || 0;
-        allFiles.push({ file: f, source: 'task', task: { id: t.id, title: t.title }, lastOpened });
-      });
-    });
-    files = allFiles.sort((a, b) => (b.lastOpened || 0) - (a.lastOpened || 0)).slice(0, 10);
+  if (window.Petal?.ui?.renderProjectFilesSidebar) {
+    const ctx = createPageContext();
+    await window.Petal.ui.renderProjectFilesSidebar(ctx, tab, project);
+  } else {
+    console.error('RenderProjectUI module not loaded');
   }
-  
-  if (files.length === 0) {
-    contentEl.innerHTML = '<div style="font-size:12px;color:var(--text-dim);padding:20px;text-align:center;">No files</div>';
-    return;
-  }
-  
-  const fileHtmls = await Promise.all(files.map(async item => {
-    const f = item.file || item;
-    const fileLink = typeof f === 'string' ? { abs_path: f } : f;
-    const label = fileLink.label || fileLink.name || 'File';
-    const fileDataAttr = escJsonForDataAttr(fileLink);
-    const icon = fileIcon(fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url || '');
-    
-    const currentVersion = fileLink.versionCurrent || fileLink.version || '';
-    const versions = fileLink.versions || [];
-    const versionId = `file-version-${Date.now()}-${Math.random()}`;
-    
-    let html = '<div style="padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:8px;">';
-    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">';
-    html += `<span style="font-size:16px;">${icon}</span>`;
-    html += `<div style="flex:1;min-width:0;"><div style="font-size:12px;color:var(--text);font-weight:500;word-break:break-word;">${esc(label)}</div>`;
-    if (currentVersion) {
-      html += `<div style="font-size:10px;color:var(--rose);margin-top:2px;font-weight:500;">v${esc(currentVersion)}</div>`;
-    }
-    if (item.task) {
-      html += `<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">${esc(item.task.title)}</div>`;
-    }
-    html += '</div>';
-    html += '</div>';
-    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">';
-    html += `<button class="file-open-btn" data-path="${escAttr(JSON.stringify(fileLink))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">Open</button>`;
-    if (tab === 'pinned') {
-      html += `<button onclick="toggleFilePinned(${selectedProjectId}, '${fileDataAttr}')" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:10px;cursor:pointer;color:var(--text-dim);">Unpin</button>`;
-    } else {
-      html += `<button onclick="pinFile(${selectedProjectId}, '${fileDataAttr}')" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:10px;cursor:pointer;color:var(--text-dim);">Pin</button>`;
-    }
-    if (versions.length > 0) {
-      html += `<button onclick="toggleFileVersionHistory('${versionId}')" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:10px;cursor:pointer;color:var(--text-dim);">History</button>`;
-    }
-    html += `<button onclick="addFileVersion(${selectedProjectId}, '${fileDataAttr}')" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:10px;cursor:pointer;color:var(--text-dim);">+ Version</button>`;
-    html += '</div>';
-    
-    if (versions.length > 0) {
-      html += `<div id="${versionId}" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">`;
-      const sortedVersions = [...versions].sort((a, b) => {
-        const dateA = a.at ? new Date(a.at).getTime() : (a.date || 0);
-        const dateB = b.at ? new Date(b.at).getTime() : (b.date || 0);
-        return dateB - dateA;
-      });
-      sortedVersions.forEach(v => {
-        const vDate = v.at ? new Date(v.at) : new Date(v.date || Date.now());
-        const vDateStr = vDate.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
-        html += `<div style="padding:6px;background:var(--surface);border-radius:4px;margin-bottom:4px;font-size:10px;">`;
-        html += `<div style="font-weight:500;color:var(--text);">v${esc(v.version || '')} – ${vDateStr}</div>`;
-        if (v.note) {
-          html += `<div style="color:var(--text-dim);margin-top:2px;">${esc(v.note)}</div>`;
-        }
-        html += '</div>';
-      });
-      html += '</div>';
-    }
-    
-    html += '</div>';
-    return html;
-  }));
-  
-  contentEl.innerHTML = fileHtmls.join('');
 }
 
 
@@ -4628,178 +4279,34 @@ async function addFileVersion(projectId, fileDataAttr) {
   }
 }
 
-// Render project header (compact 4-field)
+// renderProjectHeader has been moved to src/ui/renderProjectUI.js
 function renderProjectHeader(project) {
-  const brief = project.brief || defaultProjectBrief();
-  const headerEl = document.getElementById('project-header-card');
-  if (!headerEl) return;
-  
-  // Get next milestone (first incomplete milestone)
-  const milestones = project.milestones || [];
-  const nextMilestone = milestones.find(m => !m.done) || null;
-  const nextMilestoneText = nextMilestone ? nextMilestone.title : (brief.nextMilestone || '');
-  
-  let html = '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">';
-  
-  // Objective
-  html += '<div style="display:flex;align-items:flex-start;gap:8px;">';
-  html += '<div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;min-width:80px;padding-top:2px;">Objective</div>';
-  html += '<div style="flex:1;display:flex;align-items:center;gap:6px;">';
-  html += `<div style="flex:1;font-size:12px;color:var(--text);${brief.objective ? '' : 'font-style:italic;color:var(--text-light);'}">${brief.objective || 'Not set'}</div>`;
-  html += '<button onclick="editProjectHeaderField(\'objective\')" style="padding:2px 6px;background:transparent;border:none;color:var(--text-dim);font-size:11px;cursor:pointer;opacity:0.6;" onmouseover="this.style.opacity=\'1\'" onmouseout="this.style.opacity=\'0.6\'">✎</button>';
-  html += '</div></div>';
-  
-  // Current Focus
-  html += '<div style="display:flex;align-items:flex-start;gap:8px;">';
-  html += '<div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;min-width:80px;padding-top:2px;">Focus</div>';
-  html += '<div style="flex:1;display:flex;align-items:center;gap:6px;">';
-  html += `<div style="flex:1;font-size:12px;color:var(--text);font-weight:500;${brief.focus ? '' : 'font-style:italic;color:var(--text-light);font-weight:normal;'}">${brief.focus || 'Not set'}</div>`;
-  html += '<button onclick="editProjectHeaderField(\'focus\')" style="padding:2px 6px;background:transparent;border:none;color:var(--text-dim);font-size:11px;cursor:pointer;opacity:0.6;" onmouseover="this.style.opacity=\'1\'" onmouseout="this.style.opacity=\'0.6\'">✎</button>';
-  html += '</div></div>';
-  
-  // Definition of Done
-  html += '<div style="display:flex;align-items:flex-start;gap:8px;">';
-  html += '<div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;min-width:80px;padding-top:2px;">Done When</div>';
-  html += '<div style="flex:1;display:flex;align-items:center;gap:6px;">';
-  html += `<div style="flex:1;font-size:12px;color:var(--text);${brief.definitionOfDone ? '' : 'font-style:italic;color:var(--text-light);'}">${brief.definitionOfDone || 'Not set'}</div>`;
-  html += '<button onclick="editProjectHeaderField(\'definitionOfDone\')" style="padding:2px 6px;background:transparent;border:none;color:var(--text-dim);font-size:11px;cursor:pointer;opacity:0.6;" onmouseover="this.style.opacity=\'1\'" onmouseout="this.style.opacity=\'0.6\'">✎</button>';
-  html += '</div></div>';
-  
-  // Next Milestone
-  html += '<div style="display:flex;align-items:flex-start;gap:8px;">';
-  html += '<div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;min-width:80px;padding-top:2px;">Next</div>';
-  html += '<div style="flex:1;display:flex;align-items:center;gap:6px;">';
-  html += `<div style="flex:1;font-size:12px;color:var(--rose);font-weight:500;${nextMilestoneText ? '' : 'font-style:italic;color:var(--text-light);font-weight:normal;'}">${nextMilestoneText || 'No milestone'}</div>`;
-  html += '<button data-action="add-milestone" style="padding:2px 6px;background:transparent;border:none;color:var(--text-dim);font-size:11px;cursor:pointer;opacity:0.6;" onmouseover="this.style.opacity=\'1\'" onmouseout="this.style.opacity=\'0.6\'">✎</button>';
-  html += '</div></div>';
-  
-  html += '</div>';
-  headerEl.innerHTML = html;
+  if (window.Petal?.ui?.renderProjectHeader) {
+    const ctx = createPageContext();
+    window.Petal.ui.renderProjectHeader(ctx, project);
+  } else {
+    console.error('RenderProjectUI module not loaded');
+  }
 }
 
-// Legacy function name for compatibility
+// renderProjectBrief has been moved to src/ui/renderProjectUI.js
 function renderProjectBrief(project) {
-  renderProjectHeader(project);
+  if (window.Petal?.ui?.renderProjectHeader) {
+    const ctx = createPageContext();
+    window.Petal.ui.renderProjectHeader(ctx, project);
+  } else {
+    console.error('RenderProjectUI module not loaded');
+  }
 }
 
-// Render project files panel
+// renderProjectFiles has been moved to src/ui/renderProjectUI.js
 async function renderProjectFiles() {
-  if (!selectedProjectId) return;
-  const project = projects.find(p => p.id === selectedProjectId);
-  if (!project) return;
-  
-  const panelEl = document.getElementById('project-files-panel-content');
-  if (!panelEl) return;
-  
-  // Get all project tasks
-  const projectTasks = tasks.filter(t => {
-    const taskProjectId = t.projectId ? (typeof t.projectId === 'number' ? t.projectId : parseInt(t.projectId)) : null;
-    return taskProjectId === selectedProjectId;
-  });
-  
-  // Active files = files from tasks in "In Progress"
-  const doingTasks = projectTasks.filter(t => {
-    const stage = getMatrixStage(t);
-    return stage === 'in_progress' || stage === 'doing' && !t.done;
-  });
-  const activeFiles = new Set();
-  doingTasks.forEach(t => {
-    if (t.files) {
-      t.files.forEach(f => {
-        const fileLink = typeof f === 'string' ? { abs_path: f } : f;
-        const key = fileLink.onedrive_rel || fileLink.abs_path || fileLink.share_url || JSON.stringify(fileLink);
-        activeFiles.add(JSON.stringify({ key, file: fileLink, task: t.title }));
-      });
-    }
-  });
-  
-  // Pinned files = project.pinnedFiles
-  const pinnedFiles = project.pinnedFiles || [];
-  
-  // Recently modified = from fileHistory
-  const allFiles = [];
-  projectTasks.forEach(t => {
-    if (t.files) {
-      t.files.forEach(f => {
-        const fileLink = typeof f === 'string' ? { abs_path: f } : f;
-        const key = fileLink.onedrive_rel || fileLink.abs_path || fileLink.share_url || JSON.stringify(fileLink);
-        const lastOpened = fileHistory[key]?.lastOpened || 0;
-        allFiles.push({ file: fileLink, lastOpened, task: t.title });
-      });
-    }
-  });
-  if (project.files) {
-    project.files.forEach(f => {
-      const fileLink = typeof f === 'string' ? { abs_path: f } : f;
-      const key = fileLink.onedrive_rel || fileLink.abs_path || fileLink.share_url || JSON.stringify(fileLink);
-      const lastOpened = fileHistory[key]?.lastOpened || 0;
-      allFiles.push({ file: fileLink, lastOpened, task: project.name });
-    });
-  }
-  const recentFiles = allFiles.sort((a, b) => b.lastOpened - a.lastOpened).slice(0, 10);
-  
-  let html = '';
-  
-  // Active Files
-  html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;">';
-  html += '<h3 style="font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin:0 0 12px 0;font-weight:500;">Active Files</h3>';
-  if (activeFiles.size > 0) {
-    Array.from(activeFiles).slice(0, 15).forEach(item => {
-      const { file } = JSON.parse(item);
-      const label = file.label || file.name || 'File';
-      const safeLink = escJsonForAttr(file);
-      const icon = fileIcon(file.abs_path || file.onedrive_rel || file.share_url || '');
-      const fileIdAttr = escJsonForDataAttr(file);
-      html += `<div class="file-open-div" style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg2);border-radius:6px;margin-bottom:6px;cursor:pointer;" data-path="${escAttr(JSON.stringify(file))}">`;
-      html += `<span style="font-size:16px;">${icon}</span>`;
-      html += `<div style="flex:1;min-width:0;"><div style="font-size:12px;color:var(--text);">${esc(label)}</div><div style="font-size:10px;color:var(--text-dim);">${esc(file.onedrive_rel || file.abs_path || '')}</div></div>`;
-      html += '</div>';
-    });
+  if (window.Petal?.ui?.renderProjectFiles) {
+    const ctx = createPageContext();
+    await window.Petal.ui.renderProjectFiles(ctx);
   } else {
-    html += '<div style="font-size:12px;color:var(--text-dim);padding:20px;text-align:center;">No active files</div>';
+    console.error('RenderProjectUI module not loaded');
   }
-  html += '</div>';
-  
-  // Pinned Files
-  html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;">';
-  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><h3 style="font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin:0;font-weight:500;">Pinned Files</h3><button onclick="toggleAddPinnedFile()" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:10px;cursor:pointer;">＋ Add</button></div>';
-  if (pinnedFiles.length > 0) {
-    pinnedFiles.forEach(f => {
-      const fileLink = typeof f === 'string' ? { abs_path: f } : f;
-      const label = f.label || f.name || 'File';
-      const icon = fileIcon(fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url || '');
-      const fileDataAttr = escJsonForDataAttr(fileLink);
-      html += `<div class="file-open-div" style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg2);border-radius:6px;margin-bottom:6px;cursor:pointer;" data-path="${escAttr(JSON.stringify(fileLink))}">`;
-      html += `<span style="font-size:16px;">${icon}</span>`;
-      html += `<div style="flex:1;min-width:0;"><div style="font-size:12px;color:var(--text);">${esc(label)}</div></div>`;
-      html += `<button onclick="event.stopPropagation();removePinnedFile(${selectedProjectId}, '${fileDataAttr}')" style="padding:2px 6px;background:var(--rose-pale);border:1px solid var(--rose-soft);border-radius:4px;color:var(--rose);font-size:10px;cursor:pointer;">Remove</button>`;
-      html += '</div>';
-    });
-  } else {
-    html += '<div style="font-size:12px;color:var(--text-dim);padding:20px;text-align:center;">No pinned files</div>';
-  }
-  html += '</div>';
-  
-  // Recently Modified
-  html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;">';
-  html += '<h3 style="font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin:0 0 12px 0;font-weight:500;">Recently Modified</h3>';
-  if (recentFiles.length > 0) {
-    recentFiles.forEach(({ file, task }) => {
-      const label = file.label || file.name || 'File';
-      const safeLink = escJsonForAttr(file);
-      const icon = fileIcon(file.abs_path || file.onedrive_rel || file.share_url || '');
-      const fileIdAttr = escJsonForDataAttr(file);
-      html += `<div class="file-open-div" style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg2);border-radius:6px;margin-bottom:6px;cursor:pointer;" data-path="${escAttr(JSON.stringify(file))}">`;
-      html += `<span style="font-size:16px;">${icon}</span>`;
-      html += `<div style="flex:1;min-width:0;"><div style="font-size:12px;color:var(--text);">${esc(label)}</div><div style="font-size:10px;color:var(--text-dim);">${esc(task)}</div></div>`;
-      html += '</div>';
-    });
-  } else {
-    html += '<div style="font-size:12px;color:var(--text-dim);padding:20px;text-align:center;">No recent files</div>';
-  }
-  html += '</div>';
-  
-  panelEl.innerHTML = html;
 }
 
 // renderProjectMilestones has been moved to src/features/projectOperations.js
@@ -5194,23 +4701,21 @@ async function onModalFileDrop(event) {
   }
 }
 
-function toggleWorkflowLanesSection(projId){
-  const section = document.getElementById('workflow-lanes-section-'+projId);
-  const toggle = document.getElementById('workflow-lanes-toggle-'+projId);
-  if(section && toggle){
-    const isOpen = section.style.display !== 'none';
-    section.style.display = isOpen ? 'none' : 'block';
-    toggle.textContent = isOpen ? '▼' : '▶';
+// toggleWorkflowLanesSection has been moved to src/ui/uiHelpers.js
+function toggleWorkflowLanesSection(projId) {
+  if (window.Petal?.ui?.toggleWorkflowLanesSection) {
+    window.Petal.ui.toggleWorkflowLanesSection(projId);
+  } else {
+    console.error('UI helpers module not loaded');
   }
 }
 
-function toggleProjectTasksSection(projId){
-  const section = document.getElementById('project-tasks-section-'+projId);
-  const toggle = document.getElementById('project-tasks-toggle-'+projId);
-  if(section && toggle){
-    const isOpen = section.style.display !== 'none';
-    section.style.display = isOpen ? 'none' : 'block';
-    toggle.textContent = isOpen ? '▼' : '▶';
+// toggleProjectTasksSection has been moved to src/ui/uiHelpers.js
+function toggleProjectTasksSection(projId) {
+  if (window.Petal?.ui?.toggleProjectTasksSection) {
+    window.Petal.ui.toggleProjectTasksSection(projId);
+  } else {
+    console.error('UI helpers module not loaded');
   }
 }
 
@@ -5778,33 +5283,29 @@ async function render(){
 
 // ═══════════════════════ TODAY VIEW ═══════════════════════
 // Get all tasks including project subtasks (excluding deleted)
+// getAllTasks has been moved to src/utils/taskHelpers.js
 function getAllTasks() {
-  // Filter out deleted tasks
-  const activeTasks = tasks.filter(t => !t.deletedAt);
-  const allTasks = [...activeTasks];
-  // Add project subtasks as tasks with project reference (legacy support)
-  projects.forEach(p => {
-    (p.subtasks || []).forEach(st => {
-      // Also filter out deleted subtasks
-      if (!st.deletedAt) {
-      allTasks.push({
-        ...st,
-        projectId: p.id,
-        projectName: p.name,
-        isSubtask: true
-      });
-      }
-    });
-  });
-  // Tasks with parentTaskId are already in tasks array, no need to add separately
-  return allTasks;
+  if (window.Petal?.utils?.getAllTasks) {
+    const ctx = createPageContext();
+    return window.Petal.utils.getAllTasks(ctx.tasks, ctx.projects);
+  } else {
+    // Fallback
+    const activeTasks = tasks.filter(t => !t.deletedAt);
+    return activeTasks;
+  }
 }
 
-// Get tasks for a specific subtask (ordered)
+// getTasksForSubtask has been moved to src/utils/taskHelpers.js
 function getTasksForSubtask(subtaskId) {
-  return tasks.filter(t => t.subtaskId === subtaskId).sort((a, b) => {
-    return (a.subtaskOrder || 0) - (b.subtaskOrder || 0);
-  });
+  if (window.Petal?.utils?.getTasksForSubtask) {
+    const ctx = createPageContext();
+    return window.Petal.utils.getTasksForSubtask(ctx.tasks, subtaskId);
+  } else {
+    // Fallback
+    return tasks.filter(t => t.subtaskId === subtaskId).sort((a, b) => {
+      return (a.subtaskOrder || 0) - (b.subtaskOrder || 0);
+    });
+  }
 }
 
 // Wrapper for renderToday - delegates to module
@@ -5969,126 +5470,52 @@ function getBoardListForProjectFilter(status, projectFilter, excludeTaskId = nul
 }
 
 
-// Open file (handles all path types)
+// openFile has been moved to src/utils/fileHelpers.js
 async function openFile(fileLink) {
-  if (!fileLink) return;
-  
-  // If it's a string (legacy format), convert to object
-  if (typeof fileLink === 'string') {
-    fileLink = { abs_path: fileLink };
-  }
-  
-  if (window.electronAPI && window.electronAPI.resolveFilePath) {
-    try {
-      const resolved = await window.electronAPI.resolveFilePath(fileLink);
-      
-      if (resolved.success) {
-        if (resolved.openInBrowser) {
-          // Open share URL in browser
-          window.open(resolved.path, '_blank');
-        } else {
-          // Open local file
-          try {
-            // Step 3: Prove renderer is calling the API we think it is
-            console.log('🖱️ renderer calling openFile', resolved.path, window.electronAPI);
-            const result = await window.electronAPI.openFile(resolved.path);
-            if (result && result.success === false) {
-              console.error('Failed to open file:', result.error);
-              // Fallback to share_url if available
-              if (fileLink.share_url) {
-                window.open(fileLink.share_url, '_blank');
-              } else {
-                alert('Could not open file: ' + (result.error || 'Unknown error'));
-              }
-            }
-          } catch (openError) {
-            console.error('Error calling openFile:', openError);
-            // Fallback to share_url if available
-            if (fileLink.share_url) {
-              window.open(fileLink.share_url, '_blank');
-            } else {
-              alert('Could not open file: ' + (openError.message || 'Unknown error'));
-            }
-          }
-        }
-      } else {
-        // Fallback: try share_url or show error
-        if (fileLink.share_url) {
-          window.open(fileLink.share_url, '_blank');
-        } else {
-          alert('Could not open file: ' + (resolved.error || 'File not found'));
-        }
-      }
-    } catch (e) {
-      console.error('Error opening file:', e);
-      // Fallback to share_url if available
-      if (fileLink.share_url) {
-        window.open(fileLink.share_url, '_blank');
-      }
-    }
+  if (window.Petal?.utils?.openFile) {
+    await window.Petal.utils.openFile(fileLink);
   } else {
-    // Browser: use share_url or abs_path
-    const url = fileLink.share_url || fileLink.abs_path;
-    if (url) {
-      window.open(url, '_blank');
-    }
+    console.error('File helpers module not loaded');
   }
 }
 
 // Get workflow lanes display text
+// getWorkflowLanesDisplay has been moved to src/utils/projectHelpers.js
 function getWorkflowLanesDisplay(project) {
-  const lanes = project.workflowLanes || [];
-  if (lanes.length === 0) {
-    return '<div style="font-size:11px;color:var(--text-dim);">All lanes allowed</div>';
+  if (window.Petal?.utils?.getWorkflowLanesDisplay) {
+    return window.Petal.utils.getWorkflowLanesDisplay(project);
+  } else {
+    console.error('Project helpers module not loaded');
+    return '';
   }
-  const labels = { lab: '🧪 Lab', comp: '💻 Comp', writing: '📝 Writing', presentation: '📊 Presentation' };
-  return '<div style="font-size:11px;color:var(--text);">' + lanes.map(l => labels[l] || l).join(' • ') + '</div>';
 }
 
-// Toggle workflow lanes edit mode
+// toggleWorkflowLanesEdit has been moved to src/utils/projectHelpers.js
 function toggleWorkflowLanesEdit(projectId) {
-  const displayEl = document.getElementById(`workflow-lanes-display-${projectId}`);
-  const editEl = document.getElementById(`workflow-lanes-edit-${projectId}`);
-  if (displayEl && editEl) {
-    displayEl.style.display = 'none';
-    editEl.style.display = 'block';
+  if (window.Petal?.utils?.toggleWorkflowLanesEdit) {
+    window.Petal.utils.toggleWorkflowLanesEdit(projectId);
+  } else {
+    console.error('Project helpers module not loaded');
   }
 }
 
-// Cancel workflow lanes edit
+// cancelWorkflowLanesEdit has been moved to src/utils/projectHelpers.js
 function cancelWorkflowLanesEdit(projectId) {
-  const displayEl = document.getElementById(`workflow-lanes-display-${projectId}`);
-  const editEl = document.getElementById(`workflow-lanes-edit-${projectId}`);
-  if (displayEl && editEl) {
-    displayEl.style.display = 'block';
-    editEl.style.display = 'none';
+  if (window.Petal?.utils?.cancelWorkflowLanesEdit) {
+    window.Petal.utils.cancelWorkflowLanesEdit(projectId);
+  } else {
+    console.error('Project helpers module not loaded');
   }
 }
 
-// Save workflow lanes
+// saveWorkflowLanes has been moved to src/utils/projectHelpers.js
 async function saveWorkflowLanes(projectId) {
-  const project = projects.find(p => p.id === projectId);
-  if (!project) return;
-  
-  const workflowLanes = [];
-  if (document.getElementById(`edit-workflow-lab-${projectId}`).checked) workflowLanes.push('lab');
-  if (document.getElementById(`edit-workflow-comp-${projectId}`).checked) workflowLanes.push('comp');
-  if (document.getElementById(`edit-workflow-writing-${projectId}`).checked) workflowLanes.push('writing');
-  if (document.getElementById(`edit-workflow-presentation-${projectId}`).checked) workflowLanes.push('presentation');
-  
-  project.workflowLanes = workflowLanes.length > 0 ? workflowLanes : null;
-  
-  // Update any tasks that are assigned to lanes not in the new list
-  tasks.filter(t => String(t.projectId) === String(projectId)).forEach(t => {
-    if (t.lane && workflowLanes.length > 0 && !workflowLanes.includes(t.lane)) {
-      t.lane = null;
-      t.stage = null;
-    }
-  });
-  
-  await save();
-  // Re-render projects view if visible
-  await rerenderViewIfActive('projects');
+  if (window.Petal?.utils?.saveWorkflowLanes) {
+    const ctx = createPageContext();
+    await window.Petal.utils.saveWorkflowLanes(ctx, projectId);
+  } else {
+    console.error('Project helpers module not loaded');
+  }
 }
 
 // ⚠️ INLINE renderProjects() REMOVED - All calls now route through router
@@ -6663,17 +6090,14 @@ function renderCellLog(project) {
   contentEl.innerHTML = html;
 }
 
+// updateCompWindow has been moved to src/ui/uiHelpers.js
 function updateCompWindow() {
-  if (!selectedProjectId) return;
-  const project = projects.find(p => p.id === selectedProjectId);
-  if (!project) return;
-  
-  const projectTasks = tasks.filter(t => {
-    const taskProjectId = t.projectId ? (typeof t.projectId === 'number' ? t.projectId : parseInt(t.projectId)) : null;
-    return taskProjectId === selectedProjectId;
-  });
-  
-  renderCompWindow(project, projectTasks);
+  if (window.Petal?.ui?.updateCompWindow) {
+    const ctx = createPageContext();
+    window.Petal.ui.updateCompWindow(ctx);
+  } else {
+    console.error('UI helpers module not loaded');
+  }
 }
 
 // Section 4: Computational Window
@@ -10775,7 +10199,10 @@ function updateEventTaskParentOptions() {
 function closeEventModal() {
   const modal = document.getElementById('event-modal');
   const deleteBtn = document.getElementById('event-delete-btn');
-  if (modal) modal.style.display = 'none';
+  if (modal) {
+    modal.classList.remove('active');
+    modal.style.display = 'none';
+  }
   if (deleteBtn) deleteBtn.style.display = 'none';
   editingEventId = null;
 }
