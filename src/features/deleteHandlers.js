@@ -302,32 +302,37 @@ export async function softDeleteFile(ctx, projectId, fileId) {
 export async function delProject(ctx, id) {
   const { projects, tasks, save, render } = ctx;
   
-  // Remove project from array
-  const index = projects.findIndex(p => p.id === id);
-  if (index === -1) return;
-  projects.splice(index, 1);
-  
-  // Phase 3 Fix: Remove from open projects (Array, not Set)
+  // Use store for immutable updates
   const store = window.Petal?.store;
   if (store) {
     const state = store.getState();
+    
+    // Remove project from array (immutable)
+    const updatedProjects = (state.projects || []).filter(p => p.id !== id);
+    
+    // Remove from open projects (Array, not Set)
     const open = Array.isArray(state.openProjects) ? state.openProjects : [];
-    const next = open.filter(pid => pid !== id);
-    store.setState({ openProjects: next });
-  } else if (window.openProjects) {
-    // Fallback: update local variable
-    const open = Array.isArray(window.openProjects) 
-      ? window.openProjects 
-      : (window.openProjects instanceof Set ? Array.from(window.openProjects) : []);
-    window.openProjects = open.filter(pid => pid !== id);
+    const updatedOpenProjects = open.filter(pid => pid !== id);
+    
+    // Clear projectId from tasks (immutable)
+    const updatedTasks = (state.tasks || []).map(t => {
+      if (String(t.projectId || '') === String(id)) {
+        return { ...t, projectId: '' };
+      }
+      return t;
+    });
+    
+    // Update store with all changes
+    store.setState({
+      projects: updatedProjects,
+      openProjects: updatedOpenProjects,
+      tasks: updatedTasks
+    });
+  } else {
+    // Fallback: store not initialized (shouldn't happen in normal flow)
+    console.warn('Store not available in delProject, project not deleted');
+    return;
   }
-  
-  // Clear projectId from tasks
-  tasks.forEach(t => {
-    if (String(t.projectId || '') === String(id)) {
-      t.projectId = '';
-    }
-  });
   
   // Clear matrix view if deleted project was selected
   if (window.selectedProjectId === id) {

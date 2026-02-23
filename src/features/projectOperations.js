@@ -233,16 +233,8 @@ export async function toggleProjectOpen(ctx, id) {
       : [...open, id];
     updateStoreSafely({ openProjects: next });
   } else {
-    // Fallback: update local variable
-    const open = Array.isArray(window.openProjects) 
-      ? window.openProjects 
-      : (window.openProjects instanceof Set ? Array.from(window.openProjects) : []);
-    const next = open.includes(id) 
-      ? open.filter(x => x !== id) 
-      : [...open, id];
-    window.openProjects = next;
-    await save();
-    if (render) render();
+    // Fallback: store not initialized (shouldn't happen in normal flow)
+    console.warn('Store not available in toggleProjectOpen, openProjects not updated');
   }
 }
 
@@ -551,7 +543,431 @@ export function switchProjectPageTab(ctx, tab) {
     }
   } else if (tab === 'milestones') {
     if (renderProjectMilestones) {
-      renderProjectMilestones();
+      renderProjectMilestones(ctx);
     }
+  }
+}
+
+// ═══════════════════════ PROJECT MILESTONE OPERATIONS ═══════════════════════
+
+/**
+ * Render project milestones panel
+ */
+export function renderProjectMilestones(ctx) {
+  const { projects, esc, normalizeProjectIdValue } = ctx;
+  const selectedProjectId = typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null;
+  
+  // Try to get project ID from selectedProjectId or from the matrix selector
+  let projectId = selectedProjectId;
+  if (!projectId) {
+    const selector = document.getElementById('matrix-project-select');
+    if (selector && selector.value) {
+      projectId = normalizeProjectIdValue ? normalizeProjectIdValue(selector.value) : selector.value;
+    }
+  } else {
+    projectId = normalizeProjectIdValue ? normalizeProjectIdValue(projectId) : projectId;
+  }
+  
+  if (!projectId) {
+    const panelEl = document.getElementById('project-milestones-panel-content');
+    if (panelEl) {
+      panelEl.innerHTML = '<div style="font-size:12px;color:var(--text-dim);padding:40px;text-align:center;">Please select a project first</div>';
+    }
+    return;
+  }
+  
+  const project = projects.find(p => p.id === projectId);
+  if (!project) {
+    const panelEl = document.getElementById('project-milestones-panel-content');
+    if (panelEl) {
+      panelEl.innerHTML = '<div style="font-size:12px;color:var(--text-dim);padding:40px;text-align:center;">Project not found</div>';
+    }
+    return;
+  }
+  
+  const panelEl = document.getElementById('project-milestones-panel-content');
+  if (!panelEl) return;
+  
+  const milestones = project.milestones || [];
+  const escFn = esc || ((s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'));
+  
+  let html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">';
+  html += '<h3 style="font-size:14px;font-weight:600;color:var(--text);margin:0;">Milestones</h3>';
+  html += '<button data-action="add-milestone" style="padding:6px 12px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;">＋ Add</button>';
+  html += '</div>';
+  
+  if (milestones.length > 0) {
+    milestones.forEach(m => {
+      const dueDate = m.dueDate ? new Date(m.dueDate).toLocaleDateString() : '';
+      html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;">`;
+      html += `<div style="display:flex;align-items:flex-start;gap:8px;">`;
+      // Use global wrapper functions for inline handlers
+      const toggleFn = typeof toggleMilestone === 'function' ? 'toggleMilestone' : 'window.Petal?.features?.projectOperations?.toggleMilestone';
+      const deleteFn = typeof deleteMilestone === 'function' ? 'deleteMilestone' : 'window.Petal?.features?.projectOperations?.deleteMilestone';
+      html += `<input type="checkbox" ${m.done ? 'checked' : ''} onchange="${toggleFn}(${projectId}, ${m.id})" style="margin-top:4px;cursor:pointer;">`;
+      html += `<div style="flex:1;"><div style="font-size:14px;font-weight:500;color:var(--text);${m.done ? 'text-decoration:line-through;opacity:0.6;' : ''}">${escFn(m.title)}</div>`;
+      if (dueDate) {
+        html += `<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Due: ${escFn(dueDate)}</div>`;
+      }
+      if (m.linkedTaskIds && m.linkedTaskIds.length > 0) {
+        html += `<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Linked to ${m.linkedTaskIds.length} task(s)</div>`;
+      }
+      if (m.linkedFileIds && m.linkedFileIds.length > 0) {
+        html += `<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Linked to ${m.linkedFileIds.length} file(s)</div>`;
+      }
+      html += `</div>`;
+      html += `<button onclick="${deleteFn}(${projectId}, ${m.id})" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:10px;cursor:pointer;">Delete</button>`;
+      html += `</div></div>`;
+    });
+  } else {
+    html += '<div style="font-size:12px;color:var(--text-dim);padding:40px;text-align:center;">No milestones yet. Click Add to create one.</div>';
+  }
+  
+  panelEl.innerHTML = html;
+}
+
+/**
+ * Add a new milestone to a project
+ */
+export async function addMilestone(ctx) {
+  const { projects, save, renderProjectMilestones, switchProjectPageTab, normalizeProjectIdValue } = ctx;
+  const selectedProjectId = typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null;
+  
+  // Try to get project ID from selectedProjectId or from the matrix selector
+  let projectId = selectedProjectId;
+  if (!projectId) {
+    const selector = document.getElementById('matrix-project-select');
+    if (selector && selector.value) {
+      projectId = normalizeProjectIdValue ? normalizeProjectIdValue(selector.value) : selector.value;
+    }
+  } else {
+    projectId = normalizeProjectIdValue ? normalizeProjectIdValue(projectId) : projectId;
+  }
+  
+  if (!projectId) {
+    alert('Please select a project first');
+    return;
+  }
+  
+  const project = projects.find(p => p.id === projectId);
+  if (!project) {
+    alert('Project not found');
+    return;
+  }
+  
+  const title = prompt('Enter milestone title:');
+  if (!title || !title.trim()) return;
+  
+  const newMilestone = {
+    id: Date.now(),
+    title: title.trim(),
+    done: false,
+    linkedTaskIds: [],
+    linkedFileIds: [],
+    dueDate: ''
+  };
+  
+  // Use store if available
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    const updatedProjects = (state.projects || []).map(p => {
+      if (p.id === projectId) {
+        return {
+          ...p,
+          milestones: [...(p.milestones || []), newMilestone]
+        };
+      }
+      return p;
+    });
+    updateStoreSafely({ projects: updatedProjects });
+  } else {
+    if (!project.milestones) project.milestones = [];
+    project.milestones.push(newMilestone);
+    if (save) await save();
+  }
+  
+  // Refresh the milestones view if we're on that tab
+  const currentProjectPageTab = typeof window.currentProjectPageTab !== 'undefined' ? window.currentProjectPageTab : null;
+  if (currentProjectPageTab === 'milestones') {
+    if (renderProjectMilestones) {
+      renderProjectMilestones(ctx);
+    }
+  } else {
+    // If not on milestones tab, switch to it and render
+    if (switchProjectPageTab) {
+      switchProjectPageTab(ctx, 'milestones');
+    }
+  }
+}
+
+/**
+ * Toggle milestone completion
+ */
+export async function toggleMilestone(ctx, projectId, milestoneId) {
+  const { projects, save, renderProjectMilestones } = ctx;
+  
+  const project = projects.find(p => p.id === projectId);
+  if (!project || !project.milestones) return;
+  
+  const milestone = project.milestones.find(m => m.id === milestoneId);
+  if (!milestone) return;
+  
+  // Use store if available
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    const updatedProjects = (state.projects || []).map(p => {
+      if (p.id === projectId) {
+        return {
+          ...p,
+          milestones: (p.milestones || []).map(m => 
+            m.id === milestoneId ? { ...m, done: !m.done } : m
+          )
+        };
+      }
+      return p;
+    });
+    updateStoreSafely({ projects: updatedProjects });
+  } else {
+    milestone.done = !milestone.done;
+    if (save) await save();
+  }
+  
+  if (renderProjectMilestones) {
+    renderProjectMilestones(ctx);
+  }
+}
+
+/**
+ * Delete a milestone
+ */
+export async function deleteMilestone(ctx, projectId, milestoneId) {
+  const { projects, save, renderProjectMilestones } = ctx;
+  
+  const project = projects.find(p => p.id === projectId);
+  if (!project || !project.milestones) return;
+  
+  if (confirm('Delete this milestone?')) {
+    // Use store if available
+    if (window.Petal?.store) {
+      const state = window.Petal.store.getState();
+      const updatedProjects = (state.projects || []).map(p => {
+        if (p.id === projectId) {
+          return {
+            ...p,
+            milestones: (p.milestones || []).filter(m => m.id !== milestoneId)
+          };
+        }
+        return p;
+      });
+      updateStoreSafely({ projects: updatedProjects });
+    } else {
+      project.milestones = project.milestones.filter(m => m.id !== milestoneId);
+      if (save) await save();
+    }
+    
+    if (renderProjectMilestones) {
+      renderProjectMilestones(ctx);
+    }
+  }
+}
+
+// ═══════════════════════ PROJECT CHECKPOINT OPERATIONS ═══════════════════════
+
+/**
+ * Render project checkpoints
+ */
+export function renderProjectCheckpoints(ctx, project) {
+  const { esc } = ctx;
+  
+  const checkpointsEl = document.getElementById('project-checkpoints-list');
+  if (!checkpointsEl) return;
+  
+  const checkpoints = project.checkpoints || [];
+  if (checkpoints.length === 0) {
+    checkpointsEl.innerHTML = '<div style="font-size:11px;color:var(--text-light);font-style:italic;text-align:center;padding:20px;">No checkpoints yet. Click "+ Add Checkpoint" to create one.</div>';
+    return;
+  }
+  
+  // Sort newest first
+  const sortedCheckpoints = [...checkpoints].sort((a, b) => (b.date || 0) - (a.date || 0));
+  const escFn = esc || ((s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'));
+  
+  const html = sortedCheckpoints.map(cp => {
+    const date = new Date(cp.date || Date.now());
+    const dateStr = date.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
+    return `<div style="padding:12px;background:var(--bg2);border-left:4px solid var(--rose);border-radius:6px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+        <div style="font-size:13px;font-weight:600;color:var(--text);">${escFn(cp.name || 'Unnamed')}</div>
+        <div style="font-size:10px;color:var(--text-dim);">${dateStr}</div>
+      </div>
+      ${cp.note ? `<div style="font-size:11px;color:var(--text-dim);white-space:pre-wrap;margin-top:4px;">${escFn(cp.note)}</div>` : ''}
+    </div>`;
+  }).join('');
+  
+  checkpointsEl.innerHTML = html;
+}
+
+/**
+ * Toggle add checkpoint form
+ */
+export function toggleAddCheckpoint() {
+  const form = document.getElementById('add-checkpoint-form');
+  const nameInput = document.getElementById('checkpoint-name');
+  if (form && nameInput) {
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    if (form.style.display === 'block') {
+      nameInput.focus();
+    }
+  }
+}
+
+/**
+ * Cancel add checkpoint
+ */
+export function cancelAddCheckpoint() {
+  const form = document.getElementById('add-checkpoint-form');
+  const nameInput = document.getElementById('checkpoint-name');
+  const noteInput = document.getElementById('checkpoint-note');
+  if (form) form.style.display = 'none';
+  if (nameInput) nameInput.value = '';
+  if (noteInput) noteInput.value = '';
+}
+
+/**
+ * Save checkpoint
+ */
+export async function saveCheckpoint(ctx) {
+  const { projects, save, renderProjectCheckpoints } = ctx;
+  const selectedProjectId = typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null;
+  
+  if (!selectedProjectId) return;
+  const project = projects.find(p => p.id === selectedProjectId);
+  if (!project) return;
+  
+  const nameInput = document.getElementById('checkpoint-name');
+  const noteInput = document.getElementById('checkpoint-note');
+  if (!nameInput || !noteInput) return;
+  
+  const name = nameInput.value.trim();
+  if (!name) {
+    alert('Please enter a checkpoint name');
+    return;
+  }
+  
+  const newCheckpoint = {
+    id: Date.now(),
+    name: name,
+    date: Date.now(),
+    note: noteInput.value.trim()
+  };
+  
+  // Use store if available
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    const updatedProjects = (state.projects || []).map(p => {
+      if (p.id === selectedProjectId) {
+        return {
+          ...p,
+          checkpoints: [...(p.checkpoints || []), newCheckpoint]
+        };
+      }
+      return p;
+    });
+    updateStoreSafely({ projects: updatedProjects });
+  } else {
+    if (!project.checkpoints) project.checkpoints = [];
+    project.checkpoints.push(newCheckpoint);
+    if (save) await save();
+  }
+  
+  if (renderProjectCheckpoints) {
+    renderProjectCheckpoints(ctx, project);
+  }
+  
+  // Clear and hide form
+  nameInput.value = '';
+  noteInput.value = '';
+  const form = document.getElementById('add-checkpoint-form');
+  if (form) form.style.display = 'none';
+}
+
+// ═══════════════════════ FILE VERSION OPERATIONS ═══════════════════════
+
+/**
+ * Toggle file version history visibility
+ */
+export function toggleFileVersionHistory(versionId) {
+  const el = document.getElementById(versionId);
+  if (el) {
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  }
+}
+
+/**
+ * Add new file version
+ */
+export async function addFileVersion(ctx, projectId, fileDataAttr) {
+  const { projects, save, renderFilesTab } = ctx;
+  
+  const project = projects.find(p => p.id === projectId);
+  if (!project) return;
+  
+  try {
+    const fileLink = JSON.parse(fileDataAttr.replace(/&#39;/g, "'"));
+    const version = prompt('Version number (e.g., 0.3):');
+    if (!version) return;
+    
+    const note = prompt('Version notes (what changed):');
+    if (note === null) return; // User cancelled
+    
+    // Find file in project
+    const allFiles = project.files || [];
+    const fileIndex = allFiles.findIndex(f => {
+      const fObj = typeof f === 'object' ? f : { abs_path: f };
+      const match = (fObj.onedrive_rel && fileLink.onedrive_rel && fObj.onedrive_rel === fileLink.onedrive_rel) ||
+                    (fObj.abs_path && fileLink.abs_path && fObj.abs_path === fileLink.abs_path);
+      return match;
+    });
+    
+    if (fileIndex >= 0) {
+      const file = allFiles[fileIndex];
+      const fileObj = typeof file === 'object' ? file : { abs_path: file };
+      
+      if (!fileObj.versions) fileObj.versions = [];
+      fileObj.versions.push({
+        version: version.trim(),
+        date: Date.now(),
+        note: note.trim()
+      });
+      fileObj.version = version.trim();
+      
+      allFiles[fileIndex] = fileObj;
+      
+      // Use store if available
+      if (window.Petal?.store) {
+        const state = window.Petal.store.getState();
+        const updatedProjects = (state.projects || []).map(p => {
+          if (p.id === projectId) {
+            return { ...p, files: allFiles };
+          }
+          return p;
+        });
+        updateStoreSafely({ projects: updatedProjects });
+      } else {
+        project.files = allFiles;
+        if (save) await save();
+      }
+      
+      // Re-render files tab
+      const currentFilesTab = typeof window.currentFilesTab !== 'undefined' ? window.currentFilesTab : 'pinned';
+      if (renderFilesTab) {
+        await renderFilesTab(currentFilesTab, project);
+      }
+    } else {
+      alert('File not found in project');
+    }
+  } catch (e) {
+    console.error('Error adding file version:', e);
+    alert('Error adding version');
   }
 }

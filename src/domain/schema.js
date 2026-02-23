@@ -35,6 +35,11 @@ export const MATRIX_LANES = [
   { id: 'product', label: '🚀 Product', color: 'var(--sage)' }
 ];
 
+// Get default lane IDs (all lanes except unassigned)
+export function getDefaultLaneIds() {
+  return Object.keys(LANES);
+}
+
 // Board columns
 export const DEFAULT_BOARD_COLUMNS = ['Inbox', 'Backlog', 'Todo', 'Doing', 'Done'];
 

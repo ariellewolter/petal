@@ -108,68 +108,7 @@ export function setupEventDelegation() {
       return;
     }
     
-    // Modal actions - handle with namespace pattern: "modal:close", "modal:submit", etc.
-    const [namespace, modalAction] = action.includes(':') ? action.split(':') : [null, action];
-    
-    if (namespace === 'modal') {
-      e.stopPropagation();
-      
-      // Get modal ID from data attribute or infer from action
-      const modalId = actionBtn.getAttribute('data-modal-id');
-      
-      switch (modalAction) {
-        case 'close':
-          // Generic modal close - try to infer modal name from context
-          if (modalId) {
-            const closeFn = window[`close${modalId.charAt(0).toUpperCase() + modalId.slice(1)}Modal`];
-            if (closeFn) {
-              closeFn();
-              return;
-            }
-          }
-          // Try common modal close patterns
-          const modal = actionBtn.closest('.quick-capture-modal');
-          if (modal && modal.id) {
-            const modalName = modal.id.replace('-modal', '').replace(/-/g, '');
-            const closeFn = window[`close${modalName.charAt(0).toUpperCase() + modalName.slice(1).replace(/-([a-z])/g, (_, c) => c.toUpperCase())}Modal`];
-            if (closeFn) {
-              closeFn();
-              return;
-            }
-          }
-          // Fallback: try to find and hide modal
-          if (modal) {
-            modal.style.display = 'none';
-          }
-          break;
-          
-        case 'submit':
-        case 'save':
-          // Generic modal submit - try to infer modal name
-          if (modalId) {
-            const submitFn = window[`submit${modalId.charAt(0).toUpperCase() + modalId.slice(1)}Modal`] || 
-                            window[`save${modalId.charAt(0).toUpperCase() + modalId.slice(1)}`];
-            if (submitFn) {
-              submitFn();
-              return;
-            }
-          }
-          const submitModal = actionBtn.closest('.quick-capture-modal');
-          if (submitModal && submitModal.id) {
-            const modalName = submitModal.id.replace('-modal', '').replace(/-/g, '');
-            const submitFn = window[`submit${modalName.charAt(0).toUpperCase() + modalName.slice(1).replace(/-([a-z])/g, (_, c) => c.toUpperCase())}Modal`] ||
-                            window[`save${modalName.charAt(0).toUpperCase() + modalName.slice(1).replace(/-([a-z])/g, (_, c) => c.toUpperCase())}`];
-            if (submitFn) {
-              submitFn();
-              return;
-            }
-          }
-          break;
-      }
-      return;
-    }
-    
-    // Specific modal handlers (for backward compatibility and explicit control)
+    // Specific modal handlers (check these FIRST before generic handler)
     const modalHandlers = {
       'modal:close-edit': () => {
         if (window.closeEditModal) {
@@ -282,11 +221,101 @@ export function setupEventDelegation() {
           console.warn('submitRecurringModal not found');
         }
       },
+      'modal:close-habit': () => {
+        if (window.closeHabitModal) {
+          window.closeHabitModal();
+        } else {
+          console.warn('closeHabitModal not found');
+        }
+      },
+      'modal:submit-habit': () => {
+        if (window.submitHabitModal) {
+          window.submitHabitModal();
+        } else {
+          console.warn('submitHabitModal not found');
+        }
+      },
+      'modal:close-routine': () => {
+        if (window.closeRoutineModal) {
+          window.closeRoutineModal();
+        } else {
+          console.warn('closeRoutineModal not found');
+        }
+      },
+      'modal:submit-routine': () => {
+        if (window.submitRoutineModal) {
+          window.submitRoutineModal();
+        } else {
+          console.warn('submitRoutineModal not found');
+        }
+      },
     };
     
     if (modalHandlers[action]) {
       e.stopPropagation();
       modalHandlers[action]();
+      return;
+    }
+    
+    // Generic modal handler (fallback for modal actions not in specific handlers)
+    // Handle with namespace pattern: "modal:close", "modal:submit", etc.
+    const [namespace, modalAction] = action.includes(':') ? action.split(':') : [null, action];
+    
+    if (namespace === 'modal') {
+      e.stopPropagation();
+      
+      // Get modal ID from data attribute or infer from action
+      const modalId = actionBtn.getAttribute('data-modal-id');
+      
+      switch (modalAction) {
+        case 'close':
+          // Generic modal close - try to infer modal name from context
+          if (modalId) {
+            const closeFn = window[`close${modalId.charAt(0).toUpperCase() + modalId.slice(1)}Modal`];
+            if (closeFn) {
+              closeFn();
+              return;
+            }
+          }
+          // Try common modal close patterns
+          const modal = actionBtn.closest('.quick-capture-modal');
+          if (modal && modal.id) {
+            const modalName = modal.id.replace('-modal', '').replace(/-/g, '');
+            const closeFn = window[`close${modalName.charAt(0).toUpperCase() + modalName.slice(1).replace(/-([a-z])/g, (_, c) => c.toUpperCase())}Modal`];
+            if (closeFn) {
+              closeFn();
+              return;
+            }
+          }
+          // Fallback: try to find and hide modal
+          if (modal) {
+            modal.style.display = 'none';
+          }
+          break;
+          
+        case 'submit':
+        case 'save':
+          // Generic modal submit - try to infer modal name
+          if (modalId) {
+            const submitFn = window[`submit${modalId.charAt(0).toUpperCase() + modalId.slice(1)}Modal`] || 
+                            window[`save${modalId.charAt(0).toUpperCase() + modalId.slice(1)}`];
+            if (submitFn) {
+              submitFn();
+              return;
+            }
+          }
+          const submitModal = actionBtn.closest('.quick-capture-modal');
+          if (submitModal && submitModal.id) {
+            const modalName = submitModal.id.replace('-modal', '').replace(/-/g, '');
+            const submitFn = window[`submit${modalName.charAt(0).toUpperCase() + modalName.slice(1).replace(/-([a-z])/g, (_, c) => c.toUpperCase())}Modal`] ||
+                            window[`save${modalName.charAt(0).toUpperCase() + modalName.slice(1).replace(/-([a-z])/g, (_, c) => c.toUpperCase())}`];
+            if (submitFn) {
+              submitFn();
+              return;
+            }
+          }
+          break;
+      }
       return;
     }
     
@@ -477,30 +506,6 @@ export function setupEventDelegation() {
       e.stopPropagation();
       const dateStr = actionBtn.getAttribute('data-date') || null;
       if (window.openAddEventModal) window.openAddEventModal(dateStr);
-      return;
-    }
-    
-    // Habit modal actions
-    if (action === 'modal:close-habit') {
-      e.stopPropagation();
-      if (window.closeHabitModal) window.closeHabitModal();
-      return;
-    }
-    if (action === 'modal:submit-habit') {
-      e.stopPropagation();
-      if (window.submitHabitModal) window.submitHabitModal();
-      return;
-    }
-    
-    // Routine modal actions
-    if (action === 'modal:close-routine') {
-      e.stopPropagation();
-      if (window.closeRoutineModal) window.closeRoutineModal();
-      return;
-    }
-    if (action === 'modal:submit-routine') {
-      e.stopPropagation();
-      if (window.submitRoutineModal) window.submitRoutineModal();
       return;
     }
     

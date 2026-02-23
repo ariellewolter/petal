@@ -1,181 +1,42 @@
 // ═══════════════════════ DATA MIGRATIONS ═══════════════════════
-// Functions to migrate data structures between versions
+// Migration functions for data schema updates
 
-// ═══════════════════════ SCHEMA VERSIONING ═══════════════════════
-// Current schema version - increment this when making breaking changes
+// Current schema version
 export const CURRENT_SCHEMA_VERSION = 1;
 
 /**
- * Get default state structure for current schema version
- * This ensures new keys are merged with defaults instead of replacing whole objects
+ * Migrate tasks for kanban board structure
+ * Ensures all tasks have proper status and boardOrder
  */
-export function getDefaultState() {
-  return {
-    schemaVersion: CURRENT_SCHEMA_VERSION,
-    tasks: [],
-    projects: [],
-    openProjects: [],
-    settings: {},
-    events: [],
-    recurringRules: [],
-    habits: [],
-    habitCheckins: {},
-    routines: [],
-    routineCheckins: {},
-    files: [],
-    workflow: {
-      laneOrder: ["lab", "comp", "writing", "presentation", "personal", "product", "unassigned"],
-      columns: {
-        lab: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-        comp: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-        writing: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-        presentation: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-        personal: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-        product: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-        unassigned: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-      },
-      placement: {},
-      rules: {
-        tagToLane: {
-          "#lab": "lab",
-          "#analysis": "comp",
-          "#paper": "writing",
-          "#slides": "presentation",
-          "#personal": "personal",
-          "#product": "product"
-        }
-      },
-      ui: {
-        activeProjectId: "all",
-        showUnassigned: false,
-        showActiveFiles: false
-      }
-    }
-  };
-}
-
-/**
- * Merge loaded state with defaults to ensure new keys are added safely
- * This prevents data loss when new features add new keys to existing objects
- */
-export function mergeWithDefaults(loadedState) {
-  const defaults = getDefaultState();
-  const merged = { ...defaults };
-  
-  // Merge top-level arrays and objects
-  Object.keys(defaults).forEach(key => {
-    if (key === 'schemaVersion') {
-      // Always use loaded version (or default if missing)
-      merged[key] = loadedState[key] || defaults[key];
-    } else if (Array.isArray(defaults[key])) {
-      // Arrays: use loaded if present, otherwise default
-      merged[key] = Array.isArray(loadedState[key]) ? loadedState[key] : defaults[key];
-    } else if (typeof defaults[key] === 'object' && defaults[key] !== null) {
-      // Objects: deep merge
-      merged[key] = { ...defaults[key], ...(loadedState[key] || {}) };
-      
-      // Special handling for nested objects (like workflow)
-      if (key === 'workflow' && loadedState.workflow) {
-        merged.workflow = {
-          laneOrder: Array.isArray(loadedState.workflow.laneOrder) 
-            ? loadedState.workflow.laneOrder 
-            : defaults.workflow.laneOrder,
-          columns: { ...defaults.workflow.columns, ...(loadedState.workflow.columns || {}) },
-          placement: { ...defaults.workflow.placement, ...(loadedState.workflow.placement || {}) },
-          rules: { ...defaults.workflow.rules, ...(loadedState.workflow.rules || {}) },
-          ui: { ...defaults.workflow.ui, ...(loadedState.workflow.ui || {}) }
-        };
-      }
-    } else {
-      // Primitives: use loaded if present, otherwise default
-      merged[key] = loadedState[key] !== undefined ? loadedState[key] : defaults[key];
-    }
-  });
-  
-  // Preserve any extra keys from loaded state (for forward compatibility)
-  Object.keys(loadedState).forEach(key => {
-    if (!(key in defaults)) {
-      merged[key] = loadedState[key];
-    }
-  });
-  
-  return merged;
-}
-
-/**
- * Migrate data from one schema version to another
- * Returns: { migrated: boolean, data: object, fromVersion: number, toVersion: number }
- */
-export function migrateData(data) {
-  const loadedVersion = data.schemaVersion || 0; // 0 = no version (legacy data)
-  const targetVersion = CURRENT_SCHEMA_VERSION;
-  
-  if (loadedVersion === targetVersion) {
-    // Already at current version, just merge defaults
-    return {
-      migrated: false,
-      data: mergeWithDefaults(data),
-      fromVersion: loadedVersion,
-      toVersion: targetVersion
-    };
+export function migrateTasksForKanban() {
+  // Get settings from store
+  const store = window.Petal?.store;
+  if (!store) {
+    console.warn('Store not available for migration');
+    return;
   }
   
-  // Migration chain: apply each migration in order
-  let migratedData = { ...data };
-  let currentVersion = loadedVersion;
+  const state = store.getState();
+  const settings = state.settings || {};
   
-  console.log(`🔄 Migrating data from schema version ${currentVersion} to ${targetVersion}`);
-  
-  // Migration 0 → 1: Add schemaVersion and ensure all default keys exist
-  if (currentVersion < 1) {
-    console.log('  → Applying migration 0→1: Adding schemaVersion and default keys');
-    migratedData = mergeWithDefaults(migratedData);
-    migratedData.schemaVersion = 1;
-    currentVersion = 1;
+  // Ensure board settings exist
+  if (!settings.boards || typeof settings.boards !== 'object') {
+    settings.boards = {};
+  }
+  const DEFAULT_BOARD_COLUMNS = window.DEFAULT_BOARD_COLUMNS || ['Inbox', 'Backlog', 'Todo', 'Doing', 'Done'];
+  if (!Array.isArray(settings.boards.defaultColumns) || settings.boards.defaultColumns.length === 0) {
+    settings.boards.defaultColumns = [...DEFAULT_BOARD_COLUMNS];
   }
   
-  // Future migrations go here:
-  // if (currentVersion < 2) {
-  //   migratedData = migrateToVersion2(migratedData);
-  //   currentVersion = 2;
-  // }
-  
-  if (currentVersion !== targetVersion) {
-    console.error(`❌ Migration incomplete: ended at version ${currentVersion}, target is ${targetVersion}`);
-    // Still return merged data to prevent crashes
-    return {
-      migrated: true,
-      data: mergeWithDefaults(migratedData),
-      fromVersion: loadedVersion,
-      toVersion: currentVersion,
-      incomplete: true
-    };
-  }
-  
-  console.log(`✅ Migration complete: ${loadedVersion} → ${targetVersion}`);
-  
-  return {
-    migrated: true,
-    data: migratedData,
-    fromVersion: loadedVersion,
-    toVersion: targetVersion
-  };
-}
-
-/**
- * Migrate tasks for Kanban board (ensure boardOrder exists)
- */
-export function migrateTasksForKanban(tasks, settings, DEFAULT_BOARD_COLUMNS) {
-  ensureBoardSettings(settings, DEFAULT_BOARD_COLUMNS);
+  const getBoardColumns = () => settings.boards.defaultColumns;
   const orderByColumn = {};
-  getBoardColumns(settings, DEFAULT_BOARD_COLUMNS).forEach((c, idx) => {
+  getBoardColumns().forEach((c, idx) => {
     orderByColumn[c] = (idx + 1) * 1024;
   });
   
-  return tasks.map((t) => {
-    const status = getBoardColumns(settings, DEFAULT_BOARD_COLUMNS).includes(t.status) 
-      ? t.status 
-      : (t.done ? 'Done' : 'Todo');
+  const tasks = state.tasks || [];
+  const updatedTasks = tasks.map((t) => {
+    const status = getBoardColumns().includes(t.status) ? t.status : (t.done ? 'Done' : 'Todo');
     const projectId = normalizeProjectIdValue(t.projectId);
     let boardOrder = Number(t.boardOrder);
     if (!Number.isFinite(boardOrder)) {
@@ -184,32 +45,15 @@ export function migrateTasksForKanban(tasks, settings, DEFAULT_BOARD_COLUMNS) {
     }
     return { ...t, status, projectId, boardOrder };
   });
-}
-
-/**
- * Ensure board settings exist
- */
-function ensureBoardSettings(settings, DEFAULT_BOARD_COLUMNS) {
-  if (!settings || typeof settings !== 'object') settings = {};
-  if (!settings.boards || typeof settings.boards !== 'object') settings.boards = {};
-  if (!Array.isArray(settings.boards.defaultColumns) || settings.boards.defaultColumns.length === 0) {
-    settings.boards.defaultColumns = [...DEFAULT_BOARD_COLUMNS];
-  }
-  if (!settings.boards.projectBoards || typeof settings.boards.projectBoards !== 'object') {
-    settings.boards.projectBoards = {};
+  
+  // Update store if tasks changed
+  if (JSON.stringify(tasks) !== JSON.stringify(updatedTasks)) {
+    store.setState({ tasks: updatedTasks, settings });
   }
 }
 
 /**
- * Get board columns
- */
-function getBoardColumns(settings, DEFAULT_BOARD_COLUMNS) {
-  ensureBoardSettings(settings, DEFAULT_BOARD_COLUMNS);
-  return settings.boards.defaultColumns;
-}
-
-/**
- * Normalize project ID value
+ * Normalize project ID value (handles string/number conversion)
  */
 function normalizeProjectIdValue(value) {
   if (value === undefined || value === null || value === '') return '';
@@ -218,54 +62,467 @@ function normalizeProjectIdValue(value) {
 }
 
 /**
- * Migrate notes fields to ensure all tasks have note, noteUpdatedAt, and log
+ * Migrate nested subtasks to be actual tasks with parentTaskId
  */
-export function migrateNotesFields(tasks, projects) {
+export function migrateSubtasksToTasks() {
+  const store = window.Petal?.store;
+  if (!store) {
+    console.warn('Store not available for migration');
+    return false;
+  }
+  
+  const state = store.getState();
+  let tasks = [...(state.tasks || [])];
+  let migrated = false;
+  
+  tasks.forEach(t => {
+    if (t.subtasks && Array.isArray(t.subtasks) && t.subtasks.length > 0) {
+      // Convert nested subtasks to tasks
+      t.subtasks.forEach(st => {
+        // Check if this subtask was already migrated (exists as a task)
+        const existingTask = tasks.find(task => 
+          task.parentTaskId === t.id && 
+          task.title === st.title &&
+          Math.abs(task.id - st.id) < 1000 // IDs should be close if migrated
+        );
+        
+        if (!existingTask) {
+          // Create a new task from the subtask
+          const newTask = {
+            id: st.id || Date.now() + Math.random(),
+            title: st.title || '',
+            notes: st.notes || '',
+            priority: st.priority || 'medium',
+            due: st.due || '',
+            files: st.files || [],
+            done: st.done || false,
+            status: st.done ? 'Done' : 'Todo',
+            projectId: t.projectId || null,
+            parentTaskId: t.id,
+            lane: t.lane || null,
+            stage: t.stage || 'planned',
+            boardOrder: 1024
+          };
+          tasks.push(newTask);
+          migrated = true;
+        }
+      });
+      // Clear the nested subtasks array
+      delete t.subtasks;
+      migrated = true;
+    }
+  });
+  
+  if (migrated) {
+    store.setState({ tasks });
+  }
+  
+  return migrated;
+}
+
+/**
+ * Migrate note fields to ensure all tasks and files have note fields
+ */
+export function migrateNotesFields() {
+  const store = window.Petal?.store;
+  if (!store) {
+    console.warn('Store not available for migration');
+    return;
+  }
+  
+  const state = store.getState();
+  let tasks = [...(state.tasks || [])];
+  let projects = [...(state.projects || [])];
   let migrated = false;
   
   // Ensure all tasks have note, noteUpdatedAt, and log fields
-  tasks.forEach(task => {
+  tasks = tasks.map(task => {
+    const updated = { ...task };
     if (task.note === undefined) {
-      task.note = '';
+      updated.note = '';
       migrated = true;
     }
     if (task.noteUpdatedAt === undefined) {
-      task.noteUpdatedAt = null;
+      updated.noteUpdatedAt = null;
       migrated = true;
     }
     if (!task.log || !Array.isArray(task.log)) {
-      task.log = [];
+      updated.log = [];
       migrated = true;
     }
     // Ensure fileIds exists
     if (!task.fileIds || !Array.isArray(task.fileIds)) {
-      task.fileIds = [];
+      updated.fileIds = [];
       migrated = true;
     }
+    return updated;
   });
   
   // Ensure all project files have note and noteUpdatedAt fields
-  projects.forEach(project => {
+  projects = projects.map(project => {
     if (project.files && Array.isArray(project.files)) {
-      project.files.forEach((file, index) => {
+      const updatedFiles = project.files.map((file, index) => {
         if (typeof file === 'object' && file !== null) {
+          const updated = { ...file };
           if (file.note === undefined) {
-            file.note = '';
+            updated.note = '';
             migrated = true;
           }
           if (file.noteUpdatedAt === undefined) {
-            file.noteUpdatedAt = '';
+            updated.noteUpdatedAt = '';
             migrated = true;
           }
           // Ensure file has an ID
           if (!file.id) {
-            file.id = 'file-' + project.id + '-' + index;
+            updated.id = 'file-' + project.id + '-' + index;
             migrated = true;
           }
+          return updated;
+        } else if (typeof file === 'string') {
+          // Convert legacy string format to object
+          migrated = true;
+          return {
+            id: 'file-' + project.id + '-' + index,
+            label: file,
+            abs_path: file,
+            note: '',
+            noteUpdatedAt: ''
+          };
         }
+        return file;
       });
+      return { ...project, files: updatedFiles };
+    }
+    return project;
+  });
+  
+  // Ensure all task files have note fields
+  tasks = tasks.map(task => {
+    if (task.files && Array.isArray(task.files)) {
+      const updatedFiles = task.files.map((file) => {
+        if (typeof file === 'object' && file !== null) {
+          const updated = { ...file };
+          if (file.note === undefined) {
+            updated.note = '';
+            migrated = true;
+          }
+          if (file.noteUpdatedAt === undefined) {
+            updated.noteUpdatedAt = '';
+            migrated = true;
+          }
+          return updated;
+        }
+        return file;
+      });
+      return { ...task, files: updatedFiles };
+    }
+    return task;
+  });
+  
+  if (migrated) {
+    store.setState({ tasks, projects });
+    console.log('✓ Migrated note fields for backward compatibility');
+  }
+}
+
+/**
+ * Migrate to canonical file registry
+ * Promotes embedded task.files to project.files registry and replaces them with fileIds references
+ */
+export function migrateToCanonicalFileRegistry() {
+  const store = window.Petal?.store;
+  if (!store) {
+    console.warn('Store not available for migration');
+    return false;
+  }
+  
+  const state = store.getState();
+  let tasks = [...(state.tasks || [])];
+  let projects = [...(state.projects || [])];
+  let migrated = false;
+  
+  // Ensure all projects have files array
+  projects = projects.map(project => {
+    if (!project.files) {
+      return { ...project, files: [] };
+    }
+    return project;
+  });
+  
+  // Migrate task.files to canonical registry
+  tasks.forEach(task => {
+    if (!task.fileIds) {
+      task.fileIds = [];
+    }
+    
+    // If task has embedded files, migrate them
+    if (task.files && Array.isArray(task.files) && task.files.length > 0) {
+      const projectId = task.projectId;
+      if (projectId) {
+        const project = projects.find(p => p.id === projectId);
+        if (project) {
+          // Ensure project has files array
+          if (!project.files) {
+            project.files = [];
+          }
+          
+          task.files.forEach(embeddedFile => {
+            // Normalize embedded file to object
+            const fileObj = typeof embeddedFile === 'string' 
+              ? { abs_path: embeddedFile, label: embeddedFile }
+              : embeddedFile;
+            
+            if (!fileObj || typeof fileObj !== 'object') return;
+            
+            // Try to find existing file in project registry
+            let canonicalFile = project.files.find(f => {
+              if (!f) return false;
+              return (f.onedrive_rel && fileObj.onedrive_rel && f.onedrive_rel === fileObj.onedrive_rel) ||
+                     (f.abs_path && fileObj.abs_path && f.abs_path === fileObj.abs_path) ||
+                     (f.share_url && fileObj.share_url && f.share_url === fileObj.share_url);
+            });
+            
+            if (!canonicalFile) {
+              // Create new canonical file in registry
+              canonicalFile = {
+                id: fileObj.id || `file_${project.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                label: fileObj.label || fileObj.name || (fileObj.abs_path ? fileObj.abs_path.split(/[/\\]/).pop() : ''),
+                abs_path: fileObj.abs_path || null,
+                onedrive_rel: fileObj.onedrive_rel || null,
+                share_url: fileObj.share_url || null,
+                type: fileObj.type || null,
+                note: fileObj.note || '',
+                noteUpdatedAt: fileObj.noteUpdatedAt || '',
+                versions: fileObj.versions || [],
+                versionCurrent: fileObj.versionCurrent || null,
+                pinned: fileObj.pinned || false,
+                isCurrent: fileObj.isCurrent !== undefined ? fileObj.isCurrent : true,
+                artifactTag: fileObj.artifactTag || null
+              };
+              project.files.push(canonicalFile);
+              migrated = true;
+            } else {
+              // Merge any missing fields from embedded file
+              if (fileObj.note && !canonicalFile.note) {
+                canonicalFile.note = fileObj.note;
+                canonicalFile.noteUpdatedAt = fileObj.noteUpdatedAt || new Date().toISOString();
+                migrated = true;
+              }
+            }
+            
+            // Add file ID to task.fileIds if not already present
+            if (!task.fileIds.includes(canonicalFile.id)) {
+              task.fileIds.push(canonicalFile.id);
+              migrated = true;
+            }
+          });
+        }
+      }
+      
+      // Keep task.files for backward compatibility during migration, but mark as legacy
+      if (!task._legacyFiles) {
+        task._legacyFiles = [...task.files];
+        migrated = true;
+      }
     }
   });
   
+  // Initialize project checkpoints if missing
+  projects = projects.map(project => {
+    if (!project.checkpoints) {
+      return { ...project, checkpoints: [] };
+    }
+    return project;
+  });
+  
+  if (migrated) {
+    store.setState({ tasks, projects });
+    console.log('✓ Migrated to canonical file registry');
+  }
+  
   return migrated;
 }
+
+/**
+ * Main migration function that orchestrates all migrations
+ * Checks schema version and applies migrations sequentially
+ * Returns: { migrated: boolean, data: object, fromVersion: number, toVersion: number }
+ */
+export function migrateData(data) {
+  if (!data || typeof data !== 'object') {
+    // If no data, return defaults with current version
+    return {
+      migrated: false,
+      fromVersion: 0,
+      toVersion: CURRENT_SCHEMA_VERSION,
+      data: getDefaultState()
+    };
+  }
+  
+  const currentVersion = data.schemaVersion || 0;
+  const targetVersion = CURRENT_SCHEMA_VERSION;
+  let migratedData = { ...data };
+  let migrated = false;
+  
+  // If already at current version, just merge defaults and return
+  if (currentVersion >= targetVersion) {
+    migratedData = mergeDefaults(migratedData);
+    return {
+      migrated: false,
+      fromVersion: currentVersion,
+      toVersion: targetVersion,
+      data: migratedData
+    };
+  }
+  
+  // Apply migrations sequentially
+  let version = currentVersion;
+  
+  // Migration 0 → 1: Initial migrations
+  if (version < 1) {
+    console.log('  → Applying migration 0→1: Initial schema setup');
+    
+    // Run all initial migrations
+    const store = window.Petal?.store;
+    if (store) {
+      // Temporarily set state to run migrations
+      const prevState = store.getState();
+      store.setState(migratedData);
+      
+      // Run migrations
+      migrateTasksForKanban();
+      migrateSubtasksToTasks();
+      migrateNotesFields();
+      migrateToCanonicalFileRegistry();
+      
+      // Get migrated state
+      migratedData = store.getState();
+      
+      // Restore previous state
+      store.setState(prevState);
+    }
+    
+    migratedData.schemaVersion = 1;
+    version = 1;
+    migrated = true;
+  }
+  
+  // Future migrations would go here:
+  // if (version < 2) {
+  //   console.log('  → Applying migration 1→2: [describe change]');
+  //   migratedData = migrateToVersion2(migratedData);
+  //   migratedData.schemaVersion = 2;
+  //   version = 2;
+  //   migrated = true;
+  // }
+  
+  // Always merge defaults to ensure all new fields exist
+  migratedData = mergeDefaults(migratedData);
+  
+  return {
+    migrated,
+    fromVersion: currentVersion,
+    toVersion: targetVersion,
+    data: migratedData
+  };
+}
+
+/**
+ * Merge default state values into migrated data
+ * Ensures all new fields have default values
+ */
+function mergeDefaults(data) {
+  const defaults = getDefaultState();
+  return {
+    ...defaults,
+    ...data,
+    // Merge nested objects
+    settings: {
+      ...defaults.settings,
+      ...(data.settings || {})
+    },
+    workflow: {
+      ...defaults.workflow,
+      ...(data.workflow || {})
+    }
+  };
+}
+
+/**
+ * Get default workflow structure
+ * Centralized source for workflow defaults to avoid duplication
+ */
+export function getDefaultWorkflow() {
+  return {
+    laneOrder: ["lab", "comp", "writing", "presentation", "personal", "product", "unassigned"],
+    columns: {
+      lab: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+      comp: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+      writing: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+      presentation: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+      personal: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+      product: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+      unassigned: ["Backlog", "Next", "Doing", "Blocked", "Done"],
+    },
+    placement: {},
+    rules: {
+      tagToLane: {
+        "#lab": "lab",
+        "#analysis": "comp",
+        "#paper": "writing",
+        "#slides": "presentation",
+        "#personal": "personal",
+        "#product": "product"
+      }
+    },
+    ui: {
+      activeProjectId: "all",
+      showUnassigned: false,
+      showActiveFiles: false
+    }
+  };
+}
+
+/**
+ * Get default state structure
+ * Used for new installations and to fill in missing fields during migration
+ */
+function getDefaultState() {
+  return {
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    tasks: [],
+    projects: [],
+    openProjects: [],
+    settings: {
+      boards: {
+        defaultColumns: DEFAULT_BOARD_COLUMNS || ['Inbox', 'Backlog', 'Todo', 'Doing', 'Done']
+      }
+    },
+    events: [],
+    recurringRules: [],
+    habits: [],
+    habitCheckins: {},
+    routines: [],
+    routineCheckins: {},
+    currentView: 'tasks',
+    currentSort: 'all',
+    currentFilter: 'all',
+    currentProjFilter: 'all',
+    selectedColor: 1,
+    taskMode: 'list',
+    boardProjectFilter: 'all',
+    searchQuery: '',
+    currentFileView: 'all',
+    currentFileProjectFilter: 'all',
+    selectedProjectId: null,
+    files: [],
+    workflow: getDefaultWorkflow()
+  };
+}
+
+// Expose globally for backward compatibility
+window.migrateTasksForKanban = migrateTasksForKanban;
+window.migrateSubtasksToTasks = migrateSubtasksToTasks;
+window.migrateNotesFields = migrateNotesFields;
+window.migrateToCanonicalFileRegistry = migrateToCanonicalFileRegistry;
+window.migrateData = migrateData;

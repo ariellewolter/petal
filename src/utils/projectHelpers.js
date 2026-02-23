@@ -1,6 +1,8 @@
 // ═══════════════════════ PROJECT HELPERS ═══════════════════════
 // Utility functions for project data normalization and defaults
 
+import { getDefaultLaneIds } from '../domain/schema.js';
+
 /**
  * Returns default project brief structure
  */
@@ -107,8 +109,8 @@ export function normalizeProjectStructure(project) {
   })).filter(ms => ms.title) : [];
   
   normalized.workflowLanes = Array.isArray(project.workflowLanes) && project.workflowLanes.length
-    ? project.workflowLanes.filter(l => ['lab', 'comp', 'writing', 'presentation', 'personal', 'product'].includes(l))
-    : ['lab', 'comp', 'writing', 'presentation', 'personal', 'product'];
+    ? project.workflowLanes.filter(l => getDefaultLaneIds().includes(l))
+    : getDefaultLaneIds();
   
   normalized.templateId = project.templateId || '';
   normalized.checkpoints = Array.isArray(project.checkpoints) ? project.checkpoints : [];
@@ -195,6 +197,88 @@ export function normalizeProjectsData() {
   }
 }
 
+/**
+ * Get workflow lanes display text
+ * @param {Object} project - Project object
+ * @returns {string} HTML string for workflow lanes display
+ */
+export function getWorkflowLanesDisplay(project) {
+  const lanes = project.workflowLanes || [];
+  if (lanes.length === 0) {
+    return '<div style="font-size:11px;color:var(--text-dim);">All lanes allowed</div>';
+  }
+  const labels = { lab: '🧪 Lab', comp: '💻 Comp', writing: '📝 Writing', presentation: '📊 Presentation' };
+  return '<div style="font-size:11px;color:var(--text);">' + lanes.map(l => labels[l] || l).join(' • ') + '</div>';
+}
+
+/**
+ * Toggle workflow lanes edit mode
+ * @param {number|string} projectId - Project ID
+ */
+export function toggleWorkflowLanesEdit(projectId) {
+  const displayEl = document.getElementById(`workflow-lanes-display-${projectId}`);
+  const editEl = document.getElementById(`workflow-lanes-edit-${projectId}`);
+  if (displayEl && editEl) {
+    displayEl.style.display = 'none';
+    editEl.style.display = 'block';
+  }
+}
+
+/**
+ * Cancel workflow lanes edit
+ * @param {number|string} projectId - Project ID
+ */
+export function cancelWorkflowLanesEdit(projectId) {
+  const displayEl = document.getElementById(`workflow-lanes-display-${projectId}`);
+  const editEl = document.getElementById(`workflow-lanes-edit-${projectId}`);
+  if (displayEl && editEl) {
+    displayEl.style.display = 'block';
+    editEl.style.display = 'none';
+  }
+}
+
+/**
+ * Save workflow lanes for a project
+ * @param {Object} ctx - Page context with projects, tasks, save, rerenderViewIfActive
+ * @param {number|string} projectId - Project ID
+ */
+export async function saveWorkflowLanes(ctx, projectId) {
+  const { projects, tasks, save, rerenderViewIfActive } = ctx;
+  
+  const project = projects.find(p => p.id === projectId);
+  if (!project) return;
+  
+  const workflowLanes = [];
+  const labCheckbox = document.getElementById(`edit-workflow-lab-${projectId}`);
+  const compCheckbox = document.getElementById(`edit-workflow-comp-${projectId}`);
+  const writingCheckbox = document.getElementById(`edit-workflow-writing-${projectId}`);
+  const presentationCheckbox = document.getElementById(`edit-workflow-presentation-${projectId}`);
+  
+  if (labCheckbox && labCheckbox.checked) workflowLanes.push('lab');
+  if (compCheckbox && compCheckbox.checked) workflowLanes.push('comp');
+  if (writingCheckbox && writingCheckbox.checked) workflowLanes.push('writing');
+  if (presentationCheckbox && presentationCheckbox.checked) workflowLanes.push('presentation');
+  
+  project.workflowLanes = workflowLanes.length > 0 ? workflowLanes : null;
+  
+  // Update any tasks that are assigned to lanes not in the new list
+  (tasks || []).filter(t => String(t.projectId) === String(projectId)).forEach(t => {
+    if (t.lane && workflowLanes.length > 0 && !workflowLanes.includes(t.lane)) {
+      t.lane = null;
+      t.stage = null;
+    }
+  });
+  
+  if (save) {
+    await save();
+  }
+  
+  // Re-render projects view if visible
+  if (rerenderViewIfActive) {
+    await rerenderViewIfActive('projects');
+  }
+}
+
 // Expose globally for backward compatibility
 window.defaultProjectBrief = defaultProjectBrief;
 window.defaultProjectOutputs = defaultProjectOutputs;
@@ -203,3 +287,7 @@ window.normalizeProjectIdValue = normalizeProjectIdValue;
 window.defaultMilestonesFromTemplate = defaultMilestonesFromTemplate;
 window.normalizeProjectStructure = normalizeProjectStructure;
 window.normalizeProjectsData = normalizeProjectsData;
+window.getWorkflowLanesDisplay = getWorkflowLanesDisplay;
+window.toggleWorkflowLanesEdit = toggleWorkflowLanesEdit;
+window.cancelWorkflowLanesEdit = cancelWorkflowLanesEdit;
+window.saveWorkflowLanes = saveWorkflowLanes;

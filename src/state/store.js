@@ -2,7 +2,7 @@
 // Centralized app state - single source of truth
 // Uses getState/setState/subscribe pattern for clean separation
 
-import { migrateData, CURRENT_SCHEMA_VERSION } from '../utils/migrations.js';
+import { migrateData, CURRENT_SCHEMA_VERSION, getDefaultWorkflow } from '../utils/migrations.js';
 
 class AppStore {
   constructor() {
@@ -51,38 +51,8 @@ class AppStore {
       // Persisted files list (authoritative user-added files)
       files: [],
       
-      // Workflow state
-      workflow: {
-        laneOrder: ["lab", "comp", "writing", "presentation", "personal", "product", "unassigned"],
-        columns: {
-          lab: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-          comp: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-          writing: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-          presentation: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-          personal: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-          product: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-          unassigned: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-        },
-        // taskId -> { lane, column }
-        placement: {},
-        // lightweight lane preferences
-        rules: {
-          // optional: infer lane from tags
-          tagToLane: {
-            "#lab": "lab",
-            "#analysis": "comp",
-            "#paper": "writing",
-            "#slides": "presentation",
-            "#personal": "personal",
-            "#product": "product"
-          }
-        },
-        ui: {
-          activeProjectId: "all",
-          showUnassigned: false,
-          showActiveFiles: false
-        }
-      }
+      // Workflow state (use centralized defaults)
+      workflow: getDefaultWorkflow()
     };
     
     // Listeners for state changes
@@ -339,11 +309,40 @@ class AppStore {
       console.log(`🧹 Cleaned tasks: removed ${tasks.length - uniqueTasks.length} duplicate tasks`);
     }
     
+    // Release-Safe: Guard against overwriting existing cellLog data with empty data
+    // Preserve existing cellLog entries if incoming data has empty cellLog
+    let settingsToLoad = state.settings || {};
+    const currentSettings = this._state.settings || {};
+    if (currentSettings.cellLog && typeof currentSettings.cellLog === 'object') {
+      const currentEntries = Array.isArray(currentSettings.cellLog.entries) ? currentSettings.cellLog.entries : [];
+      const incomingCellLog = settingsToLoad.cellLog;
+      if (incomingCellLog && typeof incomingCellLog === 'object') {
+        const incomingEntries = Array.isArray(incomingCellLog.entries) ? incomingCellLog.entries : [];
+        // If we have existing entries but incoming has none, preserve existing
+        if (currentEntries.length > 0 && incomingEntries.length === 0) {
+          console.warn('⚠️ BLOCKED empty cellLog overwrite - preserving existing cellLog entries');
+          settingsToLoad = {
+            ...settingsToLoad,
+            cellLog: {
+              ...incomingCellLog,
+              entries: currentEntries,
+              cellTypes: Array.isArray(incomingCellLog.cellTypes) && incomingCellLog.cellTypes.length > 0 
+                ? incomingCellLog.cellTypes 
+                : (Array.isArray(currentSettings.cellLog.cellTypes) ? currentSettings.cellLog.cellTypes : []),
+              mediaTypes: Array.isArray(incomingCellLog.mediaTypes) && incomingCellLog.mediaTypes.length > 0 
+                ? incomingCellLog.mediaTypes 
+                : (Array.isArray(currentSettings.cellLog.mediaTypes) ? currentSettings.cellLog.mediaTypes : [])
+            }
+          };
+        }
+      }
+    }
+    
     this._state = {
       tasks: uniqueTasks,
       projects: state.projects || [],
       openProjects: openProjectsArray, // Store as Array, not Set
-      settings: state.settings || {},
+      settings: settingsToLoad,
       events: state.events || [],
       recurringRules: state.recurringRules || [],
       habits: Array.isArray(state.habits) ? state.habits : [],
@@ -366,66 +365,18 @@ class AppStore {
       fileHistory: state.fileHistory && typeof state.fileHistory === 'object' ? state.fileHistory : {},
       // Persisted files list (authoritative)
       files: Array.isArray(state.files) ? state.files : [],
-      // Workflow state (with defaults)
+      // Workflow state (with defaults from centralized source)
       workflow: state.workflow ? {
-        laneOrder: Array.isArray(state.workflow.laneOrder) ? state.workflow.laneOrder : ["lab", "comp", "writing", "presentation", "personal", "product", "unassigned"],
-        columns: state.workflow.columns && typeof state.workflow.columns === 'object' ? state.workflow.columns : {
-          lab: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-          comp: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-          writing: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-          presentation: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-          personal: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-          product: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-          unassigned: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-        },
-        placement: state.workflow.placement && typeof state.workflow.placement === 'object' ? state.workflow.placement : {},
-        rules: state.workflow.rules && typeof state.workflow.rules === 'object' ? state.workflow.rules : {
-          tagToLane: {
-            "#lab": "lab",
-            "#analysis": "comp",
-            "#paper": "writing",
-            "#slides": "presentation",
-            "#personal": "personal",
-            "#product": "product"
-          }
-        },
+        laneOrder: Array.isArray(state.workflow.laneOrder) ? state.workflow.laneOrder : getDefaultWorkflow().laneOrder,
+        columns: state.workflow.columns && typeof state.workflow.columns === 'object' ? state.workflow.columns : getDefaultWorkflow().columns,
+        placement: state.workflow.placement && typeof state.workflow.placement === 'object' ? state.workflow.placement : getDefaultWorkflow().placement,
+        rules: state.workflow.rules && typeof state.workflow.rules === 'object' ? state.workflow.rules : getDefaultWorkflow().rules,
         ui: state.workflow.ui && typeof state.workflow.ui === 'object' ? {
-          activeProjectId: state.workflow.ui.activeProjectId || "all",
-          showUnassigned: state.workflow.ui.showUnassigned || false,
-          showActiveFiles: state.workflow.ui.showActiveFiles || false
-        } : {
-          activeProjectId: "all",
-          showUnassigned: false,
-          showActiveFiles: false
-        }
-      } : {
-        laneOrder: ["lab", "comp", "writing", "presentation", "personal", "product", "unassigned"],
-        columns: {
-          lab: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-          comp: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-          writing: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-          presentation: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-          personal: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-          product: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-          unassigned: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-        },
-        placement: {},
-        rules: {
-          tagToLane: {
-            "#lab": "lab",
-            "#analysis": "comp",
-            "#paper": "writing",
-            "#slides": "presentation",
-            "#personal": "personal",
-            "#product": "product"
-          }
-        },
-        ui: {
-          activeProjectId: "all",
-          showUnassigned: false,
-          showActiveFiles: false
-        }
-      }
+          activeProjectId: state.workflow.ui.activeProjectId || getDefaultWorkflow().ui.activeProjectId,
+          showUnassigned: state.workflow.ui.showUnassigned !== undefined ? state.workflow.ui.showUnassigned : getDefaultWorkflow().ui.showUnassigned,
+          showActiveFiles: state.workflow.ui.showActiveFiles !== undefined ? state.workflow.ui.showActiveFiles : getDefaultWorkflow().ui.showActiveFiles
+        } : getDefaultWorkflow().ui
+      } : getDefaultWorkflow()
     };
     this._notify();
   }
@@ -475,34 +426,7 @@ class AppStore {
       routines: Array.isArray(this._state.routines) ? this._state.routines : [],
       routineCheckins: this._state.routineCheckins && typeof this._state.routineCheckins === 'object' ? this._state.routineCheckins : {},
       files: Array.isArray(this._state.files) ? this._state.files : [],
-      workflow: this._state.workflow || {
-        laneOrder: ["lab", "comp", "writing", "presentation", "personal", "product", "unassigned"],
-        columns: {
-          lab: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-          comp: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-          writing: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-          presentation: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-          personal: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-          product: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-          unassigned: ["Backlog", "Next", "Doing", "Blocked", "Done"],
-        },
-        placement: {},
-        rules: {
-          tagToLane: {
-            "#lab": "lab",
-            "#analysis": "comp",
-            "#paper": "writing",
-            "#slides": "presentation",
-            "#personal": "personal",
-            "#product": "product"
-          }
-        },
-        ui: {
-          activeProjectId: "all",
-          showUnassigned: false,
-          showActiveFiles: false
-        }
-      }
+      workflow: this._state.workflow || getDefaultWorkflow()
       // Phase 3 Fix: fileRegistry and fileHistory are derived data, recomputed on load
       // Excluding them prevents noisy saves and reduces file size
       // fileRegistry: this._state.fileRegistry,
