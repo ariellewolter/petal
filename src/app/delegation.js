@@ -7,15 +7,24 @@ import { handleEditTaskAction, handleDeleteTaskAction } from '../ui/buttonHandle
  * Set up event delegation for app-wide click handling
  */
 export function setupEventDelegation() {
-  const appContainer = document.querySelector('.app') || document.body;
-  
-  // Remove any existing handler
-  if (window._eventDelegationHandler) {
-    appContainer.removeEventListener('click', window._eventDelegationHandler, true);
+  // Guard: prevent multiple simultaneous calls that could cause stack overflow
+  if (window._eventDelegationSettingUp) {
+    console.log('⏭️ setupEventDelegation: Already setting up, skipping');
+    return;
   }
   
-  // Create unified click handler
-  window._eventDelegationHandler = function(e) {
+  window._eventDelegationSettingUp = true;
+  
+  try {
+    const appContainer = document.querySelector('.app') || document.body;
+    
+    // Remove any existing handler
+    if (window._eventDelegationHandler) {
+      appContainer.removeEventListener('click', window._eventDelegationHandler, true);
+    }
+    
+    // Create unified click handler
+    window._eventDelegationHandler = function(e) {
     // Find the closest element with a data-action attribute
     // Try multiple methods to find the button
     let actionBtn = null;
@@ -554,8 +563,12 @@ export function setupEventDelegation() {
     }
   };
   
-  // Attach handler to root container (capture phase to catch early)
-  appContainer.addEventListener('click', window._eventDelegationHandler, true);
-  
-  console.log('✅ Event delegation set up');
+    // Attach handler to root container (capture phase to catch early)
+    appContainer.addEventListener('click', window._eventDelegationHandler, true);
+    
+    console.log('✅ Event delegation set up');
+  } finally {
+    // Clear the guard flag
+    window._eventDelegationSettingUp = false;
+  }
 }

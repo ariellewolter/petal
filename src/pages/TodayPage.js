@@ -77,8 +77,26 @@ export async function renderTodayPage(containerEl, state, handlers) {
   const tasksToday = allTasks.filter(t => {
     if (!t) return false;
     if (t.done) return false;
+    if (t.deletedAt) return false; // Exclude deleted tasks
     const dueKey = typeof t.due === "string" ? t.due.slice(0, 10) : "";
     return dueKey === todayKey;
+  });
+  
+  // Debug logging to help diagnose missing tasks (always log)
+  const tasksWithProjectId = allTasks.filter(t => t.projectId && !t.deletedAt);
+  console.log('🔍 TodayPage: Tasks breakdown', {
+    allTasksCount: allTasks.length,
+    tasksWithProjectId: tasksWithProjectId.length,
+    tasksTodayCount: tasksToday.length,
+    todayKey,
+    sampleTasks: tasksWithProjectId.slice(0, 3).map(t => ({
+      id: t.id,
+      title: t.title?.substring(0, 30),
+      projectId: t.projectId,
+      due: t.due,
+      done: t.done,
+      deletedAt: t.deletedAt
+    }))
   });
 
   const doneToday = allTasks.filter(t => {
@@ -88,8 +106,20 @@ export async function renderTodayPage(containerEl, state, handlers) {
 
   const activeProjects = (Array.isArray(state.projects) ? state.projects : []).filter(p => p && !p.done);
   const cellLogEntries = state?.settings?.cellLog?.entries || [];
-  const files = Array.isArray(state.files) ? state.files : [];
-  const recentFiles = files.slice(0, 5);
+  
+  // Aggregate files from both standalone files and project files
+  const standaloneFiles = Array.isArray(state.files) ? state.files : [];
+  const projectFiles = (state.projects || []).flatMap(p => (p.files || []).map(f => ({ ...f, projectId: p.id, projectName: p.name })));
+  const allFiles = [...standaloneFiles, ...projectFiles];
+  
+  // Sort by lastOpened or addedAt (most recent first) and take top 5
+  const recentFiles = allFiles
+    .sort((a, b) => {
+      const aTime = a.lastOpened || a.addedAt || a.updatedAt || 0;
+      const bTime = b.lastOpened || b.addedAt || b.updatedAt || 0;
+      return bTime - aTime; // Most recent first
+    })
+    .slice(0, 5);
   const events = Array.isArray(state.events) ? state.events : [];
   const recurringRules = Array.isArray(state.recurringRules) ? state.recurringRules : [];
 
@@ -226,15 +256,42 @@ export async function renderTodayPage(containerEl, state, handlers) {
       if (e.target.closest(".today-task-check")) {
         handlers?.toggleTask?.(taskId);
       } else {
-        handlers?.editTask?.(taskId);
+        // Check if task belongs to a project - if so, open that project on click
+        const task = (state.tasks || []).find(t => String(t.id) === String(taskId));
+        if (task && task.projectId) {
+          // Task belongs to a project - open that project
+          if (window.openProjectView) {
+            window.openProjectView(task.projectId);
+          } else if (window.selectProjectForMatrix) {
+            handlers?.switchView?.('projects');
+            window.selectProjectForMatrix(task.projectId);
+          } else {
+            // Fallback: just edit the task
+            handlers?.editTask?.(taskId);
+          }
+        } else {
+          // Task has no project - edit it normally
+          handlers?.editTask?.(taskId);
+        }
       }
+      return;
     }
 
     const projectRow = e.target.closest(".today-project-item[data-project-id]");
     if (projectRow) {
       const projectId = projectRow.getAttribute("data-project-id");
-      handlers?.switchView?.('projects');
-      // Could also set selected project
+      // Open the project view
+      if (window.openProjectView) {
+        window.openProjectView(projectId);
+      } else if (window.selectProjectForMatrix) {
+        // Fallback: use selectProjectForMatrix
+        handlers?.switchView?.('projects');
+        window.selectProjectForMatrix(projectId);
+      } else {
+        // Last resort: just switch to projects view
+        handlers?.switchView?.('projects');
+      }
+      return;
     }
 
     const cellEntry = e.target.closest(".today-cell-entry[data-cell-id]");
@@ -245,7 +302,10 @@ export async function renderTodayPage(containerEl, state, handlers) {
 
   // Set up global event delegation (all hookups start here)
   // This ensures all app-wide event handlers are initialized when Today page loads
-  setupEventDelegation();
+  // Only set up if not already set up (prevents stack overflow from recursive calls)
+  if (!window._eventDelegationHandler) {
+    setupEventDelegation();
+  }
   
   // Add "Add block" buttons to schedule time slots (similar to planner)
   setTimeout(() => {
@@ -671,20 +731,37 @@ function renderFilesCard(files) {
   }
   
   return files.map(f => {
-    const name = f.name || f.label || 'Untitled';
+    // Handle both file objects and file links (strings)
+    const name = f.name || f.label || (typeof f === 'string' ? f.split('/').pop() : 'Untitled');
     const note = f.note || '';
+    const projectName = f.projectName || '';
     const type = (f.type || name.split('.').pop() || '').toLowerCase();
     const iconClass = type.includes('pdf') ? 'pdf' : type.includes('png') || type.includes('jpg') || type.includes('tiff') ? 'img' : type.includes('r') || type.includes('py') ? 'data' : 'doc';
     const icon = iconClass === 'pdf' ? '📄' : iconClass === 'img' ? '🔬' : iconClass === 'data' ? '📊' : '📝';
     
+    // Format time if available
+    let timeText = '—';
+    if (f.lastOpened || f.addedAt || f.updatedAt) {
+      const time = f.lastOpened || f.addedAt || f.updatedAt;
+      if (typeof time === 'number') {
+        const date = new Date(time);
+        const now = new Date();
+        const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+        if (diffDays === 0) timeText = 'Today';
+        else if (diffDays === 1) timeText = 'Yesterday';
+        else if (diffDays < 7) timeText = `${diffDays}d ago`;
+        else timeText = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      }
+    }
+    
     return `
-      <div class="today-file-item" data-file-id="${escapeHtml(String(f.id || ''))}">
+      <div class="today-file-item" data-file-id="${escapeHtml(String(f.id || ''))}" ${f.projectId ? `data-project-id="${f.projectId}"` : ''}>
         <div class="today-file-icon ${iconClass}">${icon}</div>
         <div>
           <div class="today-file-name">${escapeHtml(name)}</div>
-          <div class="today-file-meta">${escapeHtml(note)}</div>
+          <div class="today-file-meta">${projectName ? escapeHtml(projectName) + ' · ' : ''}${escapeHtml(note || '')}</div>
         </div>
-        <div class="today-file-time">—</div>
+        <div class="today-file-time">${timeText}</div>
       </div>
     `;
   }).join("");
