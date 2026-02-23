@@ -771,8 +771,6 @@
   <!-- ═══════════════════════════════════ FILES VIEW ═══ -->
   <div id="view-files" style="display:none;width:100%;max-width:100%;box-sizing:border-box;">
     <div style="padding:20px;">
-      <h2 style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:400;color:var(--rose);margin-bottom:8px;">File Management</h2>
-      <p style="font-size:12px;color:var(--text-dim);margin-bottom:20px;">Track file status, history, and relationships</p>
       
       <div style="background:#c98b8b;border-radius:8px;padding:12px 24px;margin-bottom:20px;display:inline-block;cursor:pointer;" data-action="file:add">
         <span style="color:white;font-size:14px;font-weight:bold;">+ Add File</span>
@@ -1137,10 +1135,6 @@
 
   <!-- ═══════════════════════════════════ CELL LOG VIEW ═══ -->
   <div id="view-cell-log" style="display:none;width:100%;max-width:100%;box-sizing:border-box;">
-    <div style="margin-bottom:20px;">
-      <h2 style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:400;color:var(--rose);margin-bottom:8px;">Cell Log</h2>
-      <p style="font-size:13px;color:var(--text-dim);margin:0;">Track wet-lab actions with reusable cell types</p>
-    </div>
 
     <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:16px;align-items:start;">
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;">
@@ -3286,33 +3280,41 @@ function debounceSaveTaskNoteFromDrawer() {
   }
 }
 
+// renderTaskLogEntries has been moved to src/features/taskDrawer.js
 function renderTaskLogEntries() {
   if (window.Petal?.features?.taskDrawer?.renderTaskLogEntries) {
-    window.Petal.features.taskDrawer.renderTaskLogEntries();
+    const ctx = createPageContext();
+    window.Petal.features.taskDrawer.renderTaskLogEntries(ctx);
   } else {
     console.error('Task drawer module not loaded');
   }
 }
 
-function addTaskLogEntry() {
+// addTaskLogEntry has been moved to src/features/taskDrawer.js
+async function addTaskLogEntry() {
   if (window.Petal?.features?.taskDrawer?.addTaskLogEntry) {
-    window.Petal.features.taskDrawer.addTaskLogEntry();
+    const ctx = createPageContext();
+    await window.Petal.features.taskDrawer.addTaskLogEntry(ctx);
   } else {
     console.error('Task drawer module not loaded');
   }
 }
 
-function deleteTaskLogEntry(entryId) {
+// deleteTaskLogEntry has been moved to src/features/taskDrawer.js
+async function deleteTaskLogEntry(entryId) {
   if (window.Petal?.features?.taskDrawer?.deleteTaskLogEntry) {
-    window.Petal.features.taskDrawer.deleteTaskLogEntry(entryId);
+    const ctx = createPageContext();
+    await window.Petal.features.taskDrawer.deleteTaskLogEntry(ctx, entryId);
   } else {
     console.error('Task drawer module not loaded');
   }
 }
 
+// renderTaskDrawerFiles has been moved to src/features/taskDrawer.js
 function renderTaskDrawerFiles() {
   if (window.Petal?.features?.taskDrawer?.renderTaskDrawerFiles) {
-    window.Petal.features.taskDrawer.renderTaskDrawerFiles();
+    const ctx = createPageContext();
+    window.Petal.features.taskDrawer.renderTaskDrawerFiles(ctx);
   } else {
     console.error('Task drawer module not loaded');
   }
@@ -3342,9 +3344,11 @@ function unlinkFileFromTask(fileId) {
   }
 }
 
+// renderTaskDrawerSubtasks has been moved to src/features/taskDrawer.js
 function renderTaskDrawerSubtasks() {
   if (window.Petal?.features?.taskDrawer?.renderTaskDrawerSubtasks) {
-    window.Petal.features.taskDrawer.renderTaskDrawerSubtasks();
+    const ctx = createPageContext();
+    window.Petal.features.taskDrawer.renderTaskDrawerSubtasks(ctx);
   } else {
     console.error('Task drawer module not loaded');
   }
@@ -3581,248 +3585,42 @@ function getProtocolBadge(task) {
 
 // ═══════════════════════ EVENT DELEGATION ═══════════════════════
 // Set up event delegation on stable root container for all action buttons
+// setupEventDelegation has been moved to src/app/delegation.js
 function setupEventDelegation() {
-  const appContainer = document.querySelector('.app') || document.body;
-  
-  // Remove any existing handler
-  if (window._eventDelegationHandler) {
-    appContainer.removeEventListener('click', window._eventDelegationHandler, true);
+  if (window.Petal?.app?.setupEventDelegation) {
+    window.Petal.app.setupEventDelegation();
+  } else if (window.setupEventDelegation && window.setupEventDelegation !== setupEventDelegation) {
+    // Use the module version if available
+    window.setupEventDelegation();
+  } else {
+    console.error('Event delegation module not loaded');
   }
-  
-  // Create unified click handler
-  window._eventDelegationHandler = function(e) {
-    // Find the closest element with a data-action attribute
-    // Try multiple methods to find the button
-    let actionBtn = null;
-    
-    // Method 1: Check if target itself has data-action
-    if (e.target && e.target.hasAttribute && e.target.hasAttribute('data-action')) {
-      actionBtn = e.target;
-    }
-    
-    // Method 2: Use closest() - works for nested elements (icons, text inside buttons)
-    if (!actionBtn && e.target && e.target.closest) {
-      actionBtn = e.target.closest('[data-action]');
-    }
-    
-    // Method 3: Check parent elements manually (for cases where closest doesn't work)
-    if (!actionBtn) {
-      let element = e.target;
-      let depth = 0;
-      while (element && element !== appContainer && depth < 20) {
-        if (element.hasAttribute && element.hasAttribute('data-action')) {
-          actionBtn = element;
-          break;
-        }
-        element = element.parentElement || element.parentNode;
-        depth++;
-      }
-    }
-    
-    if (!actionBtn) {
-      return;
-    }
-    
-    const action = actionBtn.getAttribute('data-action');
-    if (!action) {
-      return;
-    }
-    
-    // Edit task - use helper function
-    if (action === 'edit-task') {
-      handleEditTaskAction(e);
-      return;
-    }
-    
-    // Delete task - use helper function
-    if (action === 'delete-task') {
-      handleDeleteTaskAction(e);
-      return;
-    }
-    
-    // Delete file
-    if (action === 'delete-file') {
-      e.stopPropagation();
-      const fileId = actionBtn.getAttribute('data-file-id');
-      const projectId = actionBtn.getAttribute('data-project-id');
-      
-      if (fileId && projectId) {
-        confirmDeleteFile(projectId, fileId);
-      }
-      return;
-    }
-    
-    // Add milestone
-    if (action === 'add-milestone') {
-      e.stopPropagation();
-      e.preventDefault();
-      addMilestone();
-      return;
-    }
-    
-    // Switch project files tab
-    if (action === 'switch-project-files-tab') {
-      e.stopPropagation();
-      e.preventDefault();
-      const tab = actionBtn.getAttribute('data-tab');
-      if (tab) {
-        switchProjectFilesTab(tab);
-      }
-      return;
-    }
-    
-    // Add file to project
-    if (action === 'add-file-to-project') {
-      e.stopPropagation();
-      e.preventDefault();
-      if (selectedProjectId) {
-        openProjectAddFileModal(selectedProjectId);
-      }
-      return;
-    }
-  };
-  
-  // Attach handler to root container (capture phase to catch early)
-  appContainer.addEventListener('click', window._eventDelegationHandler, true);
-  
-  // Make editTask globally accessible as a fallback for direct onclick handlers
-  window.editTask = editTask;
 }
 
-// ═══════════════════════ BUTTON ACTION HELPERS ═══════════════════════
-// Helper functions to handle edit/delete actions from buttons
-// Can be called from onclick handlers or event delegation
-
+// handleEditTaskAction and handleDeleteTaskAction have been moved to src/ui/buttonHandlers.js
+// They are exposed globally via window.handleEditTaskAction and window.handleDeleteTaskAction
+// Wrapper functions delegate to the module versions
 function handleEditTaskAction(event, buttonElement) {
-  if (event) {
-    event.stopPropagation();
-    event.preventDefault();
-  }
-  
-  // Find the button element - try multiple methods for Electron compatibility
-  let btn = null;
-  
-  // Method 1: Use buttonElement parameter (passed from onclick handler)
-  if (buttonElement && buttonElement.getAttribute && buttonElement.getAttribute('data-action') === 'edit-task') {
-    btn = buttonElement;
-  }
-  // Method 2: Use event.target and closest
-  else if (event && event.target) {
-    btn = event.target.closest ? event.target.closest('[data-action="edit-task"]') : null;
-    if (!btn && event.target.getAttribute && event.target.getAttribute('data-action') === 'edit-task') {
-      btn = event.target;
-    }
-  }
-  // Method 3: Try to find from currentTarget
-  else if (event && event.currentTarget && event.currentTarget.getAttribute && event.currentTarget.getAttribute('data-action') === 'edit-task') {
-    btn = event.currentTarget;
-  }
-  
-  if (!btn || btn.getAttribute('data-action') !== 'edit-task') {
-    console.warn('Could not find edit button element', { event, buttonElement, btn });
-    return;
-  }
-  
-  const taskIdAttr = btn.getAttribute('data-task-id');
-  if (!taskIdAttr) {
-    console.warn('Edit task button missing data-task-id attribute');
-    return;
-  }
-  
-  // Keep ID as string - never truncate with parseInt/Number
-  const taskId = String(taskIdAttr);
-  
-  const isSubtask = btn.getAttribute('data-is-subtask') === 'true';
-  const projectId = btn.getAttribute('data-project-id');
-  
-  try {
-    if (isSubtask && projectId) {
-      editSubtask(String(projectId), taskId);
-    } else if (taskId) {
-      editTask(taskId);
-    }
-  } catch (error) {
-    console.error('Error handling edit-task action:', error);
-    alert('Error opening edit modal: ' + error.message);
+  if (window.handleEditTaskAction && window.handleEditTaskAction !== handleEditTaskAction) {
+    // Use the module version if available
+    window.handleEditTaskAction(event, buttonElement);
+  } else if (window.Petal?.ui?.buttonHandlers?.handleEditTaskAction) {
+    window.Petal.ui.buttonHandlers.handleEditTaskAction(event, buttonElement);
+  } else {
+    console.error('Button handlers module not loaded');
   }
 }
 
 function handleDeleteTaskAction(event, buttonElement) {
-  if (event) {
-    event.stopPropagation();
-    event.preventDefault();
-  }
-  
-  // Find the button element - try multiple methods for Electron compatibility
-  let btn = null;
-  
-  // Method 1: Use buttonElement parameter (passed from onclick handler)
-  if (buttonElement && buttonElement.getAttribute && buttonElement.getAttribute('data-action') === 'delete-task') {
-    btn = buttonElement;
-  }
-  // Method 2: Use event.target and closest
-  else if (event && event.target) {
-    btn = event.target.closest ? event.target.closest('[data-action="delete-task"]') : null;
-    if (!btn && event.target.getAttribute && event.target.getAttribute('data-action') === 'delete-task') {
-      btn = event.target;
-    }
-  }
-  // Method 3: Try to find from currentTarget
-  else if (event && event.currentTarget && event.currentTarget.getAttribute && event.currentTarget.getAttribute('data-action') === 'delete-task') {
-    btn = event.currentTarget;
-  }
-  
-  // Try multiple selectors for compatibility
-  if (!btn) {
-    btn = event?.target?.closest?.('button.btn-del, button.btn-delete, [data-action="delete"], [data-action="delete-task"]');
-  }
-  
-  if (!btn || (btn.getAttribute('data-action') !== 'delete-task' && btn.getAttribute('data-action') !== 'delete')) {
-    // Silently return - this is likely from an old handler, don't log as error
-    return;
-  }
-  
-  const taskIdAttr = btn.getAttribute('data-task-id') || btn.getAttribute('data-id');
-  if (!taskIdAttr) {
-    return;
-  }
-  
-  // Keep ID as string - never truncate with parseInt/Number
-  const taskId = String(taskIdAttr);
-  
-  const isSubtask = btn.getAttribute('data-is-subtask') === 'true';
-  const projectId = btn.getAttribute('data-project-id') || null;
-  const parentTaskId = btn.getAttribute('data-parent-task-id') || null;
-  
-  console.log('handleDeleteTaskAction calling deleteTask wrapper', { taskId, isSubtask, projectId, parentTaskId });
-  
-  // Use the taskOperations wrapper (like edit does) - builds context from store at click time
-  if (window.Petal?.features?.taskOperations?.deleteTask) {
-    window.Petal.features.taskOperations.deleteTask(taskId, isSubtask, projectId, parentTaskId);
-  } else if (window.Petal?.features?.deleteHandlers?.confirmDeleteTask) {
-    // Fallback: build context from store
-    const store = window.Petal?.store;
-    const state = store?.getState?.() || {};
-    const ctx = {
-      store,
-      state,
-      tasks: Array.isArray(state.tasks) ? state.tasks : [],
-      projects: Array.isArray(state.projects) ? state.projects : [],
-      save: window.Petal?.handlers?.save || window.save,
-      render: window.Petal?.handlers?.render || window.render,
-    };
-    window.Petal.features.deleteHandlers.confirmDeleteTask(ctx, taskId, isSubtask, projectId, parentTaskId);
-  } else if (window.confirmDeleteTask) {
-    window.confirmDeleteTask(taskId, isSubtask, projectId, parentTaskId);
+  if (window.handleDeleteTaskAction && window.handleDeleteTaskAction !== handleDeleteTaskAction) {
+    // Use the module version if available
+    window.handleDeleteTaskAction(event, buttonElement);
+  } else if (window.Petal?.ui?.buttonHandlers?.handleDeleteTaskAction) {
+    window.Petal.ui.buttonHandlers.handleDeleteTaskAction(event, buttonElement);
   } else {
-    console.error('No delete handler available');
-    alert('Delete functionality not available. Please refresh the page.');
+    console.error('Button handlers module not loaded');
   }
 }
-
-// Make helpers globally accessible
-window.handleEditTaskAction = handleEditTaskAction;
-window.handleDeleteTaskAction = handleDeleteTaskAction;
 
 // ═══════════════════════ DELETE HANDLERS ═══════════════════════
 // Delete handlers have been moved to src/features/deleteHandlers.js
@@ -4934,258 +4732,61 @@ function escAttr(s) {
     .replace(/>/g, '&gt;');
 }
 
-function groupKey(task){
-  const due=parseDate(task.due);
-  if(!due)return{label:'Someday',sort:'9999'};
-  const t=today(),diff=Math.round((due-t)/86400000);
-  if(diff<0) return{label:'🌸 Overdue',sort:'0000'};
-  if(diff===0)return{label:'✦ Today',  sort:'0001'};
-  if(diff===1)return{label:'Tomorrow', sort:'0002'};
-  return{label:due.toLocaleDateString('en-US',{weekday:diff<7?'long':undefined,month:'long',day:'numeric',year:due.getFullYear()!==t.getFullYear()?'numeric':undefined}),sort:task.due};
+// groupKey has been moved to src/ui/uiHelpers.js and src/utils/dates.js
+function groupKey(task) {
+  if (window.Petal?.ui?.groupKey) {
+    return window.Petal.ui.groupKey(task);
+  } else if (window.Petal?.utils?.groupKey) {
+    return window.Petal.utils.groupKey(task);
+  } else {
+    // Fallback
+    const due = parseDate(task.due);
+    if (!due) return { label: 'Someday', sort: '9999' };
+    const t = today();
+    const diff = Math.round((due - t) / 86400000);
+    if (diff < 0) return { label: '🌸 Overdue', sort: '0000' };
+    if (diff === 0) return { label: '✦ Today', sort: '0001' };
+    if (diff === 1) return { label: 'Tomorrow', sort: '0002' };
+    return { label: due.toLocaleDateString('en-US', { weekday: diff < 7 ? 'long' : undefined, month: 'long', day: 'numeric', year: due.getFullYear() !== t.getFullYear() ? 'numeric' : undefined }), sort: task.due };
+  }
 }
 
-// Function to hide all collapsible forms (use forceHideAllForms instead)
+// hideAllForms has been moved to src/ui/uiHelpers.js
 function hideAllForms() {
-  forceHideAllForms();
-  
-  // Reset toggle indicators
-  const matrixTaskToggle = document.getElementById('matrix-add-task-toggle');
-  const matrixFileToggle = document.getElementById('matrix-add-file-toggle');
-  if (matrixTaskToggle) matrixTaskToggle.textContent = '▶';
-  if (matrixFileToggle) matrixFileToggle.textContent = '▶';
+  if (window.Petal?.ui?.hideAllForms) {
+    window.Petal.ui.hideAllForms(window.forceHideAllForms);
+  } else if (typeof forceHideAllForms === 'function') {
+    forceHideAllForms();
+    // Reset toggle indicators
+    const matrixTaskToggle = document.getElementById('matrix-add-task-toggle');
+    const matrixFileToggle = document.getElementById('matrix-add-file-toggle');
+    if (matrixTaskToggle) matrixTaskToggle.textContent = '▶';
+    if (matrixFileToggle) matrixFileToggle.textContent = '▶';
+  }
 }
 
 // ═══════════════════════ RENDER ═══════════════════════
-// Render global sidebar
+// renderGlobalSidebar has been moved to src/app/viewManager.js
 function renderGlobalSidebar(state) {
-  const navEl = document.getElementById('global-sidebar-nav');
-  if (!navEl) {
-    console.warn('⚠️ renderGlobalSidebar: global-sidebar-nav element not found');
-    return;
-  }
-  console.log('🔍 renderGlobalSidebar: Rendering sidebar navigation', { hasNavEl: !!navEl, stateView: state?.currentView });
-  
-  // Use getAllTasks function (available globally or from window.Petal)
-  const getAllTasksFn = window.getAllTasks || ((tasks, projects) => {
-    const activeTasks = (tasks || []).filter(t => !t.deletedAt);
-    const allTasks = [...activeTasks];
-    (projects || []).forEach(p => {
-      (p.subtasks || []).forEach(st => {
-        if (!st.deletedAt) {
-          allTasks.push({...st, projectId: p.id, projectName: p.name, isSubtask: true});
-        }
-      });
-    });
-    return allTasks;
-  });
-  
-  const allTasks = getAllTasksFn(state.tasks || [], state.projects || []);
-  const todayKey = new Date().toISOString().slice(0, 10);
-  const tasksToday = allTasks.filter(t => {
-    if (!t || t.done) return false;
-    const dueKey = typeof t.due === "string" ? t.due.slice(0, 10) : "";
-    return dueKey === todayKey;
-  }).length;
-  
-  const activeProjects = (state.projects || []).filter(p => p && !p.done).length;
-  const cellLogEntries = state?.settings?.cellLog?.entries || [];
-  const cellLogCount = cellLogEntries.length;
-  const cellLogAlerts = cellLogEntries.filter(e => e.status === 'concern' || e.status === 'monitor').length;
-  const currentView = state.currentView || window.currentView || 'tasks';
-  
-  navEl.innerHTML = `
-    <div class="global-sidebar-logo">
-      <div class="global-sidebar-logo-name">Lab<span>OS</span></div>
-      <div class="global-sidebar-logo-sub">Research Management</div>
-    </div>
-    <div class="global-sidebar-nav-label">Workspace</div>
-    <a class="global-sidebar-nav-item ${currentView === 'today' ? 'active' : ''}" href="#" data-nav="today">
-      <span class="global-sidebar-nav-icon">◈</span> Today
-      ${tasksToday > 0 ? `<span class="global-sidebar-nav-badge">${tasksToday}</span>` : ''}
-    </a>
-    <a class="global-sidebar-nav-item ${currentView === 'planner' ? 'active' : ''}" href="#" data-nav="planner">
-      <span class="global-sidebar-nav-icon">◻</span> Planner
-    </a>
-    <a class="global-sidebar-nav-item ${currentView === 'workflow' ? 'active' : ''}" href="#" data-nav="workflow">
-      <span class="global-sidebar-nav-icon">⚡</span> Workflow
-    </a>
-    <a class="global-sidebar-nav-item ${currentView === 'tasks' ? 'active' : ''}" href="#" data-nav="tasks">
-      <span class="global-sidebar-nav-icon">⊡</span> Tasks
-    </a>
-
-    <div class="global-sidebar-nav-label">Research</div>
-    <a class="global-sidebar-nav-item ${currentView === 'projects' ? 'active' : ''}" href="#" data-nav="projects">
-      <span class="global-sidebar-nav-icon">◈</span> Projects
-      ${activeProjects > 0 ? `<span class="global-sidebar-nav-badge">${activeProjects}</span>` : ''}
-    </a>
-    <a class="global-sidebar-nav-item ${currentView === 'cell-log' ? 'active' : ''}" href="#" data-nav="cell-log">
-      <span class="global-sidebar-nav-icon">⊠</span> Cell Log
-      ${cellLogCount > 0 ? `<span class="global-sidebar-nav-badge ${cellLogAlerts > 0 ? 'alert' : ''}">${cellLogCount}</span>` : ''}
-    </a>
-    <a class="global-sidebar-nav-item ${currentView === 'files' ? 'active' : ''}" href="#" data-nav="files">
-      <span class="global-sidebar-nav-icon">⊟</span> Files
-    </a>
-
-    <div class="global-sidebar-nav-label">Workshop</div>
-    <a class="global-sidebar-nav-item ${currentView === '3d-print' ? 'active' : ''}" href="#" data-nav="3d-print">
-      <span class="global-sidebar-nav-icon">🖨</span> 3D Printing
-      ${(() => {
-        const prints = state.prints3d || [];
-        const queueCount = prints.filter(p => p.status === 'queued').length;
-        return queueCount > 0 ? `<span class="global-sidebar-nav-badge">${queueCount}</span>` : '';
-      })()}
-    </a>
-  `;
-  
-  console.log('✅ renderGlobalSidebar: Navigation rendered', { navItemCount: navEl.children.length });
-  
-  // Add event delegation for sidebar clicks
-  navEl.onclick = (e) => {
-    const navItem = e.target.closest('[data-nav]');
-    if (navItem) {
-      e.preventDefault();
-      const view = navItem.getAttribute('data-nav');
-      console.log('🔍 Sidebar click:', { view, hasRouter: !!window.routerSwitchView, hasSwitchView: !!window.switchView });
-      // Use router if available (preferred), fallback to old switchView
-      if (window.routerSwitchView) {
-        console.log('🔍 Using router to switch to:', view);
-        window.routerSwitchView(view).catch(err => {
-          console.error('❌ Error switching view via router:', err);
-          // Fallback to old switchView if router fails
-          if (window.switchView) {
-            console.log('🔍 Falling back to old switchView');
-            window.switchView(view);
-          }
-        });
-      } else if (window.switchView) {
-        console.log('🔍 Using old switchView to switch to:', view);
-        window.switchView(view);
-      } else {
-        console.error('❌ No view switching function available');
-      }
-    }
-  };
-  
-  // Also handle settings link in sidebar bottom and update its active state
-  const sidebarBottom = document.querySelector('.global-sidebar-bottom');
-  if (sidebarBottom) {
-    // Update the active state of the settings link
-    const settingsLink = sidebarBottom.querySelector('[data-nav="settings"]');
-    if (settingsLink) {
-      if (currentView === 'settings') {
-        settingsLink.classList.add('active');
-      } else {
-        settingsLink.classList.remove('active');
-      }
-    }
-    
-    // Add click handler
-    sidebarBottom.onclick = (e) => {
-      const navItem = e.target.closest('[data-nav]');
-      if (navItem) {
-        e.preventDefault();
-        const view = navItem.getAttribute('data-nav');
-        console.log('🔍 DEBUG: Settings link clicked, view:', view, 'switchView available:', !!window.switchView);
-        if (window.switchView) {
-          window.switchView(view);
-        } else {
-          console.error('🔍 DEBUG: window.switchView is not available!');
-        }
-      }
-    };
+  if (window.renderGlobalSidebar && window.renderGlobalSidebar !== renderGlobalSidebar) {
+    // Use the module version if available
+    window.renderGlobalSidebar(state);
+  } else if (window.Petal?.app?.viewManager?.renderGlobalSidebar) {
+    window.Petal.app.viewManager.renderGlobalSidebar(state);
+  } else {
+    console.error('RenderGlobalSidebar module not loaded');
   }
 }
 
-// Fallback function to render settings page directly
+// renderSettingsFallback has been moved to src/pages/SettingsPage.js
 async function renderSettingsFallback(containerEl, state) {
-  if (!containerEl) return;
-  
-  const isElectron = typeof window.electronAPI !== 'undefined';
-  let vaultPath = 'Not available (browser mode)';
-  
-  if (isElectron) {
-    try {
-      vaultPath = await window.electronAPI.getVaultPath() || 'Not set';
-    } catch (err) {
-      console.error('Error getting vault path:', err);
-      vaultPath = 'Error loading path';
-    }
+  if (window.Petal?.pages?.settings?.renderSettingsFallback) {
+    await window.Petal.pages.settings.renderSettingsFallback(containerEl, state);
+  } else if (window.renderSettingsFallback && window.renderSettingsFallback !== renderSettingsFallback) {
+    await window.renderSettingsFallback(containerEl, state);
+  } else {
+    console.error('SettingsPage module not loaded');
   }
-  
-  // Escape vaultPath for safe HTML insertion
-  const safeVaultPath = (vaultPath || 'Not available').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  
-  containerEl.innerHTML = `
-    <div class="settings-page">
-      <h2 class="settings-page-title">Settings</h2>
-
-      <!-- VAULT SECTION -->
-      <div class="settings-section">
-        <h3 class="settings-section-title">Petal Vault</h3>
-        <p class="settings-section-desc">Your data is stored in a vault folder that syncs via iCloud Drive (Mac) or OneDrive (Windows).</p>
-        
-        <div class="settings-vault-info">
-          <div class="settings-vault-path">
-            <label class="settings-label">Vault Location:</label>
-            <div class="settings-vault-path-display">${safeVaultPath}</div>
-          </div>
-          
-          ${isElectron ? `
-          <div class="settings-vault-actions">
-            <button class="settings-btn" onclick="if(window.electronAPI)window.electronAPI.vaultOpenFolder('${safeVaultPath.replace(/'/g, "\\'")}')">📁 Open Vault Folder</button>
-            <button class="settings-btn" onclick="alert('Change vault location in desktop app')">📂 Change Vault Location</button>
-          </div>
-          ` : `
-          <div class="settings-info-box">
-            <p>Vault management is only available in the desktop app. Open this app in Electron to manage your vault.</p>
-          </div>
-          `}
-        </div>
-      </div>
-
-      <!-- IMPORT/EXPORT SECTION -->
-      <div class="settings-section">
-        <h3 class="settings-section-title">Data Management</h3>
-        <p class="settings-section-desc">Export your data for backup or import data from a previous export.</p>
-        
-        <div class="settings-import-export">
-          <div class="settings-export">
-            <h4 class="settings-subtitle">Export Data</h4>
-            <p class="settings-subtitle-desc">Download all your tasks, projects, and settings as a JSON file.</p>
-            <button class="settings-btn settings-btn-primary" onclick="exportData()">📥 Export Data</button>
-          </div>
-          
-          <div class="settings-import">
-            <h4 class="settings-subtitle">Import Data</h4>
-            <p class="settings-subtitle-desc">Import data from a previously exported JSON file.</p>
-            <div class="settings-import-controls">
-              <input type="file" id="settings-import-input" accept=".json" style="display:none;" onchange="importData(event)">
-              <button class="settings-btn" onclick="document.getElementById('settings-import-input').click()">📤 Import Data</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ABOUT SECTION -->
-      <div class="settings-section">
-        <h3 class="settings-section-title">About</h3>
-        <div class="settings-about">
-          <p><strong>Petal</strong> — Task and project tracker</p>
-          <p class="settings-version">Version information available in desktop app</p>
-        </div>
-      </div>
-    </div>
-  `;
-  console.log('🔍 DEBUG: Settings page fallback rendered, innerHTML length:', containerEl.innerHTML.length);
-  // Ensure the view is visible
-  containerEl.style.display = '';
-  containerEl.style.visibility = 'visible';
-  containerEl.style.opacity = '1';
-  console.log('🔍 DEBUG: Settings fallback - visibility set', {
-    display: containerEl.style.display,
-    computedDisplay: window.getComputedStyle(containerEl).display,
-    offsetHeight: containerEl.offsetHeight
-  });
 }
 
 // ═══════════════════════ RENDER (DELEGATES TO ROUTER) ═══════════════════════
@@ -5330,126 +4931,21 @@ async function renderToday() {
 // window.handleSearch = Search.handleSearch;
 // window.clearSearch = Search.clearSearch;
 
+// renderTaskList has been moved to src/ui/renderTasks.js (used by TasksPage)
+// This wrapper delegates to the module version via TasksPage
 async function renderTaskList(){
-  console.log("✅ INLINE renderTaskList() LOADED — EDITBTN TEST 2026-02-21");
-  const c=document.getElementById('task-container');
-  // Get ALL tasks including those with projectId (project tasks) and without projectId (standalone tasks)
-  const allTasks = getAllTasks(); // Already filters deleted tasks, includes all tasks regardless of projectId
-  let list=allTasks.filter(t=>{
-    // Additional filter: exclude deleted (should already be filtered, but double-check)
-    if(t.deletedAt)return false;
-    // Exclude subtasks (tasks with parentTaskId) from main task list
-    // Subtasks should only appear in their parent task's subtask section
-    if(t.parentTaskId)return false;
-    if(currentFilter==='active'&&t.done)return false;
-    if(currentFilter==='done'&&!t.done)return false;
-    if(!inRange(t))return false;
-    if(!matchesSearch(t, searchQuery))return false;
-    // Note: We do NOT filter by projectId here - when "All" is selected, show ALL tasks
-    // including both standalone tasks (no projectId) and project tasks (with projectId)
-    return true;
-  });
-  if(!list.length){
-    if(searchQuery.trim()){
-      c.innerHTML='<div class="empty-state">No tasks found<small>Try a different search term</small></div>';
-    }else{
-      c.innerHTML='<div class="empty-state">Nothing here yet<small>Add a task above to get started</small></div>';
-    }
-    return;
+  // Delegate to TasksPage render function which uses the module version
+  const containerEl = document.getElementById('view-tasks');
+  if (containerEl && window.Petal?.pages?.tasks?.render) {
+    const state = window.Petal?.store?.getState() || {};
+    await window.Petal.pages.tasks.render(containerEl, state, window.Petal.handlers);
+  } else if (window.Petal?.ui?.renderTasks) {
+    const containerEl = document.getElementById('view-tasks');
+    const state = window.Petal?.store?.getState() || {};
+    await window.Petal.ui.renderTasks(containerEl, state, window.Petal.handlers);
+  } else {
+    console.error('TasksPage or renderTasks module not loaded');
   }
-  const groups={},gSorts={};
-  list.forEach(t=>{const{label,sort}=groupKey(t);if(!groups[label]){groups[label]=[];gSorts[label]=sort;}groups[label].push(t);});
-  const keys=Object.keys(groups).sort((a,b)=>gSorts[a]<gSorts[b]?-1:1);
-  const pR={high:0,medium:1,low:2};
-  let html='';
-  for(const lbl of keys){
-    const ts=groups[lbl].sort((a,b)=>pR[a.priority]-pR[b.priority]);
-    html+=`<div class="group-label">${esc(lbl)}<span class="group-count">${ts.length} task${ts.length>1?'s':''}</span></div>`;
-    
-    // Add ghost "Add task" element that appears on hover
-    html += `<div class="t-row" style="margin-bottom:8px;">
-      <div class="t-label" style="width:42px;"></div>
-      <div class="t-slot">
-        <button class="t-ghost" onclick="document.getElementById('in-title').focus();" style="width:100%;">+ Add task</button>
-      </div>
-    </div>`;
-    
-    const taskHtmls = await Promise.all(ts.map(async t=>{
-      const dl=dueLabel(t.due);
-      let filesHtml = '';
-      const taskFiles = getTaskFiles(t); // Use canonical registry
-      if (taskFiles?.length) {
-        const fileHtmls = await Promise.all(taskFiles.map(async f=>{
-          // Handle both legacy format (name/url) and new format (link object)
-          const label = f.label || f.name || 'File';
-          const fileLink = typeof f === 'string' ? { abs_path: f } : f;
-          const safeLink = escJsonForAttr(fileLink);
-          const icon = fileIcon(fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url || '');
-          const warning = fileLink.warning ? `<span style="color:var(--soon);" title="${esc(fileLink.warning)}">⚠️</span>` : '';
-          return `<a href="#" class="file-chip" data-path="${escAttr(JSON.stringify(fileLink))}">${icon} ${esc(label)}${warning}</a>`;
-        }));
-        filesHtml = `<div class="task-files">${fileHtmls.join('')}</div>`;
-      }
-      const projName = t.isSubtask ? (t.projectName || projectNameById(t.projectId)) : projectNameById(t.projectId);
-      const parentTask = t.parentTaskId ? tasks.find(pt => pt.id === t.parentTaskId) : null;
-      const isTaskSubtask = !!t.parentTaskId;
-      return`<div class="task-card ${t.done?'done':''} ${isTaskSubtask ? 'subtask-task' : ''}" data-priority="${t.priority}">
-        <div class="task-top">
-          <div class="task-content">
-            <div class="check-box ${t.done?'checked':''}" onclick="${t.isSubtask ? 'toggleSubtask(' + t.projectId + ', ' + t.id + ')' : 'toggleTask(' + t.id + ')'}"></div>
-            <div class="task-body">
-            <div class="task-title">
-              ${isTaskSubtask && parentTask ? `<span style="opacity:0.6;font-size:11px;color:var(--text-dim);">↳ ${esc(parentTask.title)} → </span>` : ''}
-              ${t.isSubtask ? `<span style="opacity:0.6;font-size:11px;">📁 ${esc(projName || 'Project')} →</span> ` : ''}
-              ${esc(t.title)}
-              ${isTaskSubtask ? `<span style="font-size:9px;color:var(--text-light);margin-left:6px;">(subtask)</span>` : ''}
-            </div>
-            <div class="task-meta-row">
-              <span class="priority-tag ${t.priority}">${t.priority}</span>
-              ${getProtocolBadge(t)}
-              ${projName && !t.isSubtask ? `<span class="due-tag">${esc(projName)}</span>` : ''}
-              ${dl?`<span class="due-tag ${dl.cls}"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${esc(dl.text)}</span>`:''}
-              ${t.dependsOn ? (() => {
-                const depTask = tasks.find(d => d.id === t.dependsOn);
-                return depTask ? `<span class="due-tag" style="opacity:0.7;" title="Depends on: ${esc(depTask.title)}">🔗 Depends on</span>` : '';
-              })() : ''}
-              ${(t.note && t.note.trim()) ? `<span class="task-notes-icon" title="Has note">📝</span>` : ''}
-              ${t.tags?.length ? t.tags.map(tag => `<span class="tag-chip" data-tag="${esc(tag)}">${esc(tag)}</span>`).join('') : ''}
-            </div>
-            ${(t.note && t.note.trim()) ? `<div class="task-note-section">
-              <div class="task-note-toggle" onclick="toggleTaskNote(${t.id}, this)">
-                <span>📝</span>
-                <span>${t.note.trim().split('\n')[0].substring(0, 60)}${t.note.trim().split('\n')[0].length > 60 ? '...' : ''}</span>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;margin-left:auto;">
-                  <polyline points="9 18 15 12 9 6"></polyline>
-                </svg>
-              </div>
-              <div class="task-note-content collapsed" id="note-${t.id}">
-                <textarea class="task-note-textarea" data-task-id="${t.id}" placeholder="Add note..." oninput="debounceSaveTaskNote(${t.id}, this.value)">${esc(t.note)}</textarea>
-              </div>
-            </div>` : `<div class="task-note-section">
-              <button class="task-note-add-btn" onclick="openTaskNoteEditor(${t.id}, this)">
-                <span>📝</span>
-                <span>Add note</span>
-              </button>
-              <div class="task-note-content collapsed" id="note-${t.id}" style="display:none;">
-                <textarea class="task-note-textarea" data-task-id="${t.id}" placeholder="Add note..." oninput="debounceSaveTaskNote(${t.id}, this.value)"></textarea>
-              </div>
-            </div>`}
-            ${filesHtml}
-            </div>
-          </div>
-          <div class="task-actions">
-            <button class="btn-del" onclick="openTaskDrawer(${t.id})" title="Open drawer (Notes, Files, Subtasks)">📝</button>
-            <button class="btn-del" data-action="edit-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" onclick="handleEditTaskAction(event, this)" title="Edit">✎</button>
-            <button class="btn-del btn-delete" data-action="delete" data-id="${String(t.id)}" data-task-id="${String(t.id)}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" title="Delete">×</button>
-          </div>
-        </div>
-      </div>`;
-    }));
-    html += taskHtmls.join('');
-  }
-  c.innerHTML=html;
 }
 
 function projectNameById(projectId) {
@@ -5803,11 +5299,19 @@ function projectHTML(p, tasksFromStore = null, openProjectsFromStore = null){
 // ═══════════════════════ WORKFLOW MATRIX ═══════════════════════
 
 // Map task status/stage to matrix stage (new system: planned → in_progress → blocked → ready → done)
+// getMatrixStage has been moved to src/domain/models.js
 function getMatrixStage(task) {
-  if (task.done) return 'done';
-  if (isTaskBlocked(task)) return 'blocked';
-  if (task.status === 'Doing' || task.stage === 'doing' || task.stage === 'in_progress') return 'in_progress';
-  return 'planned';
+  if (window.Petal?.getMatrixStage) {
+    return window.Petal.getMatrixStage(task);
+  } else if (window.Petal?.domain?.getMatrixStage) {
+    return window.Petal.domain.getMatrixStage(task);
+  } else {
+    // Fallback
+    if (task.done) return 'done';
+    if (isTaskBlocked(task)) return 'blocked';
+    if (task.status === 'Doing' || task.stage === 'doing' || task.stage === 'in_progress') return 'in_progress';
+    return 'planned';
+  }
 }
 
 // Select project for matrix view
@@ -5874,140 +5378,24 @@ function toggleWorkflowMatrix() {
 }
 
 // Section 1: Today Timeline (Time-Block Aware)
+// renderTodayTimeline has been moved to src/ui/renderProjectViews.js
 function renderTodayTimeline(project, projectTasks) {
-  const contentEl = document.getElementById('today-timeline-content');
-  if (!contentEl) return;
-  
-  const today = new Date();
-  const dayName = today.toLocaleDateString('en-US', { weekday: 'short' });
-  const activeTasks = projectTasks.filter(t => !t.deletedAt && !t.done);
-  
-  // Group tasks by time block
-  const timeBlocks = {
-    'morning': [],
-    'midday': [],
-    'afternoon': [],
-    'evening': [],
-    'protocol': []
-  };
-  
-  activeTasks.forEach(task => {
-    if (task.protocol?.enabled) {
-      timeBlocks.protocol.push(task);
-    } else if (task.timeBlock) {
-      if (timeBlocks[task.timeBlock]) {
-        timeBlocks[task.timeBlock].push(task);
-      }
-    } else {
-      // No time block assigned - don't auto-assign based on lane
-      // Tasks without time blocks won't appear in timeline
-    }
-  });
-  
-  // Get protocol tasks with scheduled steps for today
-  // For now, show all active protocol tasks in the timeline
-  const protocolTasksToday = timeBlocks.protocol;
-  
-  let html = `<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:16px;">Today (${dayName})</div>`;
-  
-  // Time blocks with example times
-  const timeBlockLabels = {
-    'morning': '7:00–10:00 — Morning',
-    'midday': '10:00–1:00 — Midday',
-    'afternoon': '1:00–4:00 — Afternoon',
-    'evening': '4:00–7:00 — Evening',
-    'protocol': 'Protocol Steps Today'
-  };
-  
-  Object.keys(timeBlocks).forEach(block => {
-    const tasks = timeBlocks[block];
-    if (tasks.length === 0 && block !== 'protocol') return;
-    
-    if (block === 'protocol' && protocolTasksToday.length === 0) return;
-    
-    html += '<div style="margin-bottom:16px;padding:12px;background:var(--bg2);border-left:3px solid var(--rose);border-radius:6px;">';
-    html += `<div style="font-size:11px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;">${timeBlockLabels[block] || block}</div>`;
-    
-    if (block === 'protocol') {
-      protocolTasksToday.forEach(task => {
-        const protocol = task.protocol;
-        const dayIndex = task.protocol.dayIndex || calculateProtocolDayIndex(protocol.startAt);
-        const steps = protocol.steps || [];
-        const nextStep = steps.find(s => !s.done);
-        
-        html += '<div style="padding:8px;background:var(--surface);border-radius:4px;margin-bottom:6px;">';
-        html += `<div style="font-size:13px;color:var(--text);font-weight:500;">${esc(task.title)} (Day ${dayIndex})</div>`;
-        if (nextStep) {
-          html += `<div style="font-size:11px;color:var(--sage);margin-top:4px;">Next step: ${esc(nextStep.title)}</div>`;
-        }
-        html += '</div>';
-      });
-    } else {
-      tasks.forEach(task => {
-        html += renderTaskItemCompact(task);
-      });
-    }
-    
-    html += '</div>';
-  });
-  
-  if (html === `<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:16px;">Today (${dayName})</div>`) {
-    html += '<div style="text-align:center;padding:40px;color:var(--text-dim);font-size:12px;">No tasks scheduled for today. Add tasks with time blocks to see them here.</div>';
+  if (window.Petal?.ui?.renderTodayTimeline) {
+    const ctx = createPageContext();
+    window.Petal.ui.renderTodayTimeline(ctx, project, projectTasks);
+  } else {
+    console.error('RenderProjectViews module not loaded');
   }
-  
-  contentEl.innerHTML = html;
 }
 
-// Section 2: Active Protocols (Enhanced)
+// renderActiveProtocols has been moved to src/ui/renderProjectViews.js
 function renderActiveProtocols(project, projectTasks) {
-  const contentEl = document.getElementById('active-protocols-content');
-  if (!contentEl) return;
-  
-  const protocolTasks = projectTasks.filter(t => 
-    !t.deletedAt && 
-    !t.done && 
-    t.protocol?.enabled === true
-  );
-  
-  if (protocolTasks.length === 0) {
-    contentEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-dim);font-size:12px;">No active protocols.</div>';
-    return;
+  if (window.Petal?.ui?.renderActiveProtocols) {
+    const ctx = createPageContext();
+    window.Petal.ui.renderActiveProtocols(ctx, project, projectTasks);
+  } else {
+    console.error('RenderProjectViews module not loaded');
   }
-  
-  let html = '<div style="display:flex;flex-direction:column;gap:12px;">';
-  protocolTasks.forEach(task => {
-    const protocol = task.protocol;
-    const startAt = protocol.startAt ? new Date(protocol.startAt) : null;
-    const expectedEnd = protocol.expectedEndAt ? new Date(protocol.expectedEndAt) : null;
-    
-    // Calculate total days
-    let totalDays = 4; // default
-    if (startAt && expectedEnd) {
-      const diffTime = expectedEnd - startAt;
-      totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    }
-    
-    const dayIndex = task.protocol.dayIndex || calculateProtocolDayIndex(protocol.startAt);
-    const expectedEndStr = expectedEnd ? expectedEnd.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : '';
-    
-    // Get next expected step
-    const steps = protocol.steps || [];
-    const nextStep = steps.find(s => !s.done);
-    
-    html += '<div style="padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;">';
-    html += `<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px;">${esc(task.title)}</div>`;
-    html += `<div style="font-size:12px;color:var(--rose);margin-bottom:4px;font-weight:500;">Day ${dayIndex} of ${totalDays}</div>`;
-    if (nextStep) {
-      html += `<div style="font-size:12px;color:var(--sage);margin-bottom:4px;">Next step: ${esc(nextStep.title)}</div>`;
-    }
-    if (expectedEndStr) {
-      html += `<div style="font-size:11px;color:var(--text-dim);">Expected completion: ${expectedEndStr}</div>`;
-    }
-    html += '</div>';
-  });
-  html += '</div>';
-  
-  contentEl.innerHTML = html;
 }
 
 // Add Cell Log Entry
@@ -6046,48 +5434,14 @@ async function openAddCellLogEntry() {
   renderCellLog(project);
 }
 
-// Section 3: Cell Log (Lightweight)
+// renderCellLog has been moved to src/ui/renderProjectViews.js
 function renderCellLog(project) {
-  const contentEl = document.getElementById('cell-log-content');
-  if (!contentEl) return;
-  
-  const cellLog = project.cellLog || [];
-  const recentEntries = [...cellLog]
-    .sort((a, b) => {
-      const dateA = a.date ? new Date(a.date).getTime() : 0;
-      const dateB = b.date ? new Date(b.date).getTime() : 0;
-      return dateB - dateA;
-    })
-    .slice(0, 10);
-  
-  if (recentEntries.length === 0) {
-    contentEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-dim);font-size:12px;">No cell log entries yet. Add entries to track cell culture work.</div>';
-    return;
+  if (window.Petal?.ui?.renderCellLog) {
+    const ctx = createPageContext();
+    window.Petal.ui.renderCellLog(ctx, project);
+  } else {
+    console.error('RenderProjectViews module not loaded');
   }
-  
-  let html = '<div style="display:flex;flex-direction:column;gap:8px;">';
-  recentEntries.forEach(entry => {
-    const date = entry.date ? new Date(entry.date) : new Date();
-    const dateStr = date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' });
-    
-    html += '<div style="padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;">';
-    html += `<div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">${dateStr}</div>`;
-    html += `<div style="font-size:13px;color:var(--text);">`;
-    if (entry.line) {
-      html += `<strong>${esc(entry.line)}</strong>`;
-      if (entry.passage) html += ` P${entry.passage}`;
-      if (entry.seededDensity) html += ` — ${entry.seededDensity}`;
-      if (entry.location) html += ` (${esc(entry.location)})`;
-    }
-    if (entry.notes) {
-      html += `<div style="margin-top:4px;font-size:12px;color:var(--text-dim);">${esc(entry.notes)}</div>`;
-    }
-    html += '</div>';
-    html += '</div>';
-  });
-  html += '</div>';
-  
-  contentEl.innerHTML = html;
 }
 
 // updateCompWindow has been moved to src/ui/uiHelpers.js
@@ -6100,197 +5454,45 @@ function updateCompWindow() {
   }
 }
 
-// Section 4: Computational Window
+// renderCompWindow has been moved to src/ui/renderProjectViews.js
 function renderCompWindow(project, projectTasks) {
-  const contentEl = document.getElementById('comp-window-content');
-  if (!contentEl) return;
-  
-  // If called without arguments, get project and tasks from selectedProjectId
-  if (!project || !projectTasks) {
-    if (!selectedProjectId) return;
-    project = projects.find(p => p.id === selectedProjectId);
-    if (!project) return;
-    projectTasks = tasks.filter(t => {
-      if (t.deletedAt) return false;
-      const taskProjectId = t.projectId ? (typeof t.projectId === 'number' ? t.projectId : parseInt(t.projectId)) : null;
-      return taskProjectId === selectedProjectId;
-    });
-  }
-  
-  const windowSelect = document.getElementById('comp-window-select');
-  const availableWindow = parseInt(windowSelect?.value || 90);
-  
-  const compTasks = projectTasks.filter(t => {
-    if (t.deletedAt || t.done) return false;
-    if (t.lane !== 'comp') return false;
-    if (isTaskBlocked(t)) return false;
-    const estimated = t.estimatedMinutes || 0;
-    return estimated > 0 && estimated <= availableWindow;
-  }).sort((a, b) => {
-    // Sort by priority (3 = high) then by estimated time
-    const priorityA = typeof a.priority === 'number' ? a.priority : (a.priority === 'high' ? 3 : a.priority === 'low' ? 1 : 2);
-    const priorityB = typeof b.priority === 'number' ? b.priority : (b.priority === 'high' ? 3 : b.priority === 'low' ? 1 : 2);
-    if (priorityB !== priorityA) return priorityB - priorityA;
-    return (a.estimatedMinutes || 0) - (b.estimatedMinutes || 0);
-  });
-  
-  if (compTasks.length === 0) {
-    contentEl.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-dim);font-size:12px;">No computational tasks fit in a ${availableWindow}-minute window.</div>`;
-    return;
-  }
-  
-  let html = `<div style="font-size:11px;color:var(--text-dim);margin-bottom:12px;font-style:italic;">Comp Window (${availableWindow} min):</div>`;
-  html += '<div style="display:flex;flex-direction:column;gap:8px;">';
-  compTasks.forEach(task => {
-    html += renderTaskItemCompact(task);
-  });
-  html += '</div>';
-  
-  contentEl.innerHTML = html;
-}
-
-// Section 5: Deadlines Horizon
-function renderDeadlinesHorizon(project, projectTasks) {
-  const contentEl = document.getElementById('deadlines-horizon-content');
-  if (!contentEl) return;
-  
-  const activeTasks = projectTasks.filter(t => !t.deletedAt && !t.done && t.due);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-  const monthFromNow = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
-  
-  // Due in 7 Days
-  const dueIn7Days = activeTasks.filter(t => {
-    const due = parseDate(t.due);
-    if (!due) return false;
-    due.setHours(0, 0, 0, 0);
-    return due <= weekFromNow && due >= today;
-  }).sort((a, b) => parseDate(a.due) - parseDate(b.due));
-  
-  // Due in 30 Days (but not in 7)
-  const dueIn30Days = activeTasks.filter(t => {
-    const due = parseDate(t.due);
-    if (!due) return false;
-    due.setHours(0, 0, 0, 0);
-    return due <= monthFromNow && due > weekFromNow;
-  }).sort((a, b) => parseDate(a.due) - parseDate(b.due));
-  
-  let html = '';
-  
-  // Next 7 days
-  if (dueIn7Days.length > 0) {
-    html += '<div style="margin-bottom:20px;">';
-    html += '<div style="font-size:12px;font-weight:600;color:var(--overdue);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;">Next 7 Days</div>';
-    dueIn7Days.forEach(task => {
-      const due = parseDate(task.due);
-      const dueStr = due.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-      html += '<div style="padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;">';
-      html += `<div style="font-size:13px;color:var(--text);font-weight:500;">${esc(task.title)}</div>`;
-      html += `<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Due: ${dueStr}</div>`;
-      html += '</div>';
-    });
-    html += '</div>';
-  }
-  
-  // Next 30 days
-  if (dueIn30Days.length > 0) {
-    html += '<div style="margin-bottom:20px;">';
-    html += '<div style="font-size:12px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;">Next 30 Days</div>';
-    dueIn30Days.forEach(task => {
-      const due = parseDate(task.due);
-      const dueStr = due.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-      html += '<div style="padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;">';
-      html += `<div style="font-size:13px;color:var(--text);font-weight:500;">${esc(task.title)}</div>`;
-      html += `<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Due: ${dueStr}</div>`;
-      html += '</div>';
-    });
-    html += '</div>';
-  }
-  
-  if (!html) {
-    html = '<div style="text-align:center;padding:40px;color:var(--text-dim);font-size:12px;">No upcoming deadlines.</div>';
-  }
-  
-  contentEl.innerHTML = html;
-}
-
-// Fourth Section: Active Artifacts (Filtered)
-function renderActiveArtifactsFiltered(project, projectTasks) {
-  const contentEl = document.getElementById('active-artifacts-content');
-  if (!contentEl) return;
-  
-  const artifacts = project.artifacts || [];
-  const activeArtifacts = artifacts.filter(artifact => {
-    // Show only artifacts with: active tasks, recent file changes, or stale flags
-    const linkedTasks = projectTasks.filter(t => 
-      artifact.subtasks && artifact.subtasks.includes(t.id) && !t.done
-    );
-    
-    if (linkedTasks.length > 0) return true;
-    
-    // Check for recent file changes (files updated in last 7 days)
-    const linkedFiles = (project.files || []).filter(f => {
-      const fileObj = typeof f === 'object' ? f : { abs_path: f };
-      return artifact.fileIds && artifact.fileIds.includes(fileObj.id);
-    });
-    
-    const recentFiles = linkedFiles.filter(f => {
-      const fileObj = typeof f === 'object' ? f : { abs_path: f };
-      if (fileObj.updatedAt) {
-        const updated = new Date(fileObj.updatedAt);
-        const daysSince = (Date.now() - updated.getTime()) / (24 * 60 * 60 * 1000);
-        return daysSince <= 7;
-      }
-      return false;
-    });
-    
-    if (recentFiles.length > 0) return true;
-    
-    // Check if artifact is stale (no updates in 30 days)
-    const lastUpdate = artifact.updatedAt ? new Date(artifact.updatedAt) : new Date(artifact.createdAt || 0);
-    const daysSinceUpdate = (Date.now() - lastUpdate.getTime()) / (24 * 60 * 60 * 1000);
-    if (daysSinceUpdate > 30) return true; // Show stale artifacts
-    
-    return false;
-  });
-  
-  if (activeArtifacts.length === 0) {
-    contentEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-dim);font-size:12px;">No active artifacts.</div>';
-    return;
-  }
-  
-  let html = '<div style="display:flex;flex-direction:column;gap:12px;">';
-  activeArtifacts.forEach(artifact => {
-    const linkedTasks = projectTasks.filter(t => 
-      artifact.subtasks && artifact.subtasks.includes(t.id) && !t.done
-    );
-    const latestVersion = artifact.versionHistory && artifact.versionHistory.length > 0
-      ? artifact.versionHistory[artifact.versionHistory.length - 1].version
-      : artifact.status === 'finalized' ? 'v1.0' : 'v0.1';
-    
-    const typeIcons = {
-      figure: '📊',
-      dataset: '💾',
-      build: '🔧',
-      protocol: '🧪',
-      manuscript: '📄'
-    };
-    const typeIcon = typeIcons[artifact.type] || '📦';
-    
-    html += '<div onclick="openArtifactDetail(' + artifact.id + ')" style="padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:all .15s;" onmouseover="this.style.borderColor=\'var(--rose-soft)\'" onmouseout="this.style.borderColor=\'var(--border)\'">';
-    html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">`;
-    html += `<span style="font-size:18px;">${typeIcon}</span>`;
-    html += `<div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text);">${esc(artifact.name)} – ${latestVersion}</div>`;
-    if (linkedTasks.length > 0) {
-      html += `<div style="font-size:11px;color:var(--sage);margin-top:2px;">${linkedTasks.length} active task${linkedTasks.length > 1 ? 's' : ''}</div>`;
+  if (window.Petal?.ui?.renderCompWindow) {
+    const ctx = createPageContext();
+    // If called without arguments, get project and tasks from selectedProjectId
+    if (!project || !projectTasks) {
+      if (!selectedProjectId) return;
+      project = projects.find(p => p.id === selectedProjectId);
+      if (!project) return;
+      projectTasks = tasks.filter(t => {
+        if (t.deletedAt) return false;
+        const taskProjectId = t.projectId ? (typeof t.projectId === 'number' ? t.projectId : parseInt(t.projectId)) : null;
+        return taskProjectId === selectedProjectId;
+      });
     }
-    html += '</div></div>';
-    html += '</div>';
-  });
-  html += '</div>';
-  
-  contentEl.innerHTML = html;
+    window.Petal.ui.renderCompWindow(ctx, project, projectTasks);
+  } else {
+    console.error('RenderProjectViews module not loaded');
+  }
+}
+
+// renderDeadlinesHorizon has been moved to src/ui/renderProjectViews.js
+function renderDeadlinesHorizon(project, projectTasks) {
+  if (window.Petal?.ui?.renderDeadlinesHorizon) {
+    const ctx = createPageContext();
+    window.Petal.ui.renderDeadlinesHorizon(ctx, project, projectTasks);
+  } else {
+    console.error('RenderProjectViews module not loaded');
+  }
+}
+
+// renderActiveArtifactsFiltered has been moved to src/ui/renderProjectViews.js
+function renderActiveArtifactsFiltered(project, projectTasks) {
+  if (window.Petal?.ui?.renderActiveArtifactsFiltered) {
+    const ctx = createPageContext();
+    window.Petal.ui.renderActiveArtifactsFiltered(ctx, project, projectTasks);
+  } else {
+    console.error('RenderProjectViews module not loaded');
+  }
 }
 
 function renderTaskItemCompact(task) {
@@ -6336,115 +5538,43 @@ function renderTaskItem(task, isStale = false, depTask = null) {
   return html;
 }
 
+// getNext3Tasks has been moved to src/utils/taskHelpers.js
 function getNext3Tasks(activeTasks) {
-  // Get tasks that are: not done, not blocked, due soon OR manually prioritized
-  const candidates = activeTasks.filter(t => {
-    if (t.done || isTaskBlocked(t)) return false;
-    if (t.priority === 'high') return true;
-    if (t.due) {
-      const due = parseDate(t.due);
-      const daysUntilDue = (due - today()) / (24 * 60 * 60 * 1000);
-      if (daysUntilDue <= 3 && daysUntilDue >= 0) return true;
-    }
-    return false;
-  });
-  
-  // Sort by priority and due date
-  candidates.sort((a, b) => {
-    if (a.priority === 'high' && b.priority !== 'high') return -1;
-    if (b.priority === 'high' && a.priority !== 'high') return 1;
-    if (a.due && b.due) {
-      return parseDate(a.due) - parseDate(b.due);
-    }
-    return 0;
-  });
-  
-  return candidates.slice(0, 3);
+  if (window.Petal?.utils?.getNext3Tasks) {
+    const allTasks = getAllTasks();
+    return window.Petal.utils.getNext3Tasks(activeTasks, allTasks);
+  } else {
+    // Fallback
+    const candidates = activeTasks.filter(t => {
+      if (t.done || isTaskBlocked(t)) return false;
+      if (t.priority === 'high') return true;
+      if (t.due) {
+        const due = parseDate(t.due);
+        const daysUntilDue = (due - today()) / (24 * 60 * 60 * 1000);
+        if (daysUntilDue <= 3 && daysUntilDue >= 0) return true;
+      }
+      return false;
+    });
+    candidates.sort((a, b) => {
+      if (a.priority === 'high' && b.priority !== 'high') return -1;
+      if (b.priority === 'high' && a.priority !== 'high') return 1;
+      if (a.due && b.due) {
+        return parseDate(a.due) - parseDate(b.due);
+      }
+      return 0;
+    });
+    return candidates.slice(0, 3);
+  }
 }
 
-// 3️⃣ Render Active Files
+// renderActiveFiles has been moved to src/ui/renderProjectViews.js
 async function renderActiveFiles(project, projectTasks) {
-  const contentEl = document.getElementById('active-files-content');
-  if (!contentEl) return;
-  
-  const allFiles = (project.files || []).filter(f => {
-    const fileObj = typeof f === 'object' ? f : { abs_path: f };
-    return !fileObj.deletedAt;
-  });
-  
-  // Current Files (marked as current or most recent version)
-  const currentFiles = allFiles.filter(f => {
-    const fileObj = typeof f === 'object' ? f : { abs_path: f };
-    return fileObj.versionCurrent || fileObj.pinned;
-  }).slice(0, 5);
-  
-  // Recently Modified (from fileHistory)
-  const recentFiles = allFiles
-    .map(f => {
-      const fileObj = typeof f === 'object' ? f : { abs_path: f };
-      const key = fileObj.onedrive_rel || fileObj.abs_path || fileObj.share_url || fileObj.id;
-      const lastOpened = fileHistory[key]?.lastOpened || 0;
-      return { file: f, lastOpened };
-    })
-    .sort((a, b) => b.lastOpened - a.lastOpened)
-    .slice(0, 5)
-    .map(item => item.file);
-  
-  // Pinned Outputs
-  const pinnedFiles = allFiles.filter(f => {
-    const fileObj = typeof f === 'object' ? f : { abs_path: f };
-    return fileObj.pinned === true;
-  });
-  
-  let html = '';
-  
-  // Current Files
-  if (currentFiles.length > 0) {
-    html += '<div style="margin-bottom:20px;">';
-    html += '<div style="font-size:12px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;">Current Files</div>';
-    currentFiles.forEach(f => {
-      html += renderFileItem(f, project, 'current');
-    });
-    html += '</div>';
+  if (window.Petal?.ui?.renderActiveFiles) {
+    const ctx = createPageContext();
+    await window.Petal.ui.renderActiveFiles(ctx, project, projectTasks);
+  } else {
+    console.error('RenderProjectViews module not loaded');
   }
-  
-  // Recently Modified
-  if (recentFiles.length > 0) {
-    html += '<div style="margin-bottom:20px;">';
-    html += '<div style="font-size:12px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;">Recently Modified</div>';
-    recentFiles.forEach(f => {
-      html += renderFileItem(f, project, 'recent');
-    });
-    html += '</div>';
-  }
-  
-  // Pinned Outputs
-  if (pinnedFiles.length > 0) {
-    html += '<div style="margin-bottom:20px;">';
-    html += '<div style="font-size:12px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;">Pinned Outputs</div>';
-    pinnedFiles.forEach(f => {
-      html += renderFileItem(f, project, 'pinned');
-    });
-    html += '</div>';
-  }
-  
-  // File Conflict Detection
-  const conflicts = detectFileConflicts(allFiles);
-  if (conflicts.length > 0) {
-    html += '<div style="margin-top:20px;padding:12px;background:var(--rose-pale);border:1px solid var(--rose-soft);border-radius:6px;">';
-    html += '<div style="font-size:11px;font-weight:600;color:var(--overdue);margin-bottom:6px;">⚠ Multiple similar versions exist</div>';
-    conflicts.forEach(conflict => {
-      html += `<div style="font-size:11px;color:var(--text);margin-bottom:4px;">${esc(conflict.baseName)}: ${conflict.files.length} versions</div>`;
-    });
-    html += '<div style="font-size:10px;color:var(--text-dim);margin-top:6px;">Mark one as Current to reduce confusion.</div>';
-    html += '</div>';
-  }
-  
-  if (!html) {
-    html = '<div style="text-align:center;padding:40px;color:var(--text-dim);font-size:12px;">No files yet. Add files to track your work.</div>';
-  }
-  
-  contentEl.innerHTML = html;
 }
 
 function renderFileItem(file, project, type) {
@@ -6499,84 +5629,24 @@ function detectFileConflicts(files) {
   return Object.values(conflicts).filter(c => c.files.length > 1);
 }
 
-// 4️⃣ Render Progress Momentum
+// renderProgressMomentum has been moved to src/ui/renderProjectViews.js
 function renderProgressMomentum(project, projectTasks) {
-  const contentEl = document.getElementById('progress-momentum-content');
-  if (!contentEl) return;
-  
-  const totalTasks = projectTasks.filter(t => !t.deletedAt).length;
-  const doneTasks = projectTasks.filter(t => !t.deletedAt && t.done).length;
-  const activeTasks = projectTasks.filter(t => !t.deletedAt && !t.done && (t.status === 'Doing' || t.stage === 'in_progress')).length;
-  const blockedTasks = projectTasks.filter(t => !t.deletedAt && !t.done && isTaskBlocked(t)).length;
-  const plannedTasks = totalTasks - doneTasks - activeTasks - blockedTasks;
-  
-  const milestones = project.milestones || [];
-  const doneMilestones = milestones.filter(m => m.done).length;
-  const nextMilestone = milestones.find(m => !m.done);
-  
-  let html = '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;">';
-  html += `<div style="flex:1;min-width:120px;"><div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;">Tasks</div>`;
-  html += `<div style="font-size:24px;font-weight:600;color:var(--text);">${totalTasks} total</div>`;
-  html += `<div style="font-size:12px;color:var(--text-dim);margin-top:4px;">${doneTasks} complete • ${activeTasks} active • ${blockedTasks} blocked • ${plannedTasks} planned</div>`;
-  html += '</div>';
-  
-  if (milestones.length > 0) {
-    html += `<div style="flex:1;min-width:120px;"><div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;">Milestones</div>`;
-    html += `<div style="font-size:24px;font-weight:600;color:var(--text);">${doneMilestones}/${milestones.length}</div>`;
-    if (nextMilestone) {
-      html += `<div style="font-size:12px;color:var(--rose);margin-top:4px;font-weight:500;">Next: ${esc(nextMilestone.title)}</div>`;
-    }
-    html += '</div>';
+  if (window.Petal?.ui?.renderProgressMomentum) {
+    const ctx = createPageContext();
+    window.Petal.ui.renderProgressMomentum(ctx, project, projectTasks);
+  } else {
+    console.error('RenderProjectViews module not loaded');
   }
-  
-  html += '</div>';
-  
-  // Progress bar
-  const progressPct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
-  html += '<div style="margin-top:12px;">';
-  html += '<div style="height:8px;background:var(--bg2);border-radius:4px;overflow:hidden;">';
-  html += `<div style="height:100%;background:linear-gradient(90deg,var(--rose),var(--sage));width:${progressPct}%;transition:width .3s;"></div>`;
-  html += '</div>';
-  html += `<div style="font-size:11px;color:var(--text-dim);margin-top:4px;text-align:center;">${progressPct}% complete</div>`;
-  html += '</div>';
-  
-  contentEl.innerHTML = html;
 }
 
-// 5️⃣ Render Working Log
+// renderWorkingLog has been moved to src/ui/renderProjectViews.js
 function renderWorkingLog(project) {
-  const contentEl = document.getElementById('working-log-content');
-  if (!contentEl) return;
-  
-  const log = project.workingLog || [];
-  const sortedLog = [...log].sort((a, b) => {
-    const dateA = a.at ? new Date(a.at).getTime() : 0;
-    const dateB = b.at ? new Date(b.at).getTime() : 0;
-    return dateB - dateA; // Newest first
-  });
-  
-  if (sortedLog.length === 0) {
-    contentEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-dim);font-size:12px;">No log entries yet. Add entries to track your progress.</div>';
-    return;
+  if (window.Petal?.ui?.renderWorkingLog) {
+    const ctx = createPageContext();
+    window.Petal.ui.renderWorkingLog(ctx, project);
+  } else {
+    console.error('RenderProjectViews module not loaded');
   }
-  
-  let html = '<div style="display:flex;flex-direction:column;gap:12px;">';
-  sortedLog.forEach(entry => {
-    const date = entry.at ? new Date(entry.at) : new Date();
-    const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined });
-    const timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    
-    html += '<div style="padding:12px;background:var(--bg2);border-left:3px solid var(--rose);border-radius:6px;">';
-    html += `<div style="font-size:10px;color:var(--text-dim);margin-bottom:4px;">${dateStr} at ${timeStr}</div>`;
-    html += `<div style="font-size:13px;color:var(--text);line-height:1.5;">${esc(entry.text || '')}</div>`;
-    if (entry.fileIds && entry.fileIds.length > 0) {
-      html += '<div style="font-size:10px;color:var(--text-dim);margin-top:6px;">📎 ' + entry.fileIds.length + ' file' + (entry.fileIds.length > 1 ? 's' : '') + '</div>';
-    }
-    html += '</div>';
-  });
-  html += '</div>';
-  
-  contentEl.innerHTML = html;
 }
 
 // Render Project Tasks

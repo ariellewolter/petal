@@ -91,6 +91,38 @@ export function filterWorkflowProjects() {
 export async function renderWorkflowPage(containerEl, state, handlers) {
   if (!containerEl) return;
   
+  // Create or find header - must be first element
+  let workflowHeader = containerEl.querySelector('.workflow-header');
+  if (!workflowHeader) {
+    workflowHeader = document.createElement('header');
+    workflowHeader.className = 'workflow-header';
+    // Insert at the very beginning of the container, before any existing content
+    const firstChild = containerEl.firstChild;
+    if (firstChild && firstChild.nodeType === 1) { // Element node
+      containerEl.insertBefore(workflowHeader, firstChild);
+    } else {
+      containerEl.insertBefore(workflowHeader, containerEl.firstChild);
+    }
+  }
+  
+  // Calculate workflow stats
+  const projects = Array.isArray(state.projects) ? state.projects : [];
+  const tasks = Array.isArray(state.tasks) ? state.tasks : [];
+  const activeProjects = projects.filter(p => p && !p.done);
+  const activeTasks = tasks.filter(t => t && !t.done && !t.deletedAt && !t.parentTaskId);
+  
+  // Render header
+  workflowHeader.innerHTML = `
+    <div class="workflow-header-title">
+      <span class="workflow-header-name">Workflow</span>
+    </div>
+    <div class="workflow-header-right">
+      <div style="display:flex;align-items:center;gap:6px">
+        <span class="workflow-header-status">${activeProjects.length} project${activeProjects.length !== 1 ? 's' : ''} · ${activeTasks.length} active task${activeTasks.length !== 1 ? 's' : ''}</span>
+      </div>
+    </div>
+  `;
+  
   // Populate project filter dropdown
   populateWorkflowProjectFilter(state);
   
