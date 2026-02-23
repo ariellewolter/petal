@@ -11,7 +11,33 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Petal">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet" onerror="console.warn('Google Fonts failed to load, using system fonts');">
+<style>
+/* Font fallback if Google Fonts fail to load */
+body { font-family: 'Jost', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+.wordmark-title, .wordmark-sub, h1, h2, h3, h4, h5, h6 { font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif; }
+</style>
+<script>
+// IMMEDIATE scroll fix - must run before any rendering
+(function() {
+  'use strict';
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    });
+  } else {
+    window.scrollTo(0, 0);
+    if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
+  }
+  // Also run immediately
+  window.scrollTo(0, 0);
+  if (document.documentElement) document.documentElement.scrollTop = 0;
+  if (document.body) document.body.scrollTop = 0;
+})();
+</script>
 <style>
 :root {
   --bg:         #faf8f5;
@@ -40,29 +66,131 @@
   --proj-5: #7a9aac; --proj-5p: #e0ecf2;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
-body{background:var(--bg);color:var(--text);font-family:'Jost',sans-serif;font-weight:300;min-height:100vh;}
+html{scroll-behavior:smooth;overflow-x:hidden;height:100%;position:relative;margin:0;padding:0;top:0;left:0;}
+body{background:var(--bg);color:var(--text);font-family:'Jost',sans-serif;font-weight:300;min-height:100vh;margin:0;padding:0;overflow-x:hidden;position:relative;top:0 !important;left:0;height:auto;transform:translateY(0) !important;}
 body::before{content:'';position:fixed;inset:0;background:
   radial-gradient(ellipse 60% 40% at 10% 10%,rgba(201,139,139,.06) 0%,transparent 70%),
   radial-gradient(ellipse 50% 60% at 90% 90%,rgba(154,171,148,.07) 0%,transparent 70%),
   radial-gradient(ellipse 40% 50% at 50% 50%,rgba(160,136,152,.04) 0%,transparent 70%);
   pointer-events:none;z-index:0;}
 
-.app{position:relative;z-index:1;max-width:860px;margin:0 auto;padding:52px 36px 100px;animation:rise .7s cubic-bezier(.22,.68,0,1.2) both;}
+.app{position:relative;z-index:1;max-width:100vw;margin:0 !important;padding:0 !important;animation:none;display:grid;grid-template-columns:220px 1fr;gap:0;min-height:100vh;align-items:start;justify-items:start;width:100%;top:0 !important;left:0;transform:translateY(0) !important;grid-template-rows:100vh;height:100vh;overflow:hidden;}
 .app.workflow-active{max-width:100vw;padding-left:0;padding-right:0;width:100%;}
-.app.workflow-active header,
-.app.workflow-active .tabs{max-width:860px;margin-left:auto;margin-right:auto;padding-left:36px;padding-right:36px;}
+.app.today-active{max-width:100vw;padding-left:0;padding-right:0;width:100%;}
+
+/* GLOBAL SIDEBAR */
+.global-sidebar{grid-column:1;grid-row:1;background:var(--surface);border-right:1px solid var(--border);padding:0;display:flex;flex-direction:column;position:sticky;top:0 !important;align-self:start;height:100vh;max-height:100vh;overflow-y:auto;margin:0 !important;padding:0 !important;overflow-x:hidden;}
+.global-sidebar-header{padding:28px 20px 24px;border-bottom:1px solid var(--border);margin:0 !important;}
+.global-sidebar-brand{margin-bottom:16px;}
+.global-sidebar-header .wordmark-title{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:300;letter-spacing:-1px;color:var(--text);line-height:1;display:block;}
+.global-sidebar-header .wordmark-sub{font-size:8px;letter-spacing:.22em;text-transform:uppercase;color:var(--rose);font-weight:400;display:block;margin-top:2px;}
+.global-sidebar-logo{padding:0 8px 16px;margin-bottom:8px;}
+.global-sidebar-logo-name{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:400;letter-spacing:-0.5px;color:var(--text);}
+.global-sidebar-logo-name span{color:var(--rose);}
+.global-sidebar-logo-sub{font-size:8px;color:var(--text-dim);letter-spacing:.15em;text-transform:uppercase;margin-top:2px;}
+.global-sidebar-nav{padding:20px 12px;flex:1;display:flex;flex-direction:column;gap:2px;}
+.global-sidebar-nav-label{font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--text-dim);padding:0 8px;margin:20px 0 10px;display:block;font-weight:500;opacity:1;}
+.global-sidebar-nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:var(--text-dim);transition:all .15s;position:relative;text-decoration:none;}
+.global-sidebar-nav-item:hover{background:var(--bg2);color:var(--text);}
+.global-sidebar-nav-item.active{background:var(--rose-pale);color:var(--rose);}
+.global-sidebar-nav-item.active::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:2px;background:var(--rose);border-radius:0 2px 2px 0;}
+.global-sidebar-nav-icon{width:16px;text-align:center;font-size:13px;}
+.global-sidebar-nav-badge{margin-left:auto;background:var(--bg2);color:var(--text-dim);font-size:9px;padding:1px 6px;border-radius:10px;}
+.global-sidebar-nav-badge.alert{background:var(--rose-pale);color:var(--overdue);}
+.global-sidebar-bottom{padding:16px 12px 0;border-top:1px solid var(--border);}
+
+/* Adjust main content area when sidebar is present */
+.app > [id^="view-"]{grid-column:2;grid-row:1;padding:0;align-self:start;justify-self:start;width:100%;max-width:100%;box-sizing:border-box;margin:0 !important;top:0 !important;height:100vh;max-height:100vh;overflow-y:auto;overflow-x:hidden;position:relative;vertical-align:top;z-index:1;}
+
+/* Ensure all views expand properly and have proper padding */
+#view-tasks,
+#view-projects,
+#view-planner,
+#view-cell-log,
+#view-settings,
+#view-3d-print{
+  grid-column:2 !important;
+  grid-row:1 !important;
+  width:100% !important;
+  max-width:100% !important;
+  box-sizing:border-box !important;
+  padding:52px 36px 100px !important;
+  overflow-x:hidden !important;
+  overflow-y:auto !important;
+  min-width:0 !important;
+  height:100vh !important;
+  margin:0 !important;
+  padding-top:52px !important;
+  top:0 !important;
+  align-self:start !important;
+  justify-self:start !important;
+  position:relative !important;
+  transform:translateY(0) !important;
+  scroll-behavior:auto !important;
+  z-index:1 !important;
+}
+
+/* Ensure first child of these views doesn't add extra spacing */
+#view-projects > *:first-child,
+#view-planner > *:first-child,
+#view-cell-log > *:first-child,
+#view-settings > *:first-child,
+#view-3d-print > *:first-child{
+  margin-top:0 !important;
+  padding-top:0 !important;
+}
+#view-today{padding:0 !important;width:100%;max-width:100%;height:100vh !important;overflow-y:auto !important;margin:0 !important;top:0 !important;align-self:start !important;position:relative !important;transform:translateY(0) !important;}
+#view-workflow{padding:52px 36px 100px !important;box-sizing:border-box;width:100%;max-width:100%;overflow-x:hidden;min-width:0;height:100vh !important;overflow-y:auto !important;margin:0 !important;top:0 !important;align-self:start !important;position:relative !important;transform:translateY(0) !important;}
+#view-files{width:100% !important;max-width:100% !important;box-sizing:border-box !important;padding:52px 36px 100px !important;overflow-x:hidden !important;overflow-y:auto !important;min-width:0 !important;height:100vh !important;margin:0 !important;padding-top:52px !important;top:0 !important;align-self:start !important;position:relative !important;transform:translateY(0) !important;scroll-behavior:auto !important;}
+#view-tasks{width:100% !important;max-width:100% !important;box-sizing:border-box !important;padding:52px 36px 100px !important;overflow-x:hidden !important;overflow-y:auto !important;min-width:0 !important;height:100vh !important;margin:0 !important;padding-top:52px !important;top:0 !important;align-self:start !important;position:relative !important;transform:translateY(0) !important;scroll-behavior:auto !important;}
+#view-projects{width:100% !important;max-width:100% !important;box-sizing:border-box !important;padding:52px 36px 100px !important;overflow-x:hidden !important;overflow-y:auto !important;min-width:0 !important;height:100vh !important;margin:0 !important;padding-top:52px !important;top:0 !important;align-self:start !important;position:relative !important;transform:translateY(0) !important;scroll-behavior:auto !important;}
+#view-planner{width:100% !important;max-width:100% !important;box-sizing:border-box !important;padding:52px 36px 100px !important;overflow-x:hidden !important;overflow-y:auto !important;min-width:0 !important;height:100vh !important;margin:0 !important;padding-top:52px !important;top:0 !important;align-self:start !important;position:relative !important;transform:translateY(0) !important;scroll-behavior:auto !important;display:none;flex-direction:column;}
+/* When planner view is shown, ensure flex-direction is set */
+#view-planner[style*="display: flex"],
+#view-planner[style*="display:flex"],
+#view-planner[style*="display: flex;"],
+#view-planner[style*="display:flex;"]{flex-direction:column !important;display:flex !important;}
+#view-cell-log{width:100% !important;max-width:100% !important;box-sizing:border-box !important;padding:52px 36px 100px !important;overflow-x:hidden !important;overflow-y:auto !important;min-width:0 !important;height:100vh !important;margin:0 !important;padding-top:52px !important;top:0 !important;align-self:start !important;position:relative !important;transform:translateY(0) !important;scroll-behavior:auto !important;}
+#view-settings{width:100% !important;max-width:100% !important;box-sizing:border-box !important;padding:52px 36px 100px !important;overflow-x:hidden !important;overflow-y:auto !important;min-width:0 !important;height:100vh !important;margin:0 !important;padding-top:52px !important;top:0 !important;align-self:start !important;position:relative !important;transform:translateY(0) !important;scroll-behavior:auto !important;}
 @keyframes rise{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
 @keyframes fadeSlide{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:translateX(0)}}
 @keyframes subtaskIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
 
+/* Force page to start at top - override any spacing */
+html, body {
+  margin: 0 !important;
+  padding: 0 !important;
+  transform: translateY(0) !important;
+  position: relative !important;
+  top: 0 !important;
+  left: 0 !important;
+  height: auto !important;
+  overflow-y: auto !important;
+}
+
+.app {
+  margin: 0 !important;
+  padding: 0 !important;
+  transform: translateY(0) !important;
+  position: relative !important;
+  top: 0 !important;
+  left: 0 !important;
+}
+
+/* Ensure header and views start at top */
+.app > header,
+.app > [id^="view-"] {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+  top: 0 !important;
+}
+
 /* ── HEADER ── */
-header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:40px;padding-bottom:24px;border-bottom:1px solid var(--border);}
+/* Header removed - styles kept for potential future use */
 .wordmark-title{font-family:'Cormorant Garamond',serif;font-size:48px;font-weight:300;letter-spacing:-1px;color:var(--text);line-height:1;display:block;}
 .wordmark-sub{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--rose);font-weight:400;display:block;margin-top:3px;}
-.header-stats{text-align:right;display:flex;flex-direction:column;gap:4px;}
-.stat-pill{display:inline-flex;align-items:center;gap:7px;font-size:11px;letter-spacing:.1em;color:var(--text-dim);text-transform:uppercase;justify-content:flex-end;}
 .stat-pill .num{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:400;color:var(--rose);letter-spacing:0;}
-.vault-badge{display:inline-flex;align-items:center;gap:6px;font-size:10px;letter-spacing:.08em;color:var(--text-dim);text-transform:none;padding:4px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:all .15s;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.vault-badge{display:inline-flex;align-items:center;gap:6px;font-size:10px;letter-spacing:.08em;color:var(--text-dim);text-transform:none;padding:6px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:all .15s;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;box-sizing:border-box;}
 .vault-badge:hover{background:var(--rose-pale);border-color:var(--rose-soft);color:var(--rose);}
 .vault-badge[data-status="ok"]{border-color:var(--sage);color:var(--sage);}
 .vault-badge[data-status="bad"]{border-color:var(--overdue);color:var(--overdue);}
@@ -459,7 +587,173 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 }
 
 /* ── WORKFLOW VIEW RESPONSIVE ── */
-#view-workflow{overflow-x:hidden;width:100%;max-width:100vw;box-sizing:border-box;}
+#view-workflow{overflow-x:hidden;width:100%;max-width:100%;box-sizing:border-box;}
+
+/* ── WORKFLOW VIEW TOGGLE & FILTERS ── */
+.wf-view-btn.active{background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.1);}
+.wf-view-btn:hover:not(.active){color:var(--text);}
+.wf-filter-chip.on{background:var(--rose-pale);border-color:var(--rose-soft);color:var(--rose);}
+.wf-filter-chip:hover{border-color:var(--border2);color:var(--text);}
+.wf-hbtn:hover{border-color:var(--rose);color:var(--rose);}
+.wf-hbtn-primary:hover{background:var(--rose-soft);color:var(--text);}
+
+/* ── LIST VIEW STYLES ── */
+.wf-list-stat{padding:20px 28px;border-right:1px solid var(--border);}
+.wf-list-stat:last-child{border-right:none;}
+.wf-ls-label{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;}
+.wf-ls-val{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:300;line-height:1;}
+.wf-ls-sub{font-size:10px;color:var(--text-dim);margin-top:4px;}
+
+.wf-proj-row{display:grid;grid-template-columns:2fr 110px 130px 90px 100px 80px 50px;padding:0 28px;border-bottom:1px solid var(--border);align-items:stretch;cursor:pointer;transition:background .15s;position:relative;}
+.wf-proj-row:hover{background:var(--bg2);}
+.wf-proj-row.expanded{background:var(--bg2);}
+.wf-proj-row::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;opacity:0;transition:opacity .2s;}
+.wf-proj-row:hover::before,.wf-proj-row.expanded::before{opacity:1;}
+.wf-proj-row.c1::before{background:var(--proj-1);}
+.wf-proj-row.c2::before{background:var(--proj-2);}
+.wf-proj-row.c3::before{background:var(--proj-3);}
+.wf-proj-row.c4::before{background:var(--proj-4);}
+.wf-proj-row.c5::before{background:var(--proj-5);}
+
+.wf-proj-cell{padding:14px 0;display:flex;align-items:center;font-size:12px;color:var(--text-dim);border-right:1px solid transparent;}
+.wf-proj-name-cell{gap:12px;padding-right:16px;}
+.wf-proj-color-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.wf-proj-name{font-size:13px;color:var(--text);font-weight:400;}
+.wf-proj-desc{font-size:10px;color:var(--text-dim);margin-top:2px;}
+
+.wf-status-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:20px;font-size:9px;letter-spacing:.05em;}
+.wf-sp-active{background:var(--rose-pale);color:var(--rose);border:1px solid var(--rose-soft);}
+.wf-sp-done{background:var(--sage-pale);color:var(--sage);border:1px solid var(--sage);}
+.wf-sp-hold{background:rgba(201,160,96,.1);color:var(--soon);border:1px solid rgba(201,160,96,.2);}
+.wf-sp-plan{background:var(--bg2);color:var(--text-dim);border:1px solid var(--border);}
+
+.wf-prog-wrap{display:flex;align-items:center;gap:8px;width:100%;}
+.wf-prog-bar{flex:1;height:3px;background:var(--border2);border-radius:2px;overflow:hidden;}
+.wf-prog-fill{height:100%;border-radius:2px;transition:width 1s ease;}
+.wf-prog-pct{font-size:10px;color:var(--text-dim);white-space:nowrap;}
+
+.wf-deadline-cell{flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;}
+.wf-dl-date{font-size:11px;color:var(--text-dim);}
+.wf-dl-countdown{font-size:9px;}
+.wf-dl-soon{color:var(--overdue);}
+.wf-dl-ok{color:var(--text-dim);}
+
+.wf-task-counts{flex-direction:column;align-items:flex-start;gap:2px;}
+.wf-tc-row{font-size:10px;color:var(--text-dim);}
+
+.wf-proj-expand{display:none;background:var(--bg2);border-bottom:1px solid var(--border);padding:16px 28px 20px 52px;animation:expandDown .2s ease;}
+.wf-proj-expand.open{display:block;}
+@keyframes expandDown{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:translateY(0);}}
+
+.wf-expand-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+.wf-expand-section-title{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-dim);margin-bottom:10px;}
+
+.wf-expand-tasks{display:flex;flex-direction:column;gap:5px;}
+.wf-etask{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:5px;background:var(--surface);border:1px solid var(--border);font-size:11px;color:var(--text-dim);cursor:pointer;transition:border-color .15s;}
+.wf-etask:hover{border-color:var(--border2);}
+.wf-etask-check{width:12px;height:12px;border-radius:3px;border:1.5px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .2s;background:var(--surface);}
+.wf-etask-check.done{background:var(--sage);border-color:var(--sage);}
+.wf-etask-check.done::after{content:'✓';font-size:7px;color:white;}
+.wf-etask.done-t .wf-etask-label{text-decoration:line-through;color:var(--text-dim);}
+
+.wf-expand-files{display:flex;flex-direction:column;gap:5px;}
+.wf-efile{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:5px;background:var(--surface);border:1px solid var(--border);font-size:11px;color:var(--text-dim);cursor:pointer;transition:all .15s;}
+.wf-efile:hover{border-color:var(--rose);color:var(--rose);}
+.wf-efile-icon{width:22px;height:22px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;}
+
+.wf-expand-quick{display:flex;flex-direction:column;gap:8px;}
+.wf-quick-stat{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 12px;}
+.wf-qs-label{font-size:9px;color:var(--text-dim);margin-bottom:3px;}
+.wf-qs-val{font-size:14px;color:var(--text);font-family:'Cormorant Garamond',serif;font-weight:300;}
+.wf-expand-open-btn{margin-top:10px;width:100%;padding:7px;background:transparent;border:1px solid var(--border2);border-radius:6px;color:var(--text-dim);font-family:'Jost',sans-serif;font-size:11px;cursor:pointer;transition:all .15s;letter-spacing:.04em;}
+.wf-expand-open-btn:hover{border-color:var(--rose);color:var(--rose);}
+
+.wf-expand-toggle{padding:3px 8px;font-size:16px;color:var(--text-dim);cursor:pointer;transition:transform .2s,color .15s;background:none;border:none;display:flex;align-items:center;justify-content:center;}
+.wf-proj-row.expanded .wf-expand-toggle{transform:rotate(90deg);color:var(--rose);}
+.wf-expand-toggle:hover{color:var(--text);}
+
+/* ── TIMELINE VIEW STYLES ── */
+.wf-tl-header-row{display:grid;grid-template-columns:220px 1fr;border-bottom:1px solid var(--border);flex-shrink:0;}
+.wf-tl-label-col{padding:12px 20px;border-right:1px solid var(--border);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-dim);display:flex;align-items:flex-end;}
+.wf-tl-months{display:flex;overflow:hidden;position:relative;}
+.wf-tl-month{flex-shrink:0;padding:8px 10px;font-size:10px;color:var(--text-dim);border-right:1px solid var(--border);letter-spacing:.06em;}
+.wf-tl-month.current{color:var(--rose);}
+.wf-tl-body{flex:1;overflow-y:auto;overflow-x:hidden;}
+.wf-tl-body::-webkit-scrollbar{width:5px;}
+.wf-tl-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+
+.wf-tl-proj-row{display:grid;grid-template-columns:220px 1fr;border-bottom:1px solid var(--border);min-height:64px;align-items:center;transition:background .15s;cursor:pointer;}
+.wf-tl-proj-row:hover{background:var(--bg2);}
+.wf-tl-proj-info{padding:12px 20px;border-right:1px solid var(--border);display:flex;flex-direction:column;gap:3px;height:100%;justify-content:center;}
+.wf-tl-proj-name{font-size:12px;color:var(--text);}
+.wf-tl-proj-status{font-size:9px;color:var(--text-dim);}
+.wf-tl-bar-area{position:relative;height:100%;padding:18px 0;}
+.wf-tl-bar{position:absolute;height:28px;border-radius:4px;display:flex;align-items:center;padding:0 10px;font-size:10px;color:var(--surface);overflow:hidden;white-space:nowrap;top:50%;transform:translateY(-50%);transition:filter .15s;}
+.wf-tl-bar:hover{filter:brightness(1.15);}
+.wf-tl-bar-done{height:4px;border-radius:2px;position:absolute;top:50%;transform:translateY(-50%);left:0;opacity:.4;}
+.wf-tl-milestone{position:absolute;top:50%;transform:translateY(-50%);width:10px;height:10px;border-radius:1px;background:var(--soon);transform:translateY(-50%) rotate(45deg);box-shadow:0 0 8px rgba(201,160,96,.4);}
+.wf-tl-today-line{position:absolute;top:0;bottom:0;width:1px;background:var(--overdue);opacity:.6;z-index:10;pointer-events:none;}
+.wf-tl-today-line::before{content:'NOW';position:absolute;top:0;left:4px;font-size:8px;color:var(--overdue);letter-spacing:.1em;}
+
+.wf-tl-task-row{display:grid;grid-template-columns:220px 1fr;border-bottom:1px solid rgba(232,224,216,.5);min-height:44px;align-items:center;background:var(--surface);opacity:.85;cursor:pointer;transition:background .15s;}
+.wf-tl-task-row:hover{background:var(--bg2);opacity:1;}
+.wf-tl-task-info{padding:8px 12px 8px 36px;border-right:1px solid rgba(232,224,216,.5);display:flex;align-items:center;gap:8px;height:100%;}
+.wf-tl-task-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.wf-tl-task-name{font-size:11px;color:var(--text-dim);}
+.wf-tl-taskbar{position:absolute;height:16px;border-radius:3px;top:50%;transform:translateY(-50%);opacity:.7;}
+
+.wf-subview{display:none !important;animation:fadeUp .3s ease both;}
+.wf-subview.active{display:block !important;}
+#wf-view-timeline.active{display:flex !important;flex-direction:column !important;height:100% !important;}
+#wf-view-workflow-canvas.active{display:block !important;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+
+/* ── WORKFLOW CANVAS STYLES ── */
+#view-workflow::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center, transparent 55%, rgba(250,248,245,0.85) 100%);pointer-events:none;z-index:5;}
+.wf-proj{position:absolute;background:var(--surface);border:1px solid var(--border);border-radius:12px;width:260px;cursor:pointer;transition:border-color 0.2s,box-shadow 0.2s,transform 0.15s;z-index:20;box-shadow:0 2px 8px rgba(0,0,0,0.05);}
+.wf-proj:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(160,110,100,0.15);border-color:var(--rose-soft);}
+.wf-proj.selected{box-shadow:0 0 0 2px var(--rose-soft),0 8px 32px rgba(0,0,0,0.12);border-color:var(--rose);}
+.wf-proj-header{padding:14px 14px 12px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:10px;}
+.wf-proj-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+.wf-proj-title-wrap{flex:1;min-width:0;}
+.wf-proj-name{font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);line-height:1.3;font-weight:400;}
+.wf-proj-type{font-size:10px;color:var(--text-dim);margin-top:3px;letter-spacing:0.05em;}
+.wf-status-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px;}
+.wf-status-dot.active{background:var(--rose);animation:wfpulse 2s infinite;}
+.wf-status-dot.done{background:var(--sage);}
+.wf-status-dot.hold{background:var(--taupe);}
+.wf-status-dot.plan{background:var(--border2);}
+@keyframes wfpulse{0%,100%{opacity:1;box-shadow:0 0 4px rgba(201,139,139,0.5);}50%{opacity:0.6;}}
+.wf-proj-body{padding:10px 14px 12px;}
+.wf-mini-tasks{display:flex;flex-direction:column;gap:4px;margin-bottom:10px;}
+.wf-mtask{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text-dim);}
+.wf-mt-dot{width:4px;height:4px;border-radius:50%;background:var(--border2);flex-shrink:0;}
+.wf-mtask.done-t .wf-mt-dot{background:var(--sage);}
+.wf-mtask.done-t span{text-decoration:line-through;opacity:0.6;}
+.wf-proj-footer{padding:8px 14px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+.wf-prog{flex:1;height:3px;background:var(--bg2);border-radius:2px;overflow:hidden;}
+.wf-prog-fill{height:100%;border-radius:2px;transition:width 0.5s ease;}
+.wf-pct{font-size:9px;color:var(--text-dim);white-space:nowrap;}
+.wf-tags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;}
+.wf-tag{font-size:9px;padding:2px 6px;border-radius:3px;letter-spacing:0.03em;}
+.wf-tag.rose{background:var(--rose-pale);color:var(--rose);}
+.wf-tag.sage{background:var(--sage-pale);color:var(--sage);}
+.wf-tag.mauve{background:var(--mauve-pale);color:var(--mauve);}
+.wf-tag.taupe{background:var(--bg2);color:var(--taupe);}
+.wf-btn:hover{border-color:var(--rose);color:var(--rose);background:var(--rose-pale);}
+.dp-body::-webkit-scrollbar{width:4px;}
+.dp-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+.dp-tasks{display:flex;flex-direction:column;gap:6px;}
+.dp-task{display:flex;align-items:center;gap:8px;padding:8px;border-radius:6px;background:var(--bg2);border:1px solid var(--border);font-size:11px;color:var(--text);cursor:pointer;transition:border-color 0.15s;}
+.dp-task:hover{border-color:var(--rose-soft);}
+.dp-task-check{width:14px;height:14px;border-radius:3px;border:1.5px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.2s;background:var(--surface);}
+.dp-task-check.done{background:var(--sage);border-color:var(--sage);}
+.dp-task-check.done::after{content:'✓';font-size:8px;color:white;}
+.dp-task.done-t .dp-task-label{text-decoration:line-through;color:var(--text-dim);opacity:0.7;}
+.dp-files{display:flex;flex-direction:column;gap:6px;}
+.dp-file{display:flex;align-items:center;gap:8px;padding:8px;border-radius:6px;background:var(--bg2);border:1px solid var(--border);font-size:11px;color:var(--text);cursor:pointer;transition:all 0.15s;}
+.dp-file:hover{border-color:var(--rose);color:var(--rose);}
+.dp-file-icon{width:24px;height:24px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;background:var(--rose-pale);}
 .workflow-lanes-grid{display:flex;flex-direction:column;gap:24px;margin-bottom:20px;width:100%;}
 .workflow-bottlenecks{display:flex;gap:12px;flex-wrap:wrap;}
 
@@ -475,7 +769,7 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
   .workflow-lanes-grid{gap:16px;}
   #workflow-active-files{width:100%;right:-100%;}
   #workflow-active-files[style*="right: 0px"]{right:0!important;}
-  #view-workflow{padding:16px!important;}
+  #view-workflow{padding:24px 20px 80px!important;}
   .workflow-bottlenecks{flex-direction:column;}
   .workflow-bottlenecks > div{flex:1 1 100%;}
 }
@@ -483,9 +777,7 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 @media(max-width:600px){
   .app{padding:28px 16px 80px;}
   .app.workflow-active{padding:12px 12px 80px;}
-  .app.workflow-active header,
   .app.workflow-active .tabs{padding-left:12px;padding-right:12px;max-width:100%;}
-  header{flex-direction:column;align-items:flex-start;gap:14px;}
   header > div:last-child{flex-direction:column;align-items:flex-start;gap:12px;width:100%;}
   .wordmark-title{font-size:38px;}
   .toolbar{flex-direction:column;align-items:flex-start;}
@@ -496,7 +788,7 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 }
 
 /* ── PLANNER LAYOUT STYLES ── */
-#view-planner{display:none;height:calc(100vh - 200px);overflow:hidden;flex-direction:column;}
+#view-planner{display:none;height:100vh;overflow:hidden;flex-direction:column;margin:0 !important;top:0 !important;align-self:start;}
 #view-planner[style*="display:flex"]{display:flex!important;}
 
 /* Drag and drop styles */
@@ -618,10 +910,12 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 
 @media(max-width:600px){
   .board-project-filter{width:100%;}
-  #view-workflow{padding:12px!important;}
+  #view-workflow{padding:52px 36px 100px!important;}
   .workflow-lanes-grid{gap:12px;}
   .lane-header{padding:12px!important;}
   .lane-columns{padding:8px!important;min-height:200px!important;}
+  .today-main{grid-template-columns:1fr;padding:16px;}
+  .today-stats-row{grid-template-columns:repeat(2,1fr);}
 }
 
 /* Force hide all add forms by default */
@@ -630,55 +924,222 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 #matrix-add-task-section{display:none !important;}
 #matrix-add-file-section{display:none !important;}
 #add-project-file-active-section{display:none !important;}
+
+/* ── TODAY PAGE LAYOUT ── */
+#view-today{display:none;padding:0;width:100%;max-width:100vw;overflow-x:hidden;box-sizing:border-box;}
+#view-today[style*="display:block"]{display:block!important;}
+
+.today-layout{display:grid;grid-template-columns:1fr;grid-template-rows:auto 1fr;min-height:calc(100vh - 100px);width:100%;max-width:100%;}
+
+/* SIDEBAR */
+.today-sidebar{grid-row:1/3;background:var(--surface);border-right:1px solid var(--border);padding:28px 0;display:flex;flex-direction:column;}
+.today-logo{padding:0 20px 28px;border-bottom:1px solid var(--border);}
+.today-logo-name{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:400;letter-spacing:-0.5px;color:var(--text);}
+.today-logo-name span{color:var(--rose);}
+.today-logo-sub{font-size:9px;color:var(--text-dim);letter-spacing:.15em;text-transform:uppercase;margin-top:3px;}
+.today-nav{padding:20px 12px;flex:1;display:flex;flex-direction:column;gap:2px;}
+.today-nav-label{font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--text-dim);padding:0 8px;margin:12px 0 6px;}
+.today-nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:var(--text-dim);transition:all .15s;position:relative;text-decoration:none;}
+.today-nav-item:hover{background:var(--bg2);color:var(--text);}
+.today-nav-item.active{background:var(--rose-pale);color:var(--rose);}
+.today-nav-item.active::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:2px;background:var(--rose);border-radius:0 2px 2px 0;}
+.today-nav-icon{width:16px;text-align:center;font-size:13px;}
+.today-nav-badge{margin-left:auto;background:var(--bg2);color:var(--text-dim);font-size:9px;padding:1px 6px;border-radius:10px;}
+.today-nav-badge.alert{background:var(--rose-pale);color:var(--overdue);}
+.today-sidebar-bottom{padding:16px 12px 0;border-top:1px solid var(--border);}
+
+/* HEADER */
+.today-header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;height:58px;display:flex;align-items:center;justify-content:space-between;}
+.today-header-date{display:flex;align-items:baseline;gap:10px;}
+.today-day{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:300;font-style:italic;}
+.today-full{font-size:11px;color:var(--text-dim);letter-spacing:.05em;}
+.today-header-right{display:flex;align-items:center;gap:14px;}
+.today-status-dot{width:8px;height:8px;border-radius:50%;background:var(--sage);box-shadow:0 0 8px var(--sage);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+.today-header-status{font-size:11px;color:var(--text-dim);}
+.today-header-btn{background:var(--bg2);border:1px solid var(--border2);color:var(--text-dim);font-family:'Jost',sans-serif;font-size:11px;padding:6px 12px;border-radius:6px;cursor:pointer;transition:all .15s;}
+.today-header-btn:hover{border-color:var(--rose);color:var(--rose);}
+
+/* MAIN GRID */
+.today-main{padding:24px 28px;display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));grid-auto-rows:auto;gap:18px;align-content:start;width:100%;max-width:100%;}
+
+/* CARDS */
+.today-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.today-card-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 12px;border-bottom:1px solid var(--border);}
+.today-card-title{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);display:flex;align-items:center;gap:8px;}
+.today-dot{width:6px;height:6px;border-radius:50%;}
+.today-card-action{font-size:10px;color:var(--text-dim);cursor:pointer;transition:color .15s;}
+.today-card-action:hover{color:var(--rose);}
+
+/* STATS ROW */
+.today-stats-row{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;}
+.today-stat-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;position:relative;overflow:hidden;transition:border-color .2s;}
+.today-stat-card:hover{border-color:var(--border2);}
+.today-stat-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;}
+.today-stat-card.c1::after{background:var(--rose);}
+.today-stat-card.c2::after{background:var(--sage);}
+.today-stat-card.c3::after{background:var(--soon);}
+.today-stat-card.c4::after{background:var(--mauve);}
+.today-stat-label{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-dim);margin-bottom:10px;}
+.today-stat-value{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:300;line-height:1;margin-bottom:6px;}
+.today-stat-card.c1 .today-stat-value{color:var(--rose);}
+.today-stat-card.c2 .today-stat-value{color:var(--sage);}
+.today-stat-card.c3 .today-stat-value{color:var(--soon);}
+.today-stat-card.c4 .today-stat-value{color:var(--mauve);}
+.today-stat-sub{font-size:10px;color:var(--text-dim);}
+
+/* PLANNER */
+.today-planner-card{grid-column:span 1;min-width:0;}
+.today-time-slots{padding:0;max-height:460px;overflow-y:auto;}
+.today-time-slots::-webkit-scrollbar{width:4px;}
+.today-time-slots::-webkit-scrollbar-track{background:transparent;}
+.today-time-slots::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+.today-time-slot{display:grid;grid-template-columns:52px 1fr;min-height:52px;border-bottom:1px solid var(--border);position:relative;}
+.today-time-slot:last-child{border-bottom:none;}
+.today-slot-time{padding:14px 10px;font-size:10px;color:var(--text-dim);border-right:1px solid var(--border);letter-spacing:.05em;}
+.today-slot-content{padding:8px 12px;display:flex;flex-direction:column;gap:4px;justify-content:center;}
+.today-slot-event{background:var(--sage-pale);border-left:2px solid var(--sage);border-radius:0 4px 4px 0;padding:5px 8px;font-size:11px;color:var(--text);}
+.today-slot-event.blue{background:var(--mauve-pale);border-left-color:var(--mauve);}
+.today-slot-event.orange{background:rgba(201,160,96,.1);border-left-color:var(--soon);}
+.today-slot-event.pink{background:var(--rose-pale);border-left-color:var(--rose);}
+.today-slot-event-title{font-size:11px;color:var(--text);}
+.today-slot-event-sub{font-size:9px;color:var(--text-dim);margin-top:1px;}
+.today-now-line{position:absolute;left:0;right:0;height:1px;background:var(--overdue);box-shadow:0 0 6px var(--overdue);z-index:10;pointer-events:none;}
+.today-now-line::before{content:'';position:absolute;left:52px;top:-3px;width:6px;height:6px;border-radius:50%;background:var(--overdue);}
+
+/* TASKS */
+.today-tasks-card{grid-column:span 1;min-width:0;}
+.today-task-list{padding:6px 0;}
+.today-task-item{display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;}
+.today-task-item:last-child{border-bottom:none;}
+.today-task-item:hover{background:var(--bg2);}
+.today-task-check{width:14px;height:14px;border:1.5px solid var(--border2);border-radius:3px;flex-shrink:0;transition:all .2s;display:flex;align-items:center;justify-content:center;}
+.today-task-item:hover .today-task-check{border-color:var(--rose);}
+.today-task-check.done{background:var(--rose);border-color:var(--rose);}
+.today-task-check.done::after{content:'✓';font-size:9px;color:var(--surface);font-weight:bold;}
+.today-task-body{flex:1;min-width:0;}
+.today-task-name{font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.today-task-name.done{text-decoration:line-through;color:var(--text-dim);}
+.today-task-meta{font-size:9px;color:var(--text-dim);margin-top:2px;display:flex;gap:8px;}
+.today-task-tag{padding:1px 6px;border-radius:3px;font-size:9px;letter-spacing:.05em;}
+.tag-green{background:var(--sage-pale);color:var(--sage);}
+.tag-blue{background:var(--mauve-pale);color:var(--mauve);}
+.tag-orange{background:rgba(201,160,96,.1);color:var(--soon);}
+
+/* CELL LOG */
+.today-cell-card{grid-column:span 1;min-width:0;}
+.today-cell-entries{padding:4px 0;}
+.today-cell-entry{padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;}
+.today-cell-entry:last-child{border-bottom:none;}
+.today-cell-entry:hover{background:var(--bg2);}
+.today-cell-entry-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.today-cell-name{font-size:12px;color:var(--text);font-weight:500;}
+.today-cell-passage{font-size:9px;color:var(--text-dim);letter-spacing:.08em;}
+.today-cell-status-row{display:flex;gap:6px;margin-bottom:6px;}
+.today-cell-badge{font-size:9px;padding:2px 7px;border-radius:3px;letter-spacing:.06em;}
+.badge-healthy{background:var(--sage-pale);color:var(--sage);}
+.badge-monitor{background:rgba(201,160,96,.1);color:var(--soon);}
+.badge-concern{background:var(--rose-pale);color:var(--overdue);}
+.today-cell-metrics{display:grid;grid-template-columns:1fr 1fr;gap:4px;}
+.today-cell-metric{display:flex;flex-direction:column;gap:1px;}
+.today-cell-metric-label{font-size:8px;color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;}
+.today-cell-metric-value{font-size:11px;color:var(--text-dim);}
+.today-cell-viability-bar{margin-top:6px;height:3px;background:var(--border2);border-radius:2px;overflow:hidden;}
+.today-cell-viability-fill{height:100%;border-radius:2px;transition:width 1s ease;}
+
+/* PROJECTS */
+.today-projects-card{grid-column:span 1;min-width:0;}
+.today-project-list{padding:6px 0;}
+.today-project-item{display:grid;grid-template-columns:1fr auto;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;gap:12px;}
+.today-project-item:last-child{border-bottom:none;}
+.today-project-item:hover{background:var(--bg2);}
+.today-project-name{font-size:12px;color:var(--text);margin-bottom:4px;}
+.today-project-progress-bar{height:3px;background:var(--border2);border-radius:2px;overflow:hidden;margin-top:4px;}
+.today-project-progress-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--sage),var(--rose));}
+.today-project-meta{font-size:9px;color:var(--text-dim);margin-top:2px;}
+.today-project-pct{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:300;color:var(--text-dim);}
+
+/* FILES */
+.today-files-card{grid-column:span 1;min-width:0;}
+.today-file-list{padding:6px 0;}
+.today-file-item{display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;}
+.today-file-item:last-child{border-bottom:none;}
+.today-file-item:hover{background:var(--bg2);}
+.today-file-icon{width:28px;height:28px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+.today-file-icon.pdf{background:var(--rose-pale);}
+.today-file-icon.img{background:var(--sage-pale);}
+.today-file-icon.data{background:var(--mauve-pale);}
+.today-file-icon.doc{background:rgba(201,160,96,.1);}
+.today-file-name{font-size:11px;color:var(--text);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.today-file-meta{font-size:9px;color:var(--text-dim);margin-top:2px;}
+.today-file-time{font-size:9px;color:var(--text-dim);white-space:nowrap;}
+
+/* QUICK ADD BUTTON */
+.today-quick-add{position:fixed;bottom:28px;right:28px;width:48px;height:48px;border-radius:50%;background:var(--rose);border:none;color:var(--surface);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(201,139,139,.3);transition:all .2s;z-index:100;}
+.today-quick-add:hover{transform:scale(1.1);box-shadow:0 4px 28px rgba(201,139,139,.5);}
+
+/* SETTINGS PAGE */
+.settings-page{max-width:800px;margin:0 auto;}
+.settings-page-title{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:400;color:var(--text);margin-bottom:32px;}
+.settings-section{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;margin-bottom:24px;}
+.settings-section-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:400;color:var(--rose);margin-bottom:8px;}
+.settings-section-desc{font-size:12px;color:var(--text-dim);margin-bottom:20px;line-height:1.6;}
+.settings-vault-info{margin-bottom:20px;}
+.settings-vault-path{margin-bottom:16px;}
+.settings-label{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-dim);display:block;margin-bottom:8px;}
+.settings-vault-path-display{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text);word-break:break-all;}
+.settings-vault-actions{display:flex;gap:12px;flex-wrap:wrap;}
+.settings-btn{background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Jost',sans-serif;font-size:12px;font-weight:400;padding:8px 16px;cursor:pointer;transition:all .15s;}
+.settings-btn:hover{background:var(--bg2);border-color:var(--rose-soft);color:var(--rose);}
+.settings-btn-primary{background:var(--rose);border-color:var(--rose);color:white;}
+.settings-btn-primary:hover{background:var(--rose-soft);border-color:var(--rose-soft);}
+.settings-vault-status{margin-top:20px;padding-top:20px;border-top:1px solid var(--border);}
+.settings-status-item{display:flex;gap:12px;margin-bottom:8px;align-items:baseline;}
+.settings-status-label{font-size:11px;color:var(--text-dim);min-width:80px;}
+.settings-status-value{font-size:12px;color:var(--text);font-family:'DM Mono',monospace;}
+.settings-status-value.status-ok{color:var(--sage);}
+.settings-status-value.status-warning{color:var(--overdue);}
+.settings-import-export{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:20px;}
+.settings-export,.settings-import{display:flex;flex-direction:column;gap:12px;}
+.settings-subtitle{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:400;color:var(--text);margin-bottom:4px;}
+.settings-subtitle-desc{font-size:11px;color:var(--text-dim);line-height:1.5;}
+.settings-import-controls{display:flex;gap:8px;}
+.settings-info-box{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px;margin-top:12px;}
+.settings-info-box p{font-size:11px;color:var(--text-dim);line-height:1.6;margin:0;}
+.settings-about{padding:16px 0;}
+.settings-about p{margin-bottom:8px;font-size:13px;color:var(--text);}
+.settings-version{font-size:11px;color:var(--text-dim);}
+
+/* 3D Printing page loaded from pages/3d-print.html - styles included there */
 </style>
 </head>
 <body>
 <div class="app">
-
-  <!-- HEADER -->
-  <header>
-    <div>
-      <span class="wordmark-title">Petal</span>
-      <span class="wordmark-sub">my task list</span>
-    </div>
-    <div style="display:flex;align-items:flex-end;gap:20px;">
-      <div class="header-stats">
-        <div class="stat-pill"><span class="num" id="stat-remaining">0</span>&nbsp;remaining</div>
-        <div class="stat-pill"><span class="num" id="stat-overdue">0</span>&nbsp;overdue</div>
-        <div id="vaultBadge" class="vault-badge" title="Vault location" style="display:none;"></div>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
-        <div style="display:flex;gap:8px;">
-          <button class="btn-export" onclick="exportData()" title="Export data">📥 Export</button>
-          <button class="btn-import" onclick="document.getElementById('import-input').click()" title="Import data">📤 Import</button>
-          <input type="file" id="import-input" accept=".json" style="display:none;" onchange="importData(event)">
-        </div>
-        <div id="data-path" style="font-size:9px;color:var(--text-light);letter-spacing:.05em;max-width:300px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="Data file location"></div>
+  <!-- GLOBAL SIDEBAR -->
+  <aside id="global-sidebar" class="global-sidebar">
+    <div class="global-sidebar-header">
+      <div class="global-sidebar-brand">
+        <span class="wordmark-title">Petal</span>
+        <span class="wordmark-sub">my task list</span>
       </div>
     </div>
-  </header>
-
-  <!-- VIEW TABS -->
-  <div class="tabs">
-    <button class="tab"        id="tab-today"    onclick="switchView('today')">Today</button>
-    <button class="tab active" id="tab-tasks"    onclick="switchView('tasks')">Tasks</button>
-    <button class="tab"        id="tab-workflow" onclick="switchView('workflow')">Workflow</button>
-    <button class="tab"        id="tab-files"    onclick="switchView('files')">Files</button>
-    <button class="tab"        id="tab-projects" onclick="switchView('projects')">Projects</button>
-    <button class="tab"        id="tab-planner"  onclick="switchView('planner')">Planner</button>
-    <button class="tab"        id="tab-cell-log" onclick="switchView('cell-log')">Cell Log</button>
-  </div>
+    <nav class="global-sidebar-nav" id="global-sidebar-nav">
+      <!-- Will be populated by JS -->
+    </nav>
+    <div class="global-sidebar-bottom">
+      <a class="global-sidebar-nav-item" href="#" data-nav="settings" onclick="if(window.routerSwitchView){window.routerSwitchView('settings').catch(err=>console.error('Router error:',err));}else if(window.switchView){window.switchView('settings');}else if(window.switchViewSafe){window.switchViewSafe('settings');}else{console.error('switchView not available');}return false;">
+        <span class="global-sidebar-nav-icon">◯</span> Settings
+      </a>
+      <div id="vaultBadge" class="vault-badge" title="Vault location" style="display:none;margin-top:12px;width:100%;justify-content:flex-start;"></div>
+      <div id="data-path" style="display:none;font-size:9px;color:var(--text-light);letter-spacing:.05em;margin-top:8px;padding:6px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;border-radius:6px;transition:all .15s;" title="Data file location" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text-dim)'" onmouseout="this.style.background='transparent';this.style.color='var(--text-light)'"></div>
+    </div>
+  </aside>
 
   <!-- ═══════════════════════════════════ TODAY VIEW ═══ -->
-  <div id="view-today">
-    <div class="today-header">
-      <h2 style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:400;color:var(--rose);margin-bottom:20px;">What actually matters today?</h2>
-    </div>
-    <div id="today-container"></div>
-  </div>
+  <div id="view-today" style="display:none;"></div>
 
   <!-- ═══════════════════════════════════ TASKS VIEW ═══ -->
-  <div id="view-tasks" style="display:none;padding:20px;">
+  <div id="view-tasks" style="display:none;width:100%;max-width:100%;box-sizing:border-box;">
     <!-- Add Task Button -->
     <div style="margin-bottom:20px;">
       <button id="toggle-add-task-btn" class="btn-add-task-toggle" onclick="toggleAddTaskForm()" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text-dim);font-family:'Jost',sans-serif;font-size:12px;font-weight:400;letter-spacing:.1em;text-transform:uppercase;padding:8px 16px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px;">
@@ -802,7 +1263,6 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
         <button class="sort-btn"        onclick="setSort('month',this)">This Month</button>
       </div>
       <div class="toolbar-right">
-        <div id="vaultBadge" class="vault-badge" title="Click to open vault folder" style="display:none;cursor:pointer;padding:6px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--text-light);transition:all .15s;" onmouseover="this.style.background='var(--surface)';this.style.color='var(--text)'" onmouseout="this.style.background='var(--bg2)';this.style.color='var(--text-light)'" onclick="openVaultFolder()"></div>
         <select id="board-project-filter" class="board-project-filter" onchange="setBoardProjectFilter(this.value)" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px;cursor:pointer;">
           <option value="all">All projects</option>
         </select>
@@ -1387,7 +1847,7 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
   </div>
 
   <!-- ═══════════════════════════════════ FILES VIEW ═══ -->
-  <div id="view-files" style="display:none;">
+  <div id="view-files" style="display:none;width:100%;max-width:100%;box-sizing:border-box;">
     <div style="padding:20px;">
       <h2 style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:400;color:var(--rose);margin-bottom:8px;">File Management</h2>
       <p style="font-size:12px;color:var(--text-dim);margin-bottom:20px;">Track file status, history, and relationships</p>
@@ -1416,232 +1876,134 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════ WORKFLOW VIEW ═══ -->
-  <div id="view-workflow" style="display:none;padding:20px;box-sizing:border-box;width:100%;max-width:100%;overflow-x:hidden;">
-    <div style="margin-bottom:20px;">
-      <h2 style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:400;color:var(--rose);margin-bottom:8px;">Workflow</h2>
-      <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px;">Lab • Computational • Writing • Presentation • Personal • Product</p>
-      
-      <!-- Project Filter -->
-      <div style="margin-bottom:16px;display:flex;gap:12px;align-items:center;">
-        <select id="workflow-project-filter" onchange="renderWorkflow()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px;">
-          <option value="all">All Projects</option>
-        </select>
-        <div id="workflow-status"></div>
-      </div>
-      
-      <!-- Bottleneck Strip -->
-      <div id="workflow-bottlenecks" class="workflow-bottlenecks" style="margin-bottom:20px;padding:12px;background:var(--bg2);border-radius:8px;border:1px solid var(--border);">
-        <div id="bottleneck-blocked" style="flex:1;"></div>
-        <div id="bottleneck-stale" style="flex:1;"></div>
-        <div id="bottleneck-next" style="flex:1;"></div>
-      </div>
-    </div>
+  <!-- ═══════════════════════════════════ WORKFLOW VIEW (with List, Timeline, Workflow) ═══ -->
+  <div id="view-workflow" style="display:none;width:100%;max-width:100%;box-sizing:border-box;height:calc(100vh - 58px);flex-direction:column;overflow:hidden;">
     
-    <!-- Four Main Workflow Lanes -->
-    <div class="workflow-lanes-grid">
-      <!-- Wet Lab Lane -->
-      <div class="wf-lane">
-        <div class="wf-lane-head">
-          <div class="wf-lane-title">🧪 Wet Lab</div>
-          <div class="wf-lane-meta" id="wf-lab-meta"></div>
-          <button class="wf-collapse" onclick="toggleLane('lab')">Hide</button>
+    <!-- Header with view toggle and filters -->
+    <div class="wf-header" style="background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-shrink:0;height:58px;">
+      <div style="display:flex;align-items:center;gap:20px;">
+        <div class="wf-page-title" style="font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:400;letter-spacing:-.3px;color:var(--text);">Workflow</div>
+        <div class="wf-view-toggle" style="display:flex;background:var(--bg2);border:1px solid var(--border);border-radius:7px;overflow:hidden;padding:3px;gap:2px;">
+          <button class="wf-view-btn active" id="wf-btn-list" onclick="switchWorkflowView('list',this)" style="padding:4px 14px;font-size:10px;font-family:'Jost',sans-serif;color:var(--text-dim);cursor:pointer;transition:all .15s;border:none;background:transparent;letter-spacing:.06em;border-radius:5px;">List</button>
+          <button class="wf-view-btn" id="wf-btn-timeline" onclick="switchWorkflowView('timeline',this)" style="padding:4px 14px;font-size:10px;font-family:'Jost',sans-serif;color:var(--text-dim);cursor:pointer;transition:all .15s;border:none;background:transparent;letter-spacing:.06em;border-radius:5px;">Timeline</button>
+          <button class="wf-view-btn" id="wf-btn-workflow" onclick="switchWorkflowView('workflow',this)" style="padding:4px 14px;font-size:10px;font-family:'Jost',sans-serif;color:var(--text-dim);cursor:pointer;transition:all .15s;border:none;background:transparent;letter-spacing:.06em;border-radius:5px;">Workflow</button>
         </div>
-        <div class="wf-lane-body" id="wf-lab-body">
-          <div class="wf-group">
-            <div class="wf-group-title">Next</div>
-            <div class="wf-cards" id="wf-lab-next"></div>
+        <div class="wf-filter-bar" id="wfFilterBar" style="display:flex;align-items:center;gap:8px;">
+          <select id="wf-project-filter" onchange="setWorkflowProjectFilter(this.value)" style="padding:4px 10px;border-radius:20px;font-size:10px;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all .15s;background:var(--surface);font-family:'Jost',sans-serif;min-width:140px;">
+            <option value="all">All Projects</option>
+          </select>
+          <button class="wf-filter-chip on" onclick="toggleWorkflowFilter(this)" style="padding:4px 10px;border-radius:20px;font-size:10px;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all .15s;background:var(--rose-pale);border-color:var(--rose-soft);color:var(--rose);">All</button>
+          <button class="wf-filter-chip" onclick="toggleWorkflowFilter(this)" style="padding:4px 10px;border-radius:20px;font-size:10px;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all .15s;">Active</button>
+          <button class="wf-filter-chip" onclick="toggleWorkflowFilter(this)" style="padding:4px 10px;border-radius:20px;font-size:10px;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all .15s;">On Hold</button>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button class="wf-hbtn" style="background:var(--bg2);border:1px solid var(--border2);color:var(--text-dim);font-family:'Jost',sans-serif;font-size:11px;padding:6px 14px;border-radius:6px;cursor:pointer;transition:all .15s;">↓ Export</button>
+        <button class="wf-hbtn wf-hbtn-primary" style="background:var(--rose-pale);border:1px solid var(--rose-soft);color:var(--rose);font-family:'Jost',sans-serif;font-size:11px;padding:6px 14px;border-radius:6px;cursor:pointer;transition:all .15s;">+ New Project</button>
+      </div>
+    </div>
+
+    <!-- Main content area -->
+    <div class="wf-main" style="flex:1;overflow:hidden;position:relative;display:flex;flex-direction:column;">
+
+      <!-- ══ LIST VIEW ══════════════════════════════════════════ -->
+      <div id="wf-view-list" class="wf-subview active" style="display:block;padding:0;">
+        <!-- Summary stats -->
+        <div class="wf-list-stats" id="wfListStats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:1px solid var(--border);">
+          <!-- Will be populated by JS -->
+        </div>
+
+        <!-- Toolbar -->
+        <div class="wf-list-toolbar" style="display:flex;align-items:center;justify-content:space-between;padding:14px 28px;border-bottom:1px solid var(--border);gap:12px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="wf-search-box" style="display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:5px 12px;font-size:11px;color:var(--text-dim);">
+              <span style="color:var(--text-light);font-size:12px">⌕</span>
+              <input type="text" id="wfSearchInput" placeholder="Search projects..." style="background:none;border:none;outline:none;font-family:'Jost',sans-serif;font-size:11px;color:var(--text);width:180px;" oninput="filterWorkflowProjects()">
+            </div>
+            <button class="wf-sort-btn" style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:5px;border:1px solid var(--border);font-size:10px;color:var(--text-dim);cursor:pointer;transition:all .15s;background:transparent;font-family:'Jost',sans-serif;">Sort: Deadline ↑</button>
+            <button class="wf-sort-btn" style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:5px;border:1px solid var(--border);font-size:10px;color:var(--text-dim);cursor:pointer;transition:all .15s;background:transparent;font-family:'Jost',sans-serif;">Group by: Status</button>
           </div>
-          <div class="wf-group">
-            <div class="wf-group-title">Scheduled</div>
-            <div class="wf-cards" id="wf-lab-scheduled"></div>
+        </div>
+
+        <!-- Table -->
+        <div class="wf-proj-table" style="width:100%;">
+          <div class="wf-proj-thead" style="display:grid;grid-template-columns:2fr 110px 130px 90px 100px 80px 50px;padding:8px 28px;border-bottom:1px solid var(--border);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);">
+            <div>Project</div>
+            <div>Status</div>
+            <div>Progress</div>
+            <div>Tasks</div>
+            <div>Deadline</div>
+            <div>Files</div>
+            <div></div>
           </div>
-          <div class="wf-group">
-            <div class="wf-group-title">Later</div>
-            <div class="wf-cards" id="wf-lab-later"></div>
-          </div>
-          <div class="wf-group wf-done">
-            <div class="wf-group-title" onclick="toggleDone('lab')">Done ▾</div>
-            <div class="wf-cards" id="wf-lab-done" style="display:none;"></div>
+          <div class="wf-proj-tbody" id="wfProjTbody">
+            <!-- Will be populated by JS -->
           </div>
         </div>
       </div>
-      
-      <!-- Computational Lane -->
-      <div class="wf-lane">
-        <div class="wf-lane-head">
-          <div class="wf-lane-title">💻 Computational</div>
-          <div class="wf-lane-meta" id="wf-comp-meta"></div>
-          <button class="wf-collapse" onclick="toggleLane('comp')">Hide</button>
-        </div>
-        <div class="wf-lane-body" id="wf-comp-body">
-          <div class="wf-group">
-            <div class="wf-group-title">Next</div>
-            <div class="wf-cards" id="wf-comp-next"></div>
-          </div>
-          <div class="wf-group">
-            <div class="wf-group-title">Scheduled</div>
-            <div class="wf-cards" id="wf-comp-scheduled"></div>
-          </div>
-          <div class="wf-group">
-            <div class="wf-group-title">Later</div>
-            <div class="wf-cards" id="wf-comp-later"></div>
-          </div>
-          <div class="wf-group wf-done">
-            <div class="wf-group-title" onclick="toggleDone('comp')">Done ▾</div>
-            <div class="wf-cards" id="wf-comp-done" style="display:none;"></div>
-          </div>
-        </div>
+
+      <!-- ══ TIMELINE VIEW ══════════════════════════════════════ -->
+      <div id="wf-view-timeline" class="wf-subview" style="padding:0;flex:1;display:flex;flex-direction:column;overflow:hidden;">
+        <div id="wfTimelineInner" style="flex:1;overflow-y:auto;overflow-x:hidden;"></div>
       </div>
-      
-      <!-- Writing Lane -->
-      <div class="wf-lane">
-        <div class="wf-lane-head">
-          <div class="wf-lane-title">📝 Writing</div>
-          <div class="wf-lane-meta" id="wf-writing-meta"></div>
-          <button class="wf-collapse" onclick="toggleLane('writing')">Hide</button>
+
+      <!-- ══ WORKFLOW VIEW (Canvas) ══════════════════════════════════════ -->
+      <div id="wf-view-workflow-canvas" class="wf-subview" style="flex:1;position:relative;overflow:hidden;background:var(--bg);background-image:linear-gradient(rgba(232, 224, 216, 0.3) 1px, transparent 1px),linear-gradient(90deg, rgba(232, 224, 216, 0.3) 1px, transparent 1px);background-size: 44px 44px;background-attachment:local;min-height:0;">
+        <div class="wf-canvas" id="wfCanvas" style="position:absolute;top:0;left:0;width:3000px;height:3000px;transform-origin:top left;">
+          <svg class="wf-svg" id="wfSvg" style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:10;"></svg>
+          <!-- Project cards will be inserted here by JS -->
         </div>
-        <div class="wf-lane-body" id="wf-writing-body">
-          <div class="wf-group">
-            <div class="wf-group-title">Next</div>
-            <div class="wf-cards" id="wf-writing-next"></div>
-          </div>
-          <div class="wf-group">
-            <div class="wf-group-title">Scheduled</div>
-            <div class="wf-cards" id="wf-writing-scheduled"></div>
-          </div>
-          <div class="wf-group">
-            <div class="wf-group-title">Later</div>
-            <div class="wf-cards" id="wf-writing-later"></div>
-          </div>
-          <div class="wf-group wf-done">
-            <div class="wf-group-title" onclick="toggleDone('writing')">Done ▾</div>
-            <div class="wf-cards" id="wf-writing-done" style="display:none;"></div>
-          </div>
+
+        <!-- WF Controls -->
+        <div class="wf-controls" style="position:absolute;bottom:24px;right:24px;display:flex;flex-direction:column;gap:4px;z-index:50;">
+          <button class="wf-btn" id="wfZoomIn" title="Zoom In" style="width:32px;height:32px;background:rgba(255,255,255,0.95);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;backdrop-filter:blur(4px);box-shadow:0 2px 8px rgba(0,0,0,0.08);">+</button>
+          <button class="wf-btn" id="wfZoomOut" title="Zoom Out" style="width:32px;height:32px;background:rgba(255,255,255,0.95);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;backdrop-filter:blur(4px);box-shadow:0 2px 8px rgba(0,0,0,0.08);">−</button>
+          <button class="wf-btn" id="wfFit" title="Fit to View" style="width:32px;height:32px;background:rgba(255,255,255,0.95);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-size:10px;letter-spacing:.04em;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;backdrop-filter:blur(4px);box-shadow:0 2px 8px rgba(0,0,0,0.08);">FIT</button>
         </div>
-      </div>
-      
-      <!-- Presentation Lane -->
-      <div class="wf-lane">
-        <div class="wf-lane-head">
-          <div class="wf-lane-title">📊 Presentation</div>
-          <div class="wf-lane-meta" id="wf-presentation-meta"></div>
-          <button class="wf-collapse" onclick="toggleLane('presentation')">Hide</button>
-        </div>
-        <div class="wf-lane-body" id="wf-presentation-body">
-          <div class="wf-group">
-            <div class="wf-group-title">Next</div>
-            <div class="wf-cards" id="wf-presentation-next"></div>
+
+        <div class="wf-legend" style="position:absolute;bottom:24px;left:24px;background:rgba(255,255,255,0.95);border:1px solid var(--border);border-radius:8px;padding:12px 14px;z-index:50;backdrop-filter:blur(4px);box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+          <div class="wfl-title" style="font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;font-weight:500;">Status</div>
+          <div class="wfl-row" style="display:flex;align-items:center;gap:8px;font-size:10px;color:var(--text);margin-bottom:5px;">
+            <div class="wfl-dot" style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:var(--rose);animation:wfpulse 2s infinite"></div>
+            <span>Active</span>
           </div>
-          <div class="wf-group">
-            <div class="wf-group-title">Scheduled</div>
-            <div class="wf-cards" id="wf-presentation-scheduled"></div>
+          <div class="wfl-row" style="display:flex;align-items:center;gap:8px;font-size:10px;color:var(--text);margin-bottom:5px;">
+            <div class="wfl-dot" style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:var(--sage)"></div>
+            <span>Complete</span>
           </div>
-          <div class="wf-group">
-            <div class="wf-group-title">Later</div>
-            <div class="wf-cards" id="wf-presentation-later"></div>
+          <div class="wfl-row" style="display:flex;align-items:center;gap:8px;font-size:10px;color:var(--text);margin-bottom:5px;">
+            <div class="wfl-dot" style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:var(--taupe)"></div>
+            <span>On Hold</span>
           </div>
-          <div class="wf-group wf-done">
-            <div class="wf-group-title" onclick="toggleDone('presentation')">Done ▾</div>
-            <div class="wf-cards" id="wf-presentation-done" style="display:none;"></div>
+          <div class="wfl-title" style="font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-dim);margin-top:12px;margin-bottom:8px;font-weight:500;">Connections</div>
+          <div class="wfl-row" style="display:flex;align-items:center;gap:8px;font-size:10px;color:var(--text);margin-bottom:5px;">
+            <div class="wfl-line" style="width:20px;height:2px;flex-shrink:0;border-radius:1px;background:rgba(201,139,139,.4)"></div>
+            <span>Related</span>
           </div>
-        </div>
-      </div>
-      
-      <!-- Personal Lane -->
-      <div class="wf-lane">
-        <div class="wf-lane-head">
-          <div class="wf-lane-title">👤 Personal</div>
-          <div class="wf-lane-meta" id="wf-personal-meta"></div>
-          <button class="wf-collapse" onclick="toggleLane('personal')">Hide</button>
-        </div>
-        <div class="wf-lane-body" id="wf-personal-body">
-          <div class="wf-group">
-            <div class="wf-group-title">Next</div>
-            <div class="wf-cards" id="wf-personal-next"></div>
-          </div>
-          <div class="wf-group">
-            <div class="wf-group-title">Scheduled</div>
-            <div class="wf-cards" id="wf-personal-scheduled"></div>
-          </div>
-          <div class="wf-group">
-            <div class="wf-group-title">Later</div>
-            <div class="wf-cards" id="wf-personal-later"></div>
-          </div>
-          <div class="wf-group wf-done">
-            <div class="wf-group-title" onclick="toggleDone('personal')">Done ▾</div>
-            <div class="wf-cards" id="wf-personal-done" style="display:none;"></div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Product Lane -->
-      <div class="wf-lane">
-        <div class="wf-lane-head">
-          <div class="wf-lane-title">🚀 Product</div>
-          <div class="wf-lane-meta" id="wf-product-meta"></div>
-          <button class="wf-collapse" onclick="toggleLane('product')">Hide</button>
-        </div>
-        <div class="wf-lane-body" id="wf-product-body">
-          <div class="wf-group">
-            <div class="wf-group-title">Next</div>
-            <div class="wf-cards" id="wf-product-next"></div>
-          </div>
-          <div class="wf-group">
-            <div class="wf-group-title">Scheduled</div>
-            <div class="wf-cards" id="wf-product-scheduled"></div>
-          </div>
-          <div class="wf-group">
-            <div class="wf-group-title">Later</div>
-            <div class="wf-cards" id="wf-product-later"></div>
-          </div>
-          <div class="wf-group wf-done">
-            <div class="wf-group-title" onclick="toggleDone('product')">Done ▾</div>
-            <div class="wf-cards" id="wf-product-done" style="display:none;"></div>
+          <div class="wfl-row" style="display:flex;align-items:center;gap:8px;font-size:10px;color:var(--text);">
+            <div class="wfl-line" style="width:20px;height:2px;flex-shrink:0;border-radius:1px;background:rgba(154,171,148,.4);border-style:dashed;border-width:1px 0"></div>
+            <span>Dependency</span>
           </div>
         </div>
       </div>
     </div>
-    
-    <!-- Unassigned Tasks Section (Collapsible) -->
-    <div style="margin-top:20px;border-top:2px solid var(--border);padding-top:20px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;cursor:pointer;" onclick="if(window.Petal?.handlers?.toggleUnassignedSection){window.Petal.handlers.toggleUnassignedSection();window.Petal?.ui?.renderWorkflow?.(document.getElementById('view-workflow'),window.Petal.store.getState(),window.Petal.handlers);}">
-        <h3 style="font-size:16px;font-weight:500;color:var(--text-dim);margin:0;">📋 Unassigned Tasks</h3>
-        <span id="unassigned-toggle" style="font-size:14px;color:var(--text-dim);">▼</span>
+  </div>
+
+  <!-- Detail Panel for Workflow -->
+  <div class="detail-panel" id="wfDetailPanel" style="position:fixed;right:0;top:58px;width:320px;height:calc(100vh - 58px);background:var(--surface);border-left:1px solid var(--border);z-index:300;display:flex;flex-direction:column;transform:translateX(330px);transition:transform 0.25s cubic-bezier(0.16,1,0.3,1);overflow:hidden;box-shadow:-4px 0 16px rgba(0,0,0,0.08);">
+    <div class="dp-head" style="padding:16px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:12px;background:var(--bg2);">
+      <div>
+        <div class="dp-title" id="wf-dp-title" style="font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);line-height:1.4;font-weight:400;">–</div>
+        <div class="dp-sub" id="wf-dp-sub" style="font-size:11px;color:var(--text-dim);margin-top:4px;">–</div>
       </div>
-      <div id="wf-unassigned-body" class="wf-lane-body" style="display:none;padding:12px;background:var(--bg2);border-radius:8px;">
-        <div class="wf-group">
-          <div class="wf-group-title">Next</div>
-          <div class="wf-cards" id="wf-unassigned-next"></div>
-        </div>
-        <div class="wf-group">
-          <div class="wf-group-title">Scheduled</div>
-          <div class="wf-cards" id="wf-unassigned-scheduled"></div>
-        </div>
-        <div class="wf-group">
-          <div class="wf-group-title">Later</div>
-          <div class="wf-cards" id="wf-unassigned-later"></div>
-        </div>
-        <div class="wf-group wf-done">
-          <div class="wf-group-title" onclick="toggleDone('unassigned')">Done ▾</div>
-          <div class="wf-cards" id="wf-unassigned-done" style="display:none;"></div>
-        </div>
-      </div>
+      <button class="dp-close" onclick="closeWfDetail()" title="Close" style="width:24px;height:24px;border-radius:5px;background:var(--surface);border:1px solid var(--border);color:var(--text-dim);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;transition:all 0.15s;">×</button>
     </div>
-    
-    <!-- Active Files Sidebar (toggleable) -->
-    <div id="workflow-active-files" style="position:fixed;right:-300px;top:0;width:300px;height:100vh;background:var(--surface);border-left:1px solid var(--border);padding:20px;box-sizing:border-box;overflow-y:auto;transition:right 0.3s;z-index:100;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <h3 style="font-size:16px;font-weight:500;margin:0;">Active Files</h3>
-        <button onclick="toggleActiveFilesPanel()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-dim);">×</button>
-      </div>
-      <div id="active-files-list"></div>
-    </div>
-    <button onclick="toggleActiveFilesPanel()" style="position:fixed;right:20px;bottom:20px;background:var(--rose);color:white;border:none;border-radius:50%;width:50px;height:50px;font-size:20px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:99;">📂</button>
+    <div class="dp-body" id="wf-dp-body" style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:16px;"></div>
+  </div>
   </div>
 
   <!-- ═══════════════════════════════════ PLANNER VIEW ═══ -->
-  <div id="view-planner" style="display:none;height:calc(100vh - 200px);overflow:hidden;flex-direction:column;">
+  <div id="view-planner" style="display:none;height:calc(100vh - 200px);overflow:hidden;flex-direction:column;width:100%;max-width:100%;box-sizing:border-box;">
     <!-- Planner Top Bar (view switcher) -->
     <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 20px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;gap:12px;">
       <div style="display:flex;align-items:center;gap:6px;">
@@ -1853,7 +2215,7 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 
 
   <!-- ═══════════════════════════════════ CELL LOG VIEW ═══ -->
-  <div id="view-cell-log" style="display:none;padding:20px;box-sizing:border-box;width:100%;max-width:100%;">
+  <div id="view-cell-log" style="display:none;width:100%;max-width:100%;box-sizing:border-box;">
     <div style="margin-bottom:20px;">
       <h2 style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:400;color:var(--rose);margin-bottom:8px;">Cell Log</h2>
       <p style="font-size:13px;color:var(--text-dim);margin:0;">Track wet-lab actions with reusable cell types</p>
@@ -1985,8 +2347,17 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
     </div>
   </div>
 
+  <!-- ═══════════════════════════════════ 3D PRINTING VIEW ═══ -->
+  <!-- Loaded from pages/3d-print.html -->
+  <div id="view-3d-print" style="display:none;"></div>
+
+  <!-- ═══════════════════════════════════ SETTINGS VIEW ═══ -->
+  <div id="view-settings" style="display:none;width:100%;max-width:100%;box-sizing:border-box;">
+    <!-- Settings page content will be rendered here by renderSettingsPage() -->
+  </div>
+
   <!-- ═══════════════════════════════════ PROJECTS VIEW ═══ -->
-  <div id="view-projects" class="view-projects-hidden" style="display:none;">
+  <div id="view-projects" class="view-projects-hidden" style="display:none;width:100%;max-width:100%;box-sizing:border-box;">
     <!-- Project Selector and Create Form -->
     <div id="project-selector-create-section" style="display:flex;gap:16px;margin-bottom:24px;align-items:flex-start;">
       <div style="flex:1;">
@@ -2212,7 +2583,7 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
     </div>
 
     <!-- Project List View (shown when no project selected) -->
-    <div id="project-list-view">
+    <div id="project-list-view" style="display:block;">
     <div class="toolbar" style="justify-content:space-between;">
       <div class="filter-group">
         <button class="filter-chip active" onclick="setProjFilter('all',this)">All</button>
@@ -2240,7 +2611,36 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 // ═══════════════════════ PAGE MODULES ═══════════════════════
 // Import page modules
 import * as CellLogPage from './src/pages/CellLogPage.js';
-import * as TodayPage from './src/pages/TodayPage.js';
+import { renderSettingsPage } from './src/pages/SettingsPage.js';
+import { renderTodayPage } from './src/pages/TodayPage.js';
+import { renderWorkflowPage, switchWorkflowView, toggleWorkflowFilter, filterWorkflowProjects, setWorkflowProjectFilter, toggleWorkflowExpand, buildWorkflowTimeline, toggleTlExpand, renderWorkflowList } from './src/pages/WorkflowPage.js';
+import { switchView as routerSwitchView } from './src/app/router.js';
+import { PAGES } from './src/app/pages.js';
+import { renderRegistry } from './src/app/renderRegistry.js';
+import { renderPlannerPage } from './src/pages/PlannerPage.js';
+
+// Make renderTodayPage available globally for fallback
+window.renderTodayPage = renderTodayPage;
+// Make renderSettingsPage available globally
+window.renderSettingsPage = renderSettingsPage;
+// Make renderPlannerPage available globally
+window.renderPlannerPage = renderPlannerPage;
+// Make workflow page functions available globally
+window.renderWorkflowPage = renderWorkflowPage;
+window.switchWorkflowView = switchWorkflowView;
+window.toggleWorkflowFilter = toggleWorkflowFilter;
+window.filterWorkflowProjects = filterWorkflowProjects;
+window.setWorkflowProjectFilter = setWorkflowProjectFilter;
+window.toggleWorkflowExpand = toggleWorkflowExpand;
+window.buildWorkflowTimeline = buildWorkflowTimeline;
+window.toggleTlExpand = toggleTlExpand;
+window.renderWorkflowList = renderWorkflowList;
+// Make router switchView available globally (will replace old switchView gradually)
+window.routerSwitchView = routerSwitchView;
+// Make PAGES registry available globally
+window.PAGES = PAGES;
+// Make render registry available globally for unified access
+window.renderRegistry = renderRegistry;
 
 // Import feature modules
 import * as FileManagement from './src/features/fileManagement.js';
@@ -2350,16 +2750,23 @@ window.Petal = window.Petal || {};
 window.Petal.pages = window.Petal.pages || {};
 window.Petal.pages.today = {
   render: async () => {
-    await TodayPage.renderToday(createPageContext());
-  },
-  renderTask: async (ctx, t, dl, proj) => {
-    return await TodayPage.renderTodayTask(ctx, t, dl, proj);
+    const containerEl = document.getElementById('view-today');
+    const state = window.Petal?.store?.getState() || {};
+    const renderFn = window.renderTodayPage;
+    if (containerEl && renderFn) {
+      await renderFn(containerEl, state, window.Petal.handlers);
+    }
   }
 };
 
 // Export render function for use in main script
 window.renderToday = async () => {
-  await TodayPage.renderToday(createPageContext());
+  const containerEl = document.getElementById('view-today');
+  const state = window.Petal?.store?.getState() || {};
+  const renderFn = window.renderTodayPage;
+  if (containerEl && renderFn) {
+    await renderFn(containerEl, state, window.Petal.handlers);
+  }
 };
 
 // Wire up file management functions
@@ -2695,6 +3102,9 @@ window.Petal.getAllTasks = () => {
   return getAllTasks(state.tasks || [], state.projects || []);
 };
 
+// Also expose getAllTasks function directly for use in render functions
+window.getAllTasks = getAllTasks;
+
 // Utilities
 window.Petal.today = today;
 window.Petal.parseDate = parseDate;
@@ -3026,7 +3436,7 @@ let currentSort      = 'all';
 let currentFilter    = 'all';
 let currentProjFilter= 'all';
 let selectedColor    = 1;
-// Kanban mode removed - always use list view
+// Task mode is always 'list' (kanban mode removed)
 let taskMode = 'list';
 let boardProjectFilter = 'all';
 let searchQuery      = '';
@@ -3575,25 +3985,6 @@ function updateTaskSelectedFiles() {
   // For now, the selection is handled in addTask
 }
 
-function refreshProjectSelectsOld() {
-  const taskProjectSelect = document.getElementById('in-project');
-  if (taskProjectSelect) {
-    const selected = taskProjectSelect.value;
-    taskProjectSelect.innerHTML = '<option value="">No project</option>' +
-      projects.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
-    taskProjectSelect.value = projects.some((p) => String(p.id) === selected) ? selected : '';
-  }
-
-  const boardFilterSelect = document.getElementById('board-project-filter');
-  if (boardFilterSelect) {
-    const selected = boardProjectFilter;
-    boardFilterSelect.innerHTML = '<option value="all">All projects</option>' +
-      projects.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
-    boardProjectFilter = (selected === 'all' || projects.some((p) => String(p.id) === selected)) ? selected : 'all';
-    boardFilterSelect.value = boardProjectFilter;
-  }
-}
-
 // Initialize state (async)
 // Update vault badge in UI
 async function updateVaultBadge() {
@@ -3781,6 +4172,7 @@ async function initState() {
         pathEl.textContent = '📁 ' + displayPath;
         pathEl.title = `Vault: ${vaultPath}\nData file: ${dataPath}\n\nClick to open in Finder`;
         pathEl.style.cursor = 'pointer';
+        pathEl.style.display = 'block';
         pathEl.onclick = async () => {
           // Open vault folder in Finder/Explorer
           if (window.electronAPI && window.electronAPI.openFile) {
@@ -4306,8 +4698,6 @@ function addFileVersionInternal(projectId, fileId, versionString, note) {
   return true;
 }
 
-// addProjectLogEntry removed - all notes should be attached to tasks or files directly
-
 /**
  * Add a checkpoint to a project
  */
@@ -4475,6 +4865,7 @@ async function save() {
           const displayPath = vaultPath.replace(/\\/g, '/').split('/').slice(-2).join('/');
           pathEl.textContent = '📁 ' + displayPath;
           pathEl.title = `Vault: ${vaultPath}\nData file: ${dataPath}`;
+          pathEl.style.display = 'block';
         }
       } catch (e) {
         console.warn('Could not update path display:', e);
@@ -4591,6 +4982,90 @@ async function importData(event) {
 // ═══════════════════════ VIEW SWITCH ═══════════════════════
 function switchView(v) {
   console.log('🔍 DEBUG: switchView called with:', v);
+  
+  // Scroll to top when switching views
+  if (typeof forceScrollToTop === 'function') {
+    forceScrollToTop();
+  } else {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    if (document.scrollingElement) {
+      document.scrollingElement.scrollTop = 0;
+    }
+  }
+  
+  // Also reset scroll position of all view containers
+  document.querySelectorAll('[id^="view-"]').forEach(view => {
+    if (view) {
+      view.scrollTop = 0;
+      view.style.scrollTop = '0';
+    }
+  });
+  
+  // Force the active view to start at top - run multiple times to ensure it sticks
+  const resetActiveView = () => {
+    const activeView = document.getElementById('view-' + v);
+    if (activeView) {
+      // CRITICAL: Force scroll to top of the view container itself
+      activeView.scrollTop = 0;
+      activeView.scrollTo(0, 0);
+      activeView.style.scrollTop = '0';
+      
+      // Force positioning to start at top of grid cell
+      activeView.style.transform = 'translateY(0)';
+      activeView.style.marginTop = '0';
+      activeView.style.top = '0';
+      activeView.style.verticalAlign = 'top';
+      
+      // Override any inline styles that might interfere
+      activeView.style.position = 'relative';
+      activeView.style.alignSelf = 'start';
+      activeView.style.justifySelf = 'start';
+      
+      // Ensure the view container starts at the top of its grid cell
+      activeView.style.gridRowStart = '1';
+      activeView.style.gridRowEnd = '1';
+      
+      // Ensure padding-top is set correctly
+      if (v !== 'today' && v !== 'workflow') {
+        activeView.style.paddingTop = '52px';
+      }
+      
+      // Force height and overflow - container should be exactly viewport height
+      activeView.style.height = '100vh';
+      activeView.style.maxHeight = '100vh';
+      activeView.style.overflowY = 'auto';
+      activeView.style.overflowX = 'hidden';
+      
+      // Ensure content inside starts at top
+      const firstChild = activeView.firstElementChild;
+      if (firstChild) {
+        firstChild.style.marginTop = '0';
+        firstChild.style.paddingTop = '0';
+      }
+    }
+  };
+  
+  resetActiveView();
+  setTimeout(resetActiveView, 0);
+  setTimeout(resetActiveView, 10);
+  setTimeout(resetActiveView, 50);
+  setTimeout(resetActiveView, 100);
+  
+  // If switching to workflow view, render canvas
+  if (v === 'workflow') {
+    setTimeout(async () => {
+      const workflowViewEl = document.getElementById('view-workflow');
+      if (workflowViewEl && window.renderWorkflowCanvas && window.Petal?.store) {
+        const state = window.Petal.store.getState();
+        const handlers = window.Petal.handlers || {};
+        await renderWorkflowCanvas(workflowViewEl, state, handlers);
+      } else if (workflowViewEl) {
+        await renderWorkflow();
+      }
+    }, 100);
+  }
   // Always use window.currentView to avoid temporal dead zone issues
   window.currentView = v;
   
@@ -4605,39 +5080,311 @@ function switchView(v) {
     window.Petal.store.setState({ currentView: v });
   }
   
-  document.getElementById('view-today').style.display    = v==='today'    ? '' : 'none';
-  document.getElementById('view-tasks').style.display    = v==='tasks'    ? '' : 'none';
+  const todayViewEl = document.getElementById('view-today');
+  if (todayViewEl) {
+    todayViewEl.style.display = v === 'today' ? 'block' : 'none';
+    // Make app full-width for Today view (like workflow)
+    const appEl = document.querySelector('.app');
+    if (appEl) {
+      if (v === 'today') {
+        appEl.classList.add('today-active');
+      } else {
+        appEl.classList.remove('today-active');
+      }
+    }
+  }
+  const tasksViewEl = document.getElementById('view-tasks');
+  if (tasksViewEl) {
+    tasksViewEl.style.display = v==='tasks' ? '' : 'none';
+    if (v === 'tasks') {
+      // Reset scroll immediately and after delays (like working views)
+      tasksViewEl.scrollTop = 0;
+      tasksViewEl.scrollTo(0, 0);
+      setTimeout(() => {
+        tasksViewEl.scrollTop = 0;
+        tasksViewEl.scrollTo(0, 0);
+      }, 0);
+      setTimeout(() => {
+        tasksViewEl.scrollTop = 0;
+        tasksViewEl.scrollTo(0, 0);
+      }, 100);
+    }
+  }
   const workflowViewEl = document.getElementById('view-workflow');
-  if (workflowViewEl) workflowViewEl.style.display = v==='workflow' ? '' : 'none';
+  if (workflowViewEl) {
+    workflowViewEl.style.display = v==='workflow' ? 'flex' : 'none';
+    // If workflow view is being shown, render the list view by default
+    if (v === 'workflow') {
+      setTimeout(async () => {
+        await renderWorkflow();
+      }, 100);
+    }
+  }
   const filesViewEl = document.getElementById('view-files');
   if (filesViewEl) filesViewEl.style.display = v==='files' ? '' : 'none';
+  // Load 3D printing page from separate file
+  if (v === '3d-print') {
+    let print3dViewEl = document.getElementById('view-3d-print');
+    if (!print3dViewEl) {
+      // Create container if it doesn't exist
+      print3dViewEl = document.createElement('div');
+      print3dViewEl.id = 'view-3d-print';
+      print3dViewEl.style.display = 'none';
+      document.querySelector('.app').appendChild(print3dViewEl);
+    }
+    
+    // Show the view container immediately (before loading content)
+    print3dViewEl.style.display = 'block';
+    print3dViewEl.style.visibility = 'visible';
+    print3dViewEl.style.opacity = '1';
+    print3dViewEl.classList.remove('view-projects-hidden');
+    print3dViewEl.style.gridColumn = '2';
+    print3dViewEl.style.gridRow = '1';
+    print3dViewEl.style.position = 'relative';
+    print3dViewEl.style.top = '0';
+    print3dViewEl.style.paddingTop = '52px';
+    print3dViewEl.scrollTop = 0;
+    
+    // Layout invariant check before 3d-print load
+    (function layoutInvariant(tag) {
+      const app = document.querySelector('.app');
+      const sidebar = document.querySelector('.global-sidebar');
+      const computedApp = app ? window.getComputedStyle(app) : null;
+      console.log('🧱 layout invariant', tag, {
+        hasApp: !!app,
+        hasSidebar: !!sidebar,
+        appParent: app?.parentElement?.tagName,
+        sidebarParent: sidebar?.parentElement?.tagName,
+        appDisplay: computedApp?.display,
+        appGridTemplate: computedApp?.gridTemplateColumns,
+        sidebarDisplay: sidebar ? window.getComputedStyle(sidebar).display : null
+      });
+    })('before-3d-print-load');
+    
+    // Load the page content if not already loaded
+    if (!print3dViewEl.dataset.loaded) {
+      fetch('pages/3d-print.html')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.text();
+        })
+        .then(html => {
+          // Extract and inject styles - SCOPE ALL SELECTORS to #view-3d-print
+          const styleMatch = html.match(/<style>([\s\S]*?)<\/style>/);
+          if (styleMatch && !document.getElementById('print3d-styles')) {
+            const styleEl = document.createElement('style');
+            styleEl.id = 'print3d-styles';
+            // Scope all selectors to #view-3d-print to prevent CSS leakage
+            let scopedStyles = styleMatch[1];
+            // Don't scope if already scoped or if it's a keyframe/animation
+            scopedStyles = scopedStyles.replace(/([^{}]+)\{/g, (match, selector) => {
+              // Skip keyframes, media queries, and already scoped selectors
+              if (selector.trim().startsWith('@') || selector.includes('#view-3d-print') || selector.trim().startsWith('@keyframes')) {
+                return match;
+              }
+              // Scope the selector
+              return `#view-3d-print ${selector.trim()}{`;
+            });
+            styleEl.textContent = scopedStyles;
+            document.head.appendChild(styleEl);
+          }
+          
+          // Extract HTML content (everything except style/script tags)
+          const htmlContent = html.replace(/<style>[\s\S]*?<\/style>/g, '').replace(/<script>[\s\S]*?<\/script>/g, '');
+          print3dViewEl.innerHTML = htmlContent;
+          print3dViewEl.dataset.loaded = 'true';
+          
+          // Execute scripts only if not already executed
+          const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>/);
+          if (scriptMatch) {
+            // Check if script has already been executed by checking for init3DPrints
+            if (typeof window.init3DPrints === 'undefined') {
+              // Script not executed yet, execute it
+              const scriptEl = document.createElement('script');
+              scriptEl.textContent = scriptMatch[1];
+              document.body.appendChild(scriptEl);
+              // Inline scripts execute immediately, so check right after
+              if (typeof window.init3DPrints === 'function') {
+                window.init3DPrints();
+              }
+            } else {
+              // Script already executed, just re-render
+              if (typeof window.render3DPrints === 'function') {
+                window.render3DPrints();
+              }
+            }
+          }
+          
+          // Ensure view is still visible after loading
+          print3dViewEl.style.display = 'block';
+          print3dViewEl.style.visibility = 'visible';
+          print3dViewEl.style.opacity = '1';
+          print3dViewEl.classList.remove('view-projects-hidden');
+          print3dViewEl.style.gridColumn = '2';
+          print3dViewEl.style.gridRow = '1';
+          print3dViewEl.style.position = 'relative';
+          print3dViewEl.style.top = '0';
+          print3dViewEl.style.paddingTop = '52px';
+          print3dViewEl.scrollTop = 0;
+          
+          // Initialize IMMEDIATELY (non-blocking)
+          if (typeof window.render3DPrints === 'function') {
+            window.render3DPrints();
+          }
+          
+          // Layout invariant check after 3d-print load
+          setTimeout(() => {
+            (function layoutInvariant(tag) {
+              const app = document.querySelector('.app');
+              const sidebar = document.querySelector('.global-sidebar');
+              const computedApp = app ? window.getComputedStyle(app) : null;
+              console.log('🧱 layout invariant', tag, {
+                hasApp: !!app,
+                hasSidebar: !!sidebar,
+                appParent: app?.parentElement?.tagName,
+                sidebarParent: sidebar?.parentElement?.tagName,
+                appDisplay: computedApp?.display,
+                appGridTemplate: computedApp?.gridTemplateColumns,
+                sidebarDisplay: sidebar ? window.getComputedStyle(sidebar).display : null
+              });
+            })('after-3d-print-load');
+          }, 100);
+        })
+        .catch(err => {
+          console.error('Failed to load 3D printing page:', err);
+          print3dViewEl.innerHTML = '<div style="padding:52px 36px;"><h2>Error loading 3D Printing page</h2><p>Please check that pages/3d-print.html exists.</p><p>Error: ' + err.message + '</p></div>';
+          // Still show the view even if there's an error
+          print3dViewEl.style.display = 'block';
+          print3dViewEl.style.visibility = 'visible';
+          print3dViewEl.style.opacity = '1';
+          print3dViewEl.classList.remove('view-projects-hidden');
+        });
+    } else {
+      // Already loaded, just show it and re-render
+      print3dViewEl.style.display = 'block';
+      print3dViewEl.style.visibility = 'visible';
+      print3dViewEl.style.opacity = '1';
+      print3dViewEl.classList.remove('view-projects-hidden');
+      print3dViewEl.style.gridColumn = '2';
+      print3dViewEl.style.gridRow = '1';
+      print3dViewEl.style.position = 'relative';
+      print3dViewEl.style.top = '0';
+      print3dViewEl.style.paddingTop = '52px';
+      print3dViewEl.scrollTop = 0;
+      // Render IMMEDIATELY (non-blocking)
+      if (typeof window.render3DPrints === 'function') {
+        window.render3DPrints();
+      }
+    }
+  } else {
+    const print3dViewEl = document.getElementById('view-3d-print');
+    if (print3dViewEl) {
+      print3dViewEl.style.display = 'none';
+    }
+  }
   const projectsViewEl = document.getElementById('view-projects');
   if (projectsViewEl) {
     // Always explicitly hide projects view unless it's the active view
     if (v === 'projects') {
       // Remove hidden class and show normally
       projectsViewEl.classList.remove('view-projects-hidden');
-      projectsViewEl.style.display = '';
+      projectsViewEl.style.display = 'block';
+      projectsViewEl.style.visibility = 'visible';
+      projectsViewEl.style.opacity = '1';
+      // Reset scroll immediately and after delays (like working views)
+      projectsViewEl.scrollTop = 0;
+      projectsViewEl.scrollTo(0, 0);
+      setTimeout(() => {
+        projectsViewEl.scrollTop = 0;
+        projectsViewEl.scrollTo(0, 0);
+      }, 0);
+      setTimeout(() => {
+        projectsViewEl.scrollTop = 0;
+        projectsViewEl.scrollTo(0, 0);
+      }, 100);
       console.log('🔍 DEBUG: view-projects display set to: visible');
-      // Phase 3 Fix: Call render() after switching to projects view
-      console.log('🔍 DEBUG: Projects view activated, calling render()');
       // Show project creation form if no project is selected
       const createFormSection = document.getElementById('project-selector-create-section');
-      if (createFormSection && !selectedProjectId) {
-        createFormSection.style.display = '';
+      const projectListView = document.getElementById('project-list-view');
+      const workflowMatrixView = document.getElementById('workflow-matrix-view');
+      
+      if (!selectedProjectId) {
+        // No project selected - show list view
+        if (createFormSection) createFormSection.style.display = '';
+        if (projectListView) projectListView.style.display = '';
+        if (workflowMatrixView) workflowMatrixView.style.display = 'none';
+      } else {
+        // Project selected - show matrix view
+        if (createFormSection) createFormSection.style.display = 'none';
+        if (projectListView) projectListView.style.display = 'none';
+        if (workflowMatrixView) workflowMatrixView.style.display = '';
       }
-      render();
+      
+      // Populate project selector dropdown
+      const projectSelector = document.getElementById('matrix-project-select');
+      if (projectSelector && window.Petal?.store) {
+        const state = window.Petal.store.getState();
+        const projectsFromStore = state.projects || [];
+        projectSelector.innerHTML = '<option value="">-- Select a project --</option>';
+        projectsFromStore.filter(p => !p.done).forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = p.name;
+          if (p.id === selectedProjectId) opt.selected = true;
+          projectSelector.appendChild(opt);
+        });
+      }
+      
+      // Render projects IMMEDIATELY (non-blocking)
+      // Don't wait for full render() - just render the page content
+      if (window.Petal?.store) {
+        const state = window.Petal.store.getState();
+        tasks = state.tasks || [];
+        projects = state.projects || [];
+        openProjects = state.openProjects instanceof Set ? state.openProjects : new Set(state.openProjects || []);
+        renderProjects(); // Render immediately
+      }
+      
+      // Then call full render() in background for sidebar, etc.
+      // BUT: If router was used, don't call render() again (it will override)
+      if (!window.__routerJustSwitched) {
+        setTimeout(() => {
+          render();
+        }, 0);
+      } else {
+        // Router just switched, clear the flag and let router handle rendering
+        window.__routerJustSwitched = false;
+      }
     } else {
       // Explicitly hide projects view for all other views using class
-      projectsViewEl.classList.add('view-projects-hidden');
-      projectsViewEl.style.display = 'none';
-      console.log('🔍 DEBUG: view-projects display set to: none (view:', v, ')');
+      // BUT: Only if router didn't just switch to projects
+      if (!window.__routerJustSwitched || v !== 'projects') {
+        projectsViewEl.classList.add('view-projects-hidden');
+        projectsViewEl.style.display = 'none';
+        console.log('🔍 DEBUG: view-projects display set to: none (view:', v, ')');
+      }
     }
   }
   const plannerViewEl = document.getElementById('view-planner');
   if (plannerViewEl) {
     if (v === 'planner') {
       plannerViewEl.style.display = 'flex';
+      plannerViewEl.style.visibility = 'visible';
+      plannerViewEl.style.opacity = '1';
+      plannerViewEl.classList.remove('view-projects-hidden');
+      // Reset scroll immediately and after delays (like working views)
+      plannerViewEl.scrollTop = 0;
+      plannerViewEl.scrollTo(0, 0);
+      setTimeout(() => {
+        plannerViewEl.scrollTop = 0;
+        plannerViewEl.scrollTo(0, 0);
+      }, 0);
+      setTimeout(() => {
+        plannerViewEl.scrollTop = 0;
+        plannerViewEl.scrollTo(0, 0);
+      }, 100);
       // Initialize planner if not already done
       if (!plannerViewDate || plannerViewDate.toString() === 'Invalid Date') {
         plannerViewDate = new Date();
@@ -4662,9 +5409,14 @@ function switchView(v) {
       if (weekView) weekView.style.display = 'none';
       
       updatePlannerPeriodLabel();
+      // Render planner IMMEDIATELY (non-blocking)
       renderPlanner();
-      buildPlannerSidebar();
-      buildPlannerCalendar();
+      
+      // Build sidebar and calendar in background (non-blocking)
+      setTimeout(() => {
+        buildPlannerSidebar();
+        buildPlannerCalendar();
+      }, 0);
       
       // Ensure habits/routines render (in case modules loaded after initial render)
       setTimeout(() => {
@@ -4694,18 +5446,84 @@ function switchView(v) {
     }
   }
   const cellLogViewEl = document.getElementById('view-cell-log');
-  if (cellLogViewEl) cellLogViewEl.style.display = v==='cell-log' ? '' : 'none';
-  document.getElementById('tab-today').classList.toggle('active',    v==='today');
-  document.getElementById('tab-tasks').classList.toggle('active',    v==='tasks');
-  const workflowTab = document.getElementById('tab-workflow');
-  if (workflowTab) workflowTab.classList.toggle('active', v==='workflow');
-  const filesTab = document.getElementById('tab-files');
-  if (filesTab) filesTab.classList.toggle('active', v==='files');
-  document.getElementById('tab-projects').classList.toggle('active', v==='projects');
-  const plannerTab = document.getElementById('tab-planner');
-  if (plannerTab) plannerTab.classList.toggle('active', v==='planner');
-  const cellLogTab = document.getElementById('tab-cell-log');
-  if (cellLogTab) cellLogTab.classList.toggle('active', v==='cell-log');
+  if (cellLogViewEl) {
+    if (v === 'cell-log') {
+      cellLogViewEl.style.display = 'block';
+      cellLogViewEl.style.visibility = 'visible';
+      cellLogViewEl.style.opacity = '1';
+      cellLogViewEl.classList.remove('view-projects-hidden');
+      // Reset scroll position immediately and after delays (like working views)
+      cellLogViewEl.scrollTop = 0;
+      cellLogViewEl.scrollTo(0, 0);
+      cellLogViewEl.style.scrollTop = '0';
+      setTimeout(() => {
+        cellLogViewEl.scrollTop = 0;
+        cellLogViewEl.scrollTo(0, 0);
+      }, 0);
+      setTimeout(() => {
+        cellLogViewEl.scrollTop = 0;
+        cellLogViewEl.scrollTo(0, 0);
+      }, 100);
+      
+      // Render cell log IMMEDIATELY (non-blocking)
+      if (window.renderCellLogPage) {
+        window.renderCellLogPage().catch(err => console.error('Cell log render error:', err));
+      }
+    } else {
+      cellLogViewEl.style.display = 'none';
+    }
+  }
+  const settingsViewEl = document.getElementById('view-settings');
+  if (settingsViewEl) {
+    if (v === 'settings') {
+      settingsViewEl.style.display = 'block';
+      settingsViewEl.style.visibility = 'visible';
+      settingsViewEl.style.opacity = '1';
+      // Remove any conflicting classes
+      settingsViewEl.classList.remove('view-projects-hidden');
+      // Force scroll reset for settings view
+      settingsViewEl.scrollTop = 0;
+      settingsViewEl.style.scrollTop = '0';
+      settingsViewEl.style.transform = 'translateY(0)';
+      settingsViewEl.style.marginTop = '0';
+      // Ensure view is actually visible
+      setTimeout(() => {
+        const computed = window.getComputedStyle(settingsViewEl);
+        if (computed.display === 'none') {
+          console.warn('🔍 DEBUG: Settings view still hidden, forcing display');
+          settingsViewEl.style.display = 'block';
+        }
+      }, 0);
+      console.log('🔍 DEBUG: switchView - showing settings view', {
+        display: settingsViewEl.style.display,
+        computedDisplay: window.getComputedStyle(settingsViewEl).display,
+        offsetHeight: settingsViewEl.offsetHeight,
+        innerHTML: settingsViewEl.innerHTML.length
+      });
+      
+      // Render settings IMMEDIATELY (non-blocking)
+      if (window.renderSettingsPage && window.Petal?.store) {
+        const state = window.Petal.store.getState();
+        const containerEl = document.getElementById('view-settings');
+        if (containerEl) {
+          window.renderSettingsPage(containerEl, state, {
+            ...window.Petal.handlers,
+            save: async () => {
+              if (window.save) await window.save();
+            },
+            render: async () => {
+              await render();
+            }
+          }).catch(err => console.error('Settings render error:', err));
+        }
+      }
+    } else {
+      settingsViewEl.style.display = 'none';
+    }
+  } else {
+    console.error('🔍 DEBUG: switchView - view-settings element not found!');
+  }
+  // Tabs removed - navigation now handled by sidebar
   
   // Toggle workflow-active class on app container
   const appEl = document.querySelector('.app');
@@ -4719,6 +5537,36 @@ function switchView(v) {
   
   render();
 }
+
+// Expose switchView globally so sidebar can call it
+// Do this immediately to prevent "switchView not available" errors
+window.switchView = switchView;
+
+// Also create a safe wrapper that handles errors gracefully
+window.switchViewSafe = function(v) {
+  try {
+    if (typeof switchView === 'function') {
+      return switchView(v);
+    } else if (window.switchView) {
+      return window.switchView(v);
+    } else {
+      console.error('switchView function not available');
+      // Fallback: try to show view manually
+      const viewEl = document.getElementById('view-' + v);
+      if (viewEl) {
+        // Hide all views
+        document.querySelectorAll('[id^="view-"]').forEach(el => {
+          el.style.display = 'none';
+        });
+        // Show requested view
+        viewEl.style.display = '';
+        window.currentView = v;
+      }
+    }
+  } catch (error) {
+    console.error('Error in switchView:', error);
+  }
+};
 
 // ═══════════════════════ FILE BUTTONS ═══════════════════════
 function updateFileButtons() {
@@ -4818,11 +5666,8 @@ function nextBoardOrderForNewTask(status, projectId) {
   }
 }
 
-// setTaskMode removed - always use list view
-
 function setBoardProjectFilter(value) {
   boardProjectFilter = value || 'all';
-  // Always render when filter changes (works for both list and kanban views)
   render();
 }
 
@@ -4860,7 +5705,6 @@ async function addTask(titleOverride = null, statusOverride = null) {
   } else {
     console.error('Task operations module not loaded');
   }
-  // Function body removed - now handled by module
 }
 
 function updateTagPreview() {
@@ -6065,27 +6909,6 @@ async function copyDiagnostics() {
 async function openLogsFolder() {
   if (typeof window !== 'undefined' && window.electronAPI) {
     try {
-      await window.electronAPI.supportOpenLogsFolder();
-    } catch (e) {
-      alert('Error opening logs folder: ' + e.message);
-    }
-  }
-}
-
-async function openVaultFolder() {
-  if (typeof window !== 'undefined' && window.electronAPI) {
-    try {
-      await window.electronAPI.supportOpenVaultFolder();
-    } catch (e) {
-      alert('Error opening vault folder: ' + e.message);
-    }
-  }
-}
-
-
-async function openLogsFolder() {
-  if (typeof window !== 'undefined' && window.electronAPI) {
-    try {
       const result = await window.electronAPI.supportOpenLogsFolder();
       if (!result.success) {
         alert('Error opening logs folder: ' + (result.error || 'Unknown error'));
@@ -6237,7 +7060,11 @@ function startWeeklyReview() {
   // Optionally switch to Today view to see overdue items
   if (overdue.length > 0) {
     if (confirm('Switch to Today view to see overdue tasks?')) {
-      switchView('today');
+      if (window.routerSwitchView) {
+        window.routerSwitchView('today');
+      } else if (window.switchView) {
+        window.switchView('today');
+      }
     }
   }
 }
@@ -6368,13 +7195,6 @@ async function addProject(){
   document.querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('selected'));
   document.querySelector('.color-swatch[data-color="1"]').classList.add('selected');
   selectedColor=1;
-}
-async function delProject(id) {
-  if (window.Petal?.features?.deleteHandlers?.delProject) {
-    await window.Petal.features.deleteHandlers.delProject(id);
-  } else {
-    console.error('Delete handlers module not loaded');
-  }
 }
 async function toggleProjectDone(id){const p=projects.find(p=>p.id===id);if(p)p.done=!p.done;await save();render();}
 
@@ -7031,7 +7851,6 @@ async function renderProjectFilesSidebar(tab, project) {
   contentEl.innerHTML = fileHtmls.join('');
 }
 
-// Working Log removed - all notes should be attached to tasks or files
 
 // Render Project Checkpoints
 function renderProjectCheckpoints(project) {
@@ -7903,14 +8722,6 @@ function editTaskSubtask(taskId, subtaskId){
   document.getElementById('edit-title').focus();
 }
 
-async function delTaskSubtask(taskId, subtaskId) {
-  if (window.Petal?.features?.deleteHandlers?.delTaskSubtask) {
-    await window.Petal.features.deleteHandlers.delTaskSubtask(taskId, subtaskId);
-  } else {
-    console.error('Delete handlers module not loaded');
-  }
-}
-
 // Open Add File Modal for Project
 function openProjectAddFileModal(projId) {
   currentModalProjectId = projId;
@@ -8123,6 +8934,16 @@ async function linkFilesToTaskFromModal(taskId, filesToAdd) {
 // Current file being edited (stores file ID/key)
 let currentFileNotesId = null;
 
+// Helper function to compute file key (used by multiple file functions)
+function getFileKey(file) {
+  return file.key || 
+         file.fileLink?.abs_path || 
+         file.fileLink?.onedrive_rel || 
+         file.fileLink?.share_url ||
+         file.id ||
+         '';
+}
+
 // Open File Notes Modal
 function openFileNotesModal(fileId) {
   if (!window.Petal?.store) {
@@ -8133,16 +8954,6 @@ function openFileNotesModal(fileId) {
   const state = window.Petal.store.getState();
   const files = state.files || [];
   const registry = state.fileRegistry || {};
-  
-  // Helper to compute file key (same logic as in renderFiles)
-  function getFileKey(file) {
-    return file.key || 
-           file.fileLink?.abs_path || 
-           file.fileLink?.onedrive_rel || 
-           file.fileLink?.share_url ||
-           file.id ||
-           '';
-  }
   
   // First, try to find in persisted files
   let file = files.find(f => {
@@ -8286,16 +9097,6 @@ async function saveFileNotes() {
   const state = window.Petal.store.getState();
   const files = state.files || [];
   const registry = state.fileRegistry || {};
-  
-  // Helper to compute file key (same logic as in renderFiles)
-  function getFileKey(file) {
-    return file.key || 
-           file.fileLink?.abs_path || 
-           file.fileLink?.onedrive_rel || 
-           file.fileLink?.share_url ||
-           file.id ||
-           '';
-  }
   
   // Find the file in persisted files
   let fileIndex = files.findIndex(f => {
@@ -8605,7 +9406,6 @@ async function addSubtask(projId){
   if(laneEl) laneEl.value = '';
 }
 
-// Note: addSubtaskToMatrix function removed - subtasks are now created as tasks with parentTaskId
 // Use addSubtaskToTaskInline() for inline project/matrix add-subtask forms.
 async function toggleSubtask(projId,subId){
   const p=projects.find(p=>p.id===projId);
@@ -8613,13 +9413,6 @@ async function toggleSubtask(projId,subId){
   const s=p.subtasks.find(s=>s.id===subId);
   if(s)s.done=!s.done;
   await save();render();
-}
-async function delSubtask(projId, subId) {
-  if (window.Petal?.features?.deleteHandlers?.delSubtask) {
-    await window.Petal.features.deleteHandlers.delSubtask(projId, subId);
-  } else {
-    console.error('Delete handlers module not loaded');
-  }
 }
 
 function getSubFileLinks(projId){
@@ -8790,13 +9583,497 @@ function hideAllForms() {
 }
 
 // ═══════════════════════ RENDER ═══════════════════════
+// Render global sidebar
+function renderGlobalSidebar(state) {
+  const navEl = document.getElementById('global-sidebar-nav');
+  if (!navEl) {
+    console.warn('⚠️ renderGlobalSidebar: global-sidebar-nav element not found');
+    return;
+  }
+  console.log('🔍 renderGlobalSidebar: Rendering sidebar navigation', { hasNavEl: !!navEl, stateView: state?.currentView });
+  
+  // Use getAllTasks function (available globally or from window.Petal)
+  const getAllTasksFn = window.getAllTasks || ((tasks, projects) => {
+    const activeTasks = (tasks || []).filter(t => !t.deletedAt);
+    const allTasks = [...activeTasks];
+    (projects || []).forEach(p => {
+      (p.subtasks || []).forEach(st => {
+        if (!st.deletedAt) {
+          allTasks.push({...st, projectId: p.id, projectName: p.name, isSubtask: true});
+        }
+      });
+    });
+    return allTasks;
+  });
+  
+  const allTasks = getAllTasksFn(state.tasks || [], state.projects || []);
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const tasksToday = allTasks.filter(t => {
+    if (!t || t.done) return false;
+    const dueKey = typeof t.due === "string" ? t.due.slice(0, 10) : "";
+    return dueKey === todayKey;
+  }).length;
+  
+  const activeProjects = (state.projects || []).filter(p => p && !p.done).length;
+  const cellLogEntries = state?.settings?.cellLog?.entries || [];
+  const cellLogCount = cellLogEntries.length;
+  const cellLogAlerts = cellLogEntries.filter(e => e.status === 'concern' || e.status === 'monitor').length;
+  const currentView = state.currentView || window.currentView || 'tasks';
+  
+  navEl.innerHTML = `
+    <div class="global-sidebar-logo">
+      <div class="global-sidebar-logo-name">Lab<span>OS</span></div>
+      <div class="global-sidebar-logo-sub">Research Management</div>
+    </div>
+    <div class="global-sidebar-nav-label">Workspace</div>
+    <a class="global-sidebar-nav-item ${currentView === 'today' ? 'active' : ''}" href="#" data-nav="today">
+      <span class="global-sidebar-nav-icon">◈</span> Today
+      ${tasksToday > 0 ? `<span class="global-sidebar-nav-badge">${tasksToday}</span>` : ''}
+    </a>
+    <a class="global-sidebar-nav-item ${currentView === 'planner' ? 'active' : ''}" href="#" data-nav="planner">
+      <span class="global-sidebar-nav-icon">◻</span> Planner
+    </a>
+    <a class="global-sidebar-nav-item ${currentView === 'workflow' ? 'active' : ''}" href="#" data-nav="workflow">
+      <span class="global-sidebar-nav-icon">⚡</span> Workflow
+    </a>
+    <a class="global-sidebar-nav-item ${currentView === 'tasks' ? 'active' : ''}" href="#" data-nav="tasks">
+      <span class="global-sidebar-nav-icon">⊡</span> Tasks
+    </a>
+
+    <div class="global-sidebar-nav-label">Research</div>
+    <a class="global-sidebar-nav-item ${currentView === 'projects' ? 'active' : ''}" href="#" data-nav="projects">
+      <span class="global-sidebar-nav-icon">◈</span> Projects
+      ${activeProjects > 0 ? `<span class="global-sidebar-nav-badge">${activeProjects}</span>` : ''}
+    </a>
+    <a class="global-sidebar-nav-item ${currentView === 'cell-log' ? 'active' : ''}" href="#" data-nav="cell-log">
+      <span class="global-sidebar-nav-icon">⊠</span> Cell Log
+      ${cellLogCount > 0 ? `<span class="global-sidebar-nav-badge ${cellLogAlerts > 0 ? 'alert' : ''}">${cellLogCount}</span>` : ''}
+    </a>
+    <a class="global-sidebar-nav-item ${currentView === 'files' ? 'active' : ''}" href="#" data-nav="files">
+      <span class="global-sidebar-nav-icon">⊟</span> Files
+    </a>
+
+    <div class="global-sidebar-nav-label">Workshop</div>
+    <a class="global-sidebar-nav-item ${currentView === '3d-print' ? 'active' : ''}" href="#" data-nav="3d-print">
+      <span class="global-sidebar-nav-icon">🖨</span> 3D Printing
+      ${(() => {
+        const prints = state.prints3d || [];
+        const queueCount = prints.filter(p => p.status === 'queued').length;
+        return queueCount > 0 ? `<span class="global-sidebar-nav-badge">${queueCount}</span>` : '';
+      })()}
+    </a>
+  `;
+  
+  console.log('✅ renderGlobalSidebar: Navigation rendered', { navItemCount: navEl.children.length });
+  
+  // Add event delegation for sidebar clicks
+  navEl.onclick = (e) => {
+    const navItem = e.target.closest('[data-nav]');
+    if (navItem) {
+      e.preventDefault();
+      const view = navItem.getAttribute('data-nav');
+      console.log('🔍 Sidebar click:', { view, hasRouter: !!window.routerSwitchView, hasSwitchView: !!window.switchView });
+      // Use router if available (preferred), fallback to old switchView
+      if (window.routerSwitchView) {
+        console.log('🔍 Using router to switch to:', view);
+        window.routerSwitchView(view).catch(err => {
+          console.error('❌ Error switching view via router:', err);
+          // Fallback to old switchView if router fails
+          if (window.switchView) {
+            console.log('🔍 Falling back to old switchView');
+            window.switchView(view);
+          }
+        });
+      } else if (window.switchView) {
+        console.log('🔍 Using old switchView to switch to:', view);
+        window.switchView(view);
+      } else {
+        console.error('❌ No view switching function available');
+      }
+    }
+  };
+  
+  // Also handle settings link in sidebar bottom and update its active state
+  const sidebarBottom = document.querySelector('.global-sidebar-bottom');
+  if (sidebarBottom) {
+    // Update the active state of the settings link
+    const settingsLink = sidebarBottom.querySelector('[data-nav="settings"]');
+    if (settingsLink) {
+      if (currentView === 'settings') {
+        settingsLink.classList.add('active');
+      } else {
+        settingsLink.classList.remove('active');
+      }
+    }
+    
+    // Add click handler
+    sidebarBottom.onclick = (e) => {
+      const navItem = e.target.closest('[data-nav]');
+      if (navItem) {
+        e.preventDefault();
+        const view = navItem.getAttribute('data-nav');
+        console.log('🔍 DEBUG: Settings link clicked, view:', view, 'switchView available:', !!window.switchView);
+        if (window.switchView) {
+          window.switchView(view);
+        } else {
+          console.error('🔍 DEBUG: window.switchView is not available!');
+        }
+      }
+    };
+  }
+}
+
+// Fallback function to render settings page directly
+async function renderSettingsFallback(containerEl, state) {
+  if (!containerEl) return;
+  
+  const isElectron = typeof window.electronAPI !== 'undefined';
+  let vaultPath = 'Not available (browser mode)';
+  
+  if (isElectron) {
+    try {
+      vaultPath = await window.electronAPI.getVaultPath() || 'Not set';
+    } catch (err) {
+      console.error('Error getting vault path:', err);
+      vaultPath = 'Error loading path';
+    }
+  }
+  
+  // Escape vaultPath for safe HTML insertion
+  const safeVaultPath = (vaultPath || 'Not available').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  
+  containerEl.innerHTML = `
+    <div class="settings-page">
+      <h2 class="settings-page-title">Settings</h2>
+
+      <!-- VAULT SECTION -->
+      <div class="settings-section">
+        <h3 class="settings-section-title">Petal Vault</h3>
+        <p class="settings-section-desc">Your data is stored in a vault folder that syncs via iCloud Drive (Mac) or OneDrive (Windows).</p>
+        
+        <div class="settings-vault-info">
+          <div class="settings-vault-path">
+            <label class="settings-label">Vault Location:</label>
+            <div class="settings-vault-path-display">${safeVaultPath}</div>
+          </div>
+          
+          ${isElectron ? `
+          <div class="settings-vault-actions">
+            <button class="settings-btn" onclick="if(window.electronAPI)window.electronAPI.vaultOpenFolder('${safeVaultPath.replace(/'/g, "\\'")}')">📁 Open Vault Folder</button>
+            <button class="settings-btn" onclick="alert('Change vault location in desktop app')">📂 Change Vault Location</button>
+          </div>
+          ` : `
+          <div class="settings-info-box">
+            <p>Vault management is only available in the desktop app. Open this app in Electron to manage your vault.</p>
+          </div>
+          `}
+        </div>
+      </div>
+
+      <!-- IMPORT/EXPORT SECTION -->
+      <div class="settings-section">
+        <h3 class="settings-section-title">Data Management</h3>
+        <p class="settings-section-desc">Export your data for backup or import data from a previous export.</p>
+        
+        <div class="settings-import-export">
+          <div class="settings-export">
+            <h4 class="settings-subtitle">Export Data</h4>
+            <p class="settings-subtitle-desc">Download all your tasks, projects, and settings as a JSON file.</p>
+            <button class="settings-btn settings-btn-primary" onclick="exportData()">📥 Export Data</button>
+          </div>
+          
+          <div class="settings-import">
+            <h4 class="settings-subtitle">Import Data</h4>
+            <p class="settings-subtitle-desc">Import data from a previously exported JSON file.</p>
+            <div class="settings-import-controls">
+              <input type="file" id="settings-import-input" accept=".json" style="display:none;" onchange="importData(event)">
+              <button class="settings-btn" onclick="document.getElementById('settings-import-input').click()">📤 Import Data</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ABOUT SECTION -->
+      <div class="settings-section">
+        <h3 class="settings-section-title">About</h3>
+        <div class="settings-about">
+          <p><strong>Petal</strong> — Task and project tracker</p>
+          <p class="settings-version">Version information available in desktop app</p>
+        </div>
+      </div>
+    </div>
+  `;
+  console.log('🔍 DEBUG: Settings page fallback rendered, innerHTML length:', containerEl.innerHTML.length);
+  // Ensure the view is visible
+  containerEl.style.display = '';
+  containerEl.style.visibility = 'visible';
+  containerEl.style.opacity = '1';
+  console.log('🔍 DEBUG: Settings fallback - visibility set', {
+    display: containerEl.style.display,
+    computedDisplay: window.getComputedStyle(containerEl).display,
+    offsetHeight: containerEl.offsetHeight
+  });
+}
+
 async function render(){
+  // If router just switched, skip view rendering but still update sidebar
+  const routerJustSwitched = window.__routerJustSwitched;
+  if (routerJustSwitched) {
+    console.log('⏭️ render(): Router just switched, skipping view rendering but updating sidebar');
+    // Still update sidebar to reflect current view
+    const state = window.Petal?.store?.getState() || {};
+    if (typeof renderGlobalSidebar === 'function') {
+      renderGlobalSidebar(state);
+    }
+    return;
+  }
+  
+  // Layout invariant check at start of render
+  (function layoutInvariant(tag) {
+    const app = document.querySelector('.app');
+    const sidebar = document.querySelector('.global-sidebar');
+    const computedApp = app ? window.getComputedStyle(app) : null;
+    console.log('🧱 layout invariant', tag, {
+      hasApp: !!app,
+      hasSidebar: !!sidebar,
+      appParent: app?.parentElement?.tagName,
+      sidebarParent: sidebar?.parentElement?.tagName,
+      appDisplay: computedApp?.display,
+      appGridTemplate: computedApp?.gridTemplateColumns,
+      sidebarDisplay: sidebar ? window.getComputedStyle(sidebar).display : null
+    });
+  })('render-start');
+  
   // Step 2d: Read from store instead of globals
   const state = window.Petal?.store?.getState() || {};
+  
+  // Render page content FIRST (immediate) - don't wait for store sync
+  // This allows pages to appear instantly while background work happens
+  
+  // Get current view - prioritize store state (most up-to-date)
+  // Store state is updated by router, so it should be the source of truth
+  const currentViewToRender = state.currentView || window.currentView || currentView;
+  
+  // DEBUG: Log what view we're rendering
+  console.log('🔍 DEBUG: Rendering view:', currentViewToRender, {
+    stateCurrentView: state.currentView,
+    windowCurrentView: window.currentView,
+    currentViewVar: currentView,
+    tasksInStore: state.tasks?.length || 0,
+    projectsInStore: state.projects?.length || 0
+  });
+  
+  // RENDER PAGE CONTENT IMMEDIATELY (before heavy store syncing)
+  if(currentViewToRender==='today') {
+    // Use new Today page module
+    const containerEl = document.getElementById('view-today');
+    const renderFn = window.renderTodayPage;
+    if (containerEl && renderFn) {
+      await renderFn(containerEl, state, window.Petal.handlers);
+    } else {
+      console.error('Today page module not loaded', { containerEl: !!containerEl, renderFn: !!renderFn });
+    }
+  }
+  else if(currentViewToRender==='tasks') {
+    // Step 3: Use extracted render module if available
+    if (window.Petal?.ui?.renderTasks) {
+      const containerEl = document.getElementById('view-tasks');
+      const state = window.Petal.store?.getState() || {};
+      console.log('🔍 DEBUG: Rendering tasks view, container:', containerEl, 'state tasks:', state.tasks?.length);
+      await window.Petal.ui.renderTasks(containerEl, state, window.Petal.handlers);
+    } else {
+      console.log('🔍 DEBUG: Using fallback renderTasks function');
+      // Fallback: old render function
+      await renderTasks();
+    }
+  }
+  else if(currentViewToRender==='workflow') {
+    // Step 3: Use extracted render module if available
+    if (window.Petal?.ui?.renderWorkflow) {
+      const containerEl = document.getElementById('view-workflow');
+      const state = window.Petal.store?.getState() || {};
+      await window.Petal.ui.renderWorkflow(containerEl, state, window.Petal.handlers);
+    } else {
+      // Fallback: old render function
+      await renderWorkflow();
+    }
+  }
+  else if(currentViewToRender==='files') {
+    // Step 3: Use extracted render module if available
+    if (window.Petal?.ui?.renderFiles) {
+      const containerEl = document.getElementById('files-view-container');
+      const state = window.Petal.store?.getState() || {};
+      await window.Petal.ui.renderFiles(containerEl, state, window.Petal.handlers);
+    } else {
+      // Fallback: old render function
+      await renderFiles();
+    }
+  }
+  else if(currentViewToRender==='planner') {
+    // Use new Planner page module
+    const containerEl = document.getElementById('view-planner');
+    if (containerEl && window.renderPlannerPage) {
+      await window.renderPlannerPage(containerEl, state, window.Petal.handlers);
+    } else if (typeof renderPlanner === 'function') {
+      // Fallback to inline function during migration
+      await renderPlanner();
+    } else {
+      console.error('Planner page module not loaded');
+    }
+  }
+  else if(currentViewToRender==='cell-log') {
+    // Use new page module
+    if (window.renderCellLogPage) {
+      await window.renderCellLogPage();
+    } else {
+      console.error('Cell Log page module not loaded');
+    }
+  }
+  else if(currentViewToRender==='3d-print') {
+    // Use new page module for 3d-print
+    const containerEl = document.getElementById('view-3d-print');
+    console.log('🔍 render(): 3d-print view', { hasContainer: !!containerEl, hasPAGES: !!window.PAGES, hasRouter: !!window.routerSwitchView });
+    if (containerEl) {
+      // Try PAGES registry first
+      if (window.PAGES && window.PAGES['3d-print']) {
+        console.log('🔍 render(): Using PAGES renderer for 3d-print');
+        await window.PAGES['3d-print'](containerEl, state, window.Petal?.handlers || window.Petal?.features);
+      } 
+      // Fallback to router
+      else if (window.routerSwitchView) {
+        console.log('🔍 render(): Using router for 3d-print');
+        await window.routerSwitchView('3d-print');
+      } 
+      // Final fallback: use old switchView logic (it handles 3d-print loading)
+      else {
+        console.warn('⚠️ render(): 3D Print page renderer not available, using old switchView logic');
+        // The old switchView() already handles 3d-print loading, so just ensure visibility
+        containerEl.style.display = 'block';
+      }
+    } else {
+      console.error('❌ render(): view-3d-print container not found');
+    }
+  }
+  else if(currentViewToRender==='settings') {
+    console.log('🔍 DEBUG: Rendering settings view', { containerEl: !!document.getElementById('view-settings'), renderSettingsPage: !!window.renderSettingsPage });
+    // Use new settings page module
+    const containerEl = document.getElementById('view-settings');
+    if (containerEl && window.renderSettingsPage) {
+      console.log('🔍 DEBUG: Using renderSettingsPage module');
+      try {
+        await window.renderSettingsPage(containerEl, state, {
+          ...window.Petal.handlers,
+          save: async () => {
+            if (window.save) await window.save();
+          },
+          render: async () => {
+            await render();
+          }
+        });
+        // Check if content was actually rendered
+        setTimeout(() => {
+          const hasContent = containerEl.innerHTML.trim().length > 0;
+          const isVisible = containerEl.style.display !== 'none' && window.getComputedStyle(containerEl).display !== 'none';
+          console.log('🔍 DEBUG: Settings page check:', {
+            hasContent,
+            contentLength: containerEl.innerHTML.length,
+            display: containerEl.style.display,
+            computedDisplay: window.getComputedStyle(containerEl).display,
+            isVisible,
+            offsetHeight: containerEl.offsetHeight,
+            offsetWidth: containerEl.offsetWidth
+          });
+          
+          if (!hasContent) {
+            console.error('🔍 DEBUG: Module rendered but container is empty! Falling back to inline render.');
+            renderSettingsFallback(containerEl, state);
+          } else if (!isVisible) {
+            console.error('🔍 DEBUG: Content rendered but view is hidden! Forcing display.');
+            containerEl.style.display = '';
+            containerEl.style.visibility = 'visible';
+          } else {
+            console.log('🔍 DEBUG: Settings page rendered successfully');
+          }
+        }, 100);
+        // Reset scroll position after rendering
+        if (containerEl) {
+          containerEl.scrollTop = 0;
+          containerEl.style.scrollTop = '0';
+          setTimeout(() => {
+            containerEl.scrollTop = 0;
+            containerEl.style.scrollTop = '0';
+          }, 0);
+          setTimeout(() => {
+            containerEl.scrollTop = 0;
+            containerEl.style.scrollTop = '0';
+          }, 50);
+          setTimeout(() => {
+            containerEl.scrollTop = 0;
+            containerEl.style.scrollTop = '0';
+          }, 150);
+        }
+      } catch (err) {
+        console.error('🔍 DEBUG: Error in renderSettingsPage module:', err);
+        renderSettingsFallback(containerEl, state);
+        // Reset scroll after fallback
+        if (containerEl) {
+          containerEl.scrollTop = 0;
+          containerEl.style.scrollTop = '0';
+        }
+      }
+    } else {
+      console.log('🔍 DEBUG: Settings page module not loaded, using fallback', { containerEl: !!containerEl, renderSettingsPage: !!window.renderSettingsPage });
+      if (containerEl) {
+        // Reset scroll before fallback render
+        containerEl.scrollTop = 0;
+        containerEl.style.scrollTop = '0';
+        await renderSettingsFallback(containerEl, state);
+        // Reset scroll after fallback render
+        containerEl.scrollTop = 0;
+        containerEl.style.scrollTop = '0';
+        setTimeout(() => {
+          containerEl.scrollTop = 0;
+          containerEl.style.scrollTop = '0';
+        }, 0);
+        setTimeout(() => {
+          containerEl.scrollTop = 0;
+          containerEl.style.scrollTop = '0';
+        }, 50);
+      } else {
+        console.error('🔍 DEBUG: view-settings container element not found!');
+      }
+    }
+  }
+  else if(currentViewToRender==='projects') {
+    console.log('🔍 DEBUG: render(): projects view', { hasPAGES: !!window.PAGES, hasProjectsRenderer: !!(window.PAGES && window.PAGES.projects) });
+    const containerEl = document.getElementById('view-projects');
+    if (containerEl) {
+      // Use new page module if available
+      if (window.PAGES && window.PAGES.projects) {
+        console.log('🔍 render(): Using PAGES renderer for projects');
+        await window.PAGES.projects(containerEl, state, window.Petal?.handlers || window.Petal?.features);
+      } else if (window.routerSwitchView) {
+        console.log('🔍 render(): Using router for projects');
+        await window.routerSwitchView('projects');
+      } else {
+        // Fallback: use old renderProjects
+        console.log('🔍 render(): Using old renderProjects()');
+        renderProjects();
+      }
+    } else {
+      console.error('❌ render(): view-projects container not found');
+    }
+  }
+  else {
+    // Default fallback - do nothing (don't render projects on other views)
+    // Only render projects when explicitly on projects view
+    console.log('⚠️ render() fallback: currentView not handled:', currentViewToRender);
+  }
+  
+  // NOW sync store to globals for backward compatibility (Step 2f)
+  // Do this AFTER page rendering so pages appear immediately
   const storeTasks = state.tasks || [];
   const storeProjects = state.projects || [];
-  
-  // Sync store to globals for backward compatibility (Step 2f)
   tasks = storeTasks;
   projects = storeProjects;
   openProjects = state.openProjects || new Set();
@@ -8805,7 +10082,7 @@ async function render(){
   recurringRules = state.recurringRules || [];
   fileHistory = state.fileHistory || {};
   fileRegistry = state.fileRegistry || {};
-  currentView = state.currentView || currentView;
+  currentView = currentViewToRender;
   currentSort = state.currentSort || currentSort;
   currentFilter = state.currentFilter || currentFilter;
   currentProjFilter = state.currentProjFilter || currentProjFilter;
@@ -8824,80 +10101,13 @@ async function render(){
   window.fileHistory = fileHistory;
   window.currentView = currentView;
   
-  const allTasks=[...tasks,...projects.flatMap(p=>p.subtasks||[])];
-  const remaining=tasks.filter(t=>!t.done).length + projects.reduce((a,p)=>a+(p.subtasks||[]).filter(s=>!s.done).length,0);
-  const overdue=allTasks.filter(t=>!t.done&&t.due&&parseDate(t.due)<today()).length + projects.filter(p=>!p.done&&p.due&&parseDate(p.due)<today()).length;
-  document.getElementById('stat-remaining').textContent=remaining;
-  document.getElementById('stat-overdue').textContent=overdue;
-
-  // DEBUG: Log what view we're rendering
-  console.log('🔍 DEBUG: Rendering view:', currentView, {
-    tasksInStore: state.tasks?.length || 0,
-    projectsInStore: state.projects?.length || 0
+  // Render global sidebar AFTER page content (non-blocking)
+  // This allows pages to appear immediately while sidebar updates in background
+  // Use requestAnimationFrame to ensure DOM is ready
+  requestAnimationFrame(() => {
+    console.log('🔍 renderGlobalSidebar: About to render', { hasState: !!state, currentView: state?.currentView });
+    renderGlobalSidebar(state);
   });
-  
-  if(currentView==='today') await renderToday();
-  else if(currentView==='tasks') {
-    // Step 3: Use extracted render module if available
-    if (window.Petal?.ui?.renderTasks) {
-      const containerEl = document.getElementById('view-tasks');
-      const state = window.Petal.store?.getState() || {};
-      console.log('🔍 DEBUG: Rendering tasks view, container:', containerEl, 'state tasks:', state.tasks?.length);
-      await window.Petal.ui.renderTasks(containerEl, state, window.Petal.handlers);
-    } else {
-      console.log('🔍 DEBUG: Using fallback renderTasks function');
-      // Fallback: old render function
-      await renderTasks();
-    }
-  }
-  else if(currentView==='workflow') {
-    // Step 3: Use extracted render module if available
-    if (window.Petal?.ui?.renderWorkflow) {
-      const containerEl = document.getElementById('view-workflow');
-      const state = window.Petal.store?.getState() || {};
-      await window.Petal.ui.renderWorkflow(containerEl, state, window.Petal.handlers);
-    } else {
-      // Fallback: old render function
-      await renderWorkflow();
-    }
-  }
-  else if(currentView==='files') {
-    // Step 3: Use extracted render module if available
-    if (window.Petal?.ui?.renderFiles) {
-      const containerEl = document.getElementById('files-view-container');
-      const state = window.Petal.store?.getState() || {};
-      await window.Petal.ui.renderFiles(containerEl, state, window.Petal.handlers);
-    } else {
-      // Fallback: old render function
-      await renderFiles();
-    }
-  }
-  else if(currentView==='planner') await renderPlanner();
-  else if(currentView==='cell-log') {
-    // Use new page module
-    if (window.renderCellLogPage) {
-      await window.renderCellLogPage();
-    } else {
-      console.error('Cell Log page module not loaded');
-    }
-  }
-  else if(currentView==='projects') {
-    // Sync data from store before rendering
-    if (window.Petal?.store) {
-      const state = window.Petal.store.getState();
-      tasks = state.tasks || [];
-      projects = state.projects || [];
-      // NOTE: window.tasks, window.projects are now read-only getters - no assignment needed
-      openProjects = state.openProjects instanceof Set ? state.openProjects : new Set(state.openProjects || []);
-    }
-    // Use old renderProjects function to show full project card view
-    renderProjects();
-  }
-  else {
-    // Default fallback - do nothing (don't render projects on other views)
-    // Only render projects when explicitly on projects view
-    console.log('⚠️ render() fallback: currentView not handled:', currentView);
-  }
   
   // Always hide all forms after rendering (use setTimeout to ensure DOM is updated)
   setTimeout(() => {
@@ -8910,13 +10120,25 @@ async function render(){
   setTimeout(() => {
     forceHideAllForms();
   }, 500);
+  
+  // Layout invariant check after render (with delay to catch async updates)
+  setTimeout(() => {
+    (function layoutInvariant(tag) {
+      const app = document.querySelector('.app');
+      const sidebar = document.querySelector('.global-sidebar');
+      const computedApp = app ? window.getComputedStyle(app) : null;
+      console.log('🧱 layout invariant', tag, {
+        hasApp: !!app,
+        hasSidebar: !!sidebar,
+        appParent: app?.parentElement?.tagName,
+        sidebarParent: sidebar?.parentElement?.tagName,
+        appDisplay: computedApp?.display,
+        appGridTemplate: computedApp?.gridTemplateColumns,
+        sidebarDisplay: sidebar ? window.getComputedStyle(sidebar).display : null
+      });
+    })('render-end');
+  }, 50);
 }
-
-// ═══════════════════════ CELL LOG (LEGACY WRAPPERS - REMOVED) ═══════════════════════
-// All Cell Log functionality has been moved to src/pages/CellLogPage.js
-// These wrapper functions are no longer needed since inline handlers call the module directly
-
-// Old setupEditButtons removed - now using event delegation in setupEventDelegation()
 
 // ═══════════════════════ TODAY VIEW ═══════════════════════
 // Get all tasks including project subtasks (excluding deleted)
@@ -8951,23 +10173,13 @@ function getTasksForSubtask(subtaskId) {
 
 // Wrapper for renderToday - delegates to module
 async function renderToday() {
-  if (window.Petal?.pages?.today?.render) {
+  const containerEl = document.getElementById('view-today');
+  const state = window.Petal?.store?.getState() || {};
+  const renderFn = window.renderTodayPage;
+  if (containerEl && renderFn) {
+    await renderFn(containerEl, state, window.Petal.handlers);
+  } else if (window.Petal?.pages?.today?.render) {
     await window.Petal.pages.today.render();
-  } else {
-    // Fallback: try direct module call
-    const TodayPage = await import('./src/pages/TodayPage.js');
-    await TodayPage.renderToday(createPageContext());
-  }
-}
-
-// Wrapper for renderTodayTask - delegates to module
-async function renderTodayTask(t, dl, proj) {
-  if (window.Petal?.pages?.today?.renderTask) {
-    return await window.Petal.pages.today.renderTask(createPageContext(), t, dl, proj);
-  } else {
-    // Fallback: try direct module call
-    const TodayPage = await import('./src/pages/TodayPage.js');
-    return await TodayPage.renderTodayTask(createPageContext(), t, dl, proj);
   }
 }
 
@@ -8991,9 +10203,7 @@ async function renderTasks(){
   if (sortGroup) sortGroup.style.display = '';
   const taskContainer = document.getElementById('task-container');
   if (taskContainer) taskContainer.style.display = taskMode === 'list' ? '' : 'none';
-  const kanbanContainer = document.getElementById('kanban-container');
-  if (kanbanContainer) kanbanContainer.style.display = taskMode === 'kanban' ? '' : 'none';
-  if (taskMode === 'kanban') return renderKanban();
+  // Kanban mode removed - always use list view
   return renderTaskList();
 }
 
@@ -9162,7 +10372,6 @@ function getBoardListForProjectFilter(status, projectFilter, excludeTaskId = nul
     .sort((a, b) => (a.boardOrder - b.boardOrder) || (a.id - b.id));
 }
 
-// Kanban view removed - using list view only
 
 // Open file (handles all path types)
 async function openFile(fileLink) {
@@ -9369,7 +10578,13 @@ function renderProjects(){
     // Get tasks from store for projectHTML
     const tasksFromStore = state.tasks || [];
     
-    c.innerHTML = list.map(p => projectHTML(p, tasksFromStore, openProjectsFromStore)).join('');
+    // Show container immediately (non-blocking)
+    c.style.display = 'block';
+    
+    // Render content asynchronously to prevent blocking
+    requestAnimationFrame(() => {
+      c.innerHTML = list.map(p => projectHTML(p, tasksFromStore, openProjectsFromStore)).join('');
+    });
     
     // Force hide all forms immediately after rendering
     setTimeout(() => {
@@ -9709,7 +10924,11 @@ function openProjectView(projectId) {
   if (!projectId) return;
   
   // Switch to projects view
-  switchView('projects');
+  if (window.routerSwitchView) {
+    window.routerSwitchView('projects');
+  } else if (window.switchView) {
+    window.switchView('projects');
+  }
   
   // Set the selected project and open the matrix view
   selectedProjectId = parseInt(projectId);
@@ -11062,7 +12281,6 @@ async function renderWorkflowMatrix() {
     }
   }
   
-  // Note: Subtask lane selector removed - subtasks are now created as tasks with parentTaskId
   
 
   // Update project selector
@@ -11756,7 +12974,6 @@ async function addFileToMatrixProject() {
 }
 
 // Toggle functions for matrix view collapsible sections
-// Matrix toggle functions removed - now using modals
 
 function toggleAddProjectFileToActive() {
   const section = document.getElementById('add-project-file-active-section');
@@ -11902,10 +13119,7 @@ const FILE_STATUSES = {
   'written': 'Written'
 };
 
-// ═══════════════════════ FILE MANAGEMENT (LEGACY WRAPPERS - REMOVED) ═══════════════════════
-// All file management functionality has been moved to src/features/fileManagement.js
-// Wrapper functions delegate to the new modules (see module script section)
-
+// ═══════════════════════ FILE MANAGEMENT ═══════════════════════
 // Track file open - delegates to module
 async function trackFileOpen(fileLink) {
   if (window.Petal?.features?.fileManagement?.trackFileOpen) {
@@ -12146,7 +13360,11 @@ function showFileRelations(fileKey) {
 // Show active files panel
 function showActiveFiles() {
   currentFileView = 'active';
-  switchView('files');
+  if (window.routerSwitchView) {
+    window.routerSwitchView('files');
+  } else if (window.switchView) {
+    window.switchView('files');
+  }
   document.querySelectorAll('.file-view-tab').forEach(b => {
     if (b.textContent === 'Active') b.classList.add('active');
     else b.classList.remove('active');
@@ -12240,7 +13458,11 @@ async function addFileToRegistry() {
         render();
       } else {
         // Switch to files view
-        switchView('files');
+        if (window.routerSwitchView) {
+          window.routerSwitchView('files');
+        } else if (window.switchView) {
+          window.switchView('files');
+        }
       }
     } else {
       console.log(`File already exists: ${entry.name}`);
@@ -12323,93 +13545,566 @@ function isTaskBlocked(task) {
 }
 
 // Render workflow view
+// ═══════════════════════════════════════════════════════════
+// WORKFLOW CANVAS RENDERING (New canvas-based view)
+// ═══════════════════════════════════════════════════════════
+
+let wfScale = 0.7;
+let wfTx = 60;
+let wfTy = 40;
+let wfPanning = false;
+let wfSx, wfSy, wfStx, wfSty;
+let wfSelectedProjectId = null;
+
 async function renderWorkflow() {
-  const projectFilter = document.getElementById('workflow-project-filter')?.value || 'all';
-  
-  // Update project filter dropdown
-  const filterEl = document.getElementById('workflow-project-filter');
-  if (filterEl) {
-    const current = filterEl.value;
-    filterEl.innerHTML = '<option value="all">All Projects</option>';
-    projects.forEach(p => {
-      const opt = document.createElement('option');
-      opt.value = p.id;
-      opt.textContent = p.name;
-      filterEl.appendChild(opt);
-    });
-    if (current) filterEl.value = current;
+  // Use new workflow page renderer
+  if (window.renderWorkflowPage && window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    const handlers = window.Petal.handlers || {};
+    const containerEl = document.getElementById('view-workflow');
+    if (containerEl) {
+      await renderWorkflowPage(containerEl, state, handlers);
+      return;
+    }
   }
   
-  // Get all tasks (including subtasks)
-  const allTasks = getAllTasks();
+  // Fallback to old renderer if needed
+  console.warn('Workflow page renderer not available, using fallback');
+}
+
+// ═══════════════════════════════════════════════════════════
+// ═══════════════════════ WORKFLOW FUNCTIONS ═══════════════════════
+// Legacy function for backwards compatibility (delegates to module)
+function renderWorkflowList() {
+  if (window.renderWorkflowList) {
+    window.renderWorkflowList();
+    return;
+  }
+  // Fallback if module not loaded
+  console.warn('WorkflowPage module not loaded');
+}
+
+// Legacy function for backwards compatibility
+function toggleWorkflowExpand(id) {
+  if (window.toggleWorkflowExpand) {
+    window.toggleWorkflowExpand(id);
+    return;
+  }
+}
+
+// Legacy function for backwards compatibility  
+function buildWorkflowTimeline() {
+  if (window.buildWorkflowTimeline) {
+    window.buildWorkflowTimeline();
+    return;
+  }
+}
+
+// Legacy function for backwards compatibility
+function toggleTlExpand(id) {
+  if (window.toggleTlExpand) {
+    window.toggleTlExpand(id);
+    return;
+  }
+}
+
+async function renderWorkflowCanvas(containerEl, state, handlers) {
+  // If containerEl is the main workflow view, find the canvas container
+  if (containerEl && containerEl.id === 'view-workflow') {
+    containerEl = document.getElementById('wf-view-workflow-canvas');
+  }
+  if (!containerEl) return;
   
-  // Filter tasks by project
-  let filteredTasks = allTasks;
-  if (projectFilter !== 'all') {
-    const projectIdNum = parseInt(projectFilter);
-    filteredTasks = allTasks.filter(t => {
-      const taskProjectId = t.projectId ? (typeof t.projectId === 'number' ? t.projectId : parseInt(t.projectId)) : null;
-      return taskProjectId === projectIdNum;
-    });
+  const { tasks, projects } = state;
+  const workflow = state.workflow || {};
+  const placement = workflow.placement || {};
+  
+  // Get active projects (not done)
+  let activeProjects = (projects || []).filter(p => !p.done);
+  
+  // Apply project filter (if a specific project is selected)
+  const selectedProjectId = window.workflowSelectedProjectId;
+  if (selectedProjectId) {
+    activeProjects = activeProjects.filter(p => p.id === selectedProjectId);
   }
   
-  // Calculate bottlenecks
-  const blocked = filteredTasks.filter(t => !t.done && isTaskBlocked(t));
-  const staleDoing = filteredTasks.filter(t => {
-    if (t.done || t.status !== 'Doing') return false;
-    const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-    const taskDate = new Date(t.id);
-    return taskDate < sevenDaysAgo;
+  // Clear existing cards
+  const canvas = document.getElementById('wfCanvas');
+  if (!canvas) return;
+  const existingCards = canvas.querySelectorAll('.wf-proj');
+  existingCards.forEach(card => card.remove());
+  
+  // Position projects on canvas
+  const positions = calculateProjectPositions(activeProjects, placement);
+  
+  // Render project cards
+  activeProjects.forEach((project, index) => {
+    const pos = positions[project.id] || { x: 100 + (index % 4) * 300, y: 100 + Math.floor(index / 4) * 250 };
+    
+    // Get project tasks
+    const projectTasks = (tasks || []).filter(t => 
+      t.projectId === project.id && !t.deletedAt && !t.parentTaskId
+    );
+    
+    const doneTasks = projectTasks.filter(t => t.done);
+    const openTasks = projectTasks.filter(t => !t.done);
+    const progress = projectTasks.length > 0 
+      ? Math.round((doneTasks.length / projectTasks.length) * 100) 
+      : 0;
+    
+    // Determine status
+    let statusDot = 'plan';
+    if (openTasks.length > 0) {
+      statusDot = 'active';
+    } else if (projectTasks.length > 0 && doneTasks.length === projectTasks.length) {
+      statusDot = 'done';
+    }
+    
+    // Get project color
+    const colorVar = `--proj-${(project.color || 1)}`;
+    const color = getComputedStyle(document.documentElement).getPropertyValue(colorVar) || '#c98b8b';
+    
+    // Create card
+    const card = document.createElement('div');
+    card.className = 'wf-proj';
+    card.id = `wf-proj-${project.id}`;
+    card.style.left = `${pos.x}px`;
+    card.style.top = `${pos.y}px`;
+    card.onclick = () => openWfDetail(project.id, state, handlers);
+    
+    // Get workflow lane for project (from first task or default)
+    const firstTask = openTasks[0] || projectTasks[0];
+    const lane = firstTask?.workflowLane || firstTask?.lane || 'unassigned';
+    const laneLabel = getLaneLabel(lane);
+    
+    // Get tags/labels
+    const tags = [];
+    if (lane !== 'unassigned') tags.push({ text: laneLabel, class: getLaneTagClass(lane) });
+    if (project.due) {
+      const dueDate = new Date(project.due);
+      const now = new Date();
+      const diffDays = Math.floor((dueDate - now) / (1000 * 60 * 60 * 24));
+      if (diffDays < 7 && diffDays >= 0) tags.push({ text: 'Due Soon', class: 'rose' });
+    }
+    
+    card.innerHTML = `
+      <div class="wf-proj-header">
+        <div class="wf-proj-dot" style="background:${color}"></div>
+        <div class="wf-proj-title-wrap">
+          <div class="wf-proj-name">${esc(project.name || 'Untitled Project')}</div>
+          <div class="wf-proj-type">${esc(project.desc || 'Project')}</div>
+        </div>
+        <div class="wf-status-dot ${statusDot}"></div>
+      </div>
+      <div class="wf-proj-body">
+        ${tags.length > 0 ? `<div class="wf-tags">${tags.map(t => `<span class="wf-tag ${t.class}">${esc(t.text)}</span>`).join('')}</div>` : ''}
+        <div class="wf-mini-tasks">
+          ${openTasks.slice(0, 4).map(t => `
+            <div class="wf-mtask ${t.done ? 'done-t' : ''}">
+              <div class="wf-mt-dot"></div>
+              <span>${esc(t.title || 'Untitled')}</span>
+            </div>
+          `).join('')}
+          ${openTasks.length > 4 ? `<div class="wf-mtask" style="color:var(--text-light);font-size:9px;">+${openTasks.length - 4} more</div>` : ''}
+          ${openTasks.length === 0 && projectTasks.length > 0 ? '<div class="wf-mtask" style="color:var(--sage);font-size:9px;">All tasks complete</div>' : ''}
+        </div>
+      </div>
+      <div class="wf-proj-footer">
+        <div class="wf-prog">
+          <div class="wf-prog-fill" style="width:${progress}%;background:${color}"></div>
+        </div>
+        <div class="wf-pct">${progress}%</div>
+      </div>
+    `;
+    
+    canvas.appendChild(card);
   });
-  const nextUp = filteredTasks
-    .filter(t => !t.done && !isTaskBlocked(t) && t.priority === 'high')
-    .slice(0, 5);
   
-  // Render bottleneck strip
-  const bottleneckEl = document.getElementById('workflow-bottlenecks');
-  if (bottleneckEl) {
-    bottleneckEl.innerHTML = `
-      <div id="bottleneck-blocked" style="flex:1;padding:8px;background:${blocked.length > 0 ? 'var(--rose-pale)' : 'var(--bg2)'};border-radius:6px;border-left:3px solid var(--rose);">
-        <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">BLOCKED</div>
-        <div style="font-size:18px;font-weight:500;">${blocked.length}</div>
-        ${blocked.length > 0 ? `<div style="font-size:10px;color:var(--text-dim);margin-top:4px;">${blocked.slice(0, 3).map(t => esc(t.title)).join(', ')}</div>` : ''}
+  // Draw connections
+  setTimeout(() => {
+    drawWfEdges(activeProjects, state);
+  }, 100);
+  
+  // Setup pan/zoom
+  setupPanZoom();
+  
+  // Auto-fit to screen after a short delay to ensure cards are rendered
+  setTimeout(() => {
+    fitWorkflowToScreen();
+  }, 150);
+}
+
+function fitWorkflowToScreen() {
+  const canvas = document.getElementById('wfCanvas');
+  const container = document.getElementById('wf-view-workflow-canvas');
+  if (!canvas || !container) return;
+  
+  const cards = canvas.querySelectorAll('.wf-proj');
+  if (cards.length === 0) {
+    // If no cards, use default view
+    wfScale = 0.7;
+    wfTx = 60;
+    wfTy = 40;
+    canvas.style.transform = `translate(${wfTx}px, ${wfTy}px) scale(${wfScale})`;
+    return;
+  }
+  
+  // Calculate bounding box of all project cards
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  
+  cards.forEach(card => {
+    const x = parseFloat(card.style.left) || 0;
+    const y = parseFloat(card.style.top) || 0;
+    // Use card dimensions (260px width is standard, height varies but ~200px is typical)
+    const width = 260;
+    const height = 200;
+    
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x + width);
+    maxY = Math.max(maxY, y + height);
+  });
+  
+  // Add padding around the content
+  const padding = 80;
+  minX -= padding;
+  minY -= padding;
+  maxX += padding;
+  maxY += padding;
+  
+  const contentWidth = maxX - minX;
+  const contentHeight = maxY - minY;
+  
+  // Get container dimensions
+  const containerRect = container.getBoundingClientRect();
+  const containerWidth = containerRect.width || container.clientWidth;
+  const containerHeight = containerRect.height || container.clientHeight;
+  
+  if (containerWidth === 0 || containerHeight === 0) {
+    // Container not ready, use defaults
+    wfScale = 0.7;
+    wfTx = 60;
+    wfTy = 40;
+    canvas.style.transform = `translate(${wfTx}px, ${wfTy}px) scale(${wfScale})`;
+    return;
+  }
+  
+  // Calculate scale to fit content in viewport
+  const scaleX = containerWidth / contentWidth;
+  const scaleY = containerHeight / contentHeight;
+  const newScale = Math.min(scaleX, scaleY, 1.0); // Don't zoom in beyond 100%
+  
+  // Calculate translation to center the content
+  const scaledWidth = contentWidth * newScale;
+  const scaledHeight = contentHeight * newScale;
+  const newTx = (containerWidth - scaledWidth) / 2 - minX * newScale;
+  const newTy = (containerHeight - scaledHeight) / 2 - minY * newScale;
+  
+  // Apply the transform
+  wfScale = newScale;
+  wfTx = newTx;
+  wfTy = newTy;
+  
+  canvas.style.transform = `translate(${wfTx}px, ${wfTy}px) scale(${wfScale})`;
+}
+
+// Make function globally available
+window.fitWorkflowToScreen = fitWorkflowToScreen;
+
+function calculateProjectPositions(projects, placement) {
+  const positions = {};
+  const gridCols = 4;
+  const spacingX = 300;
+  const spacingY = 250;
+  
+  projects.forEach((project, index) => {
+    const savedPos = placement[`pos_${project.id}`];
+    if (savedPos) {
+      positions[project.id] = { x: savedPos.x, y: savedPos.y };
+    } else {
+      const col = index % gridCols;
+      const row = Math.floor(index / gridCols);
+      positions[project.id] = {
+        x: 100 + col * spacingX,
+        y: 100 + row * spacingY
+      };
+    }
+  });
+  
+  return positions;
+}
+
+function drawWfEdges(projects, state) {
+  const svg = document.getElementById('wfSvg');
+  if (!svg) return;
+  
+  const { tasks } = state;
+  const edges = [];
+  
+  projects.forEach(p1 => {
+    projects.forEach(p2 => {
+      if (p1.id === p2.id) return;
+      
+      const p1Tasks = (tasks || []).filter(t => t.projectId === p1.id);
+      const p2Tasks = (tasks || []).filter(t => t.projectId === p2.id);
+      
+      const p1Lane = p1Tasks[0]?.workflowLane || p1Tasks[0]?.lane;
+      const p2Lane = p2Tasks[0]?.workflowLane || p2Tasks[0]?.lane;
+      
+      if (p1Lane && p1Lane === p2Lane && p1Lane !== 'unassigned') {
+        edges.push({
+          from: `wf-proj-${p1.id}`,
+          to: `wf-proj-${p2.id}`,
+          type: 'related',
+          label: ''
+        });
+      }
+    });
+  });
+  
+  let svgContent = `<defs>
+    <marker id="wf-arr" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L7,3.5 z" fill="var(--border2)"/>
+    </marker>
+    <marker id="wf-arr-rose" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L7,3.5 z" fill="var(--rose-soft)"/>
+    </marker>
+  </defs>`;
+  
+  edges.forEach(e => {
+    const fromEl = document.getElementById(e.from);
+    const toEl = document.getElementById(e.to);
+    if (!fromEl || !toEl) return;
+    
+    const x1 = parseFloat(fromEl.style.left) + 130;
+    const y1 = parseFloat(fromEl.style.top) + 60;
+    const x2 = parseFloat(toEl.style.left) + 130;
+    const y2 = parseFloat(toEl.style.top) + 60;
+    
+    const cx1 = x1 + (x2 - x1) * 0.45;
+    const cx2 = x2 - (x2 - x1) * 0.45;
+    
+    const strokeColor = e.type === 'dependency' 
+      ? 'rgba(154, 171, 148, 0.4)' 
+      : 'rgba(201, 139, 139, 0.35)';
+    const dashArray = e.type === 'dependency' ? '6 4' : '';
+    const marker = e.type === 'dependency' ? 'wf-arr' : 'wf-arr-rose';
+    
+    svgContent += `<path d="M${x1},${y1} C${cx1},${y1} ${cx2},${y2} ${x2},${y2}" 
+      fill="none" 
+      stroke="${strokeColor}" 
+      stroke-width="1.5" 
+      stroke-dasharray="${dashArray}"
+      marker-end="url(#${marker})"/>`;
+  });
+  
+  svg.innerHTML = svgContent;
+}
+
+function setupPanZoom() {
+  const wfWrap = document.getElementById('view-workflow');
+  const wfCanvas = document.getElementById('wfCanvas');
+  if (!wfWrap || !wfCanvas) return;
+  
+  function wfApply() {
+    wfCanvas.style.transform = `translate(${wfTx}px, ${wfTy}px) scale(${wfScale})`;
+  }
+  wfApply();
+  
+  wfWrap.addEventListener('mousedown', (e) => {
+    if (e.target.closest('.wf-proj') || e.target.closest('.wf-controls') || e.target.closest('.wf-legend')) return;
+    wfPanning = true;
+    wfSx = e.clientX;
+    wfSy = e.clientY;
+    wfStx = wfTx;
+    wfSty = wfTy;
+    wfWrap.style.cursor = 'grabbing';
+  });
+  
+  document.addEventListener('mousemove', (e) => {
+    if (!wfPanning) return;
+    wfTx = wfStx + (e.clientX - wfSx);
+    wfTy = wfSty + (e.clientY - wfSy);
+    wfApply();
+  });
+  
+  document.addEventListener('mouseup', () => {
+    wfPanning = false;
+    if (wfWrap) wfWrap.style.cursor = '';
+  });
+  
+  wfWrap.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const d = e.deltaY > 0 ? -0.07 : 0.07;
+    const ns = Math.max(0.3, Math.min(1.6, wfScale + d));
+    const rect = wfWrap.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    wfTx = mx - (mx - wfTx) * (ns / wfScale);
+    wfTy = my - (my - wfTy) * (ns / wfScale);
+    wfScale = ns;
+    wfApply();
+  }, { passive: false });
+  
+  const zoomIn = document.getElementById('wfZoomIn');
+  const zoomOut = document.getElementById('wfZoomOut');
+  const fit = document.getElementById('wfFit');
+  
+  if (zoomIn) {
+    zoomIn.onclick = () => {
+      wfScale = Math.min(1.6, wfScale + 0.1);
+      wfApply();
+    };
+  }
+  
+  if (zoomOut) {
+    zoomOut.onclick = () => {
+      wfScale = Math.max(0.3, wfScale - 0.1);
+      wfApply();
+    };
+  }
+  
+  if (fit) {
+    fit.onclick = () => {
+      fitWorkflowToScreen();
+    };
+  }
+}
+
+function openWfDetail(projectId, state, handlers) {
+  const { projects, tasks } = state;
+  const project = (projects || []).find(p => p.id === projectId);
+  if (!project) return;
+  
+  const projectTasks = (tasks || []).filter(t => 
+    t.projectId === projectId && !t.deletedAt && !t.parentTaskId
+  );
+  
+  const doneTasks = projectTasks.filter(t => t.done);
+  const openTasks = projectTasks.filter(t => !t.done);
+  const progress = projectTasks.length > 0 
+    ? Math.round((doneTasks.length / projectTasks.length) * 100) 
+    : 0;
+  
+  const projectFiles = project.files || [];
+  
+  const titleEl = document.getElementById('wf-dp-title');
+  const subEl = document.getElementById('wf-dp-sub');
+  const bodyEl = document.getElementById('wf-dp-body');
+  
+  if (titleEl) titleEl.textContent = project.name || 'Untitled Project';
+  if (subEl) subEl.textContent = project.desc || 'Project';
+  
+  if (bodyEl) {
+    const statsHtml = `
+      <div class="dp-stat">
+        <div class="dp-stat-label">Status</div>
+        <div class="dp-stat-value">${openTasks.length > 0 ? 'Active' : 'Complete'}</div>
       </div>
-      <div id="bottleneck-stale" style="flex:1;padding:8px;background:${staleDoing.length > 0 ? 'var(--sage-pale)' : 'var(--bg2)'};border-radius:6px;border-left:3px solid var(--sage);">
-        <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">STALE (>7d)</div>
-        <div style="font-size:18px;font-weight:500;">${staleDoing.length}</div>
-        ${staleDoing.length > 0 ? `<div style="font-size:10px;color:var(--text-dim);margin-top:4px;">${staleDoing.slice(0, 3).map(t => esc(t.title)).join(', ')}</div>` : ''}
+      <div class="dp-stat">
+        <div class="dp-stat-label">Progress</div>
+        <div class="dp-stat-value">${progress}%</div>
       </div>
-      <div id="bottleneck-next" style="flex:1;padding:8px;background:${nextUp.length > 0 ? 'var(--mauve-pale)' : 'var(--bg2)'};border-radius:6px;border-left:3px solid var(--mauve);">
-        <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">NEXT UP</div>
-        <div style="font-size:18px;font-weight:500;">${nextUp.length}</div>
-        ${nextUp.length > 0 ? `<div style="font-size:10px;color:var(--text-dim);margin-top:4px;">${nextUp.slice(0, 3).map(t => esc(t.title)).join(', ')}</div>` : ''}
+      <div class="dp-stat">
+        <div class="dp-stat-label">Tasks</div>
+        <div class="dp-stat-value">${openTasks.length} / ${projectTasks.length}</div>
       </div>
+      <div class="dp-stat">
+        <div class="dp-stat-label">Files</div>
+        <div class="dp-stat-value">${projectFiles.length}</div>
+      </div>
+    `;
+    
+    const tasksHtml = projectTasks.length > 0 
+      ? projectTasks.map(t => `
+        <div class="dp-task ${t.done ? 'done-t' : ''}" 
+             onclick="if(window.Petal?.handlers?.openTaskDrawer){window.Petal.handlers.openTaskDrawer(${t.id})}">
+          <div class="dp-task-check ${t.done ? 'done' : ''}" 
+               onclick="event.stopPropagation();if(window.Petal?.handlers?.toggleTask){window.Petal.handlers.toggleTask(${t.id})}"></div>
+          <div class="dp-task-label">${esc(t.title || 'Untitled')}</div>
+        </div>
+      `).join('')
+      : '<div style="padding:12px;text-align:center;color:var(--text-dim);font-size:11px;">No tasks</div>';
+    
+    const filesHtml = projectFiles.length > 0
+      ? projectFiles.map(f => {
+          const fileObj = typeof f === 'string' ? { name: f } : f;
+          const label = fileObj.label || fileObj.name || 'File';
+          return `
+            <div class="dp-file" onclick="if(window.Petal?.handlers?.openFile){window.Petal.handlers.openFile(${JSON.stringify(fileObj).replace(/"/g, '&quot;')})}">
+              <div class="dp-file-icon">📄</div>
+              <div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(label)}</div>
+            </div>
+          `;
+        }).join('')
+      : '<div style="padding:12px;text-align:center;color:var(--text-dim);font-size:11px;">No files</div>';
+    
+    bodyEl.innerHTML = `
+      <div>
+        <div class="dp-sec-title">Overview</div>
+        <div class="dp-stat-grid">${statsHtml}</div>
+      </div>
+      <div>
+        <div class="dp-sec-title">Tasks</div>
+        <div class="dp-tasks">${tasksHtml}</div>
+      </div>
+      ${projectFiles.length > 0 ? `
+      <div>
+        <div class="dp-sec-title">Files</div>
+        <div class="dp-files">${filesHtml}</div>
+      </div>
+      ` : ''}
+      <button class="dp-open-btn" onclick="if(window.Petal?.handlers?.openProject){window.Petal.handlers.openProject(${projectId})}">
+        Open Project →
+      </button>
     `;
   }
   
-  // Show status message
-  const statusEl = document.getElementById('workflow-status');
-  if (statusEl) {
-    const totalTasks = filteredTasks.length;
-    const assignedTasks = filteredTasks.filter(t => t.lane && t.lane !== 'none' && t.lane !== '').length;
-    const unassignedTasks = totalTasks - assignedTasks;
-    statusEl.innerHTML = `<div style="padding:8px 12px;background:var(--bg2);border-radius:6px;font-size:12px;color:var(--text-dim);">
-      Total: ${totalTasks} tasks | Assigned: ${assignedTasks} | Unassigned: ${unassignedTasks}
-    </div>`;
-  }
-  
-  // Render each of the four main lanes
-  await renderLane('lab', filteredTasks);
-  await renderLane('comp', filteredTasks);
-  await renderLane('writing', filteredTasks);
-  await renderLane('presentation', filteredTasks);
-  
-  // Render unassigned tasks (in collapsible section)
-  await renderUnassignedLane(filteredTasks);
-  
-  // Update active files panel
-  updateActiveFilesPanel();
+  const panel = document.getElementById('wfDetailPanel');
+  if (panel) panel.classList.add('open');
+  wfSelectedProjectId = projectId;
 }
+
+function closeWfDetail() {
+  const panel = document.getElementById('wfDetailPanel');
+  if (panel) panel.classList.remove('open');
+  wfSelectedProjectId = null;
+}
+
+function getLaneLabel(lane) {
+  const labels = {
+    'lab': '🧪 Lab',
+    'comp': '💻 Computational',
+    'writing': '📝 Writing',
+    'presentation': '📊 Presentation',
+    'personal': '👤 Personal',
+    'product': '🚀 Product'
+  };
+  return labels[lane] || lane;
+}
+
+function getLaneTagClass(lane) {
+  const classes = {
+    'lab': 'rose',
+    'comp': 'sage',
+    'writing': 'mauve',
+    'presentation': 'taupe',
+    'personal': 'rose',
+    'product': 'sage'
+  };
+  return classes[lane] || 'taupe';
+}
+
+// Export for use in main app
+if (typeof window !== 'undefined') {
+  window.renderWorkflowCanvas = renderWorkflowCanvas;
+  window.closeWfDetail = closeWfDetail;
+}
+
+// Close detail panel on Escape
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeWfDetail();
+});
 
 // Render a single lane
 async function renderLane(laneName, allTasks) {
@@ -12863,8 +14558,71 @@ function forceHideAllForms() {
   }
 }
 
+// Prevent scroll restoration (especially important in Electron)
+if ('scrollRestoration' in history) {
+  history.scrollRestoration = 'manual';
+}
+
+// IMMEDIATE scroll fix - run before anything else
+(function() {
+  'use strict';
+  window.scrollTo(0, 0);
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+  if (document.scrollingElement) {
+    document.scrollingElement.scrollTop = 0;
+  }
+  // Force it multiple times
+  setTimeout(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    if (document.scrollingElement) {
+      document.scrollingElement.scrollTop = 0;
+    }
+  }, 0);
+  setTimeout(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    if (document.scrollingElement) {
+      document.scrollingElement.scrollTop = 0;
+    }
+  }, 10);
+})();
+
 // Initialize app
 initState();
+
+// Aggressive scroll reset - run immediately and repeatedly
+function forceScrollToTop() {
+  window.scrollTo(0, 0);
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+  if (document.scrollingElement) {
+    document.scrollingElement.scrollTop = 0;
+  }
+}
+
+// Force scroll to top immediately
+forceScrollToTop();
+
+// Also force on next frame to catch any delayed rendering
+requestAnimationFrame(forceScrollToTop);
+setTimeout(forceScrollToTop, 0);
+setTimeout(forceScrollToTop, 10);
+setTimeout(forceScrollToTop, 50);
+setTimeout(forceScrollToTop, 100);
+
+// Reset scroll when window becomes visible (important for Electron)
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    forceScrollToTop();
+  }
+});
+
+// Reset scroll on window focus (important for Electron)
+window.addEventListener('focus', forceScrollToTop);
 
 // Force hide all forms immediately on page load and after DOM is ready
 if (document.readyState === 'loading') {
@@ -12903,6 +14661,9 @@ if (document.readyState === 'loading') {
   }
 
   document.addEventListener('DOMContentLoaded', () => {
+    // Ensure page starts at the top
+    forceScrollToTop();
+    
     forceHideAllForms();
     // Also hide after a short delay to catch any late-rendered elements
     setTimeout(forceHideAllForms, 50);
@@ -14578,6 +16339,7 @@ function handleTimelineDrop(event, hour, dateStr) {
   draggedHabit = null;
 }
 
+// 3D Printing functions loaded from pages/3d-print.html
 
 // ═══════════════════════ KEYBOARD SHORTCUTS ═══════════════════════
 document.addEventListener('keydown', (e) => {
@@ -14607,6 +16369,9 @@ document.addEventListener('keydown', (e) => {
 // ═══════════════════════ PWA REGISTRATION (browser only) ═══════════════════════
 if (typeof window !== 'undefined' && !window.electronAPI && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
+    // Ensure page starts at the top after full load
+    forceScrollToTop();
+    
     navigator.serviceWorker.register('./service-worker.js')
       .then((registration) => {
         console.log('Service Worker registered:', registration.scope);
