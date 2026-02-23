@@ -42,21 +42,37 @@ function bind(container, features) {
             if (filePath) {
               try {
                 const fileLink = JSON.parse(filePath);
-                // Try features.fileManagement.openFile first, then fallback to window.Petal or fileHelpers
-                if (features?.fileManagement?.openFile) {
-                  features.fileManagement.openFile(fileLink);
-                } else if (window.Petal?.features?.fileManagement?.openFile) {
-                  window.Petal.features.fileManagement.openFile(fileLink);
-                } else if (window.openFile) {
-                  window.openFile(fileLink);
+                // Use the openFile function from fileManagement (which is re-exported from fileHelpers)
+                // This ensures consistent file opening behavior across the app
+                const openFileFn = features?.fileManagement?.openFile || 
+                                  window.Petal?.features?.fileManagement?.openFile ||
+                                  window.openFile;
+                
+                if (openFileFn && typeof openFileFn === 'function') {
+                  openFileFn(fileLink);
                 } else {
-                  // Import and use fileHelpers directly as last resort
+                  console.error('❌ openFile function not available', {
+                    hasFeatures: !!features,
+                    hasFileManagement: !!features?.fileManagement,
+                    hasOpenFile: !!features?.fileManagement?.openFile,
+                    hasWindowPetal: !!window.Petal,
+                    hasWindowOpenFile: !!window.openFile
+                  });
+                  // Last resort: try to import and use directly
                   import('../utils/fileHelpers.js').then(module => {
-                    module.openFile(fileLink);
+                    if (module.openFile) {
+                      module.openFile(fileLink);
+                    } else {
+                      alert('Could not open file: openFile function not available');
+                    }
+                  }).catch(err => {
+                    console.error('Failed to import fileHelpers:', err);
+                    alert('Could not open file: ' + (err.message || 'Unknown error'));
                   });
                 }
               } catch (e) {
                 console.error('Error parsing file path:', e);
+                alert('Error opening file: ' + (e.message || 'Invalid file data'));
               }
             }
             break;

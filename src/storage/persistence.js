@@ -135,9 +135,68 @@ async function performSave() {
       console.error('❌ projects not array at save time:', stateToSave.projects);
       throw new Error('Projects must be an array');
     }
-    if (stateToSave.projects.length === 0) {
-      console.warn('⚠️ saving with 0 projects — is this expected?', {
-        tasksCount: stateToSave.tasks?.length || 0,
+    
+    // CRITICAL: Prevent saving empty state if we have data in store OR vault
+    // This prevents accidental data loss from empty saves
+    let shouldBlockSave = false;
+    let blockReason = '';
+    
+    if (typeof window !== 'undefined' && window.Petal?.store) {
+      const currentState = window.Petal.store.getState();
+      const currentTasksCount = currentState.tasks?.length || 0;
+      const currentProjectsCount = currentState.projects?.length || 0;
+      
+      // If store has data but snapshot is empty, block the save
+      if (currentTasksCount > 0 && tasksCount === 0) {
+        shouldBlockSave = true;
+        blockReason = `Store has ${currentTasksCount} tasks but snapshot is empty`;
+      }
+      
+      if (currentProjectsCount > 0 && projectsCount === 0) {
+        shouldBlockSave = true;
+        blockReason = `Store has ${currentProjectsCount} projects but snapshot is empty`;
+      }
+    }
+    
+    // Also check vault file if in Electron (prevent overwriting existing vault data with empty state)
+    if (!shouldBlockSave && tasksCount === 0 && projectsCount === 0 && 
+        typeof window !== 'undefined' && window.electronAPI && window.electronAPI.getDataPath) {
+      try {
+        // This is a safety check - we can't easily read the vault file from renderer,
+        // but we can check if this is the first save (no previous data in store)
+        // If store was just initialized and is empty, but we're trying to save,
+        // it might mean we're overwriting existing vault data
+        const currentState = window.Petal?.store?.getState();
+        const wasJustInitialized = window.Petal?.store?._isInitialLoad === true;
+        
+        if (wasJustInitialized && tasksCount === 0 && projectsCount === 0) {
+          // CRITICAL: Block saving empty state on first initialization
+          // This prevents overwriting existing vault data with empty state
+          // The vault file should have been loaded - if we're trying to save empty,
+          // something went wrong and we should not overwrite the vault
+          shouldBlockSave = true;
+          blockReason = 'Attempting to save empty state on first initialization - this would overwrite existing vault data';
+          console.error('❌ BLOCKED SAVE: Attempting to save empty state on first initialization', {
+            timestamp: new Date().toISOString(),
+            stackTrace: new Error().stack
+          });
+        }
+      } catch (e) {
+        // Ignore errors in vault check
+      }
+    }
+    
+    if (shouldBlockSave) {
+      console.error('❌ BLOCKED SAVE:', blockReason, {
+        snapshotTasks: tasksCount,
+        snapshotProjects: projectsCount,
+        stackTrace: new Error().stack
+      });
+      throw new Error(`Cannot save empty state: ${blockReason}`);
+    }
+    
+    if (stateToSave.projects.length === 0 && tasksCount === 0) {
+      console.warn('⚠️ saving with 0 projects and 0 tasks — is this expected?', {
         timestamp: new Date().toISOString()
       });
     }
@@ -234,11 +293,30 @@ function saveState(state) {
 function createImmutableSnapshot(state) {
   // Clone arrays and top-level objects to prevent mutation
   // This ensures queuedState is truly immutable at the level that matters for persistence
+  // Deep clone settings to preserve nested objects like cellLog
+  let settingsClone = {};
+  if (state.settings && typeof state.settings === 'object') {
+    settingsClone = { ...state.settings };
+    // Deep clone cellLog if it exists (preserves cellTypes, mediaTypes, entries)
+    if (state.settings.cellLog && typeof state.settings.cellLog === 'object') {
+      settingsClone.cellLog = {
+        ...state.settings.cellLog,
+        cellTypes: Array.isArray(state.settings.cellLog.cellTypes) ? [...state.settings.cellLog.cellTypes] : [],
+        mediaTypes: Array.isArray(state.settings.cellLog.mediaTypes) ? [...state.settings.cellLog.mediaTypes] : [],
+        entries: Array.isArray(state.settings.cellLog.entries) ? state.settings.cellLog.entries.map(e => ({ ...e })) : []
+      };
+    }
+    // Deep clone any other nested settings objects if needed
+    if (state.settings.board && typeof state.settings.board === 'object') {
+      settingsClone.board = { ...state.settings.board };
+    }
+  }
+  
   return {
     tasks: state.tasks ? state.tasks.map(t => ({ ...t })) : [],
     projects: state.projects ? state.projects.map(p => ({ ...p })) : [],
     openProjects: state.openProjects ? Array.from(state.openProjects) : [],
-    settings: state.settings ? { ...state.settings } : {},
+    settings: settingsClone,
     events: state.events ? state.events.map(e => ({ ...e })) : [],
     recurringRules: state.recurringRules ? state.recurringRules.map(r => ({ ...r })) : [],
     habits: state.habits ? state.habits.map(h => ({ ...h })) : [],

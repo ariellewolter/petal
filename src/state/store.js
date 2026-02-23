@@ -8,6 +8,7 @@ class AppStore {
   constructor() {
     // Internal state (private)
     // Phase 3 Fix: openProjects stored as Array (not Set) for JSON compatibility
+    this._isInitialLoad = true; // Track if this is the first loadState call
     this._state = {
       tasks: [],
       projects: [],
@@ -267,15 +268,78 @@ class AppStore {
     }
     // Use migrated data (which already has defaults merged)
     state = migrationResult.data;
-    // Phase 3 Fix: Guard against empty project overwrites
-    const incomingProjects = Array.isArray(state.projects) ? state.projects : [];
-    const currentProjects = this._state.projects || [];
     
-    // Never replace existing projects with empty array unless explicitly allowed
-    // This prevents data loss from bad saves or external modifications
+    // CRITICAL: Log what we're receiving, especially on initial load
+    const incomingProjects = Array.isArray(state.projects) ? state.projects : [];
+    const incomingTasks = Array.isArray(state.tasks) ? state.tasks : [];
+    const incomingFiles = Array.isArray(state.files) ? state.files : [];
+    
+    if (this._isInitialLoad) {
+      console.log('🔍 INITIAL LOAD - Incoming data:', {
+        tasks: incomingTasks.length,
+        projects: incomingProjects.length,
+        files: incomingFiles.length,
+        hasSettings: !!state.settings,
+        hasCellLog: !!(state.settings?.cellLog),
+        cellLogEntries: state.settings?.cellLog?.entries?.length || 0
+      });
+      
+      // CRITICAL: If initial load has empty data, this is suspicious
+      // The vault file should have data - if we're getting empty, something is wrong
+      if (incomingTasks.length === 0 && incomingProjects.length === 0 && incomingFiles.length === 0) {
+        console.error('❌ CRITICAL: Initial load received EMPTY data! This should not happen if vault has data.');
+        console.error('   This may indicate:');
+        console.error('   1. Vault file was not read correctly');
+        console.error('   2. Data was lost during migration');
+        console.error('   3. Data was lost during storage adapter transfer');
+        console.error('   Check the console logs above for where data was lost.');
+      }
+    }
+    
+    // CRITICAL: Guard against empty data overwrites
+    // Never replace existing data with empty arrays unless explicitly allowed
+    // This prevents data loss from bad saves, external modifications, or corrupted loads
+    
+    // Guard projects
+    const currentProjects = this._state.projects || [];
     if (incomingProjects.length === 0 && currentProjects.length > 0) {
       console.warn('⚠️ BLOCKED empty project overwrite - preserving existing projects');
       state.projects = currentProjects;
+    }
+    
+    // Guard tasks
+    const currentTasks = this._state.tasks || [];
+    if (incomingTasks.length === 0 && currentTasks.length > 0) {
+      console.warn('⚠️ BLOCKED empty task overwrite - preserving existing tasks');
+      state.tasks = currentTasks;
+    }
+    
+    // Guard files
+    const currentFiles = this._state.files || [];
+    if (incomingFiles.length === 0 && currentFiles.length > 0) {
+      console.warn('⚠️ BLOCKED empty files overwrite - preserving existing files');
+      state.files = currentFiles;
+    }
+    
+    // Guard cellLog entries
+    const incomingCellLog = state.settings?.cellLog;
+    const currentCellLog = this._state.settings?.cellLog;
+    if (incomingCellLog && currentCellLog) {
+      const incomingEntries = Array.isArray(incomingCellLog.entries) ? incomingCellLog.entries : [];
+      const currentEntries = Array.isArray(currentCellLog.entries) ? currentCellLog.entries : [];
+      if (incomingEntries.length === 0 && currentEntries.length > 0) {
+        console.warn('⚠️ BLOCKED empty cellLog entries overwrite - preserving existing entries');
+        state.settings = state.settings || {};
+        state.settings.cellLog = state.settings.cellLog || {};
+        state.settings.cellLog.entries = currentEntries;
+        // Also preserve cellTypes and mediaTypes if they exist
+        if (currentCellLog.cellTypes && (!incomingCellLog.cellTypes || incomingCellLog.cellTypes.length === 0)) {
+          state.settings.cellLog.cellTypes = currentCellLog.cellTypes;
+        }
+        if (currentCellLog.mediaTypes && (!incomingCellLog.mediaTypes || incomingCellLog.mediaTypes.length === 0)) {
+          state.settings.cellLog.mediaTypes = currentCellLog.mediaTypes;
+        }
+      }
     }
     
     // Phase 3 Fix: Normalize openProjects to Array (JSON-friendly, single representation)
@@ -367,18 +431,29 @@ class AppStore {
       files: Array.isArray(state.files) ? state.files : [],
       // Workflow state (with defaults from centralized source)
       workflow: state.workflow ? {
-        laneOrder: Array.isArray(state.workflow.laneOrder) ? state.workflow.laneOrder : getDefaultWorkflow().laneOrder,
-        columns: state.workflow.columns && typeof state.workflow.columns === 'object' ? state.workflow.columns : getDefaultWorkflow().columns,
-        placement: state.workflow.placement && typeof state.workflow.placement === 'object' ? state.workflow.placement : getDefaultWorkflow().placement,
-        rules: state.workflow.rules && typeof state.workflow.rules === 'object' ? state.workflow.rules : getDefaultWorkflow().rules,
-        ui: state.workflow.ui && typeof state.workflow.ui === 'object' ? {
-          activeProjectId: state.workflow.ui.activeProjectId || getDefaultWorkflow().ui.activeProjectId,
-          showUnassigned: state.workflow.ui.showUnassigned !== undefined ? state.workflow.ui.showUnassigned : getDefaultWorkflow().ui.showUnassigned,
-          showActiveFiles: state.workflow.ui.showActiveFiles !== undefined ? state.workflow.ui.showActiveFiles : getDefaultWorkflow().ui.showActiveFiles
-        } : getDefaultWorkflow().ui
-      } : getDefaultWorkflow()
-    };
-    this._notify();
+            laneOrder: Array.isArray(state.workflow.laneOrder) ? state.workflow.laneOrder : getDefaultWorkflow().laneOrder,
+            columns: state.workflow.columns && typeof state.workflow.columns === 'object' ? state.workflow.columns : getDefaultWorkflow().columns,
+            placement: state.workflow.placement && typeof state.workflow.placement === 'object' ? state.workflow.placement : getDefaultWorkflow().placement,
+            rules: state.workflow.rules && typeof state.workflow.rules === 'object' ? state.workflow.rules : getDefaultWorkflow().rules,
+            ui: state.workflow.ui && typeof state.workflow.ui === 'object' ? {
+              activeProjectId: state.workflow.ui.activeProjectId || getDefaultWorkflow().ui.activeProjectId,
+              showUnassigned: state.workflow.ui.showUnassigned !== undefined ? state.workflow.ui.showUnassigned : getDefaultWorkflow().ui.showUnassigned,
+              showActiveFiles: state.workflow.ui.showActiveFiles !== undefined ? state.workflow.ui.showActiveFiles : getDefaultWorkflow().ui.showActiveFiles
+            } : getDefaultWorkflow().ui
+          } : getDefaultWorkflow()
+        };
+        
+        // Mark initial load as complete
+        if (this._isInitialLoad) {
+          this._isInitialLoad = false;
+          console.log('✓ Initial load complete. Store now has:', {
+            tasks: this._state.tasks.length,
+            projects: this._state.projects.length,
+            files: this._state.files.length
+          });
+        }
+        
+        this._notify();
   }
   
   /**

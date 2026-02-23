@@ -2,6 +2,7 @@
 // Shared file management functions used across multiple tabs
 
 import { esc, fileIcon } from '../utils/strings.js';
+import { openFile } from '../utils/fileHelpers.js';
 
 // File status options
 export const FILE_STATUSES = {
@@ -1140,3 +1141,9 @@ export function showFileLinkedTasks(ctx, fileKey) {
     openTaskDrawer(linkedTasks[0].id);
   }
 }
+
+/**
+ * Open file (re-exported from fileHelpers for convenience)
+ * @param {Object|string} fileLink - File link object or string path
+ */
+export { openFile };

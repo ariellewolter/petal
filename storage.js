@@ -29,6 +29,7 @@ class StorageAdapter {
         // Check if result has conflict info (new format) or just data (old format)
         if (result.data !== undefined) {
           // New format with conflict info
+          // Preserve all fields from vault, ensure defaults for missing ones
           result.data = {
             tasks: result.data.tasks || [],
             projects: result.data.projects || [],
@@ -38,8 +39,22 @@ class StorageAdapter {
             fileHistory: result.data.fileHistory || {},
             fileRegistry: result.data.fileRegistry || {},
             events: result.data.events || [],
-            recurringRules: result.data.recurringRules || []
+            recurringRules: result.data.recurringRules || [],
+            habits: result.data.habits || [],
+            habitCheckins: result.data.habitCheckins || {},
+            routines: result.data.routines || [],
+            routineCheckins: result.data.routineCheckins || {},
+            workflow: result.data.workflow || {}
           };
+          // Debug: Log what we're passing through
+          console.log('📥 storage.js: Data from vault:', {
+            tasks: result.data.tasks.length,
+            projects: result.data.projects.length,
+            files: result.data.files.length,
+            hasSettings: !!result.data.settings,
+            hasCellLog: !!(result.data.settings?.cellLog),
+            cellLogEntries: result.data.settings?.cellLog?.entries?.length || 0
+          });
           return result;
         } else {
           // Old format, wrap it

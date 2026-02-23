@@ -640,10 +640,43 @@ async function readDataFile() {
         // DEBUG: Log what was loaded
         safeLog(`🔍 DEBUG: Loaded data from file:`);
         safeLog(`  Schema Version: ${loadedVersion} (current: ${CURRENT_SCHEMA_VERSION})`);
-        safeLog(`  Tasks: ${mainData.tasks?.length || 0}`);
-        safeLog(`  Projects: ${mainData.projects?.length || 0}`);
+        safeLog(`  Tasks: ${mainData.tasks?.length || 0} (type: ${Array.isArray(mainData.tasks) ? 'array' : typeof mainData.tasks})`);
+        safeLog(`  Projects: ${mainData.projects?.length || 0} (type: ${Array.isArray(mainData.projects) ? 'array' : typeof mainData.projects})`);
         safeLog(`  Events: ${mainData.events?.length || 0}`);
         safeLog(`  Open Projects: ${mainData.openProjects?.length || 0}`);
+        safeLog(`  Files: ${mainData.files?.length || 0}`);
+        safeLog(`  Settings keys: ${mainData.settings ? Object.keys(mainData.settings).join(', ') : 'none'}`);
+        if (mainData.settings?.cellLog) {
+          safeLog(`  CellLog entries: ${mainData.settings.cellLog.entries?.length || 0}`);
+          safeLog(`  CellLog cellTypes: ${mainData.settings.cellLog.cellTypes?.length || 0}`);
+          safeLog(`  CellLog mediaTypes: ${mainData.settings.cellLog.mediaTypes?.length || 0}`);
+        }
+        safeLog(`  Habits: ${mainData.habits?.length || 0}`);
+        safeLog(`  Routines: ${mainData.routines?.length || 0}`);
+        
+        // SAFEGUARD: Validate vault path from settings backup
+        if (mainData.settings?._vaultPath) {
+          const storedVaultPath = mainData.settings._vaultPath;
+          const currentVaultPath = getVaultPath();
+          if (storedVaultPath !== currentVaultPath && fs.existsSync(storedVaultPath)) {
+            safeWarn(`⚠️ Vault path mismatch detected:`);
+            safeWarn(`   Stored in data file: ${storedVaultPath}`);
+            safeWarn(`   Current vault path: ${currentVaultPath}`);
+            safeWarn(`   This may indicate the vault was moved or config was reset`);
+            // Don't change the vault path automatically - let VaultManager handle it
+          } else if (storedVaultPath === currentVaultPath) {
+            safeLog(`✓ Vault path validated: ${currentVaultPath}`);
+          }
+        }
+        
+        // CRITICAL: Verify data integrity - if file has data but arrays are empty, something is wrong
+        if (mainData && typeof mainData === 'object') {
+          const hasTasks = Array.isArray(mainData.tasks) && mainData.tasks.length > 0;
+          const hasProjects = Array.isArray(mainData.projects) && mainData.projects.length > 0;
+          if (!hasTasks && !hasProjects && Object.keys(mainData).length > 5) {
+            safeWarn('⚠️ WARNING: Vault file exists but tasks and projects are empty - data may be corrupted');
+          }
+        }
       } catch (parseError) {
         // JSON parse failed - attempt recovery from backup
         safeError('❌ JSON parse error in petal.json:', parseError);
@@ -680,11 +713,11 @@ async function readDataFile() {
           } catch (backupError) {
             safeError('❌ Backup file also corrupted:', backupError);
             // Fall back to empty state
-            mainData = { tasks: [], projects: [], openProjects: [], settings: {} };
+            mainData = { tasks: [], projects: [], openProjects: [], settings: {}, files: [], events: [], recurringRules: [], habits: [], routines: [] };
           }
         } else {
           safeWarn('⚠️ No backup file found - using empty state');
-          mainData = { tasks: [], projects: [], openProjects: [], settings: {} };
+          mainData = { tasks: [], projects: [], openProjects: [], settings: {}, files: [], events: [], recurringRules: [], habits: [], routines: [] };
         }
       }
     } else {
@@ -697,8 +730,54 @@ async function readDataFile() {
     });
     
     // Return data with conflict info and recovery status
+    // Ensure all expected fields are present (preserve what's in mainData, add defaults for missing)
+    const defaultData = {
+      tasks: [],
+      projects: [],
+      openProjects: [],
+      settings: {},
+      files: [],
+      events: [],
+      recurringRules: [],
+      habits: [],
+      habitCheckins: {},
+      routines: [],
+      routineCheckins: {},
+      workflow: {}
+    };
+    
+    // CRITICAL: Preserve mainData exactly as read - don't let defaults overwrite existing data
+    // Only merge defaults for fields that don't exist in mainData
+    let dataToReturn;
+    if (mainData && typeof mainData === 'object') {
+      // Merge defaults only for missing fields, preserve all existing data
+      dataToReturn = {
+        ...defaultData,
+        ...mainData,
+        // Ensure nested objects are preserved, not replaced
+        settings: mainData.settings ? { ...defaultData.settings, ...mainData.settings } : defaultData.settings,
+        workflow: mainData.workflow ? { ...defaultData.workflow, ...mainData.workflow } : defaultData.workflow
+      };
+    } else {
+      dataToReturn = defaultData;
+    }
+    
+    // CRITICAL: Verify data integrity before returning
+    const tasksCount = Array.isArray(dataToReturn.tasks) ? dataToReturn.tasks.length : 0;
+    const projectsCount = Array.isArray(dataToReturn.projects) ? dataToReturn.projects.length : 0;
+    if (mainData && tasksCount === 0 && projectsCount === 0) {
+      // If we read data but it's empty, log a warning
+      const mainDataKeys = Object.keys(mainData);
+      if (mainDataKeys.length > 5) {
+        safeWarn(`⚠️ WARNING: Vault file has ${mainDataKeys.length} keys but tasks and projects are empty - possible data corruption`);
+      }
+    }
+    
+    safeLog(`🔍 DEBUG: Returning data with fields: ${Object.keys(dataToReturn).join(', ')}`);
+    safeLog(`🔍 DEBUG: Data counts - Tasks: ${tasksCount}, Projects: ${projectsCount}, Files: ${dataToReturn.files?.length || 0}`);
+    
     return {
-      data: mainData || { tasks: [], projects: [], openProjects: [], settings: {} },
+      data: dataToReturn,
       hasConflicts: allConflicts.length > 0,
       conflicts: allConflicts,
       newerConflicts: newerConflicts,
@@ -708,7 +787,7 @@ async function readDataFile() {
   } catch (error) {
     if (error.code === 'ENOENT') {
       return {
-        data: { tasks: [], projects: [], openProjects: [], settings: {} },
+        data: { tasks: [], projects: [], openProjects: [], settings: {}, files: [], events: [], recurringRules: [], habits: [], routines: [] },
         hasConflicts: false,
         conflicts: [],
         newerConflicts: [],
@@ -947,10 +1026,23 @@ function createWindow() {
 
   mainWindow.loadFile('tasklist (1).html');
 
-  // Open DevTools in development
-  if (process.env.NODE_ENV === 'development') {
+  // Open DevTools to help debug initialization issues
+  // Always open in development, or if PETAL_DEBUG env var is set
+  if (process.env.NODE_ENV === 'development' || process.env.PETAL_DEBUG === '1') {
     mainWindow.webContents.openDevTools();
   }
+  
+  // Log when page is ready
+  mainWindow.webContents.once('did-finish-load', () => {
+    safeLog('✅ Window finished loading tasklist (1).html');
+  });
+  
+  // Log console messages from renderer
+  mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+    if (level === 3) { // error
+      safeError(`[Renderer Error] ${message} (${sourceId}:${line})`);
+    }
+  });
 
   mainWindow.on('closed', () => {
     if (dataFileWatcher) {
@@ -1212,6 +1304,46 @@ ipcMain.handle('storage:save', async (event, state) => {
       return { ok: false, error: `Failed to create vault directory: ${structureError.message}` };
     }
     
+    // SAFEGUARD: Store vault path in settings as backup
+    // This ensures the vault location is remembered even if Electron config is lost
+    if (!state.settings) {
+      state.settings = {};
+    }
+    if (vaultPath) {
+      state.settings._vaultPath = vaultPath; // Store as backup in data file
+      safeLog(`🔒 Safeguard: Stored vault path in settings: ${vaultPath}`);
+    }
+    
+    // CRITICAL: Prevent overwriting existing vault data with empty state
+    const paths = getVaultPaths();
+    const tasksCount = Array.isArray(state.tasks) ? state.tasks.length : 0;
+    const projectsCount = Array.isArray(state.projects) ? state.projects.length : 0;
+    
+    if (tasksCount === 0 && projectsCount === 0 && fs.existsSync(paths.dataFile)) {
+      // Check if vault file has existing data
+      try {
+        const existingData = JSON.parse(await fsPromises.readFile(paths.dataFile, 'utf-8'));
+        const existingTasksCount = Array.isArray(existingData.tasks) ? existingData.tasks.length : 0;
+        const existingProjectsCount = Array.isArray(existingData.projects) ? existingData.projects.length : 0;
+        
+        if (existingTasksCount > 0 || existingProjectsCount > 0) {
+          safeError('❌ BLOCKED SAVE: Attempting to overwrite vault with empty state!', {
+            vaultTasks: existingTasksCount,
+            vaultProjects: existingProjectsCount,
+            saveTasks: tasksCount,
+            saveProjects: projectsCount
+          });
+          return { 
+            ok: false, 
+            error: `Cannot save empty state - vault contains ${existingTasksCount} tasks and ${existingProjectsCount} projects` 
+          };
+        }
+      } catch (readError) {
+        // If we can't read the file, allow the save (might be corrupted)
+        safeWarn('⚠️ Could not read existing vault file to verify data:', readError);
+      }
+    }
+    
     // Release-Safe: Log payload keys and files to verify IPC transmission
     safeLog('📝 main save payload keys:', Object.keys(state));
     safeLog('📝 main save files:', Array.isArray(state.files) ? state.files.length : (state.files !== undefined ? typeof state.files : 'undefined'));
@@ -1278,6 +1410,135 @@ ipcMain.handle('storage:getPath', () => {
 
 ipcMain.handle('storage:getVaultPath', () => {
   return getVaultPath();
+});
+
+// Recovery: List available backup files
+ipcMain.handle('storage:listBackups', async () => {
+  try {
+    const paths = getVaultPaths();
+    const vaultPath = paths.vaultPath;
+    
+    if (!fs.existsSync(vaultPath)) {
+      return { backups: [], error: 'Vault path does not exist' };
+    }
+    
+    const files = fs.readdirSync(vaultPath);
+    const backups = files
+      .filter(f => f.startsWith('petal.backup.') && f.endsWith('.json'))
+      .map(filename => {
+        const filePath = path.join(vaultPath, filename);
+        const stats = fs.statSync(filePath);
+        try {
+          const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+          return {
+            filename,
+            filePath,
+            mtime: stats.mtime.toISOString(),
+            size: stats.size,
+            tasks: Array.isArray(data.tasks) ? data.tasks.length : 0,
+            projects: Array.isArray(data.projects) ? data.projects.length : 0,
+            files: Array.isArray(data.files) ? data.files.length : 0
+          };
+        } catch (e) {
+          return {
+            filename,
+            filePath,
+            mtime: stats.mtime.toISOString(),
+            size: stats.size,
+            tasks: 0,
+            projects: 0,
+            files: 0,
+            error: 'Could not parse backup file'
+          };
+        }
+      })
+      .sort((a, b) => new Date(b.mtime) - new Date(a.mtime)); // Most recent first
+    
+    // Also check the standard backup file
+    if (fs.existsSync(paths.backupFile)) {
+      try {
+        const stats = fs.statSync(paths.backupFile);
+        const data = JSON.parse(fs.readFileSync(paths.backupFile, 'utf-8'));
+        backups.unshift({
+          filename: BACKUP_FILE_NAME,
+          filePath: paths.backupFile,
+          mtime: stats.mtime.toISOString(),
+          size: stats.size,
+          tasks: Array.isArray(data.tasks) ? data.tasks.length : 0,
+          projects: Array.isArray(data.projects) ? data.projects.length : 0,
+          files: Array.isArray(data.files) ? data.files.length : 0,
+          isStandardBackup: true
+        });
+      } catch (e) {
+        // Ignore if backup file is corrupted
+      }
+    }
+    
+    return { backups, vaultPath };
+  } catch (error) {
+    safeError('Error listing backups:', error);
+    return { backups: [], error: error.message };
+  }
+});
+
+// Recovery: Restore from a backup file
+ipcMain.handle('storage:restoreFromBackup', async (event, backupFilename) => {
+  try {
+    const paths = getVaultPaths();
+    const vaultPath = paths.vaultPath;
+    
+    let backupPath;
+    if (backupFilename === BACKUP_FILE_NAME) {
+      backupPath = paths.backupFile;
+    } else {
+      backupPath = path.join(vaultPath, backupFilename);
+    }
+    
+    if (!fs.existsSync(backupPath)) {
+      return { ok: false, error: `Backup file not found: ${backupFilename}` };
+    }
+    
+    // Read backup data
+    const backupData = await fsPromises.readFile(backupPath, 'utf-8');
+    const data = JSON.parse(backupData);
+    
+    // Validate it has data
+    const tasksCount = Array.isArray(data.tasks) ? data.tasks.length : 0;
+    const projectsCount = Array.isArray(data.projects) ? data.projects.length : 0;
+    
+    if (tasksCount === 0 && projectsCount === 0) {
+      return { ok: false, error: 'Backup file appears to be empty' };
+    }
+    
+    // Create a backup of current file before restoring
+    if (fs.existsSync(paths.dataFile)) {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19).replace('T', '-');
+      const preRestoreBackup = path.join(vaultPath, `petal.pre-restore.${timestamp}.json`);
+      await fsPromises.copyFile(paths.dataFile, preRestoreBackup);
+      safeLog(`✅ Created pre-restore backup: ${path.basename(preRestoreBackup)}`);
+    }
+    
+    // Restore the backup
+    await fsPromises.copyFile(backupPath, paths.dataFile);
+    
+    // Sync to disk
+    const fd = await fsPromises.open(paths.dataFile, 'r+');
+    await fd.sync();
+    await fd.close();
+    
+    safeLog(`✅ Restored from backup: ${backupFilename}`);
+    safeLog(`   Tasks: ${tasksCount}, Projects: ${projectsCount}`);
+    
+    return { 
+      ok: true, 
+      tasks: tasksCount, 
+      projects: projectsCount,
+      files: Array.isArray(data.files) ? data.files.length : 0
+    };
+  } catch (error) {
+    safeError('Error restoring from backup:', error);
+    return { ok: false, error: error.message };
+  }
 });
 
 ipcMain.handle('storage:chooseVaultFolder', async () => {

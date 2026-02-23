@@ -205,11 +205,19 @@ export async function initStateInternal() {
   }
   
   // DEBUG: Log what was loaded
-  console.log('🔍 DEBUG: Loaded data:', {
+  console.log('🔍 DEBUG: Loaded data from vault:', {
     tasksCount: loadedData.tasks?.length || 0,
     projectsCount: loadedData.projects?.length || 0,
+    filesCount: loadedData.files?.length || 0,
     eventsCount: loadedData.events?.length || 0,
-    openProjects: loadedData.openProjects || []
+    openProjects: loadedData.openProjects || [],
+    hasSettings: !!loadedData.settings,
+    hasCellLog: !!(loadedData.settings?.cellLog),
+    cellLogEntries: loadedData.settings?.cellLog?.entries?.length || 0,
+    cellLogCellTypes: loadedData.settings?.cellLog?.cellTypes?.length || 0,
+    cellLogMediaTypes: loadedData.settings?.cellLog?.mediaTypes?.length || 0,
+    habitsCount: loadedData.habits?.length || 0,
+    routinesCount: loadedData.routines?.length || 0
   });
   
   // Load data into store (Step 2: Wire store)

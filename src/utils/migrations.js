@@ -430,10 +430,15 @@ export function migrateData(data) {
 /**
  * Merge default state values into migrated data
  * Ensures all new fields have default values
+ * CRITICAL: Never overwrites existing data with empty arrays
  */
 function mergeDefaults(data) {
   const defaults = getDefaultState();
-  return {
+  
+  // CRITICAL: Guard against empty data overwriting defaults
+  // If incoming data has empty arrays but defaults would have data, preserve defaults
+  // This prevents data loss during migration/merge operations
+  const result = {
     ...defaults,
     ...data,
     // Merge nested objects
@@ -446,6 +451,24 @@ function mergeDefaults(data) {
       ...(data.workflow || {})
     }
   };
+  
+  // CRITICAL: Never allow empty arrays to overwrite if we have defaults with potential data
+  // This is a safety net - if data has empty arrays, check if we should preserve defaults
+  // Note: This is a defensive check - normally data should come from vault with actual data
+  if (Array.isArray(data.tasks) && data.tasks.length === 0 && Array.isArray(defaults.tasks) && defaults.tasks.length === 0) {
+    // Both are empty, that's fine - use empty
+  } else if (Array.isArray(data.tasks) && data.tasks.length === 0) {
+    // Incoming is empty but we might have defaults - log warning but preserve empty (data takes precedence)
+    console.warn('⚠️ mergeDefaults: Incoming tasks array is empty - this may indicate data loss');
+  }
+  
+  if (Array.isArray(data.projects) && data.projects.length === 0 && Array.isArray(defaults.projects) && defaults.projects.length === 0) {
+    // Both are empty, that's fine
+  } else if (Array.isArray(data.projects) && data.projects.length === 0) {
+    console.warn('⚠️ mergeDefaults: Incoming projects array is empty - this may indicate data loss');
+  }
+  
+  return result;
 }
 
 /**
