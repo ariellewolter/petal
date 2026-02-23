@@ -298,6 +298,13 @@ export const plannerHandlers = {
     }
     
     appStore.setState({ plannerCalYear: year, plannerCalMonth: month });
+    
+    // Rebuild calendar after navigation
+    setTimeout(() => {
+      if (typeof window.buildPlannerCalendar === 'function') {
+        window.buildPlannerCalendar();
+      }
+    }, 0);
   },
   
   resetPlannerDate() {

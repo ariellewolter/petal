@@ -25,6 +25,7 @@ import * as FileManagement from '../features/fileManagement.js';
 import * as FileOperations from '../features/fileOperations.js';
 import * as TaskOperations from '../features/taskOperations.js';
 import * as ProjectOperations from '../features/projectOperations.js';
+import * as ModalOperations from '../features/modalOperations.js';
 import * as DeleteHandlers from '../features/deleteHandlers.js';
 import * as TaskDrawer from '../features/taskDrawer.js';
 import * as ExportImport from '../features/exportImport.js';
@@ -37,7 +38,10 @@ import { today, parseDate, dueLabel, parseTime, formatTime } from '../utils/date
 import { esc, fileIcon, normalizePriorityValue, getEditOnclick, normalizeDueInput } from '../utils/strings.js';
 import * as uiModules from '../ui/index.js';
 import * as uiHelpers from '../ui/helpers.js';
+import * as uiHelpersNew from '../ui/uiHelpers.js';
 import * as projectHelpers from '../utils/projectHelpers.js';
+import * as taskHelpers from '../utils/taskHelpers.js';
+import * as fileHelpers from '../utils/fileHelpers.js';
 import * as migrations from '../utils/migrations.js';
 import * as vaultUtils from '../utils/vault.js';
 import * as settingsUtils from '../utils/settings.js';
@@ -49,12 +53,13 @@ import * as HabitsFeature from '../features/habits.js';
 import * as RoutinesFeature from '../features/routines.js';
 import { renderPlannerHabits } from '../ui/renderPlannerHabits.js';
 import { renderPlannerRoutines } from '../ui/renderPlannerRoutines.js';
+import * as RenderProjectUI from '../ui/renderProjectUI.js';
 
-// Import delegation setup
-import { setupEventDelegation } from './delegation.js';
+// Note: Event delegation is now set up in TodayPage.js
 
 // Import render functions
 import { renderGlobalSidebar, render } from './viewManager.js';
+import { setupEventDelegation } from './delegation.js';
 
 /**
  * Initialize the application
@@ -91,12 +96,40 @@ export async function initApp() {
   window.Petal.store = appStore;
   window.Petal.handlers = handlers;
   
+  // Add createPageContext helper to handlers if not already present
+  // Use window.createPageContext if available (defined in tasklist.html), otherwise provide fallback
+  if (!handlers.createPageContext) {
+    handlers.createPageContext = function() {
+      // Use window.createPageContext if available (more comprehensive version from tasklist.html)
+      if (typeof window.createPageContext === 'function') {
+        return window.createPageContext();
+      }
+      // Fallback: create minimal context from store
+      const state = appStore.getState();
+      return {
+        store: appStore,
+        state: state,
+        tasks: Array.isArray(state.tasks) ? state.tasks : [],
+        projects: Array.isArray(state.projects) ? state.projects : [],
+        events: Array.isArray(state.events) ? state.events : [],
+        recurringRules: Array.isArray(state.recurringRules) ? state.recurringRules : [],
+        settings: state.settings || {},
+        fileRegistry: window.fileRegistry || {},
+        fileHistory: window.fileHistory || {},
+        save: handlers.save || (() => {}),
+        render: window.render || (() => {})
+      };
+    };
+  }
+  
   // Set up window.Petal.ui namespace
   window.Petal.ui = window.Petal.ui || {};
   Object.assign(window.Petal.ui, uiModules);
   Object.assign(window.Petal.ui, uiHelpers);
+  Object.assign(window.Petal.ui, uiHelpersNew);
   window.Petal.ui.renderPlannerHabits = renderPlannerHabits;
   window.Petal.ui.renderPlannerRoutines = renderPlannerRoutines;
+  Object.assign(window.Petal.ui, RenderProjectUI);
   
   // Set up window.Petal.features namespace
   window.Petal.features = window.Petal.features || {};
@@ -104,6 +137,7 @@ export async function initApp() {
   window.Petal.features.fileOperations = FileOperations;
   window.Petal.features.taskOperations = TaskOperations;
   window.Petal.features.projectOperations = ProjectOperations;
+  window.Petal.features.modalOperations = ModalOperations;
   window.Petal.features.deleteHandlers = DeleteHandlers;
   window.Petal.features.taskDrawer = TaskDrawer;
   window.Petal.features.exportImport = ExportImport;
@@ -114,6 +148,8 @@ export async function initApp() {
   // Set up window.Petal.utils namespace
   window.Petal.utils = window.Petal.utils || {};
   Object.assign(window.Petal.utils, projectHelpers);
+  Object.assign(window.Petal.utils, taskHelpers);
+  Object.assign(window.Petal.utils, fileHelpers);
   Object.assign(window.Petal.utils, migrations);
   Object.assign(window.Petal.utils, vaultUtils);
   Object.assign(window.Petal.utils, settingsUtils);
@@ -175,10 +211,11 @@ export async function initApp() {
   // Step 5: Set up router as single view switch entrypoint
   setupRouter();
   
-  // Step 6: Set up event delegation
+  // Step 5.5: Set up global event delegation (all hookups)
+  // This ensures all app-wide event handlers are initialized before any page renders
   setupEventDelegation();
   
-  // Step 7: Initialize state (vault resolution, loading, migrations)
+  // Step 6: Initialize state (vault resolution, loading, migrations)
   await initState();
   
   // Step 8: Wire render function to store changes
@@ -217,7 +254,7 @@ export async function initApp() {
     }
     
     // Also ensure initial view is shown
-    const currentView = appStore.getState()?.currentView || window.currentView || 'tasks';
+    const currentView = appStore.getState()?.currentView || window.currentView || 'today';
     const viewEl = document.getElementById(`view-${currentView}`);
     if (viewEl) {
       // Hide all other views
@@ -360,9 +397,280 @@ function exposePageRenderers() {
   window.toggleTlExpand = toggleTlExpand;
   window.renderWorkflowList = renderWorkflowList;
   
+  // Expose planner handlers to window for event delegation
+  if (handlers?.navigatePlannerDate) {
+    window.plannerNav = (direction) => {
+      handlers.navigatePlannerDate(direction);
+    };
+  }
+  if (handlers?.setPlannerView) {
+    window.setPlannerView = (view, containerEl) => {
+      const container = containerEl || document.getElementById('view-planner');
+      handlers.setPlannerView(view, container);
+    };
+  }
+  if (handlers?.navigatePlannerCalendar) {
+    window.plannerCalNav = (direction) => {
+      handlers.navigatePlannerCalendar(direction);
+      // Trigger re-render after calendar navigation
+      if (window.routerSwitchView) {
+        window.routerSwitchView('planner');
+      }
+    };
+  }
+  if (handlers?.resetPlannerDate) {
+    window.plannerGoToday = () => {
+      handlers.resetPlannerDate();
+    };
+  }
+  
+  // Ensure event modal functions are available (they're defined in tasklist.html but ensure they're accessible)
+  // These functions are defined globally in tasklist.html, but we ensure they're accessible here
+  if (typeof window.closeEventModal === 'undefined') {
+    window.closeEventModal = function() {
+      const modal = document.getElementById('event-modal');
+      const deleteBtn = document.getElementById('event-delete-btn');
+      if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+      }
+      if (deleteBtn) deleteBtn.style.display = 'none';
+      if (typeof window.editingEventId !== 'undefined') {
+        window.editingEventId = null;
+      }
+    };
+  }
+  
+  if (typeof window.submitEventModal === 'undefined') {
+    // Fallback - the real function is in tasklist.html
+    window.submitEventModal = async function() {
+      console.warn('submitEventModal not found - ensure it is defined in tasklist.html');
+    };
+  }
+  
+  if (typeof window.openAddEventModal === 'undefined') {
+    // Fallback - the real function is in tasklist.html
+    window.openAddEventModal = function(dateStr) {
+      console.warn('openAddEventModal not found - ensure it is defined in tasklist.html');
+    };
+  }
+  
+  // Ensure openAddTaskModal is available (wrapper in tasklist.html should handle this, but ensure it's accessible)
+  if (typeof window.openAddTaskModal === 'undefined' && window.Petal?.features?.modalOperations?.openAddTaskModal) {
+    window.openAddTaskModal = function() {
+      window.Petal.features.modalOperations.openAddTaskModal();
+    };
+  }
+  
   // Make PAGES registry available globally
   window.PAGES = PAGES;
   window.renderRegistry = renderRegistry;
+  
+  // Expose all window functions needed for event delegation
+  // These are primarily defined in tasklist.html, but we ensure they're accessible here
+  exposeWindowFunctions();
+}
+
+/**
+ * Expose all window functions needed for event delegation
+ * These functions are primarily defined in tasklist.html as wrappers,
+ * but we ensure they're accessible here as a safety net
+ */
+function exposeWindowFunctions() {
+  // Task drawer functions (wrappers in tasklist.html call TaskDrawer module)
+  // These are set up in tasklist.html, but ensure they exist
+  if (typeof window.closeTaskDrawer === 'undefined' && window.Petal?.features?.taskDrawer?.closeTaskDrawer) {
+    window.closeTaskDrawer = window.Petal.features.taskDrawer.closeTaskDrawer;
+  }
+  if (typeof window.switchTaskDrawerTab === 'undefined' && window.Petal?.features?.taskDrawer?.switchTaskDrawerTab) {
+    window.switchTaskDrawerTab = window.Petal.features.taskDrawer.switchTaskDrawerTab;
+  }
+  if (typeof window.addTaskLogEntry === 'undefined' && window.Petal?.features?.taskDrawer?.addTaskLogEntry) {
+    window.addTaskLogEntry = async () => {
+      const ctx = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
+      await window.Petal.features.taskDrawer.addTaskLogEntry(ctx);
+    };
+  }
+  if (typeof window.saveProtocolDailyEntry === 'undefined' && window.Petal?.features?.taskOperations?.saveProtocolDailyEntry) {
+    window.saveProtocolDailyEntry = async () => {
+      const ctx = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
+      await window.Petal.features.taskOperations.saveProtocolDailyEntry(ctx);
+    };
+  }
+  if (typeof window.linkFileToProtocolEntry === 'undefined' && window.Petal?.features?.taskOperations?.linkFileToProtocolEntry) {
+    window.linkFileToProtocolEntry = window.Petal.features.taskOperations.linkFileToProtocolEntry;
+  }
+  if (typeof window.toggleProtocolSteps === 'undefined' && window.Petal?.features?.taskOperations?.toggleProtocolSteps) {
+    window.toggleProtocolSteps = window.Petal.features.taskOperations.toggleProtocolSteps;
+  }
+  if (typeof window.addProtocolStep === 'undefined' && window.Petal?.features?.taskOperations?.addProtocolStep) {
+    window.addProtocolStep = async () => {
+      const ctx = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
+      await window.Petal.features.taskOperations.addProtocolStep(ctx);
+    };
+  }
+  if (typeof window.linkExistingFileToTask === 'undefined' && window.Petal?.features?.taskDrawer?.linkExistingFileToTask) {
+    window.linkExistingFileToTask = async () => {
+      const ctx = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
+      await window.Petal.features.taskDrawer.linkExistingFileToTask(ctx);
+    };
+  }
+  if (typeof window.addNewFileToTask === 'undefined' && window.Petal?.features?.taskDrawer?.addNewFileToTask) {
+    window.addNewFileToTask = window.Petal.features.taskDrawer.addNewFileToTask;
+  }
+  if (typeof window.addSubtaskToTask === 'undefined' && window.Petal?.features?.taskDrawer?.addSubtaskToTask) {
+    window.addSubtaskToTask = async () => {
+      const ctx = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
+      await window.Petal.features.taskDrawer.addSubtaskToTask(ctx);
+    };
+  }
+  
+  // File operations
+  if (typeof window.addFileRow === 'undefined' && window.Petal?.features?.fileOperations?.addFileRow) {
+    window.addFileRow = window.Petal.features.fileOperations.addFileRow;
+  }
+  if (typeof window.confirmDeleteFile === 'undefined' && window.Petal?.features?.deleteHandlers?.confirmDeleteFile) {
+    window.confirmDeleteFile = (projectId, fileId) => {
+      const ctx = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
+      window.Petal.features.deleteHandlers.confirmDeleteFile(ctx, projectId, fileId);
+    };
+  }
+  
+  // Project operations
+  if (typeof window.addMilestone === 'undefined' && window.Petal?.features?.projectOperations?.addMilestone) {
+    window.addMilestone = async () => {
+      const ctx = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
+      await window.Petal.features.projectOperations.addMilestone(ctx);
+    };
+  }
+  if (typeof window.switchProjectFilesTab === 'undefined' && window.Petal?.features?.projectOperations?.switchProjectPageTab) {
+    window.switchProjectFilesTab = (tab) => {
+      const ctx = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
+      window.Petal.features.projectOperations.switchProjectPageTab(ctx, tab);
+    };
+  }
+  if (typeof window.openProjectAddFileModal === 'undefined' && window.Petal?.features?.modalOperations?.openProjectAddFileModal) {
+    window.openProjectAddFileModal = (projId) => {
+      const ctx = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
+      window.Petal.features.modalOperations.openProjectAddFileModal(ctx, projId);
+    };
+  }
+  
+  // Modal operations (these are primarily in tasklist.html, but ensure they exist)
+  if (typeof window.closeEditModal === 'undefined' && window.Petal?.ui?.closeEditModal) {
+    window.closeEditModal = window.Petal.ui.closeEditModal;
+  }
+  if (typeof window.saveEditModal === 'undefined' && window.Petal?.features?.taskOperations?.saveEditModal) {
+    window.saveEditModal = async () => {
+      const ctx = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
+      await window.Petal.features.taskOperations.saveEditModal(ctx);
+    };
+  }
+  if (typeof window.submitAddTaskModal === 'undefined' && window.Petal?.features?.modalOperations?.submitAddTaskModal) {
+    window.submitAddTaskModal = async () => {
+      const ctx = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
+      await window.Petal.features.modalOperations.submitAddTaskModal(ctx);
+    };
+  }
+  if (typeof window.submitAddFileModal === 'undefined' && window.Petal?.features?.modalOperations?.submitAddFileModal) {
+    window.submitAddFileModal = async () => {
+      const ctx = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
+      await window.Petal.features.modalOperations.submitAddFileModal(ctx);
+    };
+  }
+  if (typeof window.saveFileNotes === 'undefined' && window.Petal?.features?.modalOperations?.saveFileNotes) {
+    window.saveFileNotes = async () => {
+      await window.Petal.features.modalOperations.saveFileNotes();
+    };
+  }
+   if (typeof window.closeAddTaskModal === 'undefined' && window.Petal?.features?.modalOperations?.closeAddTaskModal) {
+     window.closeAddTaskModal = window.Petal.features.modalOperations.closeAddTaskModal;
+   }
+   if (typeof window.closeAddFileModal === 'undefined' && window.Petal?.features?.modalOperations?.closeAddFileModal) {
+     window.closeAddFileModal = window.Petal.features.modalOperations.closeAddFileModal;
+   }
+   if (typeof window.closeFileNotesModal === 'undefined' && window.Petal?.features?.modalOperations?.closeFileNotesModal) {
+     window.closeFileNotesModal = window.Petal.features.modalOperations.closeFileNotesModal;
+   }
+  if (typeof window.executeDelete === 'undefined' && window.Petal?.features?.deleteHandlers?.executeDelete) {
+    window.executeDelete = async () => {
+      const ctx = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
+      await window.Petal.features.deleteHandlers.executeDelete(ctx);
+    };
+  }
+  if (typeof window.closeDeleteConfirmModal === 'undefined' && window.Petal?.features?.deleteHandlers?.closeDeleteConfirmModal) {
+    window.closeDeleteConfirmModal = window.Petal.features.deleteHandlers.closeDeleteConfirmModal;
+  }
+  
+  // Workflow operations
+  if (typeof window.closeWfDetail === 'undefined') {
+    // This is defined in WorkflowPage.js, ensure it's accessible
+    window.closeWfDetail = function() {
+      const detailEl = document.getElementById('workflow-detail');
+      if (detailEl) {
+        detailEl.style.display = 'none';
+      }
+    };
+  }
+  
+  // Habits and routines (these are in tasklist.html, but ensure they exist)
+  if (typeof window.closeHabitModal === 'undefined' && window.Petal?.features?.habits?.closeHabitModal) {
+    window.closeHabitModal = window.Petal.features.habits.closeHabitModal;
+  }
+  if (typeof window.submitHabitModal === 'undefined' && window.Petal?.features?.habits?.submitHabitModal) {
+    window.submitHabitModal = window.Petal.features.habits.submitHabitModal;
+  }
+  if (typeof window.closeRoutineModal === 'undefined' && window.Petal?.features?.routines?.closeRoutineModal) {
+    window.closeRoutineModal = window.Petal.features.routines.closeRoutineModal;
+  }
+  if (typeof window.submitRoutineModal === 'undefined' && window.Petal?.features?.routines?.submitRoutineModal) {
+    window.submitRoutineModal = window.Petal.features.routines.submitRoutineModal;
+  }
+  
+  // Diagnostics (these are in tasklist.html, but ensure they exist)
+  if (typeof window.copyDiagnostics === 'undefined' && window.Petal?.ui?.diagnostics?.copyDiagnostics) {
+    window.copyDiagnostics = window.Petal.ui.diagnostics.copyDiagnostics;
+  }
+  if (typeof window.openLogsFolder === 'undefined' && window.Petal?.ui?.diagnostics?.openLogsFolder) {
+    window.openLogsFolder = window.Petal.ui.diagnostics.openLogsFolder;
+  }
+  if (typeof window.openVaultFolder === 'undefined' && window.Petal?.ui?.diagnostics?.openVaultFolder) {
+    window.openVaultFolder = window.Petal.ui.diagnostics.openVaultFolder;
+  }
+  if (typeof window.refreshDiagnostics === 'undefined' && window.Petal?.ui?.diagnostics?.refreshDiagnostics) {
+    window.refreshDiagnostics = window.Petal.ui.diagnostics.refreshDiagnostics;
+  }
+  
+  // Event operations (these are in tasklist.html, but ensure they exist)
+  if (typeof window.deleteEvent === 'undefined') {
+    window.deleteEvent = function(eventId) {
+      if (window.Petal?.handlers?.deleteEvent) {
+        window.Petal.handlers.deleteEvent(eventId);
+      } else {
+        console.warn('deleteEvent handler not available');
+      }
+    };
+  }
+  if (typeof window.closeRecurringModal === 'undefined') {
+    window.closeRecurringModal = function() {
+      const modal = document.getElementById('recurring-modal');
+      if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('active');
+      }
+    };
+  }
+  if (typeof window.submitRecurringModal === 'undefined') {
+    window.submitRecurringModal = async function() {
+      if (window.Petal?.handlers?.submitRecurringModal) {
+        await window.Petal.handlers.submitRecurringModal();
+      } else {
+        console.warn('submitRecurringModal handler not available');
+      }
+    };
+  }
+  
+  console.log('✅ All window functions exposed for event delegation');
 }
 
 /**

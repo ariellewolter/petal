@@ -171,21 +171,117 @@ export function setupEventDelegation() {
     
     // Specific modal handlers (for backward compatibility and explicit control)
     const modalHandlers = {
-      'modal:close-edit': () => window.closeEditModal?.(),
-      'modal:close-delete': () => window.closeDeleteConfirmModal?.(),
-      'modal:close-diagnostics': () => window.closeDiagnosticsModal?.(),
-      'modal:close-add-task': () => window.closeAddTaskModal?.(),
-      'modal:close-add-file': () => window.closeAddFileModal?.(),
-      'modal:close-file-notes': () => window.closeFileNotesModal?.(),
-      'modal:close-event': () => window.closeEventModal?.(),
-      'modal:close-recurring': () => window.closeRecurringModal?.(),
-      'modal:submit-add-task': () => window.submitAddTaskModal?.(),
-      'modal:submit-add-file': () => window.submitAddFileModal?.(),
-      'modal:submit-event': () => window.submitEventModal?.(),
-      'modal:save-file-notes': () => window.saveFileNotes?.(),
-      'modal:save-edit': () => window.saveEditModal?.(),
-      'modal:delete-confirm': () => window.executeDelete?.(),
-      'modal:submit-recurring': () => window.submitRecurringModal?.(),
+      'modal:close-edit': () => {
+        if (window.closeEditModal) {
+          window.closeEditModal();
+        } else {
+          console.warn('closeEditModal not found');
+        }
+      },
+      'modal:close-delete': () => {
+        if (window.closeDeleteConfirmModal) {
+          window.closeDeleteConfirmModal();
+        } else {
+          console.warn('closeDeleteConfirmModal not found');
+        }
+      },
+      'modal:close-diagnostics': () => {
+        if (window.closeDiagnosticsModal) {
+          window.closeDiagnosticsModal();
+        } else {
+          console.warn('closeDiagnosticsModal not found');
+        }
+      },
+      'modal:close-add-task': () => {
+        if (window.closeAddTaskModal) {
+          window.closeAddTaskModal();
+        } else {
+          console.warn('closeAddTaskModal not found');
+        }
+      },
+      'modal:close-add-file': () => {
+        if (window.closeAddFileModal) {
+          window.closeAddFileModal();
+        } else {
+          console.warn('closeAddFileModal not found');
+        }
+      },
+      'modal:close-file-notes': () => {
+        if (window.closeFileNotesModal) {
+          window.closeFileNotesModal();
+        } else {
+          console.warn('closeFileNotesModal not found');
+        }
+      },
+      'modal:close-event': () => {
+        if (window.closeEventModal) {
+          window.closeEventModal();
+        } else {
+          console.warn('closeEventModal not found');
+          // Fallback: manually close the modal
+          const modal = document.getElementById('event-modal');
+          if (modal) {
+            modal.classList.remove('active');
+            modal.style.display = 'none';
+          }
+        }
+      },
+      'modal:close-recurring': () => {
+        if (window.closeRecurringModal) {
+          window.closeRecurringModal();
+        } else {
+          console.warn('closeRecurringModal not found');
+        }
+      },
+      'modal:submit-add-task': () => {
+        if (window.submitAddTaskModal) {
+          window.submitAddTaskModal();
+        } else {
+          console.warn('submitAddTaskModal not found');
+        }
+      },
+      'modal:submit-add-file': () => {
+        if (window.submitAddFileModal) {
+          window.submitAddFileModal();
+        } else {
+          console.warn('submitAddFileModal not found');
+        }
+      },
+      'modal:submit-event': () => {
+        if (window.submitEventModal) {
+          window.submitEventModal();
+        } else {
+          console.warn('submitEventModal not found');
+        }
+      },
+      'modal:save-file-notes': () => {
+        if (window.saveFileNotes) {
+          window.saveFileNotes();
+        } else {
+          console.warn('saveFileNotes not found');
+        }
+      },
+      'modal:save-edit': () => {
+        if (window.saveEditModal) {
+          window.saveEditModal();
+        } else {
+          console.warn('saveEditModal not found');
+        }
+      },
+      'modal:delete-confirm': () => {
+        if (window.executeDelete) {
+          window.executeDelete();
+        } else {
+          console.warn('executeDelete not found');
+        }
+      },
+      'modal:submit-recurring': () => {
+        if (window.submitRecurringModal) {
+          window.submitRecurringModal();
+        } else {
+          console.warn('submitRecurringModal not found');
+        }
+      },
     };
     
     if (modalHandlers[action]) {
@@ -313,7 +409,11 @@ export function setupEventDelegation() {
     if (action === 'planner:nav') {
       e.stopPropagation();
       const dir = actionBtn.getAttribute('data-dir');
-      if (dir && window.plannerNav) window.plannerNav(parseInt(dir, 10));
+      if (dir && window.plannerNav) {
+        window.plannerNav(parseInt(dir, 10));
+      } else if (dir && window.Petal?.handlers?.navigatePlannerDate) {
+        window.Petal.handlers.navigatePlannerDate(parseInt(dir, 10));
+      }
       return;
     }
     
@@ -346,13 +446,31 @@ export function setupEventDelegation() {
     if (action === 'planner:set-view') {
       e.stopPropagation();
       const view = actionBtn.getAttribute('data-view');
-      if (view && window.setPlannerView) window.setPlannerView(view, actionBtn);
+      if (view) {
+        if (window.setPlannerView) {
+          const containerEl = actionBtn.closest('#view-planner') || document.getElementById('view-planner');
+          window.setPlannerView(view, containerEl);
+        } else if (window.Petal?.handlers?.setPlannerView) {
+          const containerEl = actionBtn.closest('#view-planner') || document.getElementById('view-planner');
+          window.Petal.handlers.setPlannerView(view, containerEl);
+        }
+      }
       return;
     }
     if (action === 'planner:cal-nav') {
       e.stopPropagation();
       const dir = actionBtn.getAttribute('data-dir');
-      if (dir && window.plannerCalNav) window.plannerCalNav(parseInt(dir, 10));
+      if (dir) {
+        if (window.plannerCalNav) {
+          window.plannerCalNav(parseInt(dir, 10));
+        } else if (window.Petal?.handlers?.navigatePlannerCalendar) {
+          window.Petal.handlers.navigatePlannerCalendar(parseInt(dir, 10));
+          // Trigger re-render after calendar navigation
+          if (window.routerSwitchView) {
+            window.routerSwitchView('planner');
+          }
+        }
+      }
       return;
     }
     if (action === 'planner:open-add-event') {
@@ -390,6 +508,21 @@ export function setupEventDelegation() {
     if (action === 'projects:toggle-create-form') {
       e.stopPropagation();
       if (window.toggleCreateProjectForm) window.toggleCreateProjectForm();
+      return;
+    }
+    
+    // Quick add action (for Today page and other quick add buttons)
+    if (action === 'quick-add') {
+      e.stopPropagation();
+      if (window.Petal?.handlers?.quickAdd) {
+        window.Petal.handlers.quickAdd();
+      } else if (window.openAddTaskModal) {
+        window.openAddTaskModal();
+      } else if (window.Petal?.features?.modalOperations?.openAddTaskModal) {
+        window.Petal.features.modalOperations.openAddTaskModal();
+      } else {
+        console.warn('quickAdd handler not available');
+      }
       return;
     }
     

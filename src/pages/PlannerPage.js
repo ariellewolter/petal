@@ -193,6 +193,38 @@ export async function renderPlannerPage(containerEl, state, handlers) {
     return;
   }
 
+  // Create or find header - must be first element
+  let plannerHeader = containerEl.querySelector('.planner-header');
+  if (!plannerHeader) {
+    plannerHeader = document.createElement('header');
+    plannerHeader.className = 'planner-header';
+    // Insert at the very beginning of the container, before any existing content
+    const firstChild = containerEl.firstChild;
+    if (firstChild && firstChild.nodeType === 1) { // Element node
+      containerEl.insertBefore(plannerHeader, firstChild);
+    } else {
+      containerEl.insertBefore(plannerHeader, containerEl.firstChild);
+    }
+  }
+  
+  // Calculate planner stats
+  const events = Array.isArray(state.events) ? state.events : [];
+  const recurringRules = Array.isArray(state.recurringRules) ? state.recurringRules : [];
+  const activeRecurring = recurringRules.filter(r => r && r.enabled);
+  const totalEvents = events.length + activeRecurring.length;
+  
+  // Render header
+  plannerHeader.innerHTML = `
+    <div class="planner-header-title">
+      <span class="planner-header-name">Planner</span>
+    </div>
+    <div class="planner-header-right">
+      <div style="display:flex;align-items:center;gap:6px">
+        <span class="planner-header-status">${events.length} event${events.length !== 1 ? 's' : ''} · ${activeRecurring.length} recurring</span>
+      </div>
+    </div>
+  `;
+
   // Get planner state from store (single source of truth)
   const plannerState = getPlannerState(state);
   
@@ -222,15 +254,23 @@ export async function renderPlannerPage(containerEl, state, handlers) {
   // Initialize the view switcher - MUST be scoped to containerEl
   const dayBtn = containerEl.querySelector('#planner-vbtn-day') || containerEl.querySelector('[data-planner-view-btn="day"]');
   const weekBtn = containerEl.querySelector('#planner-vbtn-week') || containerEl.querySelector('[data-planner-view-btn="week"]');
+  
+  // Update button states based on current view
+  const currentView = plannerState.currentPlannerView || 'daily';
   if (dayBtn && weekBtn) {
-    dayBtn.classList.add('active');
-    weekBtn.classList.remove('active');
+    if (currentView === 'daily') {
+      dayBtn.classList.add('active');
+      weekBtn.classList.remove('active');
+    } else {
+      dayBtn.classList.remove('active');
+      weekBtn.classList.add('active');
+    }
   }
 
   const dayView = containerEl.querySelector('#planner-view-day') || containerEl.querySelector('[data-planner-view="day"]');
   const weekView = containerEl.querySelector('#planner-view-week') || containerEl.querySelector('[data-planner-view="week"]');
-  if (dayView) dayView.style.display = 'flex';
-  if (weekView) weekView.style.display = 'none';
+  if (dayView) dayView.style.display = currentView === 'daily' ? 'flex' : 'none';
+  if (weekView) weekView.style.display = currentView === 'weekly' ? 'flex' : 'none';
 
   // Update period label - use container-scoped selector
   const periodLabel = containerEl.querySelector('#planner-period-label') || containerEl.querySelector('[data-planner-period-label]');
@@ -239,7 +279,6 @@ export async function renderPlannerPage(containerEl, state, handlers) {
   }
 
   // Render planner content - use local renderPlanner function, NOT window.renderPlanner
-  const currentView = plannerState.currentPlannerView || 'daily';
   if (currentView === 'weekly') {
     await renderWeeklyPlanner(containerEl, state, handlers);
   } else {
