@@ -12,11 +12,7 @@
 <meta name="apple-mobile-web-app-title" content="Petal">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet" onerror="console.warn('Google Fonts failed to load, using system fonts');">
-<style>
-/* Font fallback if Google Fonts fail to load */
-body { font-family: 'Jost', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
-.wordmark-title, .wordmark-sub, h1, h2, h3, h4, h5, h6 { font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif; }
-</style>
+<link rel="stylesheet" href="src/styles/main.css">
 <script>
 // IMMEDIATE scroll fix - must run before any rendering
 (function() {
@@ -38,1080 +34,6 @@ body { font-family: 'Jost', -apple-system, BlinkMacSystemFont, 'Segoe UI', Robot
   if (document.body) document.body.scrollTop = 0;
 })();
 </script>
-<style>
-:root {
-  --bg:         #faf8f5;
-  --bg2:        #f5f0eb;
-  --surface:    #ffffff;
-  --border:     #e8e0d8;
-  --border2:    #d9cfc5;
-  --rose:       #c98b8b;
-  --rose-soft:  #e8c4c4;
-  --rose-pale:  #f5e9e9;
-  --blush:      #f0ddd8;
-  --sage:       #9aab94;
-  --sage-pale:  #e8ede7;
-  --mauve:      #a08898;
-  --mauve-pale: #ede5ec;
-  --taupe:      #8a7e78;
-  --text:       #5a4f4a;
-  --text-dim:   #a09590;
-  --text-light: #c4bab6;
-  --overdue:    #c47a7a;
-  --soon:       #c9a060;
-  --proj-1: #c98b8b; --proj-1p: #f5e9e9;
-  --proj-2: #9aab94; --proj-2p: #e8ede7;
-  --proj-3: #a08898; --proj-3p: #ede5ec;
-  --proj-4: #b09070; --proj-4p: #f0e8dc;
-  --proj-5: #7a9aac; --proj-5p: #e0ecf2;
-}
-*{margin:0;padding:0;box-sizing:border-box;}
-html{scroll-behavior:smooth;overflow-x:hidden;height:100%;position:relative;margin:0;padding:0;top:0;left:0;}
-body{background:var(--bg);color:var(--text);font-family:'Jost',sans-serif;font-weight:300;min-height:100vh;margin:0;padding:0;overflow-x:hidden;position:relative;top:0 !important;left:0;height:auto;transform:translateY(0) !important;}
-body::before{content:'';position:fixed;inset:0;background:
-  radial-gradient(ellipse 60% 40% at 10% 10%,rgba(201,139,139,.06) 0%,transparent 70%),
-  radial-gradient(ellipse 50% 60% at 90% 90%,rgba(154,171,148,.07) 0%,transparent 70%),
-  radial-gradient(ellipse 40% 50% at 50% 50%,rgba(160,136,152,.04) 0%,transparent 70%);
-  pointer-events:none;z-index:0;}
-
-.app{position:relative;z-index:1;max-width:100vw;margin:0 !important;padding:0 !important;animation:none;display:grid;grid-template-columns:220px 1fr;gap:0;min-height:100vh;align-items:start;justify-items:start;width:100%;top:0 !important;left:0;transform:translateY(0) !important;grid-template-rows:100vh;height:100vh;overflow:hidden;}
-.app.workflow-active{max-width:100vw;padding-left:0;padding-right:0;width:100%;}
-.app.today-active{max-width:100vw;padding-left:0;padding-right:0;width:100%;}
-
-/* GLOBAL SIDEBAR */
-.global-sidebar{grid-column:1;grid-row:1;background:var(--surface);border-right:1px solid var(--border);padding:0;display:flex;flex-direction:column;position:sticky;top:0 !important;align-self:start;height:100vh;max-height:100vh;overflow-y:auto;margin:0 !important;padding:0 !important;overflow-x:hidden;}
-.global-sidebar-header{padding:28px 20px 24px;border-bottom:1px solid var(--border);margin:0 !important;}
-.global-sidebar-brand{margin-bottom:16px;}
-.global-sidebar-header .wordmark-title{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:300;letter-spacing:-1px;color:var(--text);line-height:1;display:block;}
-.global-sidebar-header .wordmark-sub{font-size:8px;letter-spacing:.22em;text-transform:uppercase;color:var(--rose);font-weight:400;display:block;margin-top:2px;}
-.global-sidebar-logo{padding:0 8px 16px;margin-bottom:8px;}
-.global-sidebar-logo-name{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:400;letter-spacing:-0.5px;color:var(--text);}
-.global-sidebar-logo-name span{color:var(--rose);}
-.global-sidebar-logo-sub{font-size:8px;color:var(--text-dim);letter-spacing:.15em;text-transform:uppercase;margin-top:2px;}
-.global-sidebar-nav{padding:20px 12px;flex:1;display:flex;flex-direction:column;gap:2px;}
-.global-sidebar-nav-label{font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--text-dim);padding:0 8px;margin:20px 0 10px;display:block;font-weight:500;opacity:1;}
-.global-sidebar-nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:var(--text-dim);transition:all .15s;position:relative;text-decoration:none;}
-.global-sidebar-nav-item:hover{background:var(--bg2);color:var(--text);}
-.global-sidebar-nav-item.active{background:var(--rose-pale);color:var(--rose);}
-.global-sidebar-nav-item.active::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:2px;background:var(--rose);border-radius:0 2px 2px 0;}
-.global-sidebar-nav-icon{width:16px;text-align:center;font-size:13px;}
-.global-sidebar-nav-badge{margin-left:auto;background:var(--bg2);color:var(--text-dim);font-size:9px;padding:1px 6px;border-radius:10px;}
-.global-sidebar-nav-badge.alert{background:var(--rose-pale);color:var(--overdue);}
-.global-sidebar-bottom{padding:16px 12px 0;border-top:1px solid var(--border);}
-
-/* Adjust main content area when sidebar is present */
-.app > [id^="view-"]{grid-column:2;grid-row:1;padding:0;align-self:start;justify-self:start;width:100%;max-width:100%;box-sizing:border-box;margin:0 !important;top:0 !important;height:100vh;max-height:100vh;overflow-y:auto;overflow-x:hidden;position:relative;vertical-align:top;z-index:1;}
-
-/* Ensure all views expand properly and have proper padding */
-#view-tasks,
-#view-projects,
-#view-planner,
-#view-cell-log,
-#view-settings,
-#view-3d-print{
-  grid-column:2 !important;
-  grid-row:1 !important;
-  width:100% !important;
-  max-width:100% !important;
-  box-sizing:border-box !important;
-  padding:52px 36px 100px !important;
-  overflow-x:hidden !important;
-  overflow-y:auto !important;
-  min-width:0 !important;
-  height:100vh !important;
-  margin:0 !important;
-  padding-top:52px !important;
-  top:0 !important;
-  align-self:start !important;
-  justify-self:start !important;
-  position:relative !important;
-  transform:translateY(0) !important;
-  scroll-behavior:auto !important;
-  z-index:1 !important;
-}
-
-/* Ensure first child of these views doesn't add extra spacing */
-#view-projects > *:first-child,
-#view-planner > *:first-child,
-#view-cell-log > *:first-child,
-#view-settings > *:first-child,
-#view-3d-print > *:first-child{
-  margin-top:0 !important;
-  padding-top:0 !important;
-}
-#view-today{padding:0 !important;width:100%;max-width:100%;height:100vh !important;overflow-y:auto !important;margin:0 !important;top:0 !important;align-self:start !important;position:relative !important;transform:translateY(0) !important;}
-#view-workflow{padding:52px 36px 100px !important;box-sizing:border-box;width:100%;max-width:100%;overflow-x:hidden;min-width:0;height:100vh !important;overflow-y:auto !important;margin:0 !important;top:0 !important;align-self:start !important;position:relative !important;transform:translateY(0) !important;}
-#view-files{width:100% !important;max-width:100% !important;box-sizing:border-box !important;padding:52px 36px 100px !important;overflow-x:hidden !important;overflow-y:auto !important;min-width:0 !important;height:100vh !important;margin:0 !important;padding-top:52px !important;top:0 !important;align-self:start !important;position:relative !important;transform:translateY(0) !important;scroll-behavior:auto !important;}
-#view-tasks{width:100% !important;max-width:100% !important;box-sizing:border-box !important;padding:52px 36px 100px !important;overflow-x:hidden !important;overflow-y:auto !important;min-width:0 !important;height:100vh !important;margin:0 !important;padding-top:52px !important;top:0 !important;align-self:start !important;position:relative !important;transform:translateY(0) !important;scroll-behavior:auto !important;}
-#view-projects{width:100% !important;max-width:100% !important;box-sizing:border-box !important;padding:52px 36px 100px !important;overflow-x:hidden !important;overflow-y:auto !important;min-width:0 !important;height:100vh !important;margin:0 !important;padding-top:52px !important;top:0 !important;align-self:start !important;position:relative !important;transform:translateY(0) !important;scroll-behavior:auto !important;}
-#view-planner{width:100% !important;max-width:100% !important;box-sizing:border-box !important;padding:52px 36px 100px !important;overflow-x:hidden !important;overflow-y:auto !important;min-width:0 !important;height:100vh !important;margin:0 !important;padding-top:52px !important;top:0 !important;align-self:start !important;position:relative !important;transform:translateY(0) !important;scroll-behavior:auto !important;display:none;flex-direction:column;}
-/* When planner view is shown, ensure flex-direction is set */
-#view-planner[style*="display: flex"],
-#view-planner[style*="display:flex"],
-#view-planner[style*="display: flex;"],
-#view-planner[style*="display:flex;"]{flex-direction:column !important;display:flex !important;}
-#view-cell-log{width:100% !important;max-width:100% !important;box-sizing:border-box !important;padding:52px 36px 100px !important;overflow-x:hidden !important;overflow-y:auto !important;min-width:0 !important;height:100vh !important;margin:0 !important;padding-top:52px !important;top:0 !important;align-self:start !important;position:relative !important;transform:translateY(0) !important;scroll-behavior:auto !important;}
-#view-settings{width:100% !important;max-width:100% !important;box-sizing:border-box !important;padding:52px 36px 100px !important;overflow-x:hidden !important;overflow-y:auto !important;min-width:0 !important;height:100vh !important;margin:0 !important;padding-top:52px !important;top:0 !important;align-self:start !important;position:relative !important;transform:translateY(0) !important;scroll-behavior:auto !important;}
-@keyframes rise{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-@keyframes fadeSlide{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:translateX(0)}}
-@keyframes subtaskIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
-
-/* Force page to start at top - override any spacing */
-html, body {
-  margin: 0 !important;
-  padding: 0 !important;
-  transform: translateY(0) !important;
-  position: relative !important;
-  top: 0 !important;
-  left: 0 !important;
-  height: auto !important;
-  overflow-y: auto !important;
-}
-
-.app {
-  margin: 0 !important;
-  padding: 0 !important;
-  transform: translateY(0) !important;
-  position: relative !important;
-  top: 0 !important;
-  left: 0 !important;
-}
-
-/* Ensure header and views start at top */
-.app > header,
-.app > [id^="view-"] {
-  margin-top: 0 !important;
-  padding-top: 0 !important;
-  top: 0 !important;
-}
-
-/* ── HEADER ── */
-/* Header removed - styles kept for potential future use */
-.wordmark-title{font-family:'Cormorant Garamond',serif;font-size:48px;font-weight:300;letter-spacing:-1px;color:var(--text);line-height:1;display:block;}
-.wordmark-sub{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--rose);font-weight:400;display:block;margin-top:3px;}
-.stat-pill .num{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:400;color:var(--rose);letter-spacing:0;}
-.vault-badge{display:inline-flex;align-items:center;gap:6px;font-size:10px;letter-spacing:.08em;color:var(--text-dim);text-transform:none;padding:6px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:all .15s;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;box-sizing:border-box;}
-.vault-badge:hover{background:var(--rose-pale);border-color:var(--rose-soft);color:var(--rose);}
-.vault-badge[data-status="ok"]{border-color:var(--sage);color:var(--sage);}
-.vault-badge[data-status="bad"]{border-color:var(--overdue);color:var(--overdue);}
-.vault-badge::before{content:'📁';font-size:12px;opacity:0.7;}
-
-/* ── TABS ── */
-.tabs{display:flex;gap:2px;margin-bottom:28px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px;width:fit-content;flex-wrap:wrap;}
-.tab{background:none;border:none;border-radius:9px;color:var(--text-dim);font-family:'Jost',sans-serif;font-size:12px;font-weight:400;letter-spacing:.12em;text-transform:uppercase;padding:8px 20px;cursor:pointer;transition:all .18s;}
-.tab.active{background:var(--rose-pale);color:var(--rose);}
-.tab:hover:not(.active){color:var(--text);}
-
-/* ── FORM CARD ── */
-.form-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;margin-bottom:28px;box-shadow:0 2px 20px rgba(160,120,110,.07);}
-.form-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:400;font-style:italic;color:var(--rose);margin-bottom:18px;}
-.field-row{display:flex;gap:12px;margin-bottom:12px;}
-.field{flex:1;display:flex;flex-direction:column;gap:5px;}
-.field label{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-dim);}
-input[type="text"],input[type="url"],input[type="date"],select,textarea{background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Jost',sans-serif;font-weight:300;font-size:13px;padding:9px 13px;outline:none;transition:border-color .2s,box-shadow .2s;width:100%;}
-input:focus,select:focus,textarea:focus{border-color:var(--rose-soft);box-shadow:0 0 0 3px rgba(201,139,139,.08);}
-input::placeholder,textarea::placeholder{color:var(--text-light);}
-select option{background:white;}
-textarea{resize:vertical;min-height:56px;line-height:1.6;}
-
-/* color swatches for project */
-.color-row{display:flex;gap:8px;align-items:center;margin-top:4px;}
-.color-swatch{width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer;transition:transform .15s,border-color .15s;flex-shrink:0;}
-.color-swatch.selected{border-color:var(--text-dim);transform:scale(1.15);}
-
-.files-section{margin-top:14px;}
-.file-link-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;animation:fadeSlide .2s ease both;}
-.file-link-row input:first-of-type{flex:1.2;}
-.file-link-row input:last-of-type{flex:2;}
-.btn-remove{width:30px;height:30px;background:none;border:1px solid var(--border);border-radius:50%;color:var(--text-dim);font-size:13px;cursor:pointer;flex-shrink:0;transition:all .15s;display:flex;align-items:center;justify-content:center;}
-.btn-remove:hover{border-color:var(--rose-soft);color:var(--rose);}
-.btn-add-file{background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text-dim);font-family:'Jost',sans-serif;font-size:11px;letter-spacing:.15em;text-transform:uppercase;padding:8px 16px;cursor:pointer;width:100%;transition:all .15s;margin-top:4px;}
-.btn-add-file:hover{border-color:var(--rose-soft);color:var(--rose);background:var(--rose-pale);}
-.btn-submit{background:linear-gradient(135deg,#d4a0a0 0%,#c98b8b 100%);border:none;border-radius:8px;color:white;font-family:'Jost',sans-serif;font-size:13px;font-weight:400;letter-spacing:.1em;text-transform:uppercase;padding:10px 20px;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(201,139,139,.2);}
-.btn-submit:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(201,139,139,.3);}
-.btn-secondary{background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Jost',sans-serif;font-size:13px;font-weight:400;padding:10px 20px;cursor:pointer;transition:all .15s;}
-.btn-secondary:hover{background:var(--bg);border-color:var(--border2);}
-.btn-add-task-toggle:hover{background:var(--rose-pale);border-color:var(--rose-soft);color:var(--rose);}
-
-/* ── TOOLBAR ── */
-.toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap;}
-.search-box{position:relative;flex:1;min-width:200px;max-width:400px;}
-.search-box input{width:100%;padding-left:36px;background:var(--bg);border:1px solid var(--border);border-radius:20px;color:var(--text);font-family:'Jost',sans-serif;font-weight:300;font-size:13px;padding:8px 14px 8px 36px;outline:none;transition:border-color .2s,box-shadow .2s;}
-.search-box input:focus{border-color:var(--rose-soft);box-shadow:0 0 0 3px rgba(201,139,139,.08);}
-.search-box::before{content:'🔍';position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:14px;opacity:0.5;pointer-events:none;}
-.search-box input::placeholder{color:var(--text-light);}
-.search-clear{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-dim);font-size:16px;cursor:pointer;padding:4px 8px;opacity:0.6;transition:opacity .15s;display:none;}
-.search-clear:hover{opacity:1;}
-.search-clear.visible{display:block;}
-.sort-group{display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;}
-.sort-btn{background:none;border:none;border-radius:7px;color:var(--text-dim);font-family:'Jost',sans-serif;font-size:11px;font-weight:400;letter-spacing:.12em;text-transform:uppercase;padding:6px 14px;cursor:pointer;transition:all .18s;white-space:nowrap;}
-.sort-btn.active{background:var(--rose-pale);color:var(--rose);}
-.sort-btn:hover:not(.active){color:var(--text);}
-.filter-group{display:flex;gap:6px;flex-wrap:wrap;}
-.filter-chip{background:var(--surface);border:1px solid var(--border);border-radius:20px;color:var(--text-dim);font-family:'Jost',sans-serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:6px 14px;cursor:pointer;transition:all .15s;}
-.filter-chip.active{background:var(--mauve-pale);border-color:var(--mauve);color:var(--mauve);}
-.task-mode-group{display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;}
-.task-mode-btn{background:none;border:none;border-radius:7px;color:var(--text-dim);font-family:'Jost',sans-serif;font-size:11px;font-weight:400;letter-spacing:.12em;text-transform:uppercase;padding:6px 14px;cursor:pointer;transition:all .18s;white-space:nowrap;}
-.task-mode-btn.active{background:var(--sage-pale);color:var(--sage);}
-.task-mode-btn:hover:not(.active){color:var(--text);}
-.toolbar-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.board-project-filter{min-width:180px;}
-
-/* ── KANBAN BOARD ── */
-.kanban-board{display:grid;grid-template-columns:repeat(4,minmax(180px,1fr));gap:12px;align-items:start;}
-.kanban-col{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px;min-height:240px;}
-.kanban-col-head{display:flex;justify-content:space-between;align-items:center;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--border);}
-.kanban-col-title{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-dim);}
-.kanban-col-count{font-size:10px;color:var(--text-light);}
-.kanban-drop-slot{height:8px;border-radius:6px;transition:background .12s, height .12s;}
-.kanban-drop-slot.active{height:20px;background:var(--rose-pale);border:1px dashed var(--rose-soft);}
-.task-card.kanban-card{margin-bottom:0;cursor:grab;}
-.task-card.kanban-card:active{cursor:grabbing;}
-.task-card.kanban-card.dragging{opacity:.45;transform:scale(.98);}
-
-/* ── DATE GROUPS ── */
-.group-label{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:300;font-style:italic;color:var(--taupe);letter-spacing:.02em;padding:8px 0 12px;border-bottom:1px solid var(--border);margin-bottom:12px;margin-top:28px;display:flex;align-items:baseline;gap:10px;}
-.group-count{font-family:'Jost',sans-serif;font-size:11px;font-style:normal;letter-spacing:.12em;text-transform:uppercase;color:var(--text-light);}
-
-/* ── TASK CARD ── */
-.task-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:16px;overflow:hidden;transition:box-shadow .2s;animation:fadeSlide .3s ease both;position:relative;}
-.task-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:16px 0 0 16px;background:var(--rose-soft);}
-.task-card[data-priority="high"]::before{background:var(--rose);}
-.task-card[data-priority="medium"]::before{background:var(--rose-soft);}
-.task-card[data-priority="low"]::before{background:var(--sage);}
-.task-card:hover{box-shadow:0 4px 24px rgba(160,110,100,.1);}
-.task-card.done{opacity:.55;}
-.task-card.done .task-title{text-decoration:line-through;text-decoration-color:var(--rose-soft);}
-.task-top{display:flex;align-items:center;gap:14px;padding:18px 20px;cursor:pointer;user-select:none;position:relative;justify-content:space-between;}
-.task-content{display:flex;align-items:center;gap:14px;flex:1;min-width:0;}
-.task-actions{display:flex;gap:4px;margin-left:8px;flex-shrink:0;opacity:1;visibility:visible;}
-.check-box{width:18px;height:18px;border:1.5px solid var(--border2);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .18s;background:white;flex-shrink:0;margin-top:0;}
-.check-box:hover{border-color:var(--rose-soft);background:var(--rose-pale);}
-.check-box.checked{background:var(--rose);border-color:var(--rose);}
-.check-box.checked::after{content:'';width:5px;height:8px;border:1.5px solid white;border-top:none;border-left:none;transform:rotate(45deg) translateY(-1px);display:block;}
-.task-body{flex:1;min-width:0;}
-.task-title{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:400;color:var(--text);line-height:1.2;}
-.task-meta-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:3px;}
-.priority-tag{font-size:8px;letter-spacing:.12em;text-transform:uppercase;padding:2px 8px;border-radius:20px;}
-.priority-tag.high{background:var(--rose-pale);color:var(--rose);}
-.priority-tag.medium{background:var(--blush);color:var(--mauve);}
-.priority-tag.low{background:var(--sage-pale);color:var(--sage);}
-.due-tag{font-size:10px;letter-spacing:.05em;color:var(--text-dim);display:flex;align-items:center;gap:4px;}
-.due-tag.overdue{color:var(--overdue);font-weight:500;}
-.due-tag.soon{color:var(--soon);}
-.task-notes{font-size:12px;color:var(--text-dim);line-height:1.6;margin-top:8px;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-left:3px solid var(--rose-soft);border-radius:8px;position:relative;}
-.task-notes-toggle{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;margin-top:8px;font-size:11px;color:var(--text-dim);padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;transition:all .15s;width:fit-content;}
-.task-notes-toggle:hover{background:var(--rose-pale);color:var(--rose);}
-.task-notes-toggle svg{width:12px;height:12px;transition:transform .2s;}
-.task-notes-toggle.expanded svg{transform:rotate(90deg);}
-.task-notes-content{max-height:0;overflow:hidden;transition:max-height .3s ease;margin-top:8px;}
-.task-notes-content.expanded{max-height:500px;}
-.task-notes-content.collapsed{max-height:0;}
-.task-notes-preview{font-size:12px;color:var(--text-dim);line-height:1.5;white-space:pre-wrap;word-break:break-word;}
-.task-notes-full{font-size:12px;color:var(--text-dim);line-height:1.6;white-space:pre-wrap;word-break:break-word;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-left:3px solid var(--rose-soft);border-radius:8px;}
-.task-notes-icon{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text-dim);margin-left:8px;}
-.task-note-section{margin-top:8px;}
-.task-note-toggle{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;font-size:11px;color:var(--text-dim);padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;transition:all .15s;width:100%;}
-.task-note-toggle:hover{background:var(--rose-pale);color:var(--rose);}
-.task-note-toggle svg{transition:transform .2s;}
-.task-note-content.expanded .task-note-toggle svg{transform:rotate(90deg);}
-.task-note-add-btn{display:flex;align-items:center;gap:6px;background:none;border:1px dashed var(--border);border-radius:6px;color:var(--text-dim);font-size:11px;padding:6px 10px;cursor:pointer;transition:all .15s;width:fit-content;}
-.task-note-add-btn:hover{background:var(--rose-pale);border-color:var(--rose-soft);color:var(--rose);}
-.task-note-content{max-height:0;overflow:hidden;transition:max-height .3s ease,margin .3s ease;margin-top:0;}
-.task-note-content.expanded{max-height:300px;margin-top:8px;}
-.task-note-content.collapsed{max-height:0;margin-top:0;}
-.task-note-textarea{width:100%;min-height:60px;padding:8px;font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Jost',sans-serif;resize:vertical;line-height:1.5;outline:none;transition:border-color .2s;}
-.task-note-textarea:focus{border-color:var(--rose-soft);box-shadow:0 0 0 3px rgba(201,139,139,.08);}
-.file-note-icon{font-size:12px;color:var(--text-dim);}
-.file-note-toggle-btn:hover{background:var(--rose-pale);border-color:var(--rose-soft);color:var(--rose);}
-.file-note-preview:hover{background:var(--bg2);}
-.file-note-content{max-height:0;overflow:hidden;transition:max-height .3s ease;}
-.file-note-content.expanded{max-height:200px;}
-.file-note-content.collapsed{max-height:0;}
-.file-note-textarea{width:100%;min-height:60px;padding:8px;font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'Jost',sans-serif;resize:vertical;line-height:1.5;outline:none;transition:border-color .2s;}
-.file-note-textarea:focus{border-color:var(--rose-soft);box-shadow:0 0 0 3px rgba(201,139,139,.08);}
-.today-section{margin-bottom:24px;}
-.today-section-header{margin-bottom:12px;}
-.today-section-title{font-size:12px;letter-spacing:.15em;text-transform:uppercase;color:var(--text-dim);font-weight:500;}
-.today-section-title.overdue{color:var(--overdue);}
-.task-tags{display:inline-flex;gap:4px;margin-left:8px;flex-wrap:wrap;}
-.tag-chip{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:2px 8px;font-size:10px;color:var(--text-dim);font-family:'Jost',sans-serif;}
-.tag-chip[data-tag="#paper"]{background:var(--mauve-pale);border-color:var(--mauve);color:var(--mauve);}
-.tag-chip[data-tag="#grant"]{background:var(--sage-pale);border-color:var(--sage);color:var(--sage);}
-.tag-chip[data-tag="#lab"]{background:var(--rose-pale);border-color:var(--rose);color:var(--rose);}
-.tag-chip[data-tag="#analysis"]{background:#e8f4f8;border-color:#7db8d1;color:#5a9bb8;}
-.tag-chip[data-tag="#admin"]{background:#f5f0e8;border-color:#d4c4a8;color:#b89d7a;}
-.tag-chip[data-tag="#experiment"]{background:#f0e8f5;border-color:#c4a8d4;color:#9d7ab8;}
-.quick-capture-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);display:none;align-items:center;justify-content:center;z-index:10000;backdrop-filter:blur(2px);overflow-y:auto;padding:20px;}
-.quick-capture-modal.active{display:flex;}
-.quick-capture-modal .quick-capture-box{position:relative;margin:auto;max-height:90vh;overflow-y:auto;}
-#edit-modal.active{display:flex;}
-.quick-capture-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;width:90%;max-width:500px;box-shadow:0 8px 32px rgba(0,0,0,0.2);animation:fadeSlide .2s ease-out;}
-.quick-capture-box input{width:100%;font-size:16px;padding:12px 16px;margin-bottom:12px;}
-.quick-capture-hint{font-size:11px;color:var(--text-light);margin-top:8px;}
-.project-metrics{display:flex;gap:12px;margin-top:8px;font-size:11px;color:var(--text-dim);flex-wrap:wrap;}
-.metric-item{display:flex;align-items:center;gap:4px;}
-.metric-value{font-weight:500;color:var(--text);}
-.files-view-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;}
-.file-view-tab{background:none;border:none;border-bottom:2px solid transparent;padding:8px 16px;font-size:12px;color:var(--text-dim);cursor:pointer;transition:all .15s;}
-.file-view-tab:hover{color:var(--text);}
-.file-view-tab.active{border-bottom-color:var(--rose);color:var(--rose);}
-.file-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;}
-.file-card-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
-.file-name{font-size:14px;color:var(--text);}
-.file-status-select{font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);}
-.file-meta{font-size:11px;color:var(--text-dim);}
-.workflow-lane{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;min-height:400px;}
-.workflow-column{min-width:200px;background:var(--bg2);border-radius:6px;padding:8px;margin-right:8px;}
-.workflow-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;cursor:move;}
-.workflow-card.blocked{border-left:3px solid var(--overdue);opacity:0.7;}
-.workflow-card.done{opacity:0.6;}
-
-/* Workflow task cards - match project-card design */
-.workflow-task-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:12px;margin-bottom:12px;cursor:move;transition:box-shadow .2s, transform .15s;position:relative;animation:fadeSlide .3s ease both;}
-.workflow-task-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:16px 0 0 16px;background:var(--rose-soft);}
-.workflow-task-card[data-priority="high"]::before{background:var(--rose);}
-.workflow-task-card[data-priority="medium"]::before{background:var(--rose-soft);}
-.workflow-task-card[data-priority="low"]::before{background:var(--sage);}
-.workflow-task-card:hover{box-shadow:0 4px 24px rgba(160,110,100,.1);transform:translateY(-1px);}
-.workflow-task-card.done{opacity:.55;}
-.workflow-task-card.done .task-title{text-decoration:line-through;text-decoration-color:var(--rose-soft);}
-.workflow-task-card.blocked{border-left:3px solid var(--overdue);opacity:0.8;}
-.workflow-task-card:active{cursor:grabbing;transform:scale(.98);}
-
-/* ── NEW WORKFLOW LANE STRUCTURE (Project-card style) ── */
-.wf-lane{
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  overflow: hidden;
-  margin-bottom: 20px;
-}
-
-.wf-lane-head{
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 16px 18px;
-  background: var(--bg2);
-  border-bottom: 1px solid var(--border);
-}
-
-.wf-lane-title{
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 20px;
-  font-weight: 400;
-  color: var(--text);
-}
-
-.wf-lane-meta{
-  font-size: 11px;
-  color: var(--text-dim);
-  margin-left: auto;
-}
-
-.wf-collapse{
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 4px 12px;
-  font-size: 11px;
-  color: var(--text-dim);
-  cursor: pointer;
-  transition: all .15s;
-  font-family: 'Jost', sans-serif;
-}
-
-.wf-collapse:hover{
-  background: var(--surface);
-  color: var(--text);
-}
-
-.wf-lane-body{
-  padding: 14px 16px 18px;
-}
-
-.wf-group{
-  margin-top: 14px;
-}
-
-.wf-group:first-child{
-  margin-top: 0;
-}
-
-.wf-group-title{
-  font-size: 11px;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  margin: 0 0 10px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-family: 'Jost', sans-serif;
-  font-weight: 400;
-}
-
-.wf-group.wf-done .wf-group-title{
-  cursor: pointer;
-  user-select: none;
-}
-
-.wf-group.wf-done .wf-group-title:hover{
-  color: var(--text);
-}
-
-.wf-cards{
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-/* Make task cards slightly tighter in workflow */
-.wf-cards .task-card{
-  margin-bottom: 0;
-}
-
-.wf-cards .workflow-task-card{
-  margin-bottom: 0;
-}
-.column-header{font-size:12px;font-weight:500;color:var(--text);}
-.workflow-drop-slot{min-height:40px;border:2px dashed var(--border);border-radius:4px;margin-top:4px;transition:all 0.2s;}
-.workflow-drop-slot:hover{border-color:var(--rose);background:var(--rose-pale);}
-.task-files{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
-.file-chip{display:inline-flex;align-items:center;gap:5px;background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:11px;color:var(--text-dim);text-decoration:none;transition:all .15s;max-width:200px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
-.file-chip:hover{background:var(--rose-pale);border-color:var(--rose-soft);color:var(--rose);}
-.btn-del{width:28px;height:28px;background:none;border:1px solid transparent;border-radius:50%;color:var(--text-dim);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;margin-top:1px;opacity:1;}
-.btn-del:hover{border-color:var(--rose-soft);color:var(--rose);background:var(--rose-pale);}
-.btn-del.btn-delete{color:var(--text-dim);font-size:16px;font-weight:bold;opacity:1;}
-.btn-del.btn-delete:hover{color:var(--overdue);border-color:var(--overdue);}
-.btn-export,.btn-import{background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text-dim);font-family:'Jost',sans-serif;font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:8px 14px;cursor:pointer;transition:all .15s;white-space:nowrap;}
-.btn-export:hover,.btn-import:hover{border-color:var(--rose-soft);color:var(--rose);background:var(--rose-pale);}
-.conflict-banner{background:linear-gradient(135deg,#f5d0a0 0%,#f0c060 100%);border-bottom:2px solid var(--soon);padding:14px 20px;margin-bottom:20px;box-shadow:0 2px 12px rgba(201,160,96,.2);animation:slideDown .3s ease;}
-@keyframes slideDown{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
-.conflict-content{display:flex;align-items:center;gap:16px;max-width:860px;margin:0 auto;}
-.conflict-icon{font-size:24px;flex-shrink:0;}
-.conflict-text{flex:1;color:var(--text);}
-.conflict-text strong{display:block;font-weight:500;margin-bottom:2px;}
-.conflict-actions{display:flex;gap:8px;flex-shrink:0;}
-.conflict-btn{background:white;border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'Jost',sans-serif;font-size:11px;font-weight:400;letter-spacing:.1em;text-transform:uppercase;padding:6px 14px;cursor:pointer;transition:all .15s;white-space:nowrap;}
-.task-drawer-tab{background:none;border:none;border-bottom:2px solid transparent;padding:8px 16px;font-size:12px;color:var(--text-dim);cursor:pointer;transition:all .15s;font-family:'Jost',sans-serif;}
-.task-drawer-tab:hover{color:var(--text);}
-.task-drawer-tab.active{border-bottom-color:var(--rose);color:var(--rose);}
-.task-drawer-tab-content{display:block;}
-.task-log-entry{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;position:relative;}
-.task-log-entry-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
-.task-log-entry-time{font-size:10px;color:var(--text-dim);}
-.task-log-entry-delete{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:12px;padding:2px 6px;border-radius:4px;transition:all .15s;}
-.task-log-entry-delete:hover{background:var(--rose-pale);color:var(--rose);}
-.task-drawer-file-item{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
-.task-drawer-file-info{flex:1;}
-.task-drawer-file-name{font-size:13px;color:var(--text);margin-bottom:4px;}
-.task-drawer-file-note{font-size:11px;color:var(--text-dim);margin-top:6px;font-style:italic;}
-.task-drawer-file-actions{display:flex;gap:6px;}
-.conflict-btn:hover{background:var(--surface);border-color:var(--rose-soft);color:var(--rose);}
-.conflict-btn-close{background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer;padding:0 8px;line-height:1;transition:color .15s;}
-.conflict-btn-close:hover{color:var(--text);}
-
-/* ── PROJECT CARD ── */
-.project-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:16px;overflow:hidden;transition:box-shadow .2s;animation:fadeSlide .3s ease both;}
-.project-card:hover{box-shadow:0 4px 24px rgba(160,110,100,.1);}
-.project-header{display:flex;align-items:center;gap:14px;padding:18px 20px;cursor:pointer;user-select:none;position:relative;}
-.project-color-bar{position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:16px 0 0 16px;}
-.project-chevron{flex-shrink:0;transition:transform .25s cubic-bezier(.34,1.56,.64,1);color:var(--text-light);font-size:13px;margin-left:auto;}
-.project-chevron.open{transform:rotate(90deg);}
-.project-name{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:400;color:var(--text);line-height:1.2;}
-.project-desc{font-size:11px;color:var(--text-dim);margin-top:2px;letter-spacing:.02em;}
-.project-meta{display:flex;align-items:center;gap:8px;flex-shrink:0;}
-.project-progress-wrap{display:flex;flex-direction:column;align-items:flex-end;gap:4px;}
-.project-progress-bar{width:80px;height:4px;background:var(--border);border-radius:4px;overflow:hidden;}
-.project-progress-fill{height:100%;border-radius:4px;transition:width .4s ease;}
-.project-progress-pct{font-size:10px;letter-spacing:.1em;color:var(--text-dim);}
-.project-due{font-size:10px;letter-spacing:.05em;color:var(--text-dim);display:flex;align-items:center;gap:4px;}
-.project-due.overdue{color:var(--overdue);}
-.project-due.soon{color:var(--soon);}
-.project-actions{display:flex;gap:4px;margin-left:8px;}
-
-/* subtask section */
-.subtask-section{border-top:1px solid var(--border);background:var(--bg);overflow:hidden;max-height:0;transition:max-height .35s cubic-bezier(.4,0,.2,1);}
-.subtask-section.open{max-height:2000px;}
-.subtask-inner{padding:12px 20px 16px 36px;}
-
-/* add subtask inline */
-.subtask-add-row{display:flex;gap:8px;align-items:center;margin-bottom:12px;}
-.subtask-add-row input[type="text"]{flex:2;}
-.subtask-add-row input[type="date"]{flex:1;min-width:120px;}
-.subtask-add-row select{flex:0 0 110px;}
-.btn-add-sub{background:linear-gradient(135deg,#d4a0a0,#c98b8b);border:none;border-radius:8px;color:white;font-family:'Jost',sans-serif;font-size:11px;letter-spacing:.15em;text-transform:uppercase;padding:9px 16px;cursor:pointer;transition:all .15s;white-space:nowrap;flex-shrink:0;}
-.btn-add-sub:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(201,139,139,.3);}
-
-/* subtask item */
-.subtask-item{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);animation:subtaskIn .2s ease both;}
-.subtask-item:last-child{border-bottom:none;}
-.subtask-check{width:15px;height:15px;border:1.5px solid var(--border2);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:3px;background:white;transition:all .15s;}
-.subtask-check:hover{border-color:var(--rose-soft);}
-.subtask-check.checked{background:linear-gradient(135deg,#d4a0a0,#c98b8b);border-color:#c98b8b;}
-.subtask-check.checked::after{content:'';width:4px;height:6px;border:1.5px solid white;border-top:none;border-left:none;transform:rotate(45deg) translateY(-1px);display:block;}
-.subtask-body{flex:1;min-width:0;}
-.subtask-title{font-size:13px;color:var(--text);line-height:1.5;}
-.subtask-item.done .subtask-title{text-decoration:line-through;opacity:.6;}
-.subtask-meta{display:flex;gap:6px;align-items:center;margin-top:3px;flex-wrap:wrap;}
-.sub-priority{font-size:9px;letter-spacing:.12em;text-transform:uppercase;padding:1px 7px;border-radius:20px;}
-.sub-priority.high{background:var(--rose-pale);color:var(--rose);}
-.sub-priority.medium{background:var(--blush);color:var(--mauve);}
-.sub-priority.low{background:var(--sage-pale);color:var(--sage);}
-.sub-due{font-size:10px;color:var(--text-dim);display:flex;align-items:center;gap:3px;}
-.sub-due.overdue{color:var(--overdue);}
-.sub-due.soon{color:var(--soon);}
-.subtask-files{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;}
-.sub-file-chip{display:inline-flex;align-items:center;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:10px;color:var(--text-dim);text-decoration:none;transition:all .15s;max-width:180px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
-.sub-file-chip:hover{background:var(--rose-pale);border-color:var(--rose-soft);color:var(--rose);}
-.sub-file-add-toggle{background:none;border:none;color:var(--text-light);font-size:11px;cursor:pointer;padding:2px 6px;border-radius:4px;transition:all .15s;letter-spacing:.05em;}
-.sub-file-add-toggle:hover{color:var(--rose);background:var(--rose-pale);}
-.sub-file-row{display:flex;gap:6px;align-items:center;margin-top:6px;animation:fadeSlide .15s ease both;}
-.sub-file-row input:first-of-type{flex:1;}
-.sub-file-row input:last-of-type{flex:2;}
-
-/* empty */
-.empty-state{text-align:center;padding:70px 20px;color:var(--text-light);font-family:'Cormorant Garamond',serif;font-size:24px;font-style:italic;font-weight:300;}
-.empty-state small{display:block;font-family:'Jost',sans-serif;font-size:11px;letter-spacing:.15em;text-transform:uppercase;margin-top:8px;font-style:normal;color:var(--text-light);}
-.empty-subtasks{font-size:12px;color:var(--text-light);letter-spacing:.08em;padding:8px 0;}
-
-/* view toggle between tasks/projects */
-/* #view-tasks, #view-projects - handled by JS */
-
-/* Force hide view-projects when not active */
-.view-projects-hidden {
-  display: none !important;
-}
-
-/* ── WORKFLOW VIEW RESPONSIVE ── */
-#view-workflow{overflow-x:hidden;width:100%;max-width:100%;box-sizing:border-box;}
-
-/* ── WORKFLOW VIEW TOGGLE & FILTERS ── */
-.wf-view-btn.active{background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.1);}
-.wf-view-btn:hover:not(.active){color:var(--text);}
-.wf-filter-chip.on{background:var(--rose-pale);border-color:var(--rose-soft);color:var(--rose);}
-.wf-filter-chip:hover{border-color:var(--border2);color:var(--text);}
-.wf-hbtn:hover{border-color:var(--rose);color:var(--rose);}
-.wf-hbtn-primary:hover{background:var(--rose-soft);color:var(--text);}
-
-/* ── LIST VIEW STYLES ── */
-.wf-list-stat{padding:20px 28px;border-right:1px solid var(--border);}
-.wf-list-stat:last-child{border-right:none;}
-.wf-ls-label{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;}
-.wf-ls-val{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:300;line-height:1;}
-.wf-ls-sub{font-size:10px;color:var(--text-dim);margin-top:4px;}
-
-.wf-proj-row{display:grid;grid-template-columns:2fr 110px 130px 90px 100px 80px 50px;padding:0 28px;border-bottom:1px solid var(--border);align-items:stretch;cursor:pointer;transition:background .15s;position:relative;}
-.wf-proj-row:hover{background:var(--bg2);}
-.wf-proj-row.expanded{background:var(--bg2);}
-.wf-proj-row::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;opacity:0;transition:opacity .2s;}
-.wf-proj-row:hover::before,.wf-proj-row.expanded::before{opacity:1;}
-.wf-proj-row.c1::before{background:var(--proj-1);}
-.wf-proj-row.c2::before{background:var(--proj-2);}
-.wf-proj-row.c3::before{background:var(--proj-3);}
-.wf-proj-row.c4::before{background:var(--proj-4);}
-.wf-proj-row.c5::before{background:var(--proj-5);}
-
-.wf-proj-cell{padding:14px 0;display:flex;align-items:center;font-size:12px;color:var(--text-dim);border-right:1px solid transparent;}
-.wf-proj-name-cell{gap:12px;padding-right:16px;}
-.wf-proj-color-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
-.wf-proj-name{font-size:13px;color:var(--text);font-weight:400;}
-.wf-proj-desc{font-size:10px;color:var(--text-dim);margin-top:2px;}
-
-.wf-status-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:20px;font-size:9px;letter-spacing:.05em;}
-.wf-sp-active{background:var(--rose-pale);color:var(--rose);border:1px solid var(--rose-soft);}
-.wf-sp-done{background:var(--sage-pale);color:var(--sage);border:1px solid var(--sage);}
-.wf-sp-hold{background:rgba(201,160,96,.1);color:var(--soon);border:1px solid rgba(201,160,96,.2);}
-.wf-sp-plan{background:var(--bg2);color:var(--text-dim);border:1px solid var(--border);}
-
-.wf-prog-wrap{display:flex;align-items:center;gap:8px;width:100%;}
-.wf-prog-bar{flex:1;height:3px;background:var(--border2);border-radius:2px;overflow:hidden;}
-.wf-prog-fill{height:100%;border-radius:2px;transition:width 1s ease;}
-.wf-prog-pct{font-size:10px;color:var(--text-dim);white-space:nowrap;}
-
-.wf-deadline-cell{flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;}
-.wf-dl-date{font-size:11px;color:var(--text-dim);}
-.wf-dl-countdown{font-size:9px;}
-.wf-dl-soon{color:var(--overdue);}
-.wf-dl-ok{color:var(--text-dim);}
-
-.wf-task-counts{flex-direction:column;align-items:flex-start;gap:2px;}
-.wf-tc-row{font-size:10px;color:var(--text-dim);}
-
-.wf-proj-expand{display:none;background:var(--bg2);border-bottom:1px solid var(--border);padding:16px 28px 20px 52px;animation:expandDown .2s ease;}
-.wf-proj-expand.open{display:block;}
-@keyframes expandDown{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:translateY(0);}}
-
-.wf-expand-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
-.wf-expand-section-title{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-dim);margin-bottom:10px;}
-
-.wf-expand-tasks{display:flex;flex-direction:column;gap:5px;}
-.wf-etask{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:5px;background:var(--surface);border:1px solid var(--border);font-size:11px;color:var(--text-dim);cursor:pointer;transition:border-color .15s;}
-.wf-etask:hover{border-color:var(--border2);}
-.wf-etask-check{width:12px;height:12px;border-radius:3px;border:1.5px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .2s;background:var(--surface);}
-.wf-etask-check.done{background:var(--sage);border-color:var(--sage);}
-.wf-etask-check.done::after{content:'✓';font-size:7px;color:white;}
-.wf-etask.done-t .wf-etask-label{text-decoration:line-through;color:var(--text-dim);}
-
-.wf-expand-files{display:flex;flex-direction:column;gap:5px;}
-.wf-efile{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:5px;background:var(--surface);border:1px solid var(--border);font-size:11px;color:var(--text-dim);cursor:pointer;transition:all .15s;}
-.wf-efile:hover{border-color:var(--rose);color:var(--rose);}
-.wf-efile-icon{width:22px;height:22px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;}
-
-.wf-expand-quick{display:flex;flex-direction:column;gap:8px;}
-.wf-quick-stat{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 12px;}
-.wf-qs-label{font-size:9px;color:var(--text-dim);margin-bottom:3px;}
-.wf-qs-val{font-size:14px;color:var(--text);font-family:'Cormorant Garamond',serif;font-weight:300;}
-.wf-expand-open-btn{margin-top:10px;width:100%;padding:7px;background:transparent;border:1px solid var(--border2);border-radius:6px;color:var(--text-dim);font-family:'Jost',sans-serif;font-size:11px;cursor:pointer;transition:all .15s;letter-spacing:.04em;}
-.wf-expand-open-btn:hover{border-color:var(--rose);color:var(--rose);}
-
-.wf-expand-toggle{padding:3px 8px;font-size:16px;color:var(--text-dim);cursor:pointer;transition:transform .2s,color .15s;background:none;border:none;display:flex;align-items:center;justify-content:center;}
-.wf-proj-row.expanded .wf-expand-toggle{transform:rotate(90deg);color:var(--rose);}
-.wf-expand-toggle:hover{color:var(--text);}
-
-/* ── TIMELINE VIEW STYLES ── */
-.wf-tl-header-row{display:grid;grid-template-columns:220px 1fr;border-bottom:1px solid var(--border);flex-shrink:0;}
-.wf-tl-label-col{padding:12px 20px;border-right:1px solid var(--border);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-dim);display:flex;align-items:flex-end;}
-.wf-tl-months{display:flex;overflow:hidden;position:relative;}
-.wf-tl-month{flex-shrink:0;padding:8px 10px;font-size:10px;color:var(--text-dim);border-right:1px solid var(--border);letter-spacing:.06em;}
-.wf-tl-month.current{color:var(--rose);}
-.wf-tl-body{flex:1;overflow-y:auto;overflow-x:hidden;}
-.wf-tl-body::-webkit-scrollbar{width:5px;}
-.wf-tl-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
-
-.wf-tl-proj-row{display:grid;grid-template-columns:220px 1fr;border-bottom:1px solid var(--border);min-height:64px;align-items:center;transition:background .15s;cursor:pointer;}
-.wf-tl-proj-row:hover{background:var(--bg2);}
-.wf-tl-proj-info{padding:12px 20px;border-right:1px solid var(--border);display:flex;flex-direction:column;gap:3px;height:100%;justify-content:center;}
-.wf-tl-proj-name{font-size:12px;color:var(--text);}
-.wf-tl-proj-status{font-size:9px;color:var(--text-dim);}
-.wf-tl-bar-area{position:relative;height:100%;padding:18px 0;}
-.wf-tl-bar{position:absolute;height:28px;border-radius:4px;display:flex;align-items:center;padding:0 10px;font-size:10px;color:var(--surface);overflow:hidden;white-space:nowrap;top:50%;transform:translateY(-50%);transition:filter .15s;}
-.wf-tl-bar:hover{filter:brightness(1.15);}
-.wf-tl-bar-done{height:4px;border-radius:2px;position:absolute;top:50%;transform:translateY(-50%);left:0;opacity:.4;}
-.wf-tl-milestone{position:absolute;top:50%;transform:translateY(-50%);width:10px;height:10px;border-radius:1px;background:var(--soon);transform:translateY(-50%) rotate(45deg);box-shadow:0 0 8px rgba(201,160,96,.4);}
-.wf-tl-today-line{position:absolute;top:0;bottom:0;width:1px;background:var(--overdue);opacity:.6;z-index:10;pointer-events:none;}
-.wf-tl-today-line::before{content:'NOW';position:absolute;top:0;left:4px;font-size:8px;color:var(--overdue);letter-spacing:.1em;}
-
-.wf-tl-task-row{display:grid;grid-template-columns:220px 1fr;border-bottom:1px solid rgba(232,224,216,.5);min-height:44px;align-items:center;background:var(--surface);opacity:.85;cursor:pointer;transition:background .15s;}
-.wf-tl-task-row:hover{background:var(--bg2);opacity:1;}
-.wf-tl-task-info{padding:8px 12px 8px 36px;border-right:1px solid rgba(232,224,216,.5);display:flex;align-items:center;gap:8px;height:100%;}
-.wf-tl-task-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
-.wf-tl-task-name{font-size:11px;color:var(--text-dim);}
-.wf-tl-taskbar{position:absolute;height:16px;border-radius:3px;top:50%;transform:translateY(-50%);opacity:.7;}
-
-.wf-subview{display:none !important;animation:fadeUp .3s ease both;}
-.wf-subview.active{display:block !important;}
-#wf-view-timeline.active{display:flex !important;flex-direction:column !important;height:100% !important;}
-#wf-view-workflow-canvas.active{display:block !important;}
-@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
-
-/* ── WORKFLOW CANVAS STYLES ── */
-#view-workflow::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center, transparent 55%, rgba(250,248,245,0.85) 100%);pointer-events:none;z-index:5;}
-.wf-proj{position:absolute;background:var(--surface);border:1px solid var(--border);border-radius:12px;width:260px;cursor:pointer;transition:border-color 0.2s,box-shadow 0.2s,transform 0.15s;z-index:20;box-shadow:0 2px 8px rgba(0,0,0,0.05);}
-.wf-proj:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(160,110,100,0.15);border-color:var(--rose-soft);}
-.wf-proj.selected{box-shadow:0 0 0 2px var(--rose-soft),0 8px 32px rgba(0,0,0,0.12);border-color:var(--rose);}
-.wf-proj-header{padding:14px 14px 12px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:10px;}
-.wf-proj-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:4px;}
-.wf-proj-title-wrap{flex:1;min-width:0;}
-.wf-proj-name{font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);line-height:1.3;font-weight:400;}
-.wf-proj-type{font-size:10px;color:var(--text-dim);margin-top:3px;letter-spacing:0.05em;}
-.wf-status-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px;}
-.wf-status-dot.active{background:var(--rose);animation:wfpulse 2s infinite;}
-.wf-status-dot.done{background:var(--sage);}
-.wf-status-dot.hold{background:var(--taupe);}
-.wf-status-dot.plan{background:var(--border2);}
-@keyframes wfpulse{0%,100%{opacity:1;box-shadow:0 0 4px rgba(201,139,139,0.5);}50%{opacity:0.6;}}
-.wf-proj-body{padding:10px 14px 12px;}
-.wf-mini-tasks{display:flex;flex-direction:column;gap:4px;margin-bottom:10px;}
-.wf-mtask{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text-dim);}
-.wf-mt-dot{width:4px;height:4px;border-radius:50%;background:var(--border2);flex-shrink:0;}
-.wf-mtask.done-t .wf-mt-dot{background:var(--sage);}
-.wf-mtask.done-t span{text-decoration:line-through;opacity:0.6;}
-.wf-proj-footer{padding:8px 14px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;}
-.wf-prog{flex:1;height:3px;background:var(--bg2);border-radius:2px;overflow:hidden;}
-.wf-prog-fill{height:100%;border-radius:2px;transition:width 0.5s ease;}
-.wf-pct{font-size:9px;color:var(--text-dim);white-space:nowrap;}
-.wf-tags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;}
-.wf-tag{font-size:9px;padding:2px 6px;border-radius:3px;letter-spacing:0.03em;}
-.wf-tag.rose{background:var(--rose-pale);color:var(--rose);}
-.wf-tag.sage{background:var(--sage-pale);color:var(--sage);}
-.wf-tag.mauve{background:var(--mauve-pale);color:var(--mauve);}
-.wf-tag.taupe{background:var(--bg2);color:var(--taupe);}
-.wf-btn:hover{border-color:var(--rose);color:var(--rose);background:var(--rose-pale);}
-.dp-body::-webkit-scrollbar{width:4px;}
-.dp-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
-.dp-tasks{display:flex;flex-direction:column;gap:6px;}
-.dp-task{display:flex;align-items:center;gap:8px;padding:8px;border-radius:6px;background:var(--bg2);border:1px solid var(--border);font-size:11px;color:var(--text);cursor:pointer;transition:border-color 0.15s;}
-.dp-task:hover{border-color:var(--rose-soft);}
-.dp-task-check{width:14px;height:14px;border-radius:3px;border:1.5px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.2s;background:var(--surface);}
-.dp-task-check.done{background:var(--sage);border-color:var(--sage);}
-.dp-task-check.done::after{content:'✓';font-size:8px;color:white;}
-.dp-task.done-t .dp-task-label{text-decoration:line-through;color:var(--text-dim);opacity:0.7;}
-.dp-files{display:flex;flex-direction:column;gap:6px;}
-.dp-file{display:flex;align-items:center;gap:8px;padding:8px;border-radius:6px;background:var(--bg2);border:1px solid var(--border);font-size:11px;color:var(--text);cursor:pointer;transition:all 0.15s;}
-.dp-file:hover{border-color:var(--rose);color:var(--rose);}
-.dp-file-icon{width:24px;height:24px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;background:var(--rose-pale);}
-.workflow-lanes-grid{display:flex;flex-direction:column;gap:24px;margin-bottom:20px;width:100%;}
-.workflow-bottlenecks{display:flex;gap:12px;flex-wrap:wrap;}
-
-@media(max-width:1400px){
-  .workflow-lanes-grid{gap:20px;}
-}
-
-@media(max-width:1200px){
-  .workflow-lanes-grid{gap:20px;}
-}
-
-@media(max-width:768px){
-  .workflow-lanes-grid{gap:16px;}
-  #workflow-active-files{width:100%;right:-100%;}
-  #workflow-active-files[style*="right: 0px"]{right:0!important;}
-  #view-workflow{padding:24px 20px 80px!important;}
-  .workflow-bottlenecks{flex-direction:column;}
-  .workflow-bottlenecks > div{flex:1 1 100%;}
-}
-
-@media(max-width:600px){
-  .app{padding:28px 16px 80px;}
-  .app.workflow-active{padding:12px 12px 80px;}
-  .app.workflow-active .tabs{padding-left:12px;padding-right:12px;max-width:100%;}
-  header > div:last-child{flex-direction:column;align-items:flex-start;gap:12px;width:100%;}
-  .wordmark-title{font-size:38px;}
-  .toolbar{flex-direction:column;align-items:flex-start;}
-  .field-row{flex-direction:column;}
-  .subtask-add-row{flex-wrap:wrap;}
-  .btn-export,.btn-import{width:100%;}
-  .kanban-board{grid-template-columns:1fr;}
-}
-
-/* ── PLANNER LAYOUT STYLES ── */
-#view-planner{display:none;height:100vh;overflow:hidden;flex-direction:column;margin:0 !important;top:0 !important;align-self:start;}
-#view-planner[style*="display:flex"]{display:flex!important;}
-
-/* Drag and drop styles */
-.routine-draggable:hover,.habit-draggable:hover{background:var(--bg2);border:1px dashed var(--rose-soft);}
-.routine-draggable:active,.habit-draggable:active{cursor:grabbing!important;}
-.routine-draggable,.habit-draggable{cursor:grab!important;}
-.routine-item[draggable="true"]:hover,.habit-item[draggable="true"]:hover{background:var(--bg2);border:1px dashed var(--rose-soft);}
-.t-slot[draggable="true"]{cursor:copy;}
-.t-slot.drag-over{background:var(--rose-pale)!important;border:2px dashed var(--rose);}
-
-/* Calendar grid */
-.cal-daylabel{text-align:center;font-size:7px;color:var(--text-muted);letter-spacing:0.07em;padding-bottom:4px;font-family:'Jost',sans-serif;font-weight:700;}
-.cal-day{text-align:center;font-size:10px;padding:4px 1px;border-radius:5px;cursor:pointer;color:var(--text-dim);transition:all 0.11s;position:relative;line-height:1.2;}
-.cal-day:hover{background:var(--bg2);color:var(--text);}
-.cal-day.is-today{background:var(--rose);color:white;font-weight:600;}
-.cal-day.is-selected:not(.is-today){background:rgba(201,139,139,0.12);color:var(--text);outline:1px solid rgba(201,139,139,0.25);}
-.cal-day.in-week:not(.is-today){background:rgba(201,139,139,0.06);color:var(--text-dim);}
-.cal-day.has-ev::after{content:'';position:absolute;bottom:1px;left:50%;transform:translateX(-50%);width:3px;height:3px;border-radius:50%;background:var(--sage);}
-.cal-day.is-today.has-ev::after{background:rgba(255,255,255,0.6);}
-.cal-day.other-mo{opacity:0.28;pointer-events:none;}
-.cal-arrow:hover{color:var(--rose);}
-
-/* Event items in sidebar */
-.ev-item{display:flex;align-items:flex-start;gap:9px;padding:7px 8px;border-radius:7px;cursor:pointer;border:1px solid transparent;transition:all 0.13s;}
-.ev-item:hover{background:var(--bg2);border-color:var(--border);}
-.ev-item.is-now{background:rgba(201,139,139,0.05);border-color:rgba(201,139,139,0.15);}
-.ev-stripe{width:3px;border-radius:2px;align-self:stretch;flex-shrink:0;min-height:28px;}
-.stripe-yellow{background:var(--rose);}
-.stripe-green{background:var(--sage);}
-.stripe-red{background:var(--overdue);}
-.stripe-blue{background:var(--mauve);}
-.stripe-muted{background:var(--border2);}
-.ev-content{flex:1;min-width:0;}
-.ev-name{font-size:10.5px;color:var(--text);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.ev-time{font-size:8px;color:var(--text-muted);letter-spacing:0.04em;}
-.ev-day-badge{font-size:7px;letter-spacing:0.08em;padding:2px 6px;border-radius:4px;background:var(--bg2);color:var(--text-muted);white-space:nowrap;align-self:flex-start;margin-top:1px;}
-.sidebar-add:hover{color:var(--rose);}
-
-/* Timeline */
-.t-row{display:grid;grid-template-columns:42px 1fr;gap:0;position:relative;min-height:60px;margin-bottom:8px;}
-.t-row::after{content:'';position:absolute;left:52px;right:0;top:0;height:1px;background:var(--border);}
-.t-label{font-size:8px;color:var(--text-muted);letter-spacing:0.05em;padding:4px 6px 0 0;text-align:right;flex-shrink:0;line-height:1;margin-top:-6px;}
-.t-slot{padding:5px 0 5px 14px;display:flex;flex-direction:column;gap:4px;position:relative;}
-/* Task list specific styles for t-row */
-#task-container .t-row{min-height:40px;margin-bottom:4px;}
-#task-container .t-label{font-size:10px;color:var(--text-dim);padding:8px 0;text-align:right;padding-right:12px;margin-top:0;}
-#task-container .t-slot{padding:4px 0;}
-#task-container .t-ghost{font-size:11px;padding:8px 14px;}
-
-/* Now marker */
-.now-marker{position:absolute;left:42px;right:0;height:1px;background:var(--overdue);z-index:5;pointer-events:none;}
-.now-marker::before{content:'';position:absolute;left:12px;top:-3px;width:7px;height:7px;border-radius:50%;background:var(--overdue);}
-
-/* Time blocks */
-.t-block{border-radius:10px;padding:10px 14px;border-left:3px solid transparent;cursor:pointer;transition:transform 0.13s,filter 0.13s;position:relative;}
-.t-block:hover{transform:translateX(3px);filter:brightness(1.08);}
-.t-block.yellow{background:rgba(201,139,139,0.08);border-left-color:var(--rose);}
-.t-block.green{background:rgba(154,171,148,0.08);border-left-color:var(--sage);}
-.t-block.red{background:rgba(196,122,122,0.09);border-left-color:var(--overdue);}
-.t-block.blue{background:rgba(160,136,152,0.08);border-left-color:var(--mauve);}
-.t-block.muted{background:var(--bg2);border-left-color:var(--border2);}
-.t-block-title{font-family:'Jost',sans-serif;font-size:11.5px;font-weight:600;color:var(--text);margin-bottom:3px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.t-block-meta{font-size:8.5px;color:var(--text-dim);letter-spacing:0.03em;}
-.t-block-footer{display:flex;align-items:center;gap:6px;margin-top:7px;}
-.tag{font-size:7px;letter-spacing:0.08em;padding:2px 8px;border-radius:999px;text-transform:uppercase;}
-.tag.yellow{background:rgba(201,139,139,0.15);color:var(--rose);}
-.tag.green{background:rgba(154,171,148,0.15);color:var(--sage);}
-.tag.red{background:rgba(196,122,122,0.15);color:var(--overdue);}
-.tag.blue{background:rgba(160,136,152,0.15);color:var(--mauve);}
-.tag.muted{background:var(--bg2);color:var(--text-muted);}
-.t-block-dur{font-size:8px;color:var(--text-muted);margin-left:auto;letter-spacing:0.04em;}
-
-/* Ghost add slot */
-.t-ghost{background:transparent;border:1px dashed var(--border2);border-radius:9px;padding:7px 14px;font-size:8.5px;color:var(--text-muted);cursor:pointer;text-align:left;transition:all 0.14s;letter-spacing:0.05em;font-family:'Jost',sans-serif;opacity:0;}
-.t-row:hover .t-ghost{opacity:1;}
-.t-ghost:hover{border-color:var(--rose);color:var(--rose);background:rgba(201,139,139,0.04);opacity:1;}
-
-/* All-day events */
-.allday-chip{font-size:8.5px;padding:3px 9px;border-radius:999px;white-space:nowrap;letter-spacing:0.04em;}
-.allday-chip.yellow{background:rgba(201,139,139,0.14);color:var(--rose);}
-.allday-chip.green{background:rgba(154,171,148,0.14);color:var(--sage);}
-.allday-chip.red{background:rgba(196,122,122,0.14);color:var(--overdue);}
-
-/* Week view */
-.wch-day{padding:10px 6px 9px;text-align:center;border-left:1px solid var(--border);cursor:pointer;transition:background 0.12s;user-select:none;}
-.wch-day:hover{background:var(--bg2);}
-.wch-day.is-today{background:rgba(201,139,139,0.05);}
-.wch-day.is-selected:not(.is-today){background:rgba(154,171,148,0.04);}
-.wch-name{font-size:7.5px;color:var(--text-muted);letter-spacing:0.1em;text-transform:uppercase;font-family:'Jost',sans-serif;font-weight:700;margin-bottom:5px;}
-.wch-num{font-family:'Cormorant Garamond',serif;font-size:21px;line-height:1;color:var(--text-dim);}
-.wch-day.is-today .wch-num{color:var(--rose);}
-.wch-day.is-selected:not(.is-today) .wch-num{color:var(--sage);}
-.wch-dots{display:flex;justify-content:center;gap:3px;margin-top:4px;min-height:5px;}
-.wch-dot{width:4px;height:4px;border-radius:50%;}
-.wg-time-col{display:flex;flex-direction:column;}
-.wg-time-cell{height:60px;display:flex;align-items:flex-start;justify-content:flex-end;padding:3px 7px 0;border-bottom:1px solid var(--border);}
-.wg-time-cell span{font-size:7.5px;color:var(--text-muted);letter-spacing:0.04em;}
-.wg-day-col{border-left:1px solid var(--border);position:relative;display:flex;flex-direction:column;}
-.wg-day-col.is-today{background:rgba(201,139,139,0.018);}
-.wg-hour{height:60px;border-bottom:1px solid rgba(232,224,216,0.7);flex-shrink:0;transition:background 0.1s;}
-.wg-hour:hover{background:rgba(255,255,255,0.01);}
-.w-event{position:absolute;left:3px;right:3px;border-radius:7px;padding:5px 8px;border-left:3px solid transparent;cursor:pointer;overflow:hidden;transition:filter 0.12s,transform 0.12s;z-index:2;}
-.w-event:hover{filter:brightness(1.2);transform:scaleX(0.95);}
-.w-event.yellow{background:rgba(201,139,139,0.13);border-left-color:var(--rose);}
-.w-event.green{background:rgba(154,171,148,0.13);border-left-color:var(--sage);}
-.w-event.red{background:rgba(196,122,122,0.13);border-left-color:var(--overdue);}
-.w-event.blue{background:rgba(160,136,152,0.13);border-left-color:var(--mauve);}
-.w-event.muted{background:rgba(245,240,235,0.95);border-left-color:var(--border2);}
-.w-event-title{font-size:9px;font-family:'Jost',sans-serif;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
-.w-event-time{font-size:7.5px;color:var(--text-dim);margin-top:1px;}
-.w-nowline{position:absolute;left:0;right:0;height:1px;background:var(--overdue);z-index:10;pointer-events:none;}
-.w-nowline::before{content:'';position:absolute;left:-3px;top:-3px;width:7px;height:7px;border-radius:50%;background:var(--overdue);}
-
-/* View switcher */
-.view-btn.active{background:var(--bg2);color:var(--rose);border:1px solid var(--border2);}
-.view-btn:hover:not(.active){color:var(--text);}
-.btn:hover{background:var(--bg2);color:var(--text);border-color:var(--rose);}
-.btn.today:hover{color:var(--rose);}
-
-@media(max-width:600px){
-  .board-project-filter{width:100%;}
-  #view-workflow{padding:52px 36px 100px!important;}
-  .workflow-lanes-grid{gap:12px;}
-  .lane-header{padding:12px!important;}
-  .lane-columns{padding:8px!important;min-height:200px!important;}
-  .today-main{grid-template-columns:1fr;padding:16px;}
-  .today-stats-row{grid-template-columns:repeat(2,1fr);}
-}
-
-/* Force hide all add forms by default */
-[id^="add-task-section-"]{display:none !important;}
-[id^="file-section-"]{display:none !important;}
-#matrix-add-task-section{display:none !important;}
-#matrix-add-file-section{display:none !important;}
-#add-project-file-active-section{display:none !important;}
-
-/* ── TODAY PAGE LAYOUT ── */
-#view-today{display:none;padding:0;width:100%;max-width:100vw;overflow-x:hidden;box-sizing:border-box;}
-#view-today[style*="display:block"]{display:block!important;}
-
-.today-layout{display:grid;grid-template-columns:1fr;grid-template-rows:auto 1fr;min-height:calc(100vh - 100px);width:100%;max-width:100%;}
-
-/* SIDEBAR */
-.today-sidebar{grid-row:1/3;background:var(--surface);border-right:1px solid var(--border);padding:28px 0;display:flex;flex-direction:column;}
-.today-logo{padding:0 20px 28px;border-bottom:1px solid var(--border);}
-.today-logo-name{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:400;letter-spacing:-0.5px;color:var(--text);}
-.today-logo-name span{color:var(--rose);}
-.today-logo-sub{font-size:9px;color:var(--text-dim);letter-spacing:.15em;text-transform:uppercase;margin-top:3px;}
-.today-nav{padding:20px 12px;flex:1;display:flex;flex-direction:column;gap:2px;}
-.today-nav-label{font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--text-dim);padding:0 8px;margin:12px 0 6px;}
-.today-nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:var(--text-dim);transition:all .15s;position:relative;text-decoration:none;}
-.today-nav-item:hover{background:var(--bg2);color:var(--text);}
-.today-nav-item.active{background:var(--rose-pale);color:var(--rose);}
-.today-nav-item.active::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:2px;background:var(--rose);border-radius:0 2px 2px 0;}
-.today-nav-icon{width:16px;text-align:center;font-size:13px;}
-.today-nav-badge{margin-left:auto;background:var(--bg2);color:var(--text-dim);font-size:9px;padding:1px 6px;border-radius:10px;}
-.today-nav-badge.alert{background:var(--rose-pale);color:var(--overdue);}
-.today-sidebar-bottom{padding:16px 12px 0;border-top:1px solid var(--border);}
-
-/* HEADER */
-.today-header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;height:58px;display:flex;align-items:center;justify-content:space-between;}
-.today-header-date{display:flex;align-items:baseline;gap:10px;}
-.today-day{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:300;font-style:italic;}
-.today-full{font-size:11px;color:var(--text-dim);letter-spacing:.05em;}
-.today-header-right{display:flex;align-items:center;gap:14px;}
-.today-status-dot{width:8px;height:8px;border-radius:50%;background:var(--sage);box-shadow:0 0 8px var(--sage);animation:pulse 2s infinite;}
-@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
-.today-header-status{font-size:11px;color:var(--text-dim);}
-.today-header-btn{background:var(--bg2);border:1px solid var(--border2);color:var(--text-dim);font-family:'Jost',sans-serif;font-size:11px;padding:6px 12px;border-radius:6px;cursor:pointer;transition:all .15s;}
-.today-header-btn:hover{border-color:var(--rose);color:var(--rose);}
-
-/* MAIN GRID */
-.today-main{padding:24px 28px;display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));grid-auto-rows:auto;gap:18px;align-content:start;width:100%;max-width:100%;}
-
-/* CARDS */
-.today-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
-.today-card-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 12px;border-bottom:1px solid var(--border);}
-.today-card-title{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);display:flex;align-items:center;gap:8px;}
-.today-dot{width:6px;height:6px;border-radius:50%;}
-.today-card-action{font-size:10px;color:var(--text-dim);cursor:pointer;transition:color .15s;}
-.today-card-action:hover{color:var(--rose);}
-
-/* STATS ROW */
-.today-stats-row{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;}
-.today-stat-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;position:relative;overflow:hidden;transition:border-color .2s;}
-.today-stat-card:hover{border-color:var(--border2);}
-.today-stat-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;}
-.today-stat-card.c1::after{background:var(--rose);}
-.today-stat-card.c2::after{background:var(--sage);}
-.today-stat-card.c3::after{background:var(--soon);}
-.today-stat-card.c4::after{background:var(--mauve);}
-.today-stat-label{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-dim);margin-bottom:10px;}
-.today-stat-value{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:300;line-height:1;margin-bottom:6px;}
-.today-stat-card.c1 .today-stat-value{color:var(--rose);}
-.today-stat-card.c2 .today-stat-value{color:var(--sage);}
-.today-stat-card.c3 .today-stat-value{color:var(--soon);}
-.today-stat-card.c4 .today-stat-value{color:var(--mauve);}
-.today-stat-sub{font-size:10px;color:var(--text-dim);}
-
-/* PLANNER */
-.today-planner-card{grid-column:span 1;min-width:0;}
-.today-time-slots{padding:0;max-height:460px;overflow-y:auto;}
-.today-time-slots::-webkit-scrollbar{width:4px;}
-.today-time-slots::-webkit-scrollbar-track{background:transparent;}
-.today-time-slots::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
-.today-time-slot{display:grid;grid-template-columns:52px 1fr;min-height:52px;border-bottom:1px solid var(--border);position:relative;}
-.today-time-slot:last-child{border-bottom:none;}
-.today-slot-time{padding:14px 10px;font-size:10px;color:var(--text-dim);border-right:1px solid var(--border);letter-spacing:.05em;}
-.today-slot-content{padding:8px 12px;display:flex;flex-direction:column;gap:4px;justify-content:center;}
-.today-slot-event{background:var(--sage-pale);border-left:2px solid var(--sage);border-radius:0 4px 4px 0;padding:5px 8px;font-size:11px;color:var(--text);}
-.today-slot-event.blue{background:var(--mauve-pale);border-left-color:var(--mauve);}
-.today-slot-event.orange{background:rgba(201,160,96,.1);border-left-color:var(--soon);}
-.today-slot-event.pink{background:var(--rose-pale);border-left-color:var(--rose);}
-.today-slot-event-title{font-size:11px;color:var(--text);}
-.today-slot-event-sub{font-size:9px;color:var(--text-dim);margin-top:1px;}
-.today-now-line{position:absolute;left:0;right:0;height:1px;background:var(--overdue);box-shadow:0 0 6px var(--overdue);z-index:10;pointer-events:none;}
-.today-now-line::before{content:'';position:absolute;left:52px;top:-3px;width:6px;height:6px;border-radius:50%;background:var(--overdue);}
-
-/* TASKS */
-.today-tasks-card{grid-column:span 1;min-width:0;}
-.today-task-list{padding:6px 0;}
-.today-task-item{display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;}
-.today-task-item:last-child{border-bottom:none;}
-.today-task-item:hover{background:var(--bg2);}
-.today-task-check{width:14px;height:14px;border:1.5px solid var(--border2);border-radius:3px;flex-shrink:0;transition:all .2s;display:flex;align-items:center;justify-content:center;}
-.today-task-item:hover .today-task-check{border-color:var(--rose);}
-.today-task-check.done{background:var(--rose);border-color:var(--rose);}
-.today-task-check.done::after{content:'✓';font-size:9px;color:var(--surface);font-weight:bold;}
-.today-task-body{flex:1;min-width:0;}
-.today-task-name{font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.today-task-name.done{text-decoration:line-through;color:var(--text-dim);}
-.today-task-meta{font-size:9px;color:var(--text-dim);margin-top:2px;display:flex;gap:8px;}
-.today-task-tag{padding:1px 6px;border-radius:3px;font-size:9px;letter-spacing:.05em;}
-.tag-green{background:var(--sage-pale);color:var(--sage);}
-.tag-blue{background:var(--mauve-pale);color:var(--mauve);}
-.tag-orange{background:rgba(201,160,96,.1);color:var(--soon);}
-
-/* CELL LOG */
-.today-cell-card{grid-column:span 1;min-width:0;}
-.today-cell-entries{padding:4px 0;}
-.today-cell-entry{padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;}
-.today-cell-entry:last-child{border-bottom:none;}
-.today-cell-entry:hover{background:var(--bg2);}
-.today-cell-entry-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
-.today-cell-name{font-size:12px;color:var(--text);font-weight:500;}
-.today-cell-passage{font-size:9px;color:var(--text-dim);letter-spacing:.08em;}
-.today-cell-status-row{display:flex;gap:6px;margin-bottom:6px;}
-.today-cell-badge{font-size:9px;padding:2px 7px;border-radius:3px;letter-spacing:.06em;}
-.badge-healthy{background:var(--sage-pale);color:var(--sage);}
-.badge-monitor{background:rgba(201,160,96,.1);color:var(--soon);}
-.badge-concern{background:var(--rose-pale);color:var(--overdue);}
-.today-cell-metrics{display:grid;grid-template-columns:1fr 1fr;gap:4px;}
-.today-cell-metric{display:flex;flex-direction:column;gap:1px;}
-.today-cell-metric-label{font-size:8px;color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;}
-.today-cell-metric-value{font-size:11px;color:var(--text-dim);}
-.today-cell-viability-bar{margin-top:6px;height:3px;background:var(--border2);border-radius:2px;overflow:hidden;}
-.today-cell-viability-fill{height:100%;border-radius:2px;transition:width 1s ease;}
-
-/* PROJECTS */
-.today-projects-card{grid-column:span 1;min-width:0;}
-.today-project-list{padding:6px 0;}
-.today-project-item{display:grid;grid-template-columns:1fr auto;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;gap:12px;}
-.today-project-item:last-child{border-bottom:none;}
-.today-project-item:hover{background:var(--bg2);}
-.today-project-name{font-size:12px;color:var(--text);margin-bottom:4px;}
-.today-project-progress-bar{height:3px;background:var(--border2);border-radius:2px;overflow:hidden;margin-top:4px;}
-.today-project-progress-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--sage),var(--rose));}
-.today-project-meta{font-size:9px;color:var(--text-dim);margin-top:2px;}
-.today-project-pct{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:300;color:var(--text-dim);}
-
-/* FILES */
-.today-files-card{grid-column:span 1;min-width:0;}
-.today-file-list{padding:6px 0;}
-.today-file-item{display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;}
-.today-file-item:last-child{border-bottom:none;}
-.today-file-item:hover{background:var(--bg2);}
-.today-file-icon{width:28px;height:28px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
-.today-file-icon.pdf{background:var(--rose-pale);}
-.today-file-icon.img{background:var(--sage-pale);}
-.today-file-icon.data{background:var(--mauve-pale);}
-.today-file-icon.doc{background:rgba(201,160,96,.1);}
-.today-file-name{font-size:11px;color:var(--text);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.today-file-meta{font-size:9px;color:var(--text-dim);margin-top:2px;}
-.today-file-time{font-size:9px;color:var(--text-dim);white-space:nowrap;}
-
-/* QUICK ADD BUTTON */
-.today-quick-add{position:fixed;bottom:28px;right:28px;width:48px;height:48px;border-radius:50%;background:var(--rose);border:none;color:var(--surface);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(201,139,139,.3);transition:all .2s;z-index:100;}
-.today-quick-add:hover{transform:scale(1.1);box-shadow:0 4px 28px rgba(201,139,139,.5);}
-
-/* SETTINGS PAGE */
-.settings-page{max-width:800px;margin:0 auto;}
-.settings-page-title{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:400;color:var(--text);margin-bottom:32px;}
-.settings-section{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;margin-bottom:24px;}
-.settings-section-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:400;color:var(--rose);margin-bottom:8px;}
-.settings-section-desc{font-size:12px;color:var(--text-dim);margin-bottom:20px;line-height:1.6;}
-.settings-vault-info{margin-bottom:20px;}
-.settings-vault-path{margin-bottom:16px;}
-.settings-label{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-dim);display:block;margin-bottom:8px;}
-.settings-vault-path-display{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text);word-break:break-all;}
-.settings-vault-actions{display:flex;gap:12px;flex-wrap:wrap;}
-.settings-btn{background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Jost',sans-serif;font-size:12px;font-weight:400;padding:8px 16px;cursor:pointer;transition:all .15s;}
-.settings-btn:hover{background:var(--bg2);border-color:var(--rose-soft);color:var(--rose);}
-.settings-btn-primary{background:var(--rose);border-color:var(--rose);color:white;}
-.settings-btn-primary:hover{background:var(--rose-soft);border-color:var(--rose-soft);}
-.settings-vault-status{margin-top:20px;padding-top:20px;border-top:1px solid var(--border);}
-.settings-status-item{display:flex;gap:12px;margin-bottom:8px;align-items:baseline;}
-.settings-status-label{font-size:11px;color:var(--text-dim);min-width:80px;}
-.settings-status-value{font-size:12px;color:var(--text);font-family:'DM Mono',monospace;}
-.settings-status-value.status-ok{color:var(--sage);}
-.settings-status-value.status-warning{color:var(--overdue);}
-.settings-import-export{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:20px;}
-.settings-export,.settings-import{display:flex;flex-direction:column;gap:12px;}
-.settings-subtitle{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:400;color:var(--text);margin-bottom:4px;}
-.settings-subtitle-desc{font-size:11px;color:var(--text-dim);line-height:1.5;}
-.settings-import-controls{display:flex;gap:8px;}
-.settings-info-box{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px;margin-top:12px;}
-.settings-info-box p{font-size:11px;color:var(--text-dim);line-height:1.6;margin:0;}
-.settings-about{padding:16px 0;}
-.settings-about p{margin-bottom:8px;font-size:13px;color:var(--text);}
-.settings-version{font-size:11px;color:var(--text-dim);}
-
-/* 3D Printing page loaded from pages/3d-print.html - styles included there */
-</style>
 </head>
 <body>
 <div class="app">
@@ -1142,7 +64,7 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
   <div id="view-tasks" style="display:none;width:100%;max-width:100%;box-sizing:border-box;">
     <!-- Add Task Button -->
     <div style="margin-bottom:20px;">
-      <button id="toggle-add-task-btn" class="btn-add-task-toggle" onclick="toggleAddTaskForm()" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text-dim);font-family:'Jost',sans-serif;font-size:12px;font-weight:400;letter-spacing:.1em;text-transform:uppercase;padding:8px 16px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px;">
+      <button id="toggle-add-task-btn" class="btn-add-task-toggle" data-action="ui:toggle-add-form" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text-dim);font-family:'Jost',sans-serif;font-size:12px;font-weight:400;letter-spacing:.1em;text-transform:uppercase;padding:8px 16px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px;">
         <span id="toggle-add-task-icon">+</span>
         <span id="toggle-add-task-text">Add Task</span>
       </button>
@@ -1245,31 +167,31 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
         </div>
         
         <div id="files-container" style="margin-top:8px;"></div>
-        <button class="btn-add-file" id="btn-add-file-task" onclick="addFileRow('files-container','t')">＋ Choose new file</button>
+        <button class="btn-add-file" id="btn-add-file-task" data-action="ui:add-file" data-container="files-container" data-prefix="t">＋ Choose new file</button>
         <div id="file-hint-task" style="font-size:9px;color:var(--text-light);margin-top:4px;display:none;">Files in OneDrive will work across all devices</div>
       </div>
-      <button class="btn-submit" onclick="addTask()">Add Task</button>
+      <button class="btn-submit" data-action="task:add">Add Task</button>
     </div>
 
     <div class="toolbar">
       <div class="search-box">
         <input type="text" id="search-input" placeholder="Search tasks and notes..." oninput="handleSearch(this.value)" onkeydown="if(event.key==='Escape')clearSearch()">
-        <button class="search-clear" id="search-clear" onclick="clearSearch()" title="Clear search">✕</button>
+        <button class="search-clear" id="search-clear" data-action="ui:clear-search" title="Clear search">✕</button>
       </div>
       <div class="sort-group">
-        <button class="sort-btn active" onclick="setSort('all',this)">All</button>
-        <button class="sort-btn"        onclick="setSort('day',this)">Today</button>
-        <button class="sort-btn"        onclick="setSort('week',this)">This Week</button>
-        <button class="sort-btn"        onclick="setSort('month',this)">This Month</button>
+        <button class="sort-btn active" data-action="sort:all">All</button>
+        <button class="sort-btn"        data-action="sort:day">Today</button>
+        <button class="sort-btn"        data-action="sort:week">This Week</button>
+        <button class="sort-btn"        data-action="sort:month">This Month</button>
       </div>
       <div class="toolbar-right">
         <select id="board-project-filter" class="board-project-filter" onchange="setBoardProjectFilter(this.value)" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px;cursor:pointer;">
           <option value="all">All projects</option>
         </select>
         <div class="filter-group">
-          <button class="filter-chip active" onclick="setFilter('all',this)">All</button>
-          <button class="filter-chip"        onclick="setFilter('active',this)">Active</button>
-          <button class="filter-chip"        onclick="setFilter('done',this)">Done</button>
+          <button class="filter-chip active" data-action="filter:all">All</button>
+          <button class="filter-chip"        data-action="filter:active">Active</button>
+          <button class="filter-chip"        data-action="filter:done">Done</button>
         </div>
       </div>
     </div>
@@ -1852,21 +774,21 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
       <h2 style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:400;color:var(--rose);margin-bottom:8px;">File Management</h2>
       <p style="font-size:12px;color:var(--text-dim);margin-bottom:20px;">Track file status, history, and relationships</p>
       
-      <div style="background:#c98b8b;border-radius:8px;padding:12px 24px;margin-bottom:20px;display:inline-block;cursor:pointer;" onclick="addFileToRegistry()">
+      <div style="background:#c98b8b;border-radius:8px;padding:12px 24px;margin-bottom:20px;display:inline-block;cursor:pointer;" data-action="file:add">
         <span style="color:white;font-size:14px;font-weight:bold;">+ Add File</span>
       </div>
       
       <div style="display:flex;gap:12px;align-items:center;margin-bottom:20px;flex-wrap:wrap;">
         <div style="display:flex;gap:8px;border-bottom:1px solid var(--border);padding-bottom:8px;flex:1;">
-          <button id="file-tab-all" onclick="setFileView('all', this)" class="file-view-tab" style="background:none;border:none;border-bottom:2px solid var(--rose);padding:8px 16px;font-size:12px;color:var(--rose);cursor:pointer;">All Files</button>
-          <button id="file-tab-current" onclick="setFileView('current', this)" class="file-view-tab" style="background:none;border:none;border-bottom:2px solid transparent;padding:8px 16px;font-size:12px;color:var(--text-dim);cursor:pointer;">Current Only</button>
-          <button id="file-tab-active" onclick="setFileView('active', this)" class="file-view-tab" style="background:none;border:none;border-bottom:2px solid transparent;padding:8px 16px;font-size:12px;color:var(--text-dim);cursor:pointer;">Active</button>
-          <button id="file-tab-stale" onclick="setFileView('stale', this)" class="file-view-tab" style="background:none;border:none;border-bottom:2px solid transparent;padding:8px 16px;font-size:12px;color:var(--text-dim);cursor:pointer;">Stale</button>
-          <button id="file-tab-submissions" onclick="setFileView('submissions', this)" class="file-view-tab" style="background:none;border:none;border-bottom:2px solid transparent;padding:8px 16px;font-size:12px;color:var(--text-dim);cursor:pointer;">Submissions</button>
+          <button id="file-tab-all" data-action="view:all" class="file-view-tab" style="background:none;border:none;border-bottom:2px solid var(--rose);padding:8px 16px;font-size:12px;color:var(--rose);cursor:pointer;">All Files</button>
+          <button id="file-tab-current" data-action="view:current" class="file-view-tab" style="background:none;border:none;border-bottom:2px solid transparent;padding:8px 16px;font-size:12px;color:var(--text-dim);cursor:pointer;">Current Only</button>
+          <button id="file-tab-active" data-action="view:active" class="file-view-tab" style="background:none;border:none;border-bottom:2px solid transparent;padding:8px 16px;font-size:12px;color:var(--text-dim);cursor:pointer;">Active</button>
+          <button id="file-tab-stale" data-action="view:stale" class="file-view-tab" style="background:none;border:none;border-bottom:2px solid transparent;padding:8px 16px;font-size:12px;color:var(--text-dim);cursor:pointer;">Stale</button>
+          <button id="file-tab-submissions" data-action="view:submissions" class="file-view-tab" style="background:none;border:none;border-bottom:2px solid transparent;padding:8px 16px;font-size:12px;color:var(--text-dim);cursor:pointer;">Submissions</button>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           <label style="font-size:11px;color:var(--text-dim);white-space:nowrap;">Filter by Project:</label>
-          <select id="file-project-filter" onchange="setFileProjectFilter(this.value)" style="padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px;cursor:pointer;min-width:180px;">
+          <select id="file-project-filter" data-file-project-filter style="padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px;cursor:pointer;min-width:180px;">
             <option value="all">All Projects</option>
           </select>
         </div>
@@ -2608,66 +1530,14 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 
 <script src="storage.js"></script>
 <script type="module">
-// ═══════════════════════ PAGE MODULES ═══════════════════════
-// Import page modules
-import * as CellLogPage from './src/pages/CellLogPage.js';
-import { renderSettingsPage } from './src/pages/SettingsPage.js';
-import { renderTodayPage } from './src/pages/TodayPage.js';
-import { renderWorkflowPage, switchWorkflowView, toggleWorkflowFilter, filterWorkflowProjects, setWorkflowProjectFilter, toggleWorkflowExpand, buildWorkflowTimeline, toggleTlExpand, renderWorkflowList } from './src/pages/WorkflowPage.js';
-import { switchView as routerSwitchView } from './src/app/router.js';
-import { PAGES } from './src/app/pages.js';
-import { renderRegistry } from './src/app/renderRegistry.js';
-import { renderPlannerPage } from './src/pages/PlannerPage.js';
+// ═══════════════════════ APP INITIALIZATION ═══════════════════════
+// Single entry point - all initialization logic is now in src/app/init.js
+import { initApp } from './src/app/init.js';
 
-// Make renderTodayPage available globally for fallback
-window.renderTodayPage = renderTodayPage;
-// Make renderSettingsPage available globally
-window.renderSettingsPage = renderSettingsPage;
-// Make renderPlannerPage available globally
-window.renderPlannerPage = renderPlannerPage;
-// Make workflow page functions available globally
-window.renderWorkflowPage = renderWorkflowPage;
-window.switchWorkflowView = switchWorkflowView;
-window.toggleWorkflowFilter = toggleWorkflowFilter;
-window.filterWorkflowProjects = filterWorkflowProjects;
-window.setWorkflowProjectFilter = setWorkflowProjectFilter;
-window.toggleWorkflowExpand = toggleWorkflowExpand;
-window.buildWorkflowTimeline = buildWorkflowTimeline;
-window.toggleTlExpand = toggleTlExpand;
-window.renderWorkflowList = renderWorkflowList;
-// Make router switchView available globally (will replace old switchView gradually)
-window.routerSwitchView = routerSwitchView;
-// Make PAGES registry available globally
-window.PAGES = PAGES;
-// Make render registry available globally for unified access
-window.renderRegistry = renderRegistry;
-
-// Import feature modules
-import * as FileManagement from './src/features/fileManagement.js';
-import * as FileOperations from './src/features/fileOperations.js';
-import * as TaskOperations from './src/features/taskOperations.js';
-import * as DeleteHandlers from './src/features/deleteHandlers.js';
-import * as TaskDrawer from './src/features/taskDrawer.js';
-
-// Create context object that pages can use to access global state
-// This function will be called when handlers are invoked, so globals will be available
-function createPageContext() {
-  // Try to get from store first (new system), then fall back to window globals
-  let tasks = [];
-  let projects = [];
-  let settings = {};
-  let fileRegistry = {};
-  let fileHistory = {};
-  
-  if (window.Petal?.store) {
-    const state = window.Petal.store.getState();
-    tasks = state.tasks || [];
-    projects = state.projects || [];
-    settings = state.settings || {};
-    fileRegistry = state.fileRegistry || {};
-    fileHistory = state.fileHistory || {};
-  } else {
-    // Fallback to window globals (backward compatibility)
+// Initialize the app
+initApp().catch(err => {
+  console.error('❌ Failed to initialize app:', err);
+});
     tasks = window.tasks || [];
     projects = window.projects || [];
     settings = window.settings || {};
@@ -3067,351 +1937,7 @@ window.Petal.features.taskDrawer = {
   }
 };
 </script>
-<script type="module">
-// ═══════════════════════ MODULE IMPORTS & STORE SETUP ═══════════════════════
-// Step 2: Wire store and handlers - single namespace for app integration
-
-import { appStore } from './src/state/store.js';
-import { handlers } from './src/ui/handlers.js';
-import { initPersistence, setLoading } from './src/storage/persistence.js';
-import { LANE_STAGES, MATRIX_STAGES, MATRIX_LANES, DEFAULT_BOARD_COLUMNS } from './src/domain/schema.js';
-import { getMatrixStage, isTaskBlocked, getAllTasks } from './src/domain/models.js';
-import { today, parseDate, dueLabel } from './src/utils/dates.js';
-import { esc, fileIcon } from './src/utils/strings.js';
-
-// Set up window.Petal namespace - single integration point
-window.Petal = window.Petal || {};
-window.Petal.store = appStore;
-window.Petal.handlers = handlers;
-
-// Domain functions (wrapped to take state explicitly from store)
-window.Petal.getMatrixStage = (task) => {
-  const state = appStore.getState();
-  const allTasks = getAllTasks(state.tasks, state.projects);
-  return getMatrixStage(task, allTasks);
-};
-
-window.Petal.isTaskBlocked = (task) => {
-  const state = appStore.getState();
-  const allTasks = getAllTasks(state.tasks, state.projects);
-  return isTaskBlocked(task, allTasks);
-};
-
-window.Petal.getAllTasks = () => {
-  const state = appStore.getState();
-  return getAllTasks(state.tasks || [], state.projects || []);
-};
-
-// Also expose getAllTasks function directly for use in render functions
-window.getAllTasks = getAllTasks;
-
-// Utilities
-window.Petal.today = today;
-window.Petal.parseDate = parseDate;
-window.Petal.dueLabel = dueLabel;
-window.Petal.esc = esc;
-window.Petal.fileIcon = fileIcon;
-
-// Constants
-window.Petal.LANE_STAGES = LANE_STAGES;
-window.Petal.MATRIX_STAGES = MATRIX_STAGES;
-window.Petal.MATRIX_LANES = MATRIX_LANES;
-window.Petal.DEFAULT_BOARD_COLUMNS = DEFAULT_BOARD_COLUMNS;
-
-// Expose constants to window for backward compatibility
-window.LANE_STAGES = LANE_STAGES;
-window.MATRIX_STAGES = MATRIX_STAGES;
-window.MATRIX_LANES = MATRIX_LANES;
-window.DEFAULT_BOARD_COLUMNS = DEFAULT_BOARD_COLUMNS;
-
-// Initialize persistence (auto-saves on state changes)
-initPersistence();
-
-// ═══════════════════════ PHASE 1: READ-ONLY GLOBALS ═══════════════════════
-// Replace window globals with read-only getters that read from store
-// This eliminates multiple sources of truth while maintaining backward compatibility
-Object.defineProperty(window, "tasks", {
-  get: () => window.Petal?.store?.getState()?.tasks || [],
-  set: () => { 
-    console.error("❌ ERROR: Cannot assign to window.tasks - use store.setState()");
-    throw new Error("Cannot assign to window.tasks - use store.setState()");
-  },
-  configurable: true
-});
-
-Object.defineProperty(window, "projects", {
-  get: () => window.Petal?.store?.getState()?.projects || [],
-  set: () => { 
-    console.error("❌ ERROR: Cannot assign to window.projects - use store.setState()");
-    throw new Error("Cannot assign to window.projects - use store.setState()");
-  },
-  configurable: true
-});
-
-Object.defineProperty(window, "events", {
-  get: () => window.Petal?.store?.getState()?.events || [],
-  set: () => { 
-    console.error("❌ ERROR: Cannot assign to window.events - use store.setState()");
-    throw new Error("Cannot assign to window.events - use store.setState()");
-  },
-  configurable: true
-});
-
-Object.defineProperty(window, "recurringRules", {
-  get: () => window.Petal?.store?.getState()?.recurringRules || [],
-  set: () => { 
-    console.error("❌ ERROR: Cannot assign to window.recurringRules - use store.setState()");
-    throw new Error("Cannot assign to window.recurringRules - use store.setState()");
-  },
-  configurable: true
-});
-
-console.log('✓ Phase 1: Window globals are now read-only getters from store');
-
-// ═══════════════════════ PHASE 2: DEBUG ASSERTIONS ═══════════════════════
-// Add assertions to catch future mutations (development only)
-if (typeof window !== 'undefined' && window.Petal?.store) {
-  // Wrap store.setState to add mutation detection
-  const originalSetState = window.Petal.store.setState.bind(window.Petal.store);
-  window.Petal.store.setState = function(partial) {
-    // Check if partial contains arrays that might be mutated
-    const state = this.getState();
-    Object.keys(partial).forEach(key => {
-      if (['tasks', 'projects', 'events', 'recurringRules'].includes(key)) {
-        const newValue = partial[key];
-        const oldValue = state[key];
-        if (Array.isArray(newValue) && Array.isArray(oldValue)) {
-          // Check if arrays are the same reference (direct mutation)
-          if (newValue === oldValue) {
-            console.error(`❌ PHASE 2 VIOLATION: Direct mutation detected for ${key}. Use immutable updates!`);
-            console.trace();
-          }
-        }
-      }
-    });
-    return originalSetState(partial);
-  };
-  
-  // Protect local variables from direct mutation (development only)
-  // Phase 3 Fix: process.env doesn't exist in browser, use window check instead
-  if (typeof process === 'undefined' || (process.env && process.env.NODE_ENV !== 'production')) {
-    const protectArray = (arr, name) => {
-      return new Proxy(arr, {
-        set(target, prop, value) {
-          if (typeof prop === 'string' && ['push', 'splice', 'unshift', 'pop', 'shift'].includes(prop)) {
-            console.error(`❌ PHASE 2 VIOLATION: Direct mutation of ${name}.${prop}() detected. Use store.setState() instead!`);
-            console.trace();
-          }
-          return Reflect.set(target, prop, value);
-        }
-      });
-    };
-    // Note: This would need to be applied where variables are declared
-    // For now, we rely on the getter protection and store.setState wrapping
-  }
-  
-  console.log('✓ Phase 2: Debug assertions enabled');
-}
-
-// Step 3: Import UI rendering modules
-import * as uiModules from './src/ui/index.js';
-import * as uiHelpers from './src/ui/helpers.js';
-import * as projectHelpers from './src/utils/projectHelpers.js';
-import * as migrations from './src/utils/migrations.js';
-import * as HabitsFeature from './src/features/habits.js';
-import * as RoutinesFeature from './src/features/routines.js';
-import { renderPlannerHabits } from './src/ui/renderPlannerHabits.js';
-import { renderPlannerRoutines } from './src/ui/renderPlannerRoutines.js';
-
-// Set up window.Petal.ui namespace
-window.Petal.ui = window.Petal.ui || {};
-Object.assign(window.Petal.ui, uiModules);
-Object.assign(window.Petal.ui, uiHelpers);
-window.Petal.ui.renderPlannerHabits = renderPlannerHabits;
-window.Petal.ui.renderPlannerRoutines = renderPlannerRoutines;
-
-// Set up window.Petal.features namespace for habits and routines
-window.Petal.features = window.Petal.features || {};
-window.Petal.features.habits = HabitsFeature;
-window.Petal.features.routines = RoutinesFeature;
-
-// Set up window.Petal.utils namespace
-window.Petal.utils = window.Petal.utils || {};
-Object.assign(window.Petal.utils, projectHelpers);
-Object.assign(window.Petal.utils, migrations);
-
-// Wire render function to store changes (will be set up after render is defined)
-// This will be done in the initState function after render is available
-console.log('✓ Store, handlers, and UI modules initialized');
-
-// Set up event delegation for edit buttons in task-container and project views
-function setupTaskContainerEventDelegation() {
-  // Tasks view container
-  const tc = document.getElementById('task-container');
-  if (tc && !tc.__editDelegationBound) {
-    tc.__editDelegationBound = true;
-    tc.addEventListener('click', (e) => {
-      // Handle edit button
-      const editBtn = e.target.closest('.btn-edit');
-      if (editBtn) {
-        e.preventDefault();
-        e.stopPropagation();
-        const taskId = editBtn.dataset.taskId || editBtn.getAttribute('data-task-id');
-        if (!taskId) {
-          console.warn('Edit button missing data-task-id', editBtn);
-          return;
-        }
-        console.log('🖱️ Edit button clicked via delegation (tasks view)', { taskId, hasTaskOps: !!window.Petal?.features?.taskOperations, hasEditTask: !!window.Petal?.features?.taskOperations?.editTask });
-        if (window.Petal?.features?.taskOperations?.editTask) {
-          try {
-            console.log('🔍 Calling editTask with taskId:', taskId, 'type:', typeof taskId);
-            const result = window.Petal.features.taskOperations.editTask(taskId);
-            console.log('🔍 editTask returned:', result);
-          } catch (error) {
-            console.error('❌ Error calling editTask:', error);
-          }
-        } else {
-          console.error('window.Petal.features.taskOperations.editTask not available');
-        }
-        return;
-      }
-      
-      // Handle delete button
-      const deleteBtn = e.target.closest('.btn-delete');
-      if (deleteBtn) {
-        // Guard: prevent double handling if renderTasks.js already processed this
-        if (e.__petalDeleteHandled) {
-          console.log('🛡️ Delete event already handled by renderTasks.js, skipping');
-          return;
-        }
-        e.__petalDeleteHandled = true;
-        e.preventDefault();
-        e.stopPropagation();
-        const taskId = deleteBtn.dataset.taskId || deleteBtn.getAttribute('data-task-id') || deleteBtn.getAttribute('data-id');
-        if (!taskId) {
-          console.warn('Delete button missing task ID', deleteBtn);
-          return;
-        }
-        console.log('🖱️ Delete button clicked via delegation (tasks view)', { taskId });
-        // Use taskOperations wrapper directly (builds context from store)
-        const isSubtask = deleteBtn.getAttribute('data-is-subtask') === 'true';
-        // Only use projectId from attribute, never derive from taskId
-        const projectIdAttr = deleteBtn.getAttribute('data-project-id');
-        const projectId = projectIdAttr && projectIdAttr !== '' && projectIdAttr !== 'null' ? projectIdAttr : null;
-        const parentTaskId = deleteBtn.getAttribute('data-parent-task-id') || null;
-        // Keep taskId as string - never truncate
-        const taskIdStr = String(taskId);
-        if (window.Petal?.features?.taskOperations?.deleteTask) {
-          window.Petal.features.taskOperations.deleteTask(taskIdStr, isSubtask, projectId, parentTaskId);
-        } else if (window.Petal?.features?.deleteHandlers?.confirmDeleteTask) {
-          const store = window.Petal?.store;
-          const state = store?.getState?.() || {};
-          const ctx = {
-            store,
-            state,
-            tasks: Array.isArray(state.tasks) ? state.tasks : [],
-            projects: Array.isArray(state.projects) ? state.projects : [],
-            save: window.Petal?.handlers?.save || window.save,
-            render: window.Petal?.handlers?.render || window.render,
-          };
-          window.Petal.features.deleteHandlers.confirmDeleteTask(ctx, taskIdStr, isSubtask, projectId, parentTaskId);
-        }
-        return;
-      }
-    });
-    console.log('✅ Task container event delegation set up');
-  }
-  
-  // Project views - use document-level delegation to catch all project task buttons
-  if (!document.__projectEditDelegationBound) {
-    document.__projectEditDelegationBound = true;
-    document.addEventListener('click', (e) => {
-      // Check for buttons with data-action="edit-task" (used in project views)
-      const editBtn = e.target.closest('[data-action="edit-task"]');
-      if (editBtn) {
-        // Don't handle if it's in task-container (already handled above)
-        if (editBtn.closest('#task-container')) return;
-        
-        e.preventDefault();
-        e.stopPropagation();
-        const taskId = editBtn.dataset.taskId || editBtn.getAttribute('data-task-id');
-        if (!taskId) {
-          console.warn('Edit button missing data-task-id', editBtn);
-          return;
-        }
-        console.log('🖱️ Edit button clicked via delegation (project view)', { taskId, hasTaskOps: !!window.Petal?.features?.taskOperations, hasEditTask: !!window.Petal?.features?.taskOperations?.editTask });
-        if (window.Petal?.features?.taskOperations?.editTask) {
-          try {
-            console.log('🔍 Calling editTask with taskId:', taskId, 'type:', typeof taskId);
-            const result = window.Petal.features.taskOperations.editTask(taskId);
-            console.log('🔍 editTask returned:', result);
-          } catch (error) {
-            console.error('❌ Error calling editTask:', error);
-          }
-        } else {
-          console.error('window.Petal.features.taskOperations.editTask not available');
-        }
-        return;
-      }
-      
-      // Check for buttons with data-action="delete" or "delete-task" (used in project views and subtasks)
-      const deleteBtn = e.target.closest('[data-action="delete"], [data-action="delete-task"]');
-      if (deleteBtn) {
-        // Don't handle if it's in task-container (already handled above)
-        if (deleteBtn.closest('#task-container')) return;
-        
-        // Guard: prevent double handling if renderProjects.js already processed this
-        if (e.__petalDeleteHandled) {
-          console.log('🛡️ Delete event already handled by renderProjects.js, skipping');
-          return;
-        }
-        e.__petalDeleteHandled = true;
-        
-        e.preventDefault();
-        e.stopPropagation();
-        const taskId = deleteBtn.dataset.taskId || deleteBtn.getAttribute('data-task-id') || deleteBtn.getAttribute('data-id');
-        if (!taskId) {
-          console.warn('Delete button missing task ID', deleteBtn);
-          return;
-        }
-        console.log('🖱️ Delete button clicked via delegation (project view)', { taskId });
-        // Use taskOperations wrapper directly (builds context from store)
-        const isSubtask = deleteBtn.getAttribute('data-is-subtask') === 'true';
-        // Only use projectId from attribute, never derive from taskId
-        const projectIdAttr = deleteBtn.getAttribute('data-project-id');
-        const projectId = projectIdAttr && projectIdAttr !== '' && projectIdAttr !== 'null' ? projectIdAttr : null;
-        const parentTaskId = deleteBtn.getAttribute('data-parent-task-id') || null;
-        // Keep taskId as string - never truncate
-        const taskIdStr = String(taskId);
-        if (window.Petal?.features?.taskOperations?.deleteTask) {
-          window.Petal.features.taskOperations.deleteTask(taskIdStr, isSubtask, projectId, parentTaskId);
-        } else if (window.Petal?.features?.deleteHandlers?.confirmDeleteTask) {
-          const store = window.Petal?.store;
-          const state = store?.getState?.() || {};
-          const ctx = {
-            store,
-            state,
-            tasks: Array.isArray(state.tasks) ? state.tasks : [],
-            projects: Array.isArray(state.projects) ? state.projects : [],
-            save: window.Petal?.handlers?.save || window.save,
-            render: window.Petal?.handlers?.render || window.render,
-          };
-          window.Petal.features.deleteHandlers.confirmDeleteTask(ctx, taskIdStr, isSubtask, projectId, parentTaskId);
-        }
-        return;
-      }
-    }, true); // Use capture phase to catch before other handlers
-    console.log('✅ Project views event delegation set up');
-  }
-}
-
-// Set up delegation when DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', setupTaskContainerEventDelegation);
-} else {
-  setupTaskContainerEventDelegation();
-}
-</script>
+<!-- Store setup and event delegation now handled by initApp() in src/app/init.js -->
 <script>
 // ═══════════════════════ STATE ═══════════════════════
 let tasks = [];
@@ -4912,642 +3438,21 @@ async function verifySaveLocation() {
 }
 
 // ═══════════════════════ EXPORT/IMPORT ═══════════════════════
-function exportData() {
-  const data = storage.exportState({
-    tasks,
-    projects,
-    openProjects: [...openProjects],
-    events,
-    recurringRules,
-    settings
-  });
-  const blob = new Blob([data], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `petal-tasks-${new Date().toISOString().split('T')[0]}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
+// Functions moved to src/features/exportImport.js
+window.exportData = ExportImport.exportData;
+window.importData = ExportImport.importData;
 
-async function importData(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  
-  const reader = new FileReader();
-  reader.onload = async (e) => {
-    try {
-      const shouldMerge = confirm('Merge with existing data? (Cancel to replace)');
-      const newState = await window.storage.importState(e.target.result, shouldMerge);
-      
-      // Phase 3 Fix: Update store FIRST, then refresh dropdowns
-      if (window.Petal?.store) {
-        window.Petal.store.setState({
-          tasks: newState.tasks || [],
-          projects: newState.projects || [],
-          openProjects: new Set(newState.openProjects || []),
-          settings: newState.settings || {}
-        });
-        // Sync local vars for backward compatibility
-        tasks = newState.tasks;
-        projects = newState.projects;
-        openProjects = new Set(newState.openProjects || []);
-        settings = newState.settings || {};
-      } else {
-        // Fallback: update local vars directly
-        tasks = newState.tasks;
-        projects = newState.projects;
-        openProjects = new Set(newState.openProjects || []);
-        settings = newState.settings || {};
-      }
-      
-      migrateTasksForKanban();
-      
-      // Refresh dropdowns AFTER store is updated
-      refreshProjectSelects();
-      
-      await save();
-      render();
-      alert('Data imported successfully!');
-    } catch (err) {
-      alert('Import failed: ' + err.message);
-    }
-  };
-  reader.readAsText(file);
-  event.target.value = ''; // Reset input
-}
+// ═══════════════════════ VIEW SWITCH (REMOVED) ═══════════════════════
+// The old switchView() function has been removed.
+// All view switching now goes through window.switchView which points to router.switchView
+// This was set up above in the imports section.
+// 
+// If you see this comment, it means the old function definition was successfully removed.
 
-// ═══════════════════════ VIEW SWITCH ═══════════════════════
-function switchView(v) {
-  console.log('🔍 DEBUG: switchView called with:', v);
-  
-  // Scroll to top when switching views
-  if (typeof forceScrollToTop === 'function') {
-    forceScrollToTop();
-  } else {
-    window.scrollTo(0, 0);
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-    if (document.scrollingElement) {
-      document.scrollingElement.scrollTop = 0;
-    }
-  }
-  
-  // Also reset scroll position of all view containers
-  document.querySelectorAll('[id^="view-"]').forEach(view => {
-    if (view) {
-      view.scrollTop = 0;
-      view.style.scrollTop = '0';
-    }
-  });
-  
-  // Force the active view to start at top - run multiple times to ensure it sticks
-  const resetActiveView = () => {
-    const activeView = document.getElementById('view-' + v);
-    if (activeView) {
-      // CRITICAL: Force scroll to top of the view container itself
-      activeView.scrollTop = 0;
-      activeView.scrollTo(0, 0);
-      activeView.style.scrollTop = '0';
-      
-      // Force positioning to start at top of grid cell
-      activeView.style.transform = 'translateY(0)';
-      activeView.style.marginTop = '0';
-      activeView.style.top = '0';
-      activeView.style.verticalAlign = 'top';
-      
-      // Override any inline styles that might interfere
-      activeView.style.position = 'relative';
-      activeView.style.alignSelf = 'start';
-      activeView.style.justifySelf = 'start';
-      
-      // Ensure the view container starts at the top of its grid cell
-      activeView.style.gridRowStart = '1';
-      activeView.style.gridRowEnd = '1';
-      
-      // Ensure padding-top is set correctly
-      if (v !== 'today' && v !== 'workflow') {
-        activeView.style.paddingTop = '52px';
-      }
-      
-      // Force height and overflow - container should be exactly viewport height
-      activeView.style.height = '100vh';
-      activeView.style.maxHeight = '100vh';
-      activeView.style.overflowY = 'auto';
-      activeView.style.overflowX = 'hidden';
-      
-      // Ensure content inside starts at top
-      const firstChild = activeView.firstElementChild;
-      if (firstChild) {
-        firstChild.style.marginTop = '0';
-        firstChild.style.paddingTop = '0';
-      }
-    }
-  };
-  
-  resetActiveView();
-  setTimeout(resetActiveView, 0);
-  setTimeout(resetActiveView, 10);
-  setTimeout(resetActiveView, 50);
-  setTimeout(resetActiveView, 100);
-  
-  // If switching to workflow view, render canvas
-  if (v === 'workflow') {
-    setTimeout(async () => {
-      const workflowViewEl = document.getElementById('view-workflow');
-      if (workflowViewEl && window.renderWorkflowCanvas && window.Petal?.store) {
-        const state = window.Petal.store.getState();
-        const handlers = window.Petal.handlers || {};
-        await renderWorkflowCanvas(workflowViewEl, state, handlers);
-      } else if (workflowViewEl) {
-        await renderWorkflow();
-      }
-    }, 100);
-  }
-  // Always use window.currentView to avoid temporal dead zone issues
-  window.currentView = v;
-  
-  // Update local variable after it's initialized (if it exists)
-  // window.currentView is the source of truth, so this is just for backward compatibility
-  if (typeof currentView !== 'undefined') {
-    currentView = v;
-  }
-  
-  // Update store's currentView if available
-  if (window.Petal?.store) {
-    window.Petal.store.setState({ currentView: v });
-  }
-  
-  const todayViewEl = document.getElementById('view-today');
-  if (todayViewEl) {
-    todayViewEl.style.display = v === 'today' ? 'block' : 'none';
-    // Make app full-width for Today view (like workflow)
-    const appEl = document.querySelector('.app');
-    if (appEl) {
-      if (v === 'today') {
-        appEl.classList.add('today-active');
-      } else {
-        appEl.classList.remove('today-active');
-      }
-    }
-  }
-  const tasksViewEl = document.getElementById('view-tasks');
-  if (tasksViewEl) {
-    tasksViewEl.style.display = v==='tasks' ? '' : 'none';
-    if (v === 'tasks') {
-      // Reset scroll immediately and after delays (like working views)
-      tasksViewEl.scrollTop = 0;
-      tasksViewEl.scrollTo(0, 0);
-      setTimeout(() => {
-        tasksViewEl.scrollTop = 0;
-        tasksViewEl.scrollTo(0, 0);
-      }, 0);
-      setTimeout(() => {
-        tasksViewEl.scrollTop = 0;
-        tasksViewEl.scrollTo(0, 0);
-      }, 100);
-    }
-  }
-  const workflowViewEl = document.getElementById('view-workflow');
-  if (workflowViewEl) {
-    workflowViewEl.style.display = v==='workflow' ? 'flex' : 'none';
-    // If workflow view is being shown, render the list view by default
-    if (v === 'workflow') {
-      setTimeout(async () => {
-        await renderWorkflow();
-      }, 100);
-    }
-  }
-  const filesViewEl = document.getElementById('view-files');
-  if (filesViewEl) filesViewEl.style.display = v==='files' ? '' : 'none';
-  // Load 3D printing page from separate file
-  if (v === '3d-print') {
-    let print3dViewEl = document.getElementById('view-3d-print');
-    if (!print3dViewEl) {
-      // Create container if it doesn't exist
-      print3dViewEl = document.createElement('div');
-      print3dViewEl.id = 'view-3d-print';
-      print3dViewEl.style.display = 'none';
-      document.querySelector('.app').appendChild(print3dViewEl);
-    }
-    
-    // Show the view container immediately (before loading content)
-    print3dViewEl.style.display = 'block';
-    print3dViewEl.style.visibility = 'visible';
-    print3dViewEl.style.opacity = '1';
-    print3dViewEl.classList.remove('view-projects-hidden');
-    print3dViewEl.style.gridColumn = '2';
-    print3dViewEl.style.gridRow = '1';
-    print3dViewEl.style.position = 'relative';
-    print3dViewEl.style.top = '0';
-    print3dViewEl.style.paddingTop = '52px';
-    print3dViewEl.scrollTop = 0;
-    
-    // Layout invariant check before 3d-print load
-    (function layoutInvariant(tag) {
-      const app = document.querySelector('.app');
-      const sidebar = document.querySelector('.global-sidebar');
-      const computedApp = app ? window.getComputedStyle(app) : null;
-      console.log('🧱 layout invariant', tag, {
-        hasApp: !!app,
-        hasSidebar: !!sidebar,
-        appParent: app?.parentElement?.tagName,
-        sidebarParent: sidebar?.parentElement?.tagName,
-        appDisplay: computedApp?.display,
-        appGridTemplate: computedApp?.gridTemplateColumns,
-        sidebarDisplay: sidebar ? window.getComputedStyle(sidebar).display : null
-      });
-    })('before-3d-print-load');
-    
-    // Load the page content if not already loaded
-    if (!print3dViewEl.dataset.loaded) {
-      fetch('pages/3d-print.html')
-        .then(response => {
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          return response.text();
-        })
-        .then(html => {
-          // Extract and inject styles - SCOPE ALL SELECTORS to #view-3d-print
-          const styleMatch = html.match(/<style>([\s\S]*?)<\/style>/);
-          if (styleMatch && !document.getElementById('print3d-styles')) {
-            const styleEl = document.createElement('style');
-            styleEl.id = 'print3d-styles';
-            // Scope all selectors to #view-3d-print to prevent CSS leakage
-            let scopedStyles = styleMatch[1];
-            // Don't scope if already scoped or if it's a keyframe/animation
-            scopedStyles = scopedStyles.replace(/([^{}]+)\{/g, (match, selector) => {
-              // Skip keyframes, media queries, and already scoped selectors
-              if (selector.trim().startsWith('@') || selector.includes('#view-3d-print') || selector.trim().startsWith('@keyframes')) {
-                return match;
-              }
-              // Scope the selector
-              return `#view-3d-print ${selector.trim()}{`;
-            });
-            styleEl.textContent = scopedStyles;
-            document.head.appendChild(styleEl);
-          }
-          
-          // Extract HTML content (everything except style/script tags)
-          const htmlContent = html.replace(/<style>[\s\S]*?<\/style>/g, '').replace(/<script>[\s\S]*?<\/script>/g, '');
-          print3dViewEl.innerHTML = htmlContent;
-          print3dViewEl.dataset.loaded = 'true';
-          
-          // Execute scripts only if not already executed
-          const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>/);
-          if (scriptMatch) {
-            // Check if script has already been executed by checking for init3DPrints
-            if (typeof window.init3DPrints === 'undefined') {
-              // Script not executed yet, execute it
-              const scriptEl = document.createElement('script');
-              scriptEl.textContent = scriptMatch[1];
-              document.body.appendChild(scriptEl);
-              // Inline scripts execute immediately, so check right after
-              if (typeof window.init3DPrints === 'function') {
-                window.init3DPrints();
-              }
-            } else {
-              // Script already executed, just re-render
-              if (typeof window.render3DPrints === 'function') {
-                window.render3DPrints();
-              }
-            }
-          }
-          
-          // Ensure view is still visible after loading
-          print3dViewEl.style.display = 'block';
-          print3dViewEl.style.visibility = 'visible';
-          print3dViewEl.style.opacity = '1';
-          print3dViewEl.classList.remove('view-projects-hidden');
-          print3dViewEl.style.gridColumn = '2';
-          print3dViewEl.style.gridRow = '1';
-          print3dViewEl.style.position = 'relative';
-          print3dViewEl.style.top = '0';
-          print3dViewEl.style.paddingTop = '52px';
-          print3dViewEl.scrollTop = 0;
-          
-          // Initialize IMMEDIATELY (non-blocking)
-          if (typeof window.render3DPrints === 'function') {
-            window.render3DPrints();
-          }
-          
-          // Layout invariant check after 3d-print load
-          setTimeout(() => {
-            (function layoutInvariant(tag) {
-              const app = document.querySelector('.app');
-              const sidebar = document.querySelector('.global-sidebar');
-              const computedApp = app ? window.getComputedStyle(app) : null;
-              console.log('🧱 layout invariant', tag, {
-                hasApp: !!app,
-                hasSidebar: !!sidebar,
-                appParent: app?.parentElement?.tagName,
-                sidebarParent: sidebar?.parentElement?.tagName,
-                appDisplay: computedApp?.display,
-                appGridTemplate: computedApp?.gridTemplateColumns,
-                sidebarDisplay: sidebar ? window.getComputedStyle(sidebar).display : null
-              });
-            })('after-3d-print-load');
-          }, 100);
-        })
-        .catch(err => {
-          console.error('Failed to load 3D printing page:', err);
-          print3dViewEl.innerHTML = '<div style="padding:52px 36px;"><h2>Error loading 3D Printing page</h2><p>Please check that pages/3d-print.html exists.</p><p>Error: ' + err.message + '</p></div>';
-          // Still show the view even if there's an error
-          print3dViewEl.style.display = 'block';
-          print3dViewEl.style.visibility = 'visible';
-          print3dViewEl.style.opacity = '1';
-          print3dViewEl.classList.remove('view-projects-hidden');
-        });
-    } else {
-      // Already loaded, just show it and re-render
-      print3dViewEl.style.display = 'block';
-      print3dViewEl.style.visibility = 'visible';
-      print3dViewEl.style.opacity = '1';
-      print3dViewEl.classList.remove('view-projects-hidden');
-      print3dViewEl.style.gridColumn = '2';
-      print3dViewEl.style.gridRow = '1';
-      print3dViewEl.style.position = 'relative';
-      print3dViewEl.style.top = '0';
-      print3dViewEl.style.paddingTop = '52px';
-      print3dViewEl.scrollTop = 0;
-      // Render IMMEDIATELY (non-blocking)
-      if (typeof window.render3DPrints === 'function') {
-        window.render3DPrints();
-      }
-    }
-  } else {
-    const print3dViewEl = document.getElementById('view-3d-print');
-    if (print3dViewEl) {
-      print3dViewEl.style.display = 'none';
-    }
-  }
-  const projectsViewEl = document.getElementById('view-projects');
-  if (projectsViewEl) {
-    // Always explicitly hide projects view unless it's the active view
-    if (v === 'projects') {
-      // Remove hidden class and show normally
-      projectsViewEl.classList.remove('view-projects-hidden');
-      projectsViewEl.style.display = 'block';
-      projectsViewEl.style.visibility = 'visible';
-      projectsViewEl.style.opacity = '1';
-      // Reset scroll immediately and after delays (like working views)
-      projectsViewEl.scrollTop = 0;
-      projectsViewEl.scrollTo(0, 0);
-      setTimeout(() => {
-        projectsViewEl.scrollTop = 0;
-        projectsViewEl.scrollTo(0, 0);
-      }, 0);
-      setTimeout(() => {
-        projectsViewEl.scrollTop = 0;
-        projectsViewEl.scrollTo(0, 0);
-      }, 100);
-      console.log('🔍 DEBUG: view-projects display set to: visible');
-      // Show project creation form if no project is selected
-      const createFormSection = document.getElementById('project-selector-create-section');
-      const projectListView = document.getElementById('project-list-view');
-      const workflowMatrixView = document.getElementById('workflow-matrix-view');
-      
-      if (!selectedProjectId) {
-        // No project selected - show list view
-        if (createFormSection) createFormSection.style.display = '';
-        if (projectListView) projectListView.style.display = '';
-        if (workflowMatrixView) workflowMatrixView.style.display = 'none';
-      } else {
-        // Project selected - show matrix view
-        if (createFormSection) createFormSection.style.display = 'none';
-        if (projectListView) projectListView.style.display = 'none';
-        if (workflowMatrixView) workflowMatrixView.style.display = '';
-      }
-      
-      // Populate project selector dropdown
-      const projectSelector = document.getElementById('matrix-project-select');
-      if (projectSelector && window.Petal?.store) {
-        const state = window.Petal.store.getState();
-        const projectsFromStore = state.projects || [];
-        projectSelector.innerHTML = '<option value="">-- Select a project --</option>';
-        projectsFromStore.filter(p => !p.done).forEach(p => {
-          const opt = document.createElement('option');
-          opt.value = p.id;
-          opt.textContent = p.name;
-          if (p.id === selectedProjectId) opt.selected = true;
-          projectSelector.appendChild(opt);
-        });
-      }
-      
-      // Render projects IMMEDIATELY (non-blocking)
-      // Don't wait for full render() - just render the page content
-      if (window.Petal?.store) {
-        const state = window.Petal.store.getState();
-        tasks = state.tasks || [];
-        projects = state.projects || [];
-        openProjects = state.openProjects instanceof Set ? state.openProjects : new Set(state.openProjects || []);
-        renderProjects(); // Render immediately
-      }
-      
-      // Then call full render() in background for sidebar, etc.
-      // BUT: If router was used, don't call render() again (it will override)
-      if (!window.__routerJustSwitched) {
-        setTimeout(() => {
-          render();
-        }, 0);
-      } else {
-        // Router just switched, clear the flag and let router handle rendering
-        window.__routerJustSwitched = false;
-      }
-    } else {
-      // Explicitly hide projects view for all other views using class
-      // BUT: Only if router didn't just switch to projects
-      if (!window.__routerJustSwitched || v !== 'projects') {
-        projectsViewEl.classList.add('view-projects-hidden');
-        projectsViewEl.style.display = 'none';
-        console.log('🔍 DEBUG: view-projects display set to: none (view:', v, ')');
-      }
-    }
-  }
-  const plannerViewEl = document.getElementById('view-planner');
-  if (plannerViewEl) {
-    if (v === 'planner') {
-      plannerViewEl.style.display = 'flex';
-      plannerViewEl.style.visibility = 'visible';
-      plannerViewEl.style.opacity = '1';
-      plannerViewEl.classList.remove('view-projects-hidden');
-      // Reset scroll immediately and after delays (like working views)
-      plannerViewEl.scrollTop = 0;
-      plannerViewEl.scrollTo(0, 0);
-      setTimeout(() => {
-        plannerViewEl.scrollTop = 0;
-        plannerViewEl.scrollTo(0, 0);
-      }, 0);
-      setTimeout(() => {
-        plannerViewEl.scrollTop = 0;
-        plannerViewEl.scrollTo(0, 0);
-      }, 100);
-      // Initialize planner if not already done
-      if (!plannerViewDate || plannerViewDate.toString() === 'Invalid Date') {
-        plannerViewDate = new Date();
-        plannerWeekOffset = 0;
-        plannerCalYear = new Date().getFullYear();
-        plannerCalMonth = new Date().getMonth();
-      }
-      // Ensure day view is active by default
-      if (!currentPlannerView || currentPlannerView === 'weekly') {
-        currentPlannerView = 'daily';
-      }
-      // Initialize the view switcher to match - explicitly set to day view
-      const dayBtn = document.getElementById('planner-vbtn-day');
-      const weekBtn = document.getElementById('planner-vbtn-week');
-      if (dayBtn && weekBtn) {
-        dayBtn.classList.add('active');
-        weekBtn.classList.remove('active');
-      }
-      const dayView = document.getElementById('planner-view-day');
-      const weekView = document.getElementById('planner-view-week');
-      if (dayView) dayView.style.display = 'flex';
-      if (weekView) weekView.style.display = 'none';
-      
-      updatePlannerPeriodLabel();
-      // Render planner IMMEDIATELY (non-blocking)
-      renderPlanner();
-      
-      // Build sidebar and calendar in background (non-blocking)
-      setTimeout(() => {
-        buildPlannerSidebar();
-        buildPlannerCalendar();
-      }, 0);
-      
-      // Ensure habits/routines render (in case modules loaded after initial render)
-      setTimeout(() => {
-        const habitsContainer = document.getElementById('planner-habits-card');
-        const routinesContainer = document.getElementById('planner-routines-card');
-        console.log('Planner view opened - checking containers:', {
-          habitsContainer: !!habitsContainer,
-          routinesContainer: !!routinesContainer,
-          hasRenderHabits: !!window.Petal?.ui?.renderPlannerHabits,
-          hasRenderRoutines: !!window.Petal?.ui?.renderPlannerRoutines,
-          hasStore: !!window.Petal?.store
-        });
-        
-        if (window.Petal?.ui?.renderPlannerHabits && window.Petal?.store) {
-          const state = window.Petal.store.getState();
-          const viewDate = plannerViewDate || new Date();
-          window.Petal.ui.renderPlannerHabits(null, state, viewDate);
-        }
-        if (window.Petal?.ui?.renderPlannerRoutines && window.Petal?.store) {
-          const state = window.Petal.store.getState();
-          const viewDate = plannerViewDate || new Date();
-          window.Petal.ui.renderPlannerRoutines(null, state, viewDate);
-        }
-      }, 100);
-    } else {
-      plannerViewEl.style.display = 'none';
-    }
-  }
-  const cellLogViewEl = document.getElementById('view-cell-log');
-  if (cellLogViewEl) {
-    if (v === 'cell-log') {
-      cellLogViewEl.style.display = 'block';
-      cellLogViewEl.style.visibility = 'visible';
-      cellLogViewEl.style.opacity = '1';
-      cellLogViewEl.classList.remove('view-projects-hidden');
-      // Reset scroll position immediately and after delays (like working views)
-      cellLogViewEl.scrollTop = 0;
-      cellLogViewEl.scrollTo(0, 0);
-      cellLogViewEl.style.scrollTop = '0';
-      setTimeout(() => {
-        cellLogViewEl.scrollTop = 0;
-        cellLogViewEl.scrollTo(0, 0);
-      }, 0);
-      setTimeout(() => {
-        cellLogViewEl.scrollTop = 0;
-        cellLogViewEl.scrollTo(0, 0);
-      }, 100);
-      
-      // Render cell log IMMEDIATELY (non-blocking)
-      if (window.renderCellLogPage) {
-        window.renderCellLogPage().catch(err => console.error('Cell log render error:', err));
-      }
-    } else {
-      cellLogViewEl.style.display = 'none';
-    }
-  }
-  const settingsViewEl = document.getElementById('view-settings');
-  if (settingsViewEl) {
-    if (v === 'settings') {
-      settingsViewEl.style.display = 'block';
-      settingsViewEl.style.visibility = 'visible';
-      settingsViewEl.style.opacity = '1';
-      // Remove any conflicting classes
-      settingsViewEl.classList.remove('view-projects-hidden');
-      // Force scroll reset for settings view
-      settingsViewEl.scrollTop = 0;
-      settingsViewEl.style.scrollTop = '0';
-      settingsViewEl.style.transform = 'translateY(0)';
-      settingsViewEl.style.marginTop = '0';
-      // Ensure view is actually visible
-      setTimeout(() => {
-        const computed = window.getComputedStyle(settingsViewEl);
-        if (computed.display === 'none') {
-          console.warn('🔍 DEBUG: Settings view still hidden, forcing display');
-          settingsViewEl.style.display = 'block';
-        }
-      }, 0);
-      console.log('🔍 DEBUG: switchView - showing settings view', {
-        display: settingsViewEl.style.display,
-        computedDisplay: window.getComputedStyle(settingsViewEl).display,
-        offsetHeight: settingsViewEl.offsetHeight,
-        innerHTML: settingsViewEl.innerHTML.length
-      });
-      
-      // Render settings IMMEDIATELY (non-blocking)
-      if (window.renderSettingsPage && window.Petal?.store) {
-        const state = window.Petal.store.getState();
-        const containerEl = document.getElementById('view-settings');
-        if (containerEl) {
-          window.renderSettingsPage(containerEl, state, {
-            ...window.Petal.handlers,
-            save: async () => {
-              if (window.save) await window.save();
-            },
-            render: async () => {
-              await render();
-            }
-          }).catch(err => console.error('Settings render error:', err));
-        }
-      }
-    } else {
-      settingsViewEl.style.display = 'none';
-    }
-  } else {
-    console.error('🔍 DEBUG: switchView - view-settings element not found!');
-  }
-  // Tabs removed - navigation now handled by sidebar
-  
-  // Toggle workflow-active class on app container
-  const appEl = document.querySelector('.app');
-  if (appEl) {
-    if (v === 'workflow') {
-      appEl.classList.add('workflow-active');
-    } else {
-      appEl.classList.remove('workflow-active');
-    }
-  }
-  
-  render();
-}
-
-// Expose switchView globally so sidebar can call it
-// Do this immediately to prevent "switchView not available" errors
-window.switchView = switchView;
-
-// Also create a safe wrapper that handles errors gracefully
+// Safe wrapper that handles errors gracefully (delegates to main switchView)
 window.switchViewSafe = function(v) {
   try {
-    if (typeof switchView === 'function') {
-      return switchView(v);
-    } else if (window.switchView) {
+    if (window.switchView) {
       return window.switchView(v);
     } else {
       console.error('switchView function not available');
@@ -5564,7 +3469,7 @@ window.switchViewSafe = function(v) {
       }
     }
   } catch (error) {
-    console.error('Error in switchView:', error);
+    console.error('Error in switchViewSafe:', error);
   }
 };
 
@@ -5942,7 +3847,8 @@ function debounceSaveFileNote(fileId, projectId, fileIndex, value) {
         };
       }
       await save();
-      renderProjects();
+      // Re-render projects view if visible
+      await rerenderViewIfActive('projects');
     }
     delete noteSaveTimers[timerKey];
   }, 750);
@@ -5982,7 +3888,8 @@ function editFileNote(fileKey) {
   targetFile.note = newNote || '';
   targetFile.noteUpdatedAt = new Date().toISOString();
   save();
-  renderFiles();
+  // Re-render files view if visible
+  rerenderViewIfActive('files');
 }
 
 // Show tasks linked to a file
@@ -8535,7 +6442,8 @@ async function addTaskToProjectFromModal(projId, title, priority, due, lane) {
     tasks.push(newTask);
     await save();
   }
-  renderProjects();
+  // Re-render projects view if visible
+  await rerenderViewIfActive('projects');
 }
 
 // Add Task to Matrix from Modal
@@ -8626,10 +6534,11 @@ async function addTaskToProject(projId){
   document.getElementById('proj-task-lane-'+projId).value = '';
 }
 
-function toggleTaskSubtaskSection(taskId){
+async function toggleTaskSubtaskSection(taskId){
   if(openTaskSubtasks.has(taskId)) openTaskSubtasks.delete(taskId);
   else openTaskSubtasks.add(taskId);
-  renderProjects();
+  // Re-render projects view if visible
+  await rerenderViewIfActive('projects');
 }
 
 function toggleAddSubtaskToTask(taskId){
@@ -8877,7 +6786,8 @@ async function addFileToProjectFromModal(projId, filesToAdd) {
   });
   
   await save();
-  renderProjects();
+  // Re-render projects view if visible
+  await rerenderViewIfActive('projects');
 }
 
 // Add File to Matrix Project from Modal
@@ -9815,6 +7725,9 @@ async function renderSettingsFallback(containerEl, state) {
   });
 }
 
+// ═══════════════════════ RENDER (DELEGATES TO ROUTER) ═══════════════════════
+// Single source of truth: router handles all view switching and rendering
+// This function only delegates to router - it does NOT render views directly
 async function render(){
   // If router just switched, skip view rendering but still update sidebar
   const routerJustSwitched = window.__routerJustSwitched;
@@ -9828,250 +7741,30 @@ async function render(){
     return;
   }
   
-  // Layout invariant check at start of render
-  (function layoutInvariant(tag) {
-    const app = document.querySelector('.app');
-    const sidebar = document.querySelector('.global-sidebar');
-    const computedApp = app ? window.getComputedStyle(app) : null;
-    console.log('🧱 layout invariant', tag, {
-      hasApp: !!app,
-      hasSidebar: !!sidebar,
-      appParent: app?.parentElement?.tagName,
-      sidebarParent: sidebar?.parentElement?.tagName,
-      appDisplay: computedApp?.display,
-      appGridTemplate: computedApp?.gridTemplateColumns,
-      sidebarDisplay: sidebar ? window.getComputedStyle(sidebar).display : null
-    });
-  })('render-start');
-  
-  // Step 2d: Read from store instead of globals
+  // Get current view from store (single source of truth)
   const state = window.Petal?.store?.getState() || {};
-  
-  // Render page content FIRST (immediate) - don't wait for store sync
-  // This allows pages to appear instantly while background work happens
-  
-  // Get current view - prioritize store state (most up-to-date)
-  // Store state is updated by router, so it should be the source of truth
   const currentViewToRender = state.currentView || window.currentView || currentView;
   
-  // DEBUG: Log what view we're rendering
-  console.log('🔍 DEBUG: Rendering view:', currentViewToRender, {
-    stateCurrentView: state.currentView,
-    windowCurrentView: window.currentView,
-    currentViewVar: currentView,
-    tasksInStore: state.tasks?.length || 0,
-    projectsInStore: state.projects?.length || 0
-  });
-  
-  // RENDER PAGE CONTENT IMMEDIATELY (before heavy store syncing)
-  if(currentViewToRender==='today') {
-    // Use new Today page module
-    const containerEl = document.getElementById('view-today');
-    const renderFn = window.renderTodayPage;
-    if (containerEl && renderFn) {
-      await renderFn(containerEl, state, window.Petal.handlers);
-    } else {
-      console.error('Today page module not loaded', { containerEl: !!containerEl, renderFn: !!renderFn });
-    }
-  }
-  else if(currentViewToRender==='tasks') {
-    // Step 3: Use extracted render module if available
-    if (window.Petal?.ui?.renderTasks) {
-      const containerEl = document.getElementById('view-tasks');
-      const state = window.Petal.store?.getState() || {};
-      console.log('🔍 DEBUG: Rendering tasks view, container:', containerEl, 'state tasks:', state.tasks?.length);
-      await window.Petal.ui.renderTasks(containerEl, state, window.Petal.handlers);
-    } else {
-      console.log('🔍 DEBUG: Using fallback renderTasks function');
-      // Fallback: old render function
-      await renderTasks();
-    }
-  }
-  else if(currentViewToRender==='workflow') {
-    // Step 3: Use extracted render module if available
-    if (window.Petal?.ui?.renderWorkflow) {
-      const containerEl = document.getElementById('view-workflow');
-      const state = window.Petal.store?.getState() || {};
-      await window.Petal.ui.renderWorkflow(containerEl, state, window.Petal.handlers);
-    } else {
-      // Fallback: old render function
-      await renderWorkflow();
-    }
-  }
-  else if(currentViewToRender==='files') {
-    // Step 3: Use extracted render module if available
-    if (window.Petal?.ui?.renderFiles) {
-      const containerEl = document.getElementById('files-view-container');
-      const state = window.Petal.store?.getState() || {};
-      await window.Petal.ui.renderFiles(containerEl, state, window.Petal.handlers);
-    } else {
-      // Fallback: old render function
-      await renderFiles();
-    }
-  }
-  else if(currentViewToRender==='planner') {
-    // Use new Planner page module
-    const containerEl = document.getElementById('view-planner');
-    if (containerEl && window.renderPlannerPage) {
-      await window.renderPlannerPage(containerEl, state, window.Petal.handlers);
-    } else if (typeof renderPlanner === 'function') {
-      // Fallback to inline function during migration
-      await renderPlanner();
-    } else {
-      console.error('Planner page module not loaded');
-    }
-  }
-  else if(currentViewToRender==='cell-log') {
-    // Use new page module
-    if (window.renderCellLogPage) {
-      await window.renderCellLogPage();
-    } else {
-      console.error('Cell Log page module not loaded');
-    }
-  }
-  else if(currentViewToRender==='3d-print') {
-    // Use new page module for 3d-print
-    const containerEl = document.getElementById('view-3d-print');
-    console.log('🔍 render(): 3d-print view', { hasContainer: !!containerEl, hasPAGES: !!window.PAGES, hasRouter: !!window.routerSwitchView });
-    if (containerEl) {
-      // Try PAGES registry first
-      if (window.PAGES && window.PAGES['3d-print']) {
-        console.log('🔍 render(): Using PAGES renderer for 3d-print');
-        await window.PAGES['3d-print'](containerEl, state, window.Petal?.handlers || window.Petal?.features);
-      } 
-      // Fallback to router
-      else if (window.routerSwitchView) {
-        console.log('🔍 render(): Using router for 3d-print');
-        await window.routerSwitchView('3d-print');
-      } 
-      // Final fallback: use old switchView logic (it handles 3d-print loading)
-      else {
-        console.warn('⚠️ render(): 3D Print page renderer not available, using old switchView logic');
-        // The old switchView() already handles 3d-print loading, so just ensure visibility
-        containerEl.style.display = 'block';
-      }
-    } else {
-      console.error('❌ render(): view-3d-print container not found');
-    }
-  }
-  else if(currentViewToRender==='settings') {
-    console.log('🔍 DEBUG: Rendering settings view', { containerEl: !!document.getElementById('view-settings'), renderSettingsPage: !!window.renderSettingsPage });
-    // Use new settings page module
-    const containerEl = document.getElementById('view-settings');
-    if (containerEl && window.renderSettingsPage) {
-      console.log('🔍 DEBUG: Using renderSettingsPage module');
-      try {
-        await window.renderSettingsPage(containerEl, state, {
-          ...window.Petal.handlers,
-          save: async () => {
-            if (window.save) await window.save();
-          },
-          render: async () => {
-            await render();
-          }
-        });
-        // Check if content was actually rendered
-        setTimeout(() => {
-          const hasContent = containerEl.innerHTML.trim().length > 0;
-          const isVisible = containerEl.style.display !== 'none' && window.getComputedStyle(containerEl).display !== 'none';
-          console.log('🔍 DEBUG: Settings page check:', {
-            hasContent,
-            contentLength: containerEl.innerHTML.length,
-            display: containerEl.style.display,
-            computedDisplay: window.getComputedStyle(containerEl).display,
-            isVisible,
-            offsetHeight: containerEl.offsetHeight,
-            offsetWidth: containerEl.offsetWidth
-          });
-          
-          if (!hasContent) {
-            console.error('🔍 DEBUG: Module rendered but container is empty! Falling back to inline render.');
-            renderSettingsFallback(containerEl, state);
-          } else if (!isVisible) {
-            console.error('🔍 DEBUG: Content rendered but view is hidden! Forcing display.');
-            containerEl.style.display = '';
-            containerEl.style.visibility = 'visible';
-          } else {
-            console.log('🔍 DEBUG: Settings page rendered successfully');
-          }
-        }, 100);
-        // Reset scroll position after rendering
-        if (containerEl) {
-          containerEl.scrollTop = 0;
-          containerEl.style.scrollTop = '0';
-          setTimeout(() => {
-            containerEl.scrollTop = 0;
-            containerEl.style.scrollTop = '0';
-          }, 0);
-          setTimeout(() => {
-            containerEl.scrollTop = 0;
-            containerEl.style.scrollTop = '0';
-          }, 50);
-          setTimeout(() => {
-            containerEl.scrollTop = 0;
-            containerEl.style.scrollTop = '0';
-          }, 150);
-        }
-      } catch (err) {
-        console.error('🔍 DEBUG: Error in renderSettingsPage module:', err);
-        renderSettingsFallback(containerEl, state);
-        // Reset scroll after fallback
-        if (containerEl) {
-          containerEl.scrollTop = 0;
-          containerEl.style.scrollTop = '0';
-        }
-      }
-    } else {
-      console.log('🔍 DEBUG: Settings page module not loaded, using fallback', { containerEl: !!containerEl, renderSettingsPage: !!window.renderSettingsPage });
-      if (containerEl) {
-        // Reset scroll before fallback render
-        containerEl.scrollTop = 0;
-        containerEl.style.scrollTop = '0';
-        await renderSettingsFallback(containerEl, state);
-        // Reset scroll after fallback render
-        containerEl.scrollTop = 0;
-        containerEl.style.scrollTop = '0';
-        setTimeout(() => {
-          containerEl.scrollTop = 0;
-          containerEl.style.scrollTop = '0';
-        }, 0);
-        setTimeout(() => {
-          containerEl.scrollTop = 0;
-          containerEl.style.scrollTop = '0';
-        }, 50);
-      } else {
-        console.error('🔍 DEBUG: view-settings container element not found!');
-      }
-    }
-  }
-  else if(currentViewToRender==='projects') {
-    console.log('🔍 DEBUG: render(): projects view', { hasPAGES: !!window.PAGES, hasProjectsRenderer: !!(window.PAGES && window.PAGES.projects) });
-    const containerEl = document.getElementById('view-projects');
-    if (containerEl) {
-      // Use new page module if available
-      if (window.PAGES && window.PAGES.projects) {
-        console.log('🔍 render(): Using PAGES renderer for projects');
-        await window.PAGES.projects(containerEl, state, window.Petal?.handlers || window.Petal?.features);
-      } else if (window.routerSwitchView) {
-        console.log('🔍 render(): Using router for projects');
-        await window.routerSwitchView('projects');
-      } else {
-        // Fallback: use old renderProjects
-        console.log('🔍 render(): Using old renderProjects()');
-        renderProjects();
-      }
-    } else {
-      console.error('❌ render(): view-projects container not found');
-    }
-  }
-  else {
-    // Default fallback - do nothing (don't render projects on other views)
-    // Only render projects when explicitly on projects view
-    console.log('⚠️ render() fallback: currentView not handled:', currentViewToRender);
+  if (!currentViewToRender) {
+    console.warn('⚠️ render(): No current view to render');
+    return;
   }
   
-  // NOW sync store to globals for backward compatibility (Step 2f)
-  // Do this AFTER page rendering so pages appear immediately
+  // Delegate to router - router is the single source of truth for view switching
+  // Use routerSwitchView if available, fallback to switchView (they're the same function)
+  const switchViewFn = window.routerSwitchView || window.switchView;
+  if (switchViewFn) {
+    console.log('🔍 render(): Delegating to router for view:', currentViewToRender);
+    try {
+      await switchViewFn(currentViewToRender);
+    } catch (err) {
+      console.error('❌ render(): Router error:', err);
+    }
+  } else {
+    console.error('❌ render(): Router not available! Cannot render view:', currentViewToRender);
+  }
+  
+  // Sync store to globals for backward compatibility (after router has rendered)
   const storeTasks = state.tasks || [];
   const storeProjects = state.projects || [];
   tasks = storeTasks;
@@ -10101,43 +7794,22 @@ async function render(){
   window.fileHistory = fileHistory;
   window.currentView = currentView;
   
-  // Render global sidebar AFTER page content (non-blocking)
-  // This allows pages to appear immediately while sidebar updates in background
-  // Use requestAnimationFrame to ensure DOM is ready
+  // Render global sidebar AFTER router has rendered page (non-blocking)
+  // Router already updates sidebar, but we do it here too for backward compatibility
   requestAnimationFrame(() => {
-    console.log('🔍 renderGlobalSidebar: About to render', { hasState: !!state, currentView: state?.currentView });
-    renderGlobalSidebar(state);
+    if (typeof renderGlobalSidebar === 'function') {
+      renderGlobalSidebar(state);
+    }
   });
   
   // Always hide all forms after rendering (use setTimeout to ensure DOM is updated)
   setTimeout(() => {
-    hideAllForms();
-    forceHideAllForms();
+    if (typeof hideAllForms === 'function') hideAllForms();
+    if (typeof forceHideAllForms === 'function') forceHideAllForms();
   }, 10);
   setTimeout(() => {
-    forceHideAllForms();
+    if (typeof forceHideAllForms === 'function') forceHideAllForms();
   }, 100);
-  setTimeout(() => {
-    forceHideAllForms();
-  }, 500);
-  
-  // Layout invariant check after render (with delay to catch async updates)
-  setTimeout(() => {
-    (function layoutInvariant(tag) {
-      const app = document.querySelector('.app');
-      const sidebar = document.querySelector('.global-sidebar');
-      const computedApp = app ? window.getComputedStyle(app) : null;
-      console.log('🧱 layout invariant', tag, {
-        hasApp: !!app,
-        hasSidebar: !!sidebar,
-        appParent: app?.parentElement?.tagName,
-        sidebarParent: sidebar?.parentElement?.tagName,
-        appDisplay: computedApp?.display,
-        appGridTemplate: computedApp?.gridTemplateColumns,
-        sidebarDisplay: sidebar ? window.getComputedStyle(sidebar).display : null
-      });
-    })('render-end');
-  }, 50);
 }
 
 // ═══════════════════════ TODAY VIEW ═══════════════════════
@@ -10183,55 +7855,14 @@ async function renderToday() {
   }
 }
 
-async function renderTasks(){
-  // Phase 3 Fix: Only refresh dropdowns if store is ready and has data
-  if (window.Petal?.store) {
-    const state = window.Petal.store.getState();
-    if (state && state.projects) {
-      refreshProjectSelects();
-    }
-  } else {
-    // Fallback: refresh anyway (old behavior)
-    refreshProjectSelects();
-  }
-  const boardFilterEl = document.getElementById('board-project-filter');
-  // Always show project filter dropdown (useful for filtering tasks by project)
-  if (boardFilterEl) boardFilterEl.style.display = '';
-  const filterGroup = document.querySelector('#view-tasks .filter-group');
-  if (filterGroup) filterGroup.style.display = '';
-  const sortGroup = document.querySelector('#view-tasks .sort-group');
-  if (sortGroup) sortGroup.style.display = '';
-  const taskContainer = document.getElementById('task-container');
-  if (taskContainer) taskContainer.style.display = taskMode === 'list' ? '' : 'none';
-  // Kanban mode removed - always use list view
-  return renderTaskList();
-}
+// ⚠️ INLINE renderTasks() REMOVED - All calls now route through router
+// Use TasksPage module via router: window.routerSwitchView('tasks')
 
 // ═══════════════════════ SEARCH ═══════════════════════
-function matchesSearch(task, query) {
-  if (!query || !query.trim()) return true;
-  const searchTerm = query.toLowerCase().trim();
-  const titleMatch = task.title?.toLowerCase().includes(searchTerm);
-  const notesMatch = task.notes?.toLowerCase().includes(searchTerm);
-  return titleMatch || notesMatch;
-}
-
-function handleSearch(query) {
-  searchQuery = query;
-  const clearBtn = document.getElementById('search-clear');
-  if (clearBtn) {
-    clearBtn.classList.toggle('visible', query.trim().length > 0);
-  }
-  render();
-}
-
-function clearSearch() {
-  const searchInput = document.getElementById('search-input');
-  if (searchInput) {
-    searchInput.value = '';
-  }
-  handleSearch('');
-}
+// Functions moved to src/features/search.js
+window.matchesSearch = Search.matchesSearch;
+window.handleSearch = Search.handleSearch;
+window.clearSearch = Search.clearSearch;
 
 async function renderTaskList(){
   console.log("✅ INLINE renderTaskList() LOADED — EDITBTN TEST 2026-02-21");
@@ -10491,125 +8122,12 @@ async function saveWorkflowLanes(projectId) {
   });
   
   await save();
-  renderProjects();
+  // Re-render projects view if visible
+  await rerenderViewIfActive('projects');
 }
 
-function renderProjects(){
-  console.log('🔍 DEBUG: renderProjects() called');
-  
-  // ═══════════════════════ GUARD: Only render if projects view is visible ═══════════════════════
-  const projectsViewEl = document.getElementById('view-projects');
-  if (!projectsViewEl) {
-    console.warn('⚠️ renderProjects: view-projects element not found, skipping render');
-    return;
-  }
-  
-  // Check current view from store
-  const store = window.Petal?.store;
-  if (!store) {
-    console.error('❌ renderProjects: Store not available!');
-    return;
-  }
-  
-  const state = store.getState();
-  const currentViewFromStore = state?.currentView;
-  
-  // Only render if projects view is the current view
-  if (currentViewFromStore !== 'projects') {
-    console.log('⚠️ renderProjects: Projects view not active, skipping render. currentView:', currentViewFromStore);
-    return;
-  }
-  
-  // Double-check that view-projects is visible
-  if (projectsViewEl.style.display === 'none') {
-    console.log('⚠️ renderProjects: view-projects is hidden, skipping render');
-    return;
-  }
-  
-  // ═══════════════════════ PHASE 3 FIX: Read from store only ═══════════════════════
-  try {
-    console.log('🔍 DEBUG projects snapshot (renderProjects):', {
-      storeProjects: state.projects?.length || 0,
-      storeProjectIds: (state.projects || []).map(p => p.id),
-      openProjects: Array.isArray(state.openProjects) ? state.openProjects : (state.openProjects instanceof Set ? Array.from(state.openProjects) : []),
-      currentProjFilter: state.currentProjFilter || currentProjFilter,
-      containerExists: !!document.getElementById('project-container'),
-      viewProjectsDisplay: document.getElementById('view-projects')?.style.display,
-      currentView: state.currentView
-    });
-    
-    // Phase 3: Read ONLY from store (single source of truth)
-    const projectsFromStore = state.projects || [];
-    const currentProjFilterFromStore = state.currentProjFilter || currentProjFilter;
-    // Phase 3 Fix: openProjects is Array in store, derive Set locally
-    const openProjectsFromStore = Array.isArray(state.openProjects) 
-      ? new Set(state.openProjects) 
-      : (state.openProjects instanceof Set ? state.openProjects : new Set());
-    
-    // Sync local variables for backward compatibility (but don't use them for rendering)
-    projects = projectsFromStore;
-    openProjects = openProjectsFromStore;
-    
-    const c = document.getElementById('project-container');
-    if (!c) {
-      console.error('❌ renderProjects: project-container element not found!');
-      return;
-    }
-    
-    // Filter projects
-    let list = projectsFromStore.filter(p => {
-      if (currentProjFilterFromStore === 'active' && p.done) return false;
-      if (currentProjFilterFromStore === 'done' && !p.done) return false;
-      return true;
-    });
-    
-    // DEBUG: Project filtering
-    console.log('🔍 DEBUG project filtering:', {
-      total: projectsFromStore.length,
-      afterFilter: list.length,
-      filterState: { currentProjFilter: currentProjFilterFromStore }
-    });
-    
-    if (!list.length) {
-      c.innerHTML = '<div class="empty-state">No projects yet<small>Create a project above</small></div>';
-      return;
-    }
-    
-    // Get tasks from store for projectHTML
-    const tasksFromStore = state.tasks || [];
-    
-    // Show container immediately (non-blocking)
-    c.style.display = 'block';
-    
-    // Render content asynchronously to prevent blocking
-    requestAnimationFrame(() => {
-      c.innerHTML = list.map(p => projectHTML(p, tasksFromStore, openProjectsFromStore)).join('');
-    });
-    
-    // Force hide all forms immediately after rendering
-    setTimeout(() => {
-      if (typeof forceHideAllForms === 'function') {
-        forceHideAllForms();
-      }
-    }, 0);
-    setTimeout(() => {
-      if (typeof forceHideAllForms === 'function') {
-        forceHideAllForms();
-      }
-    }, 50);
-  } catch (e) {
-    console.error('❌ renderProjects crashed:', e);
-    console.error('Stack:', e?.stack);
-    // Show error in UI
-    const c = document.getElementById('project-container');
-    if (c) {
-      c.innerHTML = `<div class="empty-state" style="color:var(--error,red);">
-        Error rendering projects: ${esc(e.message || String(e))}
-        <small>Check console for details</small>
-      </div>`;
-    }
-  }
-}
+// ⚠️ INLINE renderProjects() REMOVED - All calls now route through router
+// Use ProjectsPage module via router: window.routerSwitchView('projects')
 
 function projectHTML(p, tasksFromStore = null, openProjectsFromStore = null){
   // Phase 3: Read tasks and openProjects from parameters (from store) or fallback to globals
@@ -10801,10 +8319,10 @@ function projectHTML(p, tasksFromStore = null, openProjectsFromStore = null){
               </div>
               
               <div class="task-actions" style="display:flex;gap:4px;align-items:center;">
-                <select onchange="updateTaskLane(${t.id}, this.value); renderProjects();" style="font-size:11px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);cursor:pointer;" title="Assign lane">
+                <select onchange="updateTaskLane(${t.id}, this.value); window.rerenderViewIfActive('projects');" style="font-size:11px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);cursor:pointer;" title="Assign lane">
                   ${laneOptions.join('')}
                 </select>
-                ${t.lane && t.lane !== 'none' && LANE_STAGES[t.lane] ? `<select onchange="updateTaskStage(${t.id}, '${t.lane}', this.value); renderProjects();" style="font-size:11px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);cursor:pointer;" title="Change stage">
+                ${t.lane && t.lane !== 'none' && LANE_STAGES[t.lane] ? `<select onchange="updateTaskStage(${t.id}, '${t.lane}', this.value); window.rerenderViewIfActive('projects');" style="font-size:11px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);cursor:pointer;" title="Change stage">
                   ${LANE_STAGES[t.lane].map(s => `<option value="${s}" ${t.stage === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}
                 </select>` : ''}
                 <button class="btn-del" onclick="if(window.Petal?.features?.taskDrawer?.openTaskDrawer){window.Petal.features.taskDrawer.openTaskDrawer(${t.id})}else if(typeof openTaskDrawer==='function'){openTaskDrawer(${t.id})}" title="Open drawer (Notes, Files, Subtasks)" style="font-size:13px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);">📝</button>
@@ -10901,7 +8419,7 @@ function getMatrixStage(task) {
 }
 
 // Select project for matrix view
-function selectProjectForMatrix(projectId) {
+async function selectProjectForMatrix(projectId) {
   selectedProjectId = projectId ? parseInt(projectId) : null;
   const createFormSection = document.getElementById('project-selector-create-section');
   if (selectedProjectId) {
@@ -10915,7 +8433,10 @@ function selectProjectForMatrix(projectId) {
     document.getElementById('project-list-view').style.display = '';
     // Show project creation form when back to project list
     if (createFormSection) createFormSection.style.display = '';
-    renderProjects();
+    // Re-render projects view
+    if (window.rerenderViewIfActive) {
+      window.rerenderViewIfActive('projects');
+    }
   }
 }
 
@@ -13161,13 +10682,11 @@ async function refreshFileHistory() {
   }
   
   await save();
-  if (currentView === 'files') {
-    await renderFiles();
-  }
+  await rerenderViewIfActive('files');
 }
 
 // Set file view filter
-function setFileView(view, btn) {
+async function setFileView(view, btn) {
   currentFileView = view;
   // Update store
   if (window.Petal?.store) {
@@ -13178,166 +10697,30 @@ function setFileView(view, btn) {
     b.style.borderBottomColor = 'transparent';
     b.style.color = 'var(--text-dim)';
   });
-  btn.classList.add('active');
-  btn.style.borderBottomColor = 'var(--rose)';
-  btn.style.color = 'var(--rose)';
-  
-  // Use new renderFiles if available
-  if (window.Petal?.ui?.renderFiles) {
-    const containerEl = document.getElementById('files-view-container');
-    const state = window.Petal.store?.getState() || {};
-    window.Petal.ui.renderFiles(containerEl, state, window.Petal.handlers);
-  } else {
-    // Fallback to old function
-    renderFiles();
+  if (btn) {
+    btn.classList.add('active');
+    btn.style.borderBottomColor = 'var(--rose)';
+    btn.style.color = 'var(--rose)';
   }
+  
+  // Re-render files view via router
+  await rerenderViewIfActive('files');
 }
 
 // Set file project filter
-function setFileProjectFilter(projectId) {
+async function setFileProjectFilter(projectId) {
   // Update store
   if (window.Petal?.store) {
     window.Petal.store.setState({ currentFileProjectFilter: projectId || 'all' });
   }
   
-  // Re-render files with new filter
-  if (window.Petal?.ui?.renderFiles) {
-    const containerEl = document.getElementById('files-view-container');
-    const state = window.Petal.store?.getState() || {};
-    window.Petal.ui.renderFiles(containerEl, state, window.Petal.handlers);
-  } else {
-    // Fallback to old function
-    renderFiles();
-  }
+  // Re-render files with new filter via router
+  await rerenderViewIfActive('files');
 }
 
-// Render files view
-async function renderFiles() {
-  // Build registry using new module
-  if (window.Petal?.features?.fileManagement?.buildFileRegistry) {
-    window.Petal.features.fileManagement.buildFileRegistry();
-  } else {
-    console.error('File management module not loaded');
-  }
-  const c = document.getElementById('files-view-container');
-  if (!c) {
-    console.error('Files view container not found!');
-    return;
-  }
-  
-  // Don't clear the container - it has the buttons and filters in the HTML
-  // Just update the file list content
-  console.log('Rendering files view, registry has', Object.keys(fileRegistry).length, 'files');
-  
-  let files = Object.values(fileRegistry);
-  
-  // Filter by view
-  if (currentFileView === 'active') {
-    files = files.filter(f => {
-      return f.tasks.some(t => t.status === 'Doing' && !t.done) ||
-             f.projects.some(p => !p.done);
-    });
-  } else if (currentFileView === 'stale') {
-    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
-    files = files.filter(f => {
-      const lastMod = fileHistory[f.key]?.lastModified;
-      if (!lastMod) return false;
-      return lastMod < thirtyDaysAgo && 
-             f.tasks.some(t => !t.done && t.status === 'Doing');
-    });
-  } else if (currentFileView === 'submissions') {
-    files = files.filter(f => f.submissionMeta || 
-                               f.status === 'submitted' || 
-                               f.status === 'accepted');
-  }
-  
-  if (files.length === 0) {
-    c.innerHTML = `<div class="empty-state" style="text-align:center;padding:60px 20px;">
-      <div style="font-size:20px;margin-bottom:12px;color:var(--text);">No files yet</div>
-      <small style="display:block;margin-bottom:24px;color:var(--text-dim);">Link files to tasks or projects, or add files directly</small>
-      <button onclick="addFileToRegistry()" style="background:linear-gradient(135deg,#d4a0a0 0%,#c98b8b 100%) !important;border:none !important;border-radius:10px !important;color:white !important;font-size:14px !important;padding:12px 24px !important;cursor:pointer !important;display:block !important;margin:0 auto !important;box-shadow:0 4px 14px rgba(201,139,139,.25) !important;">+ Add Your First File</button>
-    </div>`;
-    return;
-  }
-  
-  const fileHtmls = await Promise.all(files.map(async f => {
-    const icon = fileIcon(f.abs_path || f.onedrive_rel || f.share_url || '');
-    const label = f.label || f.name || 'File';
-    
-    // Get metadata
-    const history = fileHistory[f.key] || {};
-    const lastMod = history.lastModified ? new Date(history.lastModified) : null;
-    const lastOpened = f.lastOpened ? new Date(f.lastOpened) : null;
-    
-    // Check for warnings
-    const warnings = [];
-    if (f.tasks.some(t => t.done && lastMod && lastMod > new Date(t.done))) {
-      warnings.push('Modified after task completed');
-    }
-    if (lastMod && (Date.now() - lastMod.getTime()) > (30 * 24 * 60 * 60 * 1000) && 
-        f.tasks.some(t => !t.done && t.status === 'Doing')) {
-      warnings.push('Stale (not modified in 30+ days)');
-    }
-    
-    // Check if outside vault
-    const isOutsideVault = !f.isInOneDrive && f.abs_path;
-    
-    return `<div class="file-card">
-      <div class="file-card-header">
-        <div style="display:flex;align-items:center;gap:8px;flex:1;">
-          <span style="font-size:18px;">${icon}</span>
-          <div style="flex:1;min-width:0;">
-            <div class="file-name" onclick="showFileRelations('${esc(f.key)}')" style="cursor:pointer;font-weight:500;">${esc(label)}</div>
-            <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">
-              ${f.onedrive_rel || f.abs_path || 'External link'}
-            </div>
-          </div>
-        </div>
-        <select class="file-status-select" onchange="updateFileStatus('${esc(f.key)}', this.value)" style="font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);">
-          ${Object.entries(FILE_STATUSES).map(([val, label]) => 
-            `<option value="${val}" ${f.status === val ? 'selected' : ''}>${label}</option>`
-          ).join('')}
-        </select>
-      </div>
-      
-      ${f.note && f.note.trim() ? `<div style="margin-top:12px;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--text);white-space:pre-wrap;">${esc(f.note)}</div>` : ''}
-      
-      <div class="file-meta" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
-        <div style="display:flex;flex-wrap:wrap;gap:12px;font-size:11px;color:var(--text-dim);">
-          ${lastMod ? `<span>📝 Modified: ${lastMod.toLocaleDateString()}</span>` : ''}
-          ${lastOpened ? `<span>👁 Opened: ${lastOpened.toLocaleDateString()}</span>` : ''}
-          ${f.tasks.length > 0 ? `<span>📋 <a href="#" onclick="event.preventDefault();showFileLinkedTasks('${esc(f.key)}')" style="color:var(--rose);text-decoration:underline;">${f.tasks.length} task${f.tasks.length > 1 ? 's' : ''}</a></span>` : ''}
-          ${f.projects.length > 0 ? `<span>📁 ${f.projects.length} project${f.projects.length > 1 ? 's' : ''}</span>` : ''}
-        </div>
-        
-        ${warnings.length > 0 ? `<div style="margin-top:8px;padding:6px 10px;background:var(--rose-pale);border-left:3px solid var(--rose);border-radius:4px;font-size:11px;">
-          ${warnings.map(w => `⚠️ ${w}`).join('<br>')}
-        </div>` : ''}
-        
-        ${isOutsideVault ? `<div style="margin-top:8px;padding:6px 10px;background:var(--sage-pale);border-left:3px solid var(--sage);border-radius:4px;font-size:11px;">
-          💡 File is outside PetalVault. <a href="#" onclick="event.preventDefault();suggestCopyToVault('${esc(f.key)}')" style="color:var(--sage);text-decoration:underline;">Copy to attachments?</a>
-        </div>` : ''}
-        
-        ${f.submissionMeta ? `<div style="margin-top:8px;padding:8px 10px;background:var(--bg2);border-radius:6px;font-size:11px;">
-          <div style="font-weight:500;margin-bottom:4px;">Submission Info</div>
-          ${f.submissionMeta.journal ? `<div>Journal: ${esc(f.submissionMeta.journal)}</div>` : ''}
-          ${f.submissionMeta.version ? `<div>Version: ${esc(f.submissionMeta.version)}</div>` : ''}
-          ${f.submissionMeta.submittedDate ? `<div>Submitted: ${new Date(f.submissionMeta.submittedDate).toLocaleDateString()}</div>` : ''}
-          ${f.submissionMeta.decisionDate ? `<div>Decision: ${new Date(f.submissionMeta.decisionDate).toLocaleDateString()}</div>` : ''}
-        </div>` : ''}
-      </div>
-      
-      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="file-open-btn btn-export" data-path="${escAttr(JSON.stringify(f))}" style="font-size:11px;padding:6px 12px;">Open</button>
-        <button class="btn-export" style="font-size:11px;padding:6px 12px;" onclick="showFileRelations('${esc(f.key)}')">View Relations</button>
-        <button class="btn-export" style="font-size:11px;padding:6px 12px;" onclick="editFileNote('${esc(f.key)}')">${f.note && f.note.trim() ? 'Edit Note' : 'Add Note'}</button>
-        ${f.submissionMeta ? '' : `<button class="btn-export" style="font-size:11px;padding:6px 12px;" onclick="editSubmissionMeta('${esc(f.key)}')">Add Submission Info</button>`}
-      </div>
-    </div>`;
-  }));
-  
-  c.innerHTML = fileHtmls.join('');
-}
+// ⚠️ INLINE renderFiles() REMOVED - All calls now route through router
+// Use FilesPage module via router: window.routerSwitchView('files')
+// Or use module directly: window.Petal.ui.renderFiles(containerEl, state, handlers)
 
 // Update file status - delegates to module
 async function updateFileStatus(fileKey, status) {
@@ -13556,21 +10939,8 @@ let wfPanning = false;
 let wfSx, wfSy, wfStx, wfSty;
 let wfSelectedProjectId = null;
 
-async function renderWorkflow() {
-  // Use new workflow page renderer
-  if (window.renderWorkflowPage && window.Petal?.store) {
-    const state = window.Petal.store.getState();
-    const handlers = window.Petal.handlers || {};
-    const containerEl = document.getElementById('view-workflow');
-    if (containerEl) {
-      await renderWorkflowPage(containerEl, state, handlers);
-      return;
-    }
-  }
-  
-  // Fallback to old renderer if needed
-  console.warn('Workflow page renderer not available, using fallback');
-}
+// ⚠️ INLINE renderWorkflow() REMOVED - All calls now route through router
+// Use WorkflowPage module via router: window.routerSwitchView('workflow')
 
 // ═══════════════════════════════════════════════════════════
 // ═══════════════════════ WORKFLOW FUNCTIONS ═══════════════════════
@@ -14343,7 +11713,8 @@ async function onWorkflowDrop(event, lane, stage) {
   }
   
   await save();
-  await renderWorkflow();
+  // Re-render workflow view if visible
+  await rerenderViewIfActive('workflow');
 }
 
 // Toggle active files panel
@@ -14378,11 +11749,11 @@ async function updateTaskLane(taskId, lane) {
   }
   
   await save();
-  if (currentView === 'workflow') {
-    await renderWorkflow();
-  } else if (currentView === 'projects') {
-    renderProjects();
-  } else {
+  // Re-render appropriate view if active
+  await rerenderViewsIfActive(['workflow', 'projects']);
+  // If neither view is active, just call render()
+  const currentViewState = getCurrentView();
+  if (currentViewState !== 'workflow' && currentViewState !== 'projects') {
     render();
   }
 }
@@ -14411,10 +11782,16 @@ async function updateTaskStage(taskId, lane, stage) {
   }
   
   await save();
-  if (currentView === 'workflow') {
-    await renderWorkflow();
-  } else if (currentView === 'projects') {
-    renderProjects();
+  // Re-render appropriate view via router
+  const currentViewState = currentView || window.Petal?.store?.getState()?.currentView;
+  if (window.routerSwitchView) {
+    if (currentViewState === 'workflow') {
+      await window.routerSwitchView('workflow').catch(err => console.error('Router error:', err));
+    } else if (currentViewState === 'projects') {
+      await window.routerSwitchView('projects').catch(err => console.error('Router error:', err));
+    } else {
+      render();
+    }
   } else {
     render();
   }
@@ -14471,7 +11848,8 @@ async function bulkAssignLane(projectId, lane) {
   });
   
   await save();
-  renderProjects();
+  // Re-render projects view if visible
+  await rerenderViewIfActive('projects');
   
   // Clear selection
   clearSelection(projectId);
@@ -15005,12 +12383,18 @@ function buildPlannerSidebar() {
 }
 
 // Render planner (weekly or daily based on currentPlannerView)
+// ⚠️ INLINE renderPlanner() SHOULD NEVER BE CALLED
+// Use PlannerPage module via router instead: window.routerSwitchView('planner')
 async function renderPlanner() {
-  if (currentPlannerView === 'weekly') {
-    await renderWeeklyPlanner();
-  } else {
-    await renderDailyPlanner();
+  console.error('❌ INLINE renderPlanner() should never be called. Use PlannerPage module via router.');
+  console.trace('Call stack:');
+  // Still try to route correctly as fallback
+  if (window.routerSwitchView) {
+    return window.routerSwitchView('planner').catch(err => {
+      console.error('Router error:', err);
+    });
   }
+  throw new Error('INLINE renderPlanner() called - use router instead');
 }
 
 // Expand recurring rules into events for a date range
@@ -15064,18 +12448,10 @@ function getEventsForDate(date) {
   });
 }
 
-// Parse time string "HH:MM" to minutes since midnight
-function parseTime(timeStr) {
-  const [hours, minutes] = timeStr.split(':').map(Number);
-  return hours * 60 + minutes;
-}
-
-// Format minutes since midnight to "HH:MM"
-function formatTime(minutes) {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
-}
+// parseTime and formatTime moved to src/utils/dates.js
+// Imported at top of module section
+window.parseTime = parseTime;
+window.formatTime = formatTime;
 
 // Update end time when start time or duration changes (for events)
 function updateEventEndTimeFromDuration() {
@@ -15568,6 +12944,15 @@ async function renderDailyPlanner() {
     timeline.appendChild(nm);
   }
 }
+
+// Expose planner functions to window for module access during migration
+// Must be after all planner functions are defined
+window.renderPlanner = renderPlanner;
+window.renderWeeklyPlanner = renderWeeklyPlanner;
+window.renderDailyPlanner = renderDailyPlanner;
+window.updatePlannerPeriodLabel = updatePlannerPeriodLabel;
+window.buildPlannerSidebar = buildPlannerSidebar;
+window.buildPlannerCalendar = buildPlannerCalendar;
 
 // Event modal functions
 let editingEventId = null;
