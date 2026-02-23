@@ -25,7 +25,7 @@ class AppStore {
       routineCheckins: {},
       
       // UI state
-      currentView: 'tasks',
+      currentView: 'today',
       currentSort: 'all',
       currentFilter: 'all',
       currentProjFilter: 'all',
@@ -350,7 +350,7 @@ class AppStore {
       habitCheckins: state.habitCheckins && typeof state.habitCheckins === 'object' ? state.habitCheckins : {},
       routines: Array.isArray(state.routines) ? state.routines : [],
       routineCheckins: state.routineCheckins && typeof state.routineCheckins === 'object' ? state.routineCheckins : {},
-      currentView: state.currentView || 'tasks',
+      currentView: state.currentView || 'today',
       currentSort: state.currentSort || 'all',
       currentFilter: state.currentFilter || 'all',
       currentProjFilter: state.currentProjFilter || 'all',
