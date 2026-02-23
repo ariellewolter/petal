@@ -922,7 +922,6 @@
     </div>
     <div class="dp-body" id="wf-dp-body" style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:16px;"></div>
   </div>
-  </div>
 
   <!-- ═══════════════════════════════════ PLANNER VIEW ═══ -->
   <div id="view-planner" style="display:none;height:calc(100vh - 200px);overflow:hidden;flex-direction:column;width:100%;max-width:100%;box-sizing:border-box;">
@@ -2032,6 +2031,22 @@ function createPageContext() {
     renderProjectHeader: typeof renderProjectHeader === 'function' ? renderProjectHeader : undefined,
     saveState: typeof saveState === 'function' ? saveState : (typeof save === 'function' ? save : undefined),
     defaultProjectBrief: typeof defaultProjectBrief === 'function' ? defaultProjectBrief : (window.Petal?.utils?.defaultProjectBrief || (() => ({ objective: '', hypothesis: '', keyOutputs: '', focus: '', definitionOfDone: '', nextMilestone: '' }))),
+    // Protocol operations helpers
+    renderProtocolTab: typeof renderProtocolTab === 'function' ? renderProtocolTab : undefined,
+    calculateProtocolDayIndex: typeof calculateProtocolDayIndex === 'function' ? calculateProtocolDayIndex : undefined,
+    // Modal operations helpers
+    addTaskFromModal: typeof addTaskFromModal === 'function' ? addTaskFromModal : undefined,
+    addTaskToProjectFromModal: typeof addTaskToProjectFromModal === 'function' ? addTaskToProjectFromModal : undefined,
+    addTaskToMatrixFromModal: typeof addTaskToMatrixFromModal === 'function' ? addTaskToMatrixFromModal : undefined,
+    addFileToProjectFromModal: typeof addFileToProjectFromModal === 'function' ? addFileToProjectFromModal : undefined,
+    addFileToMatrixFromModal: typeof addFileToMatrixFromModal === 'function' ? addFileToMatrixFromModal : undefined,
+    linkFilesToTaskFromModal: typeof linkFilesToTaskFromModal === 'function' ? linkFilesToTaskFromModal : undefined,
+    findOrCreateCanonicalFile: typeof findOrCreateCanonicalFile === 'function' ? findOrCreateCanonicalFile : undefined,
+    normalizeProjectIdValue: typeof normalizeProjectIdValue === 'function' ? normalizeProjectIdValue : undefined,
+    renderWorkflowMatrix: typeof renderWorkflowMatrix === 'function' ? renderWorkflowMatrix : undefined,
+    rerenderViewIfActive: typeof rerenderViewIfActive === 'function' ? rerenderViewIfActive : undefined,
+    esc: typeof esc === 'function' ? esc : undefined,
+    addFileRow: typeof addFileRow === 'function' ? addFileRow : undefined,
     // Add other globals as needed
   };
 }
@@ -3494,139 +3509,62 @@ async function saveProtocolDailyEntry() {
   }
 }
 
+// linkFileToProtocolEntry has been moved to src/features/taskOperations.js
 async function linkFileToProtocolEntry() {
-  if (!currentDrawerTaskId) return;
-  const task = tasks.find(t => t.id === currentDrawerTaskId);
-  if (!task || !task.protocol || !task.protocol.enabled) return;
-  
-  // For now, just show a message - file linking to protocol entries can be enhanced later
-  alert('File attachment to protocol entries coming soon. For now, you can link files to the task itself in the Files tab.');
-}
-
-function toggleProtocolSteps() {
-  const section = document.getElementById('protocol-steps-section');
-  section.style.display = section.style.display === 'none' ? 'block' : 'none';
-}
-
-function addProtocolStep() {
-  if (!currentDrawerTaskId) return;
-  const task = tasks.find(t => t.id === currentDrawerTaskId);
-  if (!task || !task.protocol || !task.protocol.enabled) return;
-  
-  const title = prompt('Enter step title:');
-  if (!title || !title.trim()) return;
-  
-  if (!task.protocol.steps) {
-    task.protocol.steps = [];
-  }
-  
-  task.protocol.steps.push({
-    id: `step_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    title: title.trim(),
-    done: false
-  });
-  
-  save();
-  renderProtocolTab();
-}
-
-function renderProtocolTab() {
-  if (!currentDrawerTaskId) return;
-  const task = tasks.find(t => t.id === currentDrawerTaskId);
-  if (!task || !task.protocol || !task.protocol.enabled) return;
-  
-  // Update protocol status
-  const statusEl = document.getElementById('protocol-status');
-  if (statusEl) {
-    const startDate = task.protocol.startAt ? new Date(task.protocol.startAt) : null;
-    const endDate = task.protocol.expectedEndAt ? new Date(task.protocol.expectedEndAt) : null;
-    const dayIndex = task.protocol.dayIndex || calculateProtocolDayIndex(task.protocol.startAt);
-    
-    let statusText = `Day ${dayIndex}`;
-    if (startDate) {
-      statusText += ` • Started ${startDate.toLocaleDateString()}`;
-    }
-    if (endDate) {
-      const daysRemaining = Math.ceil((endDate - new Date()) / (1000 * 60 * 60 * 24));
-      if (daysRemaining > 0) {
-        statusText += ` • ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} remaining`;
-      } else if (daysRemaining === 0) {
-        statusText += ` • Ends today`;
-      } else {
-        statusText += ` • Ended ${Math.abs(daysRemaining)} day${Math.abs(daysRemaining) !== 1 ? 's' : ''} ago`;
-      }
-    }
-    statusEl.textContent = statusText;
-  }
-  
-  // Render daily log
-  const logEl = document.getElementById('protocol-daily-log');
-  if (logEl) {
-    const dailyLog = task.protocol.dailyLog || [];
-    if (dailyLog.length === 0) {
-      logEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-dim);font-size:12px;">No entries yet</div>';
-    } else {
-      logEl.innerHTML = dailyLog.slice().reverse().map(entry => {
-        const date = new Date(entry.at);
-        return `
-          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;">
-            <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
-              <div style="font-size:11px;color:var(--text-dim);">${date.toLocaleDateString()} ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
-            </div>
-            <div style="font-size:13px;color:var(--text);line-height:1.6;white-space:pre-wrap;">${esc(entry.text)}</div>
-          </div>
-        `;
-      }).join('');
-    }
-  }
-  
-  // Render steps
-  const stepsEl = document.getElementById('protocol-steps-list');
-  if (stepsEl) {
-    const steps = task.protocol.steps || [];
-    if (steps.length === 0) {
-      stepsEl.innerHTML = '<div style="text-align:center;padding:12px;color:var(--text-dim);font-size:11px;">No steps yet</div>';
-    } else {
-      stepsEl.innerHTML = steps.map(step => `
-        <div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--surface);border-radius:6px;">
-          <input type="checkbox" ${step.done ? 'checked' : ''} onchange="toggleProtocolStep('${step.id}')" style="width:16px;height:16px;cursor:pointer;">
-          <span style="flex:1;font-size:12px;color:var(--text);${step.done ? 'text-decoration:line-through;opacity:0.6;' : ''}">${esc(step.title)}</span>
-        </div>
-      `).join('');
-    }
-  }
-}
-
-function toggleProtocolStep(stepId) {
-  if (!currentDrawerTaskId) return;
-  const task = tasks.find(t => t.id === currentDrawerTaskId);
-  if (!task || !task.protocol || !task.protocol.steps) return;
-  
-  const step = task.protocol.steps.find(s => s.id === stepId);
-  if (step) {
-    step.done = !step.done;
-    save();
-    renderProtocolTab();
-  }
-}
-
-function getProtocolBadge(task) {
-  if (!task.protocol || !task.protocol.enabled) return '';
-  
-  const dayIndex = task.protocol.dayIndex || calculateProtocolDayIndex(task.protocol.startAt);
-  const startDate = task.protocol.startAt ? new Date(task.protocol.startAt) : null;
-  const endDate = task.protocol.expectedEndAt ? new Date(task.protocol.expectedEndAt) : null;
-  
-  let badgeText = `Protocol Day ${dayIndex}`;
-  if (endDate && new Date() > endDate) {
-    badgeText = 'Protocol ended';
-  } else if (startDate && new Date() < startDate) {
-    badgeText = 'Protocol pending';
+  if (window.Petal?.features?.taskOperations?.linkFileToProtocolEntry) {
+    await window.Petal.features.taskOperations.linkFileToProtocolEntry();
   } else {
-    badgeText = `Protocol Day ${dayIndex}`;
+    console.error('Task operations module not loaded');
   }
-  
-  return `<span class="protocol-badge" style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:var(--sage-pale);color:var(--sage);border-radius:12px;font-size:10px;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;" onclick="event.stopPropagation();openTaskDrawer(${task.id});switchTaskDrawerTab('protocol');" title="Click to view protocol">⚗️ ${badgeText}</span>`;
+}
+
+// toggleProtocolSteps has been moved to src/features/taskOperations.js
+function toggleProtocolSteps() {
+  if (window.Petal?.features?.taskOperations?.toggleProtocolSteps) {
+    window.Petal.features.taskOperations.toggleProtocolSteps();
+  } else {
+    console.error('Task operations module not loaded');
+  }
+}
+
+// addProtocolStep has been moved to src/features/taskOperations.js
+async function addProtocolStep() {
+  if (window.Petal?.features?.taskOperations?.addProtocolStep) {
+    const ctx = createPageContext();
+    await window.Petal.features.taskOperations.addProtocolStep(ctx);
+  } else {
+    console.error('Task operations module not loaded');
+  }
+}
+
+// renderProtocolTab has been moved to src/features/taskOperations.js
+function renderProtocolTab() {
+  if (window.Petal?.features?.taskOperations?.renderProtocolTab) {
+    const ctx = createPageContext();
+    window.Petal.features.taskOperations.renderProtocolTab(ctx);
+  } else {
+    console.error('Task operations module not loaded');
+  }
+}
+
+// toggleProtocolStep has been moved to src/features/taskOperations.js
+async function toggleProtocolStep(stepId) {
+  if (window.Petal?.features?.taskOperations?.toggleProtocolStep) {
+    const ctx = createPageContext();
+    await window.Petal.features.taskOperations.toggleProtocolStep(ctx, stepId);
+  } else {
+    console.error('Task operations module not loaded');
+  }
+}
+
+// getProtocolBadge has been moved to src/features/taskOperations.js
+function getProtocolBadge(task) {
+  if (window.Petal?.features?.taskOperations?.getProtocolBadge) {
+    return window.Petal.features.taskOperations.getProtocolBadge(task);
+  } else {
+    console.error('Task operations module not loaded');
+    return '';
+  }
 }
 
 // ═══════════════════════ EVENT DELEGATION ═══════════════════════
@@ -4633,144 +4571,60 @@ async function renderProjectFilesSidebar(tab, project) {
 }
 
 
-// Render Project Checkpoints
+// renderProjectCheckpoints has been moved to src/features/projectOperations.js
 function renderProjectCheckpoints(project) {
-  const checkpointsEl = document.getElementById('project-checkpoints-list');
-  if (!checkpointsEl) return;
-  
-  const checkpoints = project.checkpoints || [];
-  if (checkpoints.length === 0) {
-    checkpointsEl.innerHTML = '<div style="font-size:11px;color:var(--text-light);font-style:italic;text-align:center;padding:20px;">No checkpoints yet. Click "+ Add Checkpoint" to create one.</div>';
-    return;
+  if (window.Petal?.features?.projectOperations?.renderProjectCheckpoints) {
+    const ctx = createPageContext();
+    window.Petal.features.projectOperations.renderProjectCheckpoints(ctx, project);
+  } else {
+    console.error('Project operations module not loaded');
   }
-  
-  // Sort newest first
-  const sortedCheckpoints = [...checkpoints].sort((a, b) => (b.date || 0) - (a.date || 0));
-  
-  const html = sortedCheckpoints.map(cp => {
-    const date = new Date(cp.date || Date.now());
-    const dateStr = date.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
-    return `<div style="padding:12px;background:var(--bg2);border-left:4px solid var(--rose);border-radius:6px;">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
-        <div style="font-size:13px;font-weight:600;color:var(--text);">${esc(cp.name || 'Unnamed')}</div>
-        <div style="font-size:10px;color:var(--text-dim);">${dateStr}</div>
-      </div>
-      ${cp.note ? `<div style="font-size:11px;color:var(--text-dim);white-space:pre-wrap;margin-top:4px;">${esc(cp.note)}</div>` : ''}
-    </div>`;
-  }).join('');
-  
-  checkpointsEl.innerHTML = html;
 }
 
-// Toggle add checkpoint form
+// toggleAddCheckpoint has been moved to src/features/projectOperations.js
 function toggleAddCheckpoint() {
-  const form = document.getElementById('add-checkpoint-form');
-  const nameInput = document.getElementById('checkpoint-name');
-  if (form && nameInput) {
-    form.style.display = form.style.display === 'none' ? 'block' : 'none';
-    if (form.style.display === 'block') {
-      nameInput.focus();
-    }
+  if (window.Petal?.features?.projectOperations?.toggleAddCheckpoint) {
+    window.Petal.features.projectOperations.toggleAddCheckpoint();
+  } else {
+    console.error('Project operations module not loaded');
   }
 }
 
-// Cancel add checkpoint
+// cancelAddCheckpoint has been moved to src/features/projectOperations.js
 function cancelAddCheckpoint() {
-  const form = document.getElementById('add-checkpoint-form');
-  const nameInput = document.getElementById('checkpoint-name');
-  const noteInput = document.getElementById('checkpoint-note');
-  if (form) form.style.display = 'none';
-  if (nameInput) nameInput.value = '';
-  if (noteInput) noteInput.value = '';
+  if (window.Petal?.features?.projectOperations?.cancelAddCheckpoint) {
+    window.Petal.features.projectOperations.cancelAddCheckpoint();
+  } else {
+    console.error('Project operations module not loaded');
+  }
 }
 
-// Save checkpoint
+// saveCheckpoint has been moved to src/features/projectOperations.js
 async function saveCheckpoint() {
-  if (!selectedProjectId) return;
-  const project = projects.find(p => p.id === selectedProjectId);
-  if (!project) return;
-  
-  const nameInput = document.getElementById('checkpoint-name');
-  const noteInput = document.getElementById('checkpoint-note');
-  if (!nameInput || !noteInput) return;
-  
-  const name = nameInput.value.trim();
-  if (!name) {
-    alert('Please enter a checkpoint name');
-    return;
+  if (window.Petal?.features?.projectOperations?.saveCheckpoint) {
+    const ctx = createPageContext();
+    await window.Petal.features.projectOperations.saveCheckpoint(ctx);
+  } else {
+    console.error('Project operations module not loaded');
   }
-  
-  if (!project.checkpoints) project.checkpoints = [];
-  project.checkpoints.push({
-    id: Date.now(),
-    name: name,
-    date: Date.now(),
-    note: noteInput.value.trim()
-  });
-  
-  await save();
-  renderProjectCheckpoints(project);
-  
-  // Clear and hide form
-  nameInput.value = '';
-  noteInput.value = '';
-  document.getElementById('add-checkpoint-form').style.display = 'none';
 }
 
-// Toggle file version history
+// toggleFileVersionHistory has been moved to src/features/projectOperations.js
 function toggleFileVersionHistory(versionId) {
-  const el = document.getElementById(versionId);
-  if (el) {
-    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  if (window.Petal?.features?.projectOperations?.toggleFileVersionHistory) {
+    window.Petal.features.projectOperations.toggleFileVersionHistory(versionId);
+  } else {
+    console.error('Project operations module not loaded');
   }
 }
 
-// Add new file version
+// addFileVersion has been moved to src/features/projectOperations.js
 async function addFileVersion(projectId, fileDataAttr) {
-  const project = projects.find(p => p.id === projectId);
-  if (!project) return;
-  
-  try {
-    const fileLink = JSON.parse(fileDataAttr.replace(/&#39;/g, "'"));
-    const version = prompt('Version number (e.g., 0.3):');
-    if (!version) return;
-    
-    const note = prompt('Version notes (what changed):');
-    if (note === null) return; // User cancelled
-    
-    // Find file in project
-    const allFiles = project.files || [];
-    const fileIndex = allFiles.findIndex(f => {
-      const fObj = typeof f === 'object' ? f : { abs_path: f };
-      const match = (fObj.onedrive_rel && fileLink.onedrive_rel && fObj.onedrive_rel === fileLink.onedrive_rel) ||
-                    (fObj.abs_path && fileLink.abs_path && fObj.abs_path === fileLink.abs_path);
-      return match;
-    });
-    
-    if (fileIndex >= 0) {
-      const file = allFiles[fileIndex];
-      const fileObj = typeof file === 'object' ? file : { abs_path: file };
-      
-      if (!fileObj.versions) fileObj.versions = [];
-      fileObj.versions.push({
-        version: version.trim(),
-        date: Date.now(),
-        note: note.trim()
-      });
-      fileObj.version = version.trim();
-      
-      allFiles[fileIndex] = fileObj;
-      project.files = allFiles;
-      await save();
-      
-      // Re-render files tab
-      await renderFilesTab(currentFilesTab || 'pinned', project);
-    } else {
-      alert('File not found in project');
-    }
-  } catch (e) {
-    console.error('Error adding file version:', e);
-    alert('Error adding version');
+  if (window.Petal?.features?.projectOperations?.addFileVersion) {
+    const ctx = createPageContext();
+    await window.Petal.features.projectOperations.addFileVersion(ctx, projectId, fileDataAttr);
+  } else {
+    console.error('Project operations module not loaded');
   }
 }
 
@@ -4948,143 +4802,43 @@ async function renderProjectFiles() {
   panelEl.innerHTML = html;
 }
 
-// Render project milestones panel
+// renderProjectMilestones has been moved to src/features/projectOperations.js
 function renderProjectMilestones() {
-  // Try to get project ID from selectedProjectId or from the matrix selector
-  let projectId = selectedProjectId;
-  if (!projectId) {
-    const selector = document.getElementById('matrix-project-select');
-    if (selector && selector.value) {
-      projectId = normalizeProjectIdValue(selector.value);
-    }
+  if (window.Petal?.features?.projectOperations?.renderProjectMilestones) {
+    const ctx = createPageContext();
+    window.Petal.features.projectOperations.renderProjectMilestones(ctx);
   } else {
-    projectId = normalizeProjectIdValue(projectId);
+    console.error('Project operations module not loaded');
   }
-  
-  if (!projectId) {
-    const panelEl = document.getElementById('project-milestones-panel-content');
-    if (panelEl) {
-      panelEl.innerHTML = '<div style="font-size:12px;color:var(--text-dim);padding:40px;text-align:center;">Please select a project first</div>';
-    }
-    return;
-  }
-  
-  const project = projects.find(p => p.id === projectId);
-  if (!project) {
-    const panelEl = document.getElementById('project-milestones-panel-content');
-    if (panelEl) {
-      panelEl.innerHTML = '<div style="font-size:12px;color:var(--text-dim);padding:40px;text-align:center;">Project not found</div>';
-    }
-    return;
-  }
-  
-  const panelEl = document.getElementById('project-milestones-panel-content');
-  if (!panelEl) return;
-  
-  const milestones = project.milestones || [];
-  
-  let html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">';
-  html += '<h3 style="font-size:14px;font-weight:600;color:var(--text);margin:0;">Milestones</h3>';
-  html += '<button data-action="add-milestone" style="padding:6px 12px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;">＋ Add</button>';
-  html += '</div>';
-  
-  if (milestones.length > 0) {
-    milestones.forEach(m => {
-      const dueDate = m.dueDate ? new Date(m.dueDate).toLocaleDateString() : '';
-      html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;">`;
-      html += `<div style="display:flex;align-items:flex-start;gap:8px;">`;
-      html += `<input type="checkbox" ${m.done ? 'checked' : ''} onchange="toggleMilestone(${projectId}, ${m.id})" style="margin-top:4px;cursor:pointer;">`;
-      html += `<div style="flex:1;"><div style="font-size:14px;font-weight:500;color:var(--text);${m.done ? 'text-decoration:line-through;opacity:0.6;' : ''}">${esc(m.title)}</div>`;
-      if (dueDate) {
-        html += `<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Due: ${esc(dueDate)}</div>`;
-      }
-      if (m.linkedTaskIds && m.linkedTaskIds.length > 0) {
-        html += `<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Linked to ${m.linkedTaskIds.length} task(s)</div>`;
-      }
-      if (m.linkedFileIds && m.linkedFileIds.length > 0) {
-        html += `<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Linked to ${m.linkedFileIds.length} file(s)</div>`;
-      }
-      html += `</div>`;
-      html += `<button onclick="deleteMilestone(${projectId}, ${m.id})" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:10px;cursor:pointer;">Delete</button>`;
-      html += `</div></div>`;
-    });
-  } else {
-    html += '<div style="font-size:12px;color:var(--text-dim);padding:40px;text-align:center;">No milestones yet. Click Add to create one.</div>';
-  }
-  
-  panelEl.innerHTML = html;
 }
 
-// Milestone management functions
+// addMilestone has been moved to src/features/projectOperations.js
 async function addMilestone() {
-  // Try to get project ID from selectedProjectId or from the matrix selector
-  let projectId = selectedProjectId;
-  if (!projectId) {
-    const selector = document.getElementById('matrix-project-select');
-    if (selector && selector.value) {
-      projectId = normalizeProjectIdValue(selector.value);
-    }
+  if (window.Petal?.features?.projectOperations?.addMilestone) {
+    const ctx = createPageContext();
+    await window.Petal.features.projectOperations.addMilestone(ctx);
   } else {
-    projectId = normalizeProjectIdValue(projectId);
-  }
-  
-  if (!projectId) {
-    alert('Please select a project first');
-    return;
-  }
-  
-  const project = projects.find(p => p.id === projectId);
-  if (!project) {
-    alert('Project not found');
-    return;
-  }
-  
-  const title = prompt('Enter milestone title:');
-  if (!title || !title.trim()) return;
-  
-  if (!project.milestones) project.milestones = [];
-  
-  const newMilestone = {
-    id: Date.now(),
-    title: title.trim(),
-    done: false,
-    linkedTaskIds: [],
-    linkedFileIds: [],
-    dueDate: ''
-  };
-  
-  project.milestones.push(newMilestone);
-  await save();
-  
-  // Refresh the milestones view if we're on that tab
-  if (currentProjectPageTab === 'milestones') {
-    renderProjectMilestones();
-  } else {
-    // If not on milestones tab, switch to it and render
-    switchProjectPageTab('milestones');
+    console.error('Project operations module not loaded');
   }
 }
 
+// toggleMilestone has been moved to src/features/projectOperations.js
 async function toggleMilestone(projectId, milestoneId) {
-  const project = projects.find(p => p.id === projectId);
-  if (!project || !project.milestones) return;
-  
-  const milestone = project.milestones.find(m => m.id === milestoneId);
-  if (!milestone) return;
-  
-  milestone.done = !milestone.done;
-  await save();
-  renderProjectMilestones();
+  if (window.Petal?.features?.projectOperations?.toggleMilestone) {
+    const ctx = createPageContext();
+    await window.Petal.features.projectOperations.toggleMilestone(ctx, projectId, milestoneId);
+  } else {
+    console.error('Project operations module not loaded');
+  }
 }
 
+// deleteMilestone has been moved to src/features/projectOperations.js
 async function deleteMilestone(projectId, milestoneId) {
-  const project = projects.find(p => p.id === projectId);
-  if (!project || !project.milestones) return;
-  
-  if (confirm('Delete this milestone?')) {
-    project.milestones = project.milestones.filter(m => m.id !== milestoneId);
-    await save();
-    renderProjectMilestones();
+  if (window.Petal?.features?.projectOperations?.deleteMilestone) {
+    const ctx = createPageContext();
+    await window.Petal.features.projectOperations.deleteMilestone(ctx, projectId, milestoneId);
+  } else {
+    console.error('Project operations module not loaded');
   }
 }
 
@@ -5093,262 +4847,82 @@ let currentModalProjectId = null;
 let currentModalContext = null; // 'project' or 'matrix'
 
 // Open Add Task Modal for Project
+// openProjectAddTaskModal has been moved to src/features/modalOperations.js
 function openProjectAddTaskModal(projId) {
-  currentModalProjectId = projId;
-  currentModalContext = 'project';
-  const p = projects.find(p => p.id === projId);
-  if (!p) return;
-  
-  document.getElementById('add-task-modal-title').textContent = `Add Task to ${p.name}`;
-  
-  // Setup lane options
-  const laneField = document.getElementById('modal-task-lane-field');
-  const laneSelect = document.getElementById('modal-task-lane');
-  if (laneField && laneSelect) {
-    const allowedLanes = p.workflowLanes || ['lab', 'comp', 'writing', 'presentation', 'personal', 'product'];
-    if (allowedLanes.length > 0) {
-      laneField.style.display = 'block';
-      laneSelect.innerHTML = '<option value="">No lane</option>' + allowedLanes.map(lane => {
-        const labels = { lab: '🧪 Lab', comp: '💻 Comp', writing: '📝 Writing', presentation: '📊 Presentation' };
-        return `<option value="${lane}">${labels[lane]}</option>`;
-      }).join('');
-    } else {
-      laneField.style.display = 'none';
-    }
+  if (window.Petal?.features?.modalOperations?.openProjectAddTaskModal) {
+    const ctx = createPageContext();
+    window.Petal.features.modalOperations.openProjectAddTaskModal(ctx, projId);
+  } else {
+    console.error('Modal operations module not loaded');
   }
-  
-  // Reset form
-  document.getElementById('modal-task-title').value = '';
-  document.getElementById('modal-task-priority').value = 'medium';
-  document.getElementById('modal-task-due').value = '';
-  if (laneSelect) laneSelect.value = '';
-  
-  // Show modal
-  document.getElementById('add-task-modal').style.display = 'flex';
-  document.getElementById('modal-task-title').focus();
 }
 
-// Open Add Task Modal for Matrix
+// openMatrixAddTaskModal has been moved to src/features/modalOperations.js
 function openMatrixAddTaskModal() {
-  currentModalProjectId = selectedProjectId;
-  currentModalContext = 'matrix';
-  const p = projects.find(p => p.id === selectedProjectId);
-  if (!p) return;
-  
-  document.getElementById('add-task-modal-title').textContent = `Add Task to ${p.name}`;
-  
-  // Setup lane options
-  const laneField = document.getElementById('modal-task-lane-field');
-  const laneSelect = document.getElementById('modal-task-lane');
-  if (laneField && laneSelect) {
-    const allowedLanes = p.workflowLanes || ['lab', 'comp', 'writing', 'presentation', 'personal', 'product'];
-    if (allowedLanes.length > 0) {
-      laneField.style.display = 'block';
-      laneSelect.innerHTML = '<option value="">No lane</option>' + allowedLanes.map(lane => {
-        const labels = { lab: '🧪 Lab', comp: '💻 Comp', writing: '📝 Writing', presentation: '📊 Presentation' };
-        return `<option value="${lane}">${labels[lane]}</option>`;
-      }).join('');
-    } else {
-      laneField.style.display = 'none';
-    }
+  if (window.Petal?.features?.modalOperations?.openMatrixAddTaskModal) {
+    const ctx = createPageContext();
+    window.Petal.features.modalOperations.openMatrixAddTaskModal(ctx);
+  } else {
+    console.error('Modal operations module not loaded');
   }
-  
-  // Reset form
-  document.getElementById('modal-task-title').value = '';
-  document.getElementById('modal-task-priority').value = 'medium';
-  document.getElementById('modal-task-due').value = '';
-  if (laneSelect) laneSelect.value = '';
-  
-  // Show modal and focus
-  const modal = document.getElementById('add-task-modal');
-  modal.style.display = 'flex';
-  modal.focus(); // Make modal focusable for Escape key
-  setTimeout(() => {
-    document.getElementById('modal-task-title').focus();
-  }, 100);
 }
 
-// Close Add Task Modal
+// closeAddTaskModal has been moved to src/features/modalOperations.js
 function closeAddTaskModal() {
-  document.getElementById('add-task-modal').style.display = 'none';
-  currentModalProjectId = null;
-  currentModalContext = null;
+  if (window.Petal?.features?.modalOperations?.closeAddTaskModal) {
+    window.Petal.features.modalOperations.closeAddTaskModal();
+  } else {
+    console.error('Modal operations module not loaded');
+  }
 }
 
-// Open Add Task Modal (general - no project required)
+// openAddTaskModal has been moved to src/features/modalOperations.js
 function openAddTaskModal() {
-  currentModalProjectId = null;
-  currentModalContext = 'general';
-  
-  document.getElementById('add-task-modal-title').textContent = 'Add Task';
-  
-  // Hide lane field for general tasks
-  const laneField = document.getElementById('modal-task-lane-field');
-  if (laneField) laneField.style.display = 'none';
-  
-  // Reset form
-  document.getElementById('modal-task-title').value = '';
-  document.getElementById('modal-task-priority').value = 'medium';
-  document.getElementById('modal-task-due').value = '';
-  
-  // Show modal
-  const modal = document.getElementById('add-task-modal');
-  modal.style.display = 'flex';
-  modal.focus();
-  setTimeout(() => {
-    document.getElementById('modal-task-title').focus();
-  }, 100);
+  if (window.Petal?.features?.modalOperations?.openAddTaskModal) {
+    window.Petal.features.modalOperations.openAddTaskModal();
+  } else {
+    console.error('Modal operations module not loaded');
+  }
 }
 
-// Submit Add Task Modal
+// submitAddTaskModal has been moved to src/features/modalOperations.js
 function submitAddTaskModal() {
-  const title = document.getElementById('modal-task-title').value.trim();
-  if (!title) {
-    alert('Please enter a task title');
-    return;
-  }
-  
-  const priority = document.getElementById('modal-task-priority').value || 'medium';
-  const due = document.getElementById('modal-task-due').value || null;
-  const lane = document.getElementById('modal-task-lane')?.value || '';
-  
-  if (currentModalContext === 'project' && currentModalProjectId) {
-    addTaskToProjectFromModal(currentModalProjectId, title, priority, due, lane);
-  } else if (currentModalContext === 'matrix' && currentModalProjectId) {
-    addTaskToMatrixFromModal(title, priority, due, lane);
-  } else if (currentModalContext === 'general') {
-    // Add task without project
-    addTaskFromModal(title, priority, due, lane);
+  if (window.Petal?.features?.modalOperations?.submitAddTaskModal) {
+    const ctx = createPageContext();
+    window.Petal.features.modalOperations.submitAddTaskModal(ctx);
   } else {
-    alert('Unable to add task - no context specified');
-    return;
+    console.error('Modal operations module not loaded');
   }
-  
-  closeAddTaskModal();
 }
 
-// Add Task from Modal (general - no project)
+// addTaskFromModal has been moved to src/features/modalOperations.js
 async function addTaskFromModal(title, priority, due, lane) {
-  if (!window.Petal?.store) {
-    console.error('Store not available');
-    return;
-  }
-  
-  const state = window.Petal.store.getState();
-  const tasks = state.tasks || [];
-  
-  // Convert priority string to number
-  const priorityMap = { low: 1, medium: 2, high: 3 };
-  const priorityNum = priorityMap[priority] || 2;
-  
-  // Determine stage based on lane
-  const getStageForLane = (lane) => {
-    if (!lane) return null;
-    const laneToStage = {
-      'lab': 'lab',
-      'comp': 'comp',
-      'writing': 'writing',
-      'presentation': 'presentation'
-    };
-    return laneToStage[lane] || null;
-  };
-  
-  const newTask = {
-    id: Date.now(),
-    title: title,
-    notes: '',
-    note: '',
-    noteUpdatedAt: null,
-    log: [],
-    priority: priorityNum,
-    due: due || '',
-    done: false,
-    status: 'Todo',
-    lane: lane || null,
-    stage: getStageForLane(lane),
-    projectId: null,
-    dependsOn: null,
-    tags: [],
-    fileIds: [],
-    files: []
-  };
-  
-  // Update store
-  const updatedTasks = [newTask, ...tasks];
-  window.Petal.store.setState({ tasks: updatedTasks });
-  
-  // Re-render tasks view
-  if (window.Petal?.ui?.renderTasks) {
-    const newState = window.Petal.store.getState();
-    const container = document.getElementById('view-tasks');
-    if (container) {
-      await window.Petal.ui.renderTasks(container, newState, window.Petal.handlers);
-    }
+  if (window.Petal?.features?.modalOperations?.addTaskFromModal) {
+    const ctx = createPageContext();
+    await window.Petal.features.modalOperations.addTaskFromModal(ctx, title, priority, due, lane);
+  } else {
+    console.error('Modal operations module not loaded');
   }
 }
 
-// Add Task to Project from Modal
+// addTaskToProjectFromModal has been moved to src/features/modalOperations.js
 async function addTaskToProjectFromModal(projId, title, priority, due, lane) {
-  const normalizedProjId = normalizeProjectIdValue(projId);
-  const p = projects.find(p => p.id === normalizedProjId);
-  if (!p) return;
-  
-  const newTask = {
-    id: Date.now(),
-    title: title,
-    priority: priority,
-    due: due,
-    lane: lane || null,
-    done: false,
-    projectId: normalizedProjId,
-    fileIds: [], // NEW: Use canonical registry
-    files: [] // Keep for backward compatibility
-  };
-  
-  // Phase 2: Immutable update through store
-  if (window.Petal?.store) {
-    const state = window.Petal.store.getState();
-    window.Petal.store.setState({
-      tasks: [...state.tasks, newTask]
-    });
+  if (window.Petal?.features?.modalOperations?.addTaskToProjectFromModal) {
+    const ctx = createPageContext();
+    await window.Petal.features.modalOperations.addTaskToProjectFromModal(ctx, projId, title, priority, due, lane);
   } else {
-    // Fallback for backward compatibility
-    tasks.push(newTask);
-    await save();
+    console.error('Modal operations module not loaded');
   }
-  // Re-render projects view if visible
-  await rerenderViewIfActive('projects');
 }
 
-// Add Task to Matrix from Modal
+// addTaskToMatrixFromModal has been moved to src/features/modalOperations.js
 async function addTaskToMatrixFromModal(title, priority, due, lane) {
-  if (!selectedProjectId) return;
-  
-  const normalizedProjId = normalizeProjectIdValue(selectedProjectId);
-  const newTask = {
-    id: Date.now(),
-    title: title,
-    priority: priority,
-    due: due,
-    lane: lane || null,
-    done: false,
-    projectId: normalizedProjId,
-    fileIds: [], // NEW: Use canonical registry
-    files: [] // Keep for backward compatibility
-  };
-  
-  // Phase 2: Immutable update through store
-  if (window.Petal?.store) {
-    const state = window.Petal.store.getState();
-    window.Petal.store.setState({
-      tasks: [...state.tasks, newTask]
-    });
+  if (window.Petal?.features?.modalOperations?.addTaskToMatrixFromModal) {
+    const ctx = createPageContext();
+    await window.Petal.features.modalOperations.addTaskToMatrixFromModal(ctx, title, priority, due, lane);
   } else {
-    // Fallback for backward compatibility
-    tasks.push(newTask);
-    await save();
+    console.error('Modal operations module not loaded');
   }
-  renderWorkflowMatrix();
 }
 
 async function addTaskToProject(projId){
@@ -5408,308 +4982,133 @@ async function addTaskToProject(projId){
   document.getElementById('proj-task-lane-'+projId).value = '';
 }
 
-async function toggleTaskSubtaskSection(taskId){
-  if(openTaskSubtasks.has(taskId)) openTaskSubtasks.delete(taskId);
-  else openTaskSubtasks.add(taskId);
-  // Re-render projects view if visible
-  await rerenderViewIfActive('projects');
-}
-
-function toggleAddSubtaskToTask(taskId){
-  const section = document.getElementById('add-subtask-to-task-'+taskId);
-  if(section){
-    section.style.display = section.style.display === 'none' ? 'block' : 'none';
+// toggleTaskSubtaskSection has been moved to src/features/taskOperations.js
+async function toggleTaskSubtaskSection(taskId) {
+  if (window.Petal?.features?.taskOperations?.toggleTaskSubtaskSection) {
+    const ctx = createPageContext();
+    await window.Petal.features.taskOperations.toggleTaskSubtaskSection(ctx, taskId);
+  } else {
+    console.error('Task operations module not loaded');
   }
 }
 
-// Helper function to get subtasks for a task
+// toggleAddSubtaskToTask has been moved to src/features/taskOperations.js
+function toggleAddSubtaskToTask(taskId) {
+  if (window.Petal?.features?.taskOperations?.toggleAddSubtaskToTask) {
+    window.Petal.features.taskOperations.toggleAddSubtaskToTask(taskId);
+  } else {
+    console.error('Task operations module not loaded');
+  }
+}
+
+// getTaskSubtasks has been moved to src/features/taskOperations.js
 function getTaskSubtasks(taskId) {
-  return tasks.filter(t => t.parentTaskId === taskId);
-}
-
-async function addSubtaskToTaskInline(taskId){
-  const t = tasks.find(t => t.id === taskId);
-  if(!t) return;
-  
-  const title = document.getElementById('subtask-title-'+taskId)?.value.trim();
-  if(!title){
-    document.getElementById('subtask-title-'+taskId)?.focus();
-    return;
+  if (window.Petal?.features?.taskOperations?.getTaskSubtasks) {
+    const ctx = createPageContext();
+    return window.Petal.features.taskOperations.getTaskSubtasks(ctx, taskId);
+  } else {
+    console.error('Task operations module not loaded');
+    return [];
   }
-  
-  const priority = document.getElementById('subtask-pri-'+taskId)?.value || 'medium';
-  const due = document.getElementById('subtask-due-'+taskId)?.value || '';
-  
-  // Create a new task with parentTaskId instead of nested subtask
-  const newSubtask = {
-    id: Date.now(),
-    title,
-    notes: '',
-    note: '', // NEW: note field
-    noteUpdatedAt: '', // NEW: timestamp for note updates
-    priority,
-    due,
-    files: [],
-    done: false,
-    status: 'Todo',
-    projectId: t.projectId || null,
-    parentTaskId: taskId,
-    lane: t.lane || null,
-    stage: t.stage || 'planned',
-    boardOrder: 1024
-  };
-  
-  tasks.unshift(newSubtask);
-  await save();
-  render();
-  
-  // Clear form
-  document.getElementById('subtask-title-'+taskId).value = '';
-  document.getElementById('subtask-pri-'+taskId).value = 'medium';
-  document.getElementById('subtask-due-'+taskId).value = '';
-  document.getElementById('add-subtask-to-task-'+taskId).style.display = 'none';
 }
 
-async function toggleTaskSubtask(taskId, subtaskId){
-  // subtaskId is now a task ID, not a nested subtask
-  const st = tasks.find(t => t.id === subtaskId);
-  if(st) {
-    st.done = !st.done;
-    if (st.done) st.status = 'Done';
-    else if (st.status === 'Done') st.status = 'Todo';
+// addSubtaskToTaskInline has been moved to src/features/taskOperations.js
+async function addSubtaskToTaskInline(taskId) {
+  if (window.Petal?.features?.taskOperations?.addSubtaskToTaskInline) {
+    const ctx = createPageContext();
+    await window.Petal.features.taskOperations.addSubtaskToTaskInline(ctx, taskId);
+  } else {
+    console.error('Task operations module not loaded');
   }
-  await save();
-  render();
 }
 
-function editTaskSubtask(taskId, subtaskId){
-  // subtaskId is now a task ID
-  const st = tasks.find(t => t.id === subtaskId);
-  if(!st) return;
-  
-  editingTaskId = subtaskId; // Edit as a regular task
-  editingSubtaskInfo = null;
-  
-  // Populate modal
-  const currentTitle = [st.title, ...(st.tags||[])].filter(Boolean).join(' ').trim();
-  document.getElementById('edit-modal-title').textContent = 'Edit Subtask';
-  document.getElementById('edit-title').value = currentTitle || st.title || '';
-  document.getElementById('edit-notes').value = st.notes || '';
-  document.getElementById('edit-priority').value = st.priority || 'medium';
-  document.getElementById('edit-due').value = st.due || '';
-  document.getElementById('edit-notes-field').style.display = '';
-  document.getElementById('edit-tags-hint').style.display = '';
-  
-  // Show modal
-  document.getElementById('edit-modal').classList.add('active');
-  document.getElementById('edit-title').focus();
+// toggleTaskSubtask has been moved to src/features/taskOperations.js
+async function toggleTaskSubtask(taskId, subtaskId) {
+  if (window.Petal?.features?.taskOperations?.toggleTaskSubtask) {
+    const ctx = createPageContext();
+    await window.Petal.features.taskOperations.toggleTaskSubtask(ctx, taskId, subtaskId);
+  } else {
+    console.error('Task operations module not loaded');
+  }
+}
+
+// editTaskSubtask has been moved to src/features/taskOperations.js
+function editTaskSubtask(taskId, subtaskId) {
+  if (window.Petal?.features?.taskOperations?.editTaskSubtask) {
+    const ctx = createPageContext();
+    window.Petal.features.taskOperations.editTaskSubtask(ctx, taskId, subtaskId);
+  } else {
+    console.error('Task operations module not loaded');
+  }
 }
 
 // Open Add File Modal for Project
+// openProjectAddFileModal has been moved to src/features/modalOperations.js
 function openProjectAddFileModal(projId) {
-  currentModalProjectId = projId;
-  currentModalContext = 'project';
-  const p = projects.find(p => p.id === projId);
-  if (!p) return;
-  
-  document.getElementById('add-file-modal-title').textContent = `Add File to ${p.name}`;
-  
-  // Clear file container and reset drop hint
-  const container = document.getElementById('modal-files-container');
-  if (container) {
-    container.innerHTML = '';
-    container.style.borderColor = 'var(--border)';
-    container.style.background = '';
-  }
-  const dropHint = document.getElementById('modal-files-drop-hint');
-  if (dropHint) dropHint.style.display = 'none';
-  
-  // Update button text and hint visibility
-  const addFileBtn = document.getElementById('modal-add-file-btn');
-  const fileHint = document.getElementById('modal-file-hint');
-  if (window.electronAPI) {
-    if (addFileBtn) addFileBtn.textContent = '＋ Choose file';
-    if (fileHint) fileHint.style.display = 'block';
+  if (window.Petal?.features?.modalOperations?.openProjectAddFileModal) {
+    const ctx = createPageContext();
+    window.Petal.features.modalOperations.openProjectAddFileModal(ctx, projId);
   } else {
-    if (addFileBtn) addFileBtn.textContent = '＋ Add file link';
-    if (fileHint) fileHint.style.display = 'none';
+    console.error('Modal operations module not loaded');
   }
-  
-  // Show modal and focus
-  const modal = document.getElementById('add-file-modal');
-  modal.style.display = 'flex';
-  modal.focus(); // Make modal focusable for Escape key
 }
 
-// Open Add File Modal for Matrix
+// openMatrixAddFileModal has been moved to src/features/modalOperations.js
 function openMatrixAddFileModal() {
-  currentModalProjectId = selectedProjectId;
-  currentModalContext = 'matrix';
-  const p = projects.find(p => p.id === selectedProjectId);
-  if (!p) return;
-  
-  document.getElementById('add-file-modal-title').textContent = `Add File to ${p.name}`;
-  
-  // Clear file container and reset drop hint
-  const container = document.getElementById('modal-files-container');
-  if (container) {
-    container.innerHTML = '';
-    container.style.borderColor = 'var(--border)';
-    container.style.background = '';
-  }
-  const dropHint = document.getElementById('modal-files-drop-hint');
-  if (dropHint) dropHint.style.display = 'none';
-  
-  // Update button text and hint visibility
-  const addFileBtn = document.getElementById('modal-add-file-btn');
-  const fileHint = document.getElementById('modal-file-hint');
-  if (window.electronAPI) {
-    if (addFileBtn) addFileBtn.textContent = '＋ Choose file';
-    if (fileHint) fileHint.style.display = 'block';
+  if (window.Petal?.features?.modalOperations?.openMatrixAddFileModal) {
+    const ctx = createPageContext();
+    window.Petal.features.modalOperations.openMatrixAddFileModal(ctx);
   } else {
-    if (addFileBtn) addFileBtn.textContent = '＋ Add file link';
-    if (fileHint) fileHint.style.display = 'none';
+    console.error('Modal operations module not loaded');
   }
-  
-  // Show modal and focus
-  const modal = document.getElementById('add-file-modal');
-  modal.style.display = 'flex';
-  modal.focus(); // Make modal focusable for Escape key
 }
 
-// Close Add File Modal
+// closeAddFileModal has been moved to src/features/modalOperations.js
 function closeAddFileModal() {
-  document.getElementById('add-file-modal').style.display = 'none';
-  currentModalProjectId = null;
-  currentModalContext = null;
-  if (window.currentModalTaskId) window.currentModalTaskId = null;
-  
-  // Clear file container
-  const container = document.getElementById('modal-files-container');
-  if (container) container.innerHTML = '';
-}
-
-// Submit Add File Modal
-async function submitAddFileModal() {
-  if (!currentModalProjectId) return;
-  
-  const container = document.getElementById('modal-files-container');
-  if (!container) return;
-  
-  const fileInputs = container.querySelectorAll('input[type="text"], input[type="file"]');
-  const filesToAdd = [];
-  
-  for (const input of fileInputs) {
-    if (input.type === 'file' && input.files && input.files.length > 0) {
-      const file = input.files[0];
-      if (window.electronAPI) {
-        // In Electron, we'd use the file path
-        const fileObj = {
-          id: Date.now() + Math.random(), // Unique ID for file
-          abs_path: file.path || file.name,
-          name: file.name,
-          label: file.name,
-          note: '', // NEW: note field
-          noteUpdatedAt: '' // NEW: timestamp for note updates
-        };
-        filesToAdd.push(fileObj);
-      }
-    } else if (input.type === 'text' && input.value.trim()) {
-      // URL or path
-      const url = input.value.trim();
-      filesToAdd.push({
-        id: Date.now() + Math.random(), // Unique ID for file
-        share_url: url,
-        label: url,
-        note: '', // NEW: note field
-        noteUpdatedAt: '' // NEW: timestamp for note updates
-      });
-    }
-  }
-  
-  if (filesToAdd.length === 0) {
-    alert('Please add at least one file');
-    return;
-  }
-  
-  if (currentModalContext === 'project') {
-    await addFileToProjectFromModal(currentModalProjectId, filesToAdd);
-    // If we're adding files from a task drawer, link them to the task
-    if (window.currentModalTaskId) {
-      await linkFilesToTaskFromModal(window.currentModalTaskId, filesToAdd);
-      window.currentModalTaskId = null; // Clear after use
-    }
-  } else if (currentModalContext === 'matrix') {
-    await addFileToMatrixFromModal(filesToAdd);
-  }
-  
-  closeAddFileModal();
-}
-
-// Add File to Project from Modal
-async function addFileToProjectFromModal(projId, filesToAdd) {
-  const p = projects.find(p => p.id === projId);
-  if (!p) return;
-  
-  if (!p.files) p.files = [];
-  
-  // Ensure files have canonical structure
-  filesToAdd.forEach(fileLink => {
-    const canonicalFile = findOrCreateCanonicalFile(projId, fileLink);
-    // File is already added to registry by findOrCreateCanonicalFile
-  });
-  
-  await save();
-  // Re-render projects view if visible
-  await rerenderViewIfActive('projects');
-}
-
-// Add File to Matrix Project from Modal
-async function addFileToMatrixFromModal(filesToAdd) {
-  if (!selectedProjectId) return;
-  
-  const p = projects.find(p => p.id === selectedProjectId);
-  if (!p) return;
-  
-  if (!p.files) p.files = [];
-  
-  // Ensure files have canonical structure
-  filesToAdd.forEach(fileLink => {
-    const canonicalFile = findOrCreateCanonicalFile(selectedProjectId, fileLink);
-    // File is already added to registry by findOrCreateCanonicalFile
-  });
-  
-  await save();
-  renderWorkflowMatrix();
-}
-
-// Link files to task after they're added to project (called from task drawer)
-async function linkFilesToTaskFromModal(taskId, filesToAdd) {
-  const state = window.Petal?.store?.getState();
-  const tasks = state?.tasks || [];
-  const task = tasks.find(t => t.id === taskId && !t.deletedAt);
-  if (!task) return;
-  
-  if (!task.fileIds) task.fileIds = [];
-  
-  // Link all added files to the task
-  filesToAdd.forEach(fileLink => {
-    if (fileLink.id && !task.fileIds.includes(fileLink.id)) {
-      task.fileIds.push(fileLink.id);
-    }
-  });
-  
-  // Update task in store
-  if (window.Petal?.store) {
-    const updatedTasks = tasks.map(t => t.id === taskId ? task : t);
-    window.Petal.store.setState({ tasks: updatedTasks });
-    // Refresh task drawer files if it's open
-    if (window.Petal?.features?.taskDrawer?.renderTaskDrawerFiles) {
-      const ctx = window.Petal.handlers?.createPageContext?.() || { tasks, projects: state?.projects || [] };
-      window.Petal.features.taskDrawer.renderTaskDrawerFiles(ctx);
-    }
+  if (window.Petal?.features?.modalOperations?.closeAddFileModal) {
+    window.Petal.features.modalOperations.closeAddFileModal();
   } else {
-    await save();
+    console.error('Modal operations module not loaded');
+  }
+}
+
+// submitAddFileModal has been moved to src/features/modalOperations.js
+async function submitAddFileModal() {
+  if (window.Petal?.features?.modalOperations?.submitAddFileModal) {
+    const ctx = createPageContext();
+    await window.Petal.features.modalOperations.submitAddFileModal(ctx);
+  } else {
+    console.error('Modal operations module not loaded');
+  }
+}
+
+// addFileToProjectFromModal has been moved to src/features/modalOperations.js
+async function addFileToProjectFromModal(projId, filesToAdd) {
+  if (window.Petal?.features?.modalOperations?.addFileToProjectFromModal) {
+    const ctx = createPageContext();
+    await window.Petal.features.modalOperations.addFileToProjectFromModal(ctx, projId, filesToAdd);
+  } else {
+    console.error('Modal operations module not loaded');
+  }
+}
+
+// addFileToMatrixFromModal has been moved to src/features/modalOperations.js
+async function addFileToMatrixFromModal(filesToAdd) {
+  if (window.Petal?.features?.modalOperations?.addFileToMatrixFromModal) {
+    const ctx = createPageContext();
+    await window.Petal.features.modalOperations.addFileToMatrixFromModal(ctx, filesToAdd);
+  } else {
+    console.error('Modal operations module not loaded');
+  }
+}
+
+// linkFilesToTaskFromModal has been moved to src/features/modalOperations.js
+async function linkFilesToTaskFromModal(taskId, filesToAdd) {
+  if (window.Petal?.features?.modalOperations?.linkFilesToTaskFromModal) {
+    const ctx = createPageContext();
+    await window.Petal.features.modalOperations.linkFilesToTaskFromModal(ctx, taskId, filesToAdd);
+  } else {
+    console.error('Modal operations module not loaded');
   }
 }
 
@@ -5718,395 +5117,80 @@ async function linkFilesToTaskFromModal(taskId, filesToAdd) {
 // Current file being edited (stores file ID/key)
 let currentFileNotesId = null;
 
-// Helper function to compute file key (used by multiple file functions)
-function getFileKey(file) {
-  return file.key || 
-         file.fileLink?.abs_path || 
-         file.fileLink?.onedrive_rel || 
-         file.fileLink?.share_url ||
-         file.id ||
-         '';
-}
+// getFileKey has been moved to src/features/modalOperations.js (internal helper)
 
-// Open File Notes Modal
+// openFileNotesModal has been moved to src/features/modalOperations.js
 function openFileNotesModal(fileId) {
-  if (!window.Petal?.store) {
-    console.error('Store not available');
-    return;
+  if (window.Petal?.features?.modalOperations?.openFileNotesModal) {
+    window.Petal.features.modalOperations.openFileNotesModal(fileId);
+  } else {
+    console.error('Modal operations module not loaded');
   }
-  
-  const state = window.Petal.store.getState();
-  const files = state.files || [];
-  const registry = state.fileRegistry || {};
-  
-  // First, try to find in persisted files
-  let file = files.find(f => {
-    const fKey = getFileKey(f);
-    return f.id === fileId || 
-           f.key === fileId || 
-           fKey === fileId ||
-           (f.fileLink && (
-             f.fileLink.abs_path === fileId || 
-             f.fileLink.onedrive_rel === fileId || 
-             f.fileLink.share_url === fileId
-           ));
-  });
-  
-  // If not found in persisted files, try registry
-  if (!file) {
-    // Try direct lookup
-    let registryFile = registry[fileId];
-    
-    // If not found, search all registry entries
-    if (!registryFile) {
-      for (const key in registry) {
-        const regFile = registry[key];
-        const regKey = getFileKey(regFile);
-        if (key === fileId || regKey === fileId || 
-            regFile.abs_path === fileId || 
-            regFile.onedrive_rel === fileId || 
-            regFile.share_url === fileId) {
-          registryFile = regFile;
-          fileId = key; // Update to use the registry key
-          break;
-        }
-      }
-    }
-    
-    if (registryFile) {
-      // Check if there's a persisted file with this key
-      const fileKey = getFileKey(registryFile);
-      const persistedFile = files.find(f => getFileKey(f) === fileKey);
-      
-      if (persistedFile) {
-        // Use persisted file (has notes)
-        file = persistedFile;
-      } else {
-        // Create a temporary file entry from registry
-        file = {
-          key: fileId,
-          fileLink: registryFile,
-          name: registryFile.label || registryFile.name || 'File',
-          notes: registryFile.notes || ''
-        };
-      }
-    }
-  }
-  
-  if (!file) {
-    console.error('File not found:', fileId, { 
-      persistedFilesCount: files.length, 
-      registryKeysCount: Object.keys(registry).length,
-      sampleFileKeys: files.slice(0, 3).map(f => ({
-        id: f.id,
-        key: f.key,
-        fileLink: f.fileLink ? {
-          abs_path: f.fileLink.abs_path,
-          onedrive_rel: f.fileLink.onedrive_rel,
-          share_url: f.fileLink.share_url
-        } : null
-      })),
-      registrySample: Object.keys(registry).slice(0, 3)
-    });
-    alert('File not found. Please try refreshing the file list.');
-    return;
-  }
-  
-  // Determine the identifier to use for saving
-  currentFileNotesId = file.id || file.key || getFileKey(file) || fileId;
-  populateFileNotesModal(file);
 }
 
-// Populate File Notes Modal
+// populateFileNotesModal has been moved to src/features/modalOperations.js
 function populateFileNotesModal(file) {
-  const modal = document.getElementById('file-notes-modal');
-  const titleEl = document.getElementById('file-notes-modal-title');
-  const fileNameEl = document.getElementById('file-notes-file-name');
-  const notesTextarea = document.getElementById('file-notes-content');
-  
-  if (!modal || !titleEl || !fileNameEl || !notesTextarea) {
-    console.error('File notes modal elements not found');
-    return;
+  if (window.Petal?.features?.modalOperations?.populateFileNotesModal) {
+    window.Petal.features.modalOperations.populateFileNotesModal(file);
+  } else {
+    console.error('Modal operations module not loaded');
   }
-  
-  // Get file name
-  const fileName = file.name || 
-                   file.fileLink?.label || 
-                   file.fileLink?.name || 
-                   file.fileLink?.onedrive_rel || 
-                   file.fileLink?.abs_path || 
-                   file.fileLink?.share_url || 
-                   'File';
-  
-  fileNameEl.textContent = fileName;
-  notesTextarea.value = file.notes || '';
-  
-  // Show modal
-  modal.style.display = 'flex';
-  modal.focus();
-  
-  // Focus textarea
-  setTimeout(() => notesTextarea.focus(), 100);
 }
 
-// Close File Notes Modal
+// closeFileNotesModal has been moved to src/features/modalOperations.js
 function closeFileNotesModal() {
-  const modal = document.getElementById('file-notes-modal');
-  if (modal) {
-    modal.style.display = 'none';
-  }
-  currentFileNotesId = null;
-  
-  // Clear textarea
-  const notesTextarea = document.getElementById('file-notes-content');
-  if (notesTextarea) {
-    notesTextarea.value = '';
+  if (window.Petal?.features?.modalOperations?.closeFileNotesModal) {
+    window.Petal.features.modalOperations.closeFileNotesModal();
+  } else {
+    console.error('Modal operations module not loaded');
   }
 }
 
-// Save File Notes
+// saveFileNotes has been moved to src/features/modalOperations.js
 async function saveFileNotes() {
-  if (!window.Petal?.store || !currentFileNotesId) {
-    console.error('Store not available or no file selected');
-    return;
-  }
-  
-  const notesTextarea = document.getElementById('file-notes-content');
-  if (!notesTextarea) {
-    console.error('Notes textarea not found');
-    return;
-  }
-  
-  const notes = notesTextarea.value.trim();
-  const state = window.Petal.store.getState();
-  const files = state.files || [];
-  const registry = state.fileRegistry || {};
-  
-  // Find the file in persisted files
-  let fileIndex = files.findIndex(f => {
-    const fKey = getFileKey(f);
-    return f.id === currentFileNotesId || 
-           f.key === currentFileNotesId || 
-           fKey === currentFileNotesId ||
-           (f.fileLink && (
-             f.fileLink.abs_path === currentFileNotesId || 
-             f.fileLink.onedrive_rel === currentFileNotesId || 
-             f.fileLink.share_url === currentFileNotesId
-           ));
-  });
-  
-  if (fileIndex === -1) {
-    // File not in persisted files, check registry
-    let registryFile = registry[currentFileNotesId];
-    let registryKey = currentFileNotesId;
-    
-    // If not found, search all registry entries
-    if (!registryFile) {
-      for (const key in registry) {
-        const regFile = registry[key];
-        const regKey = getFileKey(regFile);
-        if (key === currentFileNotesId || regKey === currentFileNotesId || 
-            regFile.abs_path === currentFileNotesId || 
-            regFile.onedrive_rel === currentFileNotesId || 
-            regFile.share_url === currentFileNotesId) {
-          registryFile = regFile;
-          registryKey = key;
-          break;
-        }
-      }
-    }
-    
-    if (registryFile) {
-      // Create a new persisted file entry for this file
-      const newFile = {
-        id: Date.now() + Math.random(),
-        key: registryKey,
-        fileLink: registryFile,
-        name: registryFile.label || registryFile.name || 'File',
-        notes: notes,
-        addedAt: Date.now()
-      };
-      
-      // Add to files array
-      const updatedFiles = [...files, newFile];
-      window.Petal.store.setState({ files: updatedFiles });
-      
-      closeFileNotesModal();
-      
-      // Re-render files view
-      if (window.Petal?.ui?.renderFiles) {
-        const newState = window.Petal.store.getState();
-        const container = document.getElementById('files-view-container');
-        if (container) {
-          window.Petal.ui.renderFiles(container, newState, window.Petal.handlers);
-        }
-      }
-      
-      return;
-    } else {
-      console.error('File not found in registry:', currentFileNotesId);
-      alert('File not found. Please try refreshing the file list.');
-      return;
-    }
-  }
-  
-  // Update existing file
-  const updatedFiles = [...files];
-  updatedFiles[fileIndex] = {
-    ...updatedFiles[fileIndex],
-    notes: notes
-  };
-  
-  window.Petal.store.setState({ files: updatedFiles });
-  
-  closeFileNotesModal();
-  
-  // Re-render files view
-  if (window.Petal?.ui?.renderFiles) {
-    const newState = window.Petal.store.getState();
-    const container = document.getElementById('files-view-container');
-    if (container) {
-      window.Petal.ui.renderFiles(container, newState, window.Petal.handlers);
-    }
+  if (window.Petal?.features?.modalOperations?.saveFileNotes) {
+    await window.Petal.features.modalOperations.saveFileNotes();
+  } else {
+    console.error('Modal operations module not loaded');
   }
 }
 
 // ═══════════════════════ DRAG AND DROP HANDLERS ═══════════════════════
 
-// Handle file drag over in modal
+// onModalFileDragOver has been moved to src/features/modalOperations.js
 function onModalFileDragOver(event) {
-  event.preventDefault();
-  event.stopPropagation();
-  event.currentTarget.style.borderColor = 'var(--rose)';
-  event.currentTarget.style.background = 'var(--rose-pale)';
-  const hint = document.getElementById('modal-files-drop-hint');
-  if (hint) hint.style.display = 'block';
+  if (window.Petal?.features?.modalOperations?.onModalFileDragOver) {
+    window.Petal.features.modalOperations.onModalFileDragOver(event);
+  } else {
+    console.error('Modal operations module not loaded');
+  }
 }
 
-// Handle file drag enter in modal
+// onModalFileDragEnter has been moved to src/features/modalOperations.js
 function onModalFileDragEnter(event) {
-  event.preventDefault();
-  event.stopPropagation();
+  if (window.Petal?.features?.modalOperations?.onModalFileDragEnter) {
+    window.Petal.features.modalOperations.onModalFileDragEnter(event);
+  } else {
+    console.error('Modal operations module not loaded');
+  }
 }
 
-// Handle file drag leave in modal
+// onModalFileDragLeave has been moved to src/features/modalOperations.js
 function onModalFileDragLeave(event) {
-  event.preventDefault();
-  event.stopPropagation();
-  // Only reset if we're leaving the container (not entering a child)
-  if (event.currentTarget === event.target) {
-    event.currentTarget.style.borderColor = 'var(--border)';
-    event.currentTarget.style.background = '';
-    const hint = document.getElementById('modal-files-drop-hint');
-    if (hint) hint.style.display = 'none';
+  if (window.Petal?.features?.modalOperations?.onModalFileDragLeave) {
+    window.Petal.features.modalOperations.onModalFileDragLeave(event);
+  } else {
+    console.error('Modal operations module not loaded');
   }
 }
 
-// Handle file drop in modal
+// onModalFileDrop has been moved to src/features/modalOperations.js
 async function onModalFileDrop(event) {
-  event.preventDefault();
-  event.stopPropagation();
-  
-  // Reset visual feedback
-  const container = event.currentTarget;
-  container.style.borderColor = 'var(--border)';
-  container.style.background = '';
-  const hint = document.getElementById('modal-files-drop-hint');
-  if (hint) hint.style.display = 'none';
-  
-  const containerId = 'modal-files-container';
-  const prefix = 'modal';
-  
-  // Get dropped files
-  const files = [];
-  if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
-    // Browser File API
-    for (let i = 0; i < event.dataTransfer.files.length; i++) {
-      files.push(event.dataTransfer.files[i]);
-    }
-  } else if (event.dataTransfer.items) {
-    // Electron file paths
-    for (let i = 0; i < event.dataTransfer.items.length; i++) {
-      const item = event.dataTransfer.items[i];
-      if (item.kind === 'file') {
-        const file = item.getAsFile();
-        if (file) files.push(file);
-      }
-    }
-  }
-  
-  if (files.length === 0) return;
-  
-  // Process each dropped file
-  for (const file of files) {
-    const id = Date.now() + Math.random();
-    const row = document.createElement('div');
-    row.className = 'file-link-row';
-    row.dataset.id = id;
-    
-    if (window.electronAPI) {
-      // Electron: dropped files should have a path property
-      // If not, we'll use the file name and let the user edit it
-      let filePath = file.path || '';
-      let fileName = file.name || (filePath ? filePath.split(/[/\\]/).pop() : 'File');
-      
-      const fileLink = {
-        label: fileName,
-        abs_path: filePath || file.name,
-        name: fileName
-      };
-      
-      // Try to create OneDrive-relative path if possible
-      if (filePath && window.electronAPI.getOneDriveRoot) {
-        try {
-          const oneDriveRoot = await window.electronAPI.getOneDriveRoot();
-          if (oneDriveRoot) {
-            // Simple path comparison (case-insensitive)
-            const normalizedPath = filePath.replace(/\\/g, '/').toLowerCase();
-            const normalizedOneDrive = oneDriveRoot.replace(/\\/g, '/').toLowerCase();
-            if (normalizedPath.startsWith(normalizedOneDrive)) {
-              const relative = filePath.substring(oneDriveRoot.length).replace(/^[/\\]/, '').replace(/\\/g, '/');
-              fileLink.onedrive_rel = relative;
-              fileLink.isInOneDrive = true;
-            }
-          }
-        } catch (e) {
-          console.warn('Could not determine OneDrive path:', e);
-        }
-      }
-      
-      // Extract file extension
-      const ext = fileName.split('.').pop()?.toLowerCase();
-      if (ext && ext !== fileName) fileLink.type = ext;
-      
-      row.innerHTML = `
-        <input type="text" placeholder="Label" id="${prefix}fn-${id}" value="${esc(fileLink.label)}">
-        <input type="text" placeholder="File path" id="${prefix}fu-${id}" value="${esc(fileLink.abs_path || '')}" readonly style="background:var(--bg2);">
-        <input type="hidden" id="${prefix}fl-${id}" value="${esc(JSON.stringify(fileLink))}">
-        <button class="btn-remove" onclick="this.parentElement.remove()">✕</button>`;
-    } else {
-      // Browser: use file name and create blob URL
-      const fileLink = {
-        label: file.name,
-        name: file.name,
-        share_url: URL.createObjectURL(file)
-      };
-      
-      // Extract file extension
-      const ext = file.name.split('.').pop()?.toLowerCase();
-      if (ext && ext !== file.name) fileLink.type = ext;
-      
-      row.innerHTML = `
-        <input type="text" placeholder="Label" id="${prefix}fn-${id}" value="${esc(fileLink.label)}">
-        <input type="text" placeholder="File" id="${prefix}fu-${id}" value="${esc(file.name)}" readonly style="background:var(--bg2);">
-        <input type="hidden" id="${prefix}fl-${id}" value="${esc(JSON.stringify(fileLink))}">
-        <button class="btn-remove" onclick="this.parentElement.remove()">✕</button>`;
-    }
-    
-    const c = document.getElementById(containerId);
-    if (c) {
-      c.appendChild(row);
-    }
+  if (window.Petal?.features?.modalOperations?.onModalFileDrop) {
+    const ctx = createPageContext();
+    await window.Petal.features.modalOperations.onModalFileDrop(event, ctx);
+  } else {
+    console.error('Modal operations module not loaded');
   }
 }
 
