@@ -48,8 +48,19 @@ export async function switchView(viewName, options = {}) {
   console.log('🔍 DEBUG: router.switchView called with:', viewName);
   
   // RE-ENTRY GUARD: Prevent multiple simultaneous router calls
-  if (routerInProgress) {
-    const currentView = window.Petal?.store?.getState()?.currentView;
+  // BUT: Allow force re-render if explicitly requested (for data updates)
+  const force = options.force === true;
+  const currentView = window.Petal?.store?.getState()?.currentView;
+  
+  // If already on this view and not forcing, skip (unless force is true)
+  if (!force && viewName === currentView && !routerInProgress) {
+    // Already on this view and not forcing - skip to prevent unnecessary re-renders
+    // But allow force re-renders when data changes
+    console.log('⏭️ router.switchView: Already on this view, skipping (use force: true to re-render):', viewName);
+    return;
+  }
+  
+  if (routerInProgress && !force) {
     if (viewName === currentView) {
       console.log('⏭️ router.switchView: Already switching or already on this view, ignoring:', viewName);
       return;
@@ -209,8 +220,11 @@ export async function switchView(viewName, options = {}) {
   resetActiveViewPosition(viewName);
   
   // Update store AND window.currentView to keep them in sync
+  // BUT: Only update if view is actually changing to prevent render loops
   const state = store.getState();
-  store.setState({ currentView: viewName });
+  if (state.currentView !== viewName) {
+    store.setState({ currentView: viewName });
+  }
   // Also update window.currentView immediately to prevent race conditions
   window.currentView = viewName;
   

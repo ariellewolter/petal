@@ -45,6 +45,18 @@ export function normalizeListValue(value) {
 }
 
 /**
+ * Get project name by ID
+ * @param {Array} projects - Array of projects
+ * @param {string|number} projectId - Project ID to look up
+ * @returns {string} Project name or empty string if not found
+ */
+export function projectNameById(projects, projectId) {
+  if (!projectId || !projects) return '';
+  const project = projects.find((p) => String(p.id) === String(projectId));
+  return project ? project.name : '';
+}
+
+/**
  * Normalize project ID value (handles string/number conversion)
  * @param {string|number} value - Project ID value to normalize
  * @returns {string|number} Normalized project ID (number if numeric, string otherwise)

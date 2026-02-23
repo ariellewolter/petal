@@ -64,7 +64,8 @@ export function setupEventDelegation() {
     
     // Edit task - use helper function
     if (action === 'edit-task') {
-      handleEditTaskAction(e);
+      // Pass the button element so handleEditTaskAction can extract taskId correctly
+      handleEditTaskAction(e, actionBtn);
       return;
     }
     

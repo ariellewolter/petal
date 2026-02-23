@@ -1556,15 +1556,10 @@ ensurePetalNamespace();
 // Single entry point - all initialization logic is now in src/app/init.js
 
 // Wait for DOM and Electron to be ready
+// startApp() has been simplified - most initialization is now handled by src/app/init.js
+// This function just ensures DOM is ready and calls the module's initApp()
 async function startApp() {
   try {
-    console.log('🚀 Starting app initialization...');
-    console.log('🔍 Environment check:', {
-      hasElectronAPI: typeof window !== 'undefined' && !!window.electronAPI,
-      readyState: document.readyState,
-      userAgent: navigator.userAgent
-    });
-    
     // Ensure DOM is ready
     if (document.readyState === 'loading') {
       await new Promise(resolve => {
@@ -1575,377 +1570,62 @@ async function startApp() {
     // Small delay to ensure all elements are in the DOM
     await new Promise(resolve => setTimeout(resolve, 100));
     
-    // Check if required elements exist
-    const sidebar = document.getElementById('global-sidebar');
-    const appContainer = document.querySelector('.app');
-    const sidebarNav = document.getElementById('global-sidebar-nav');
-    
-    console.log('🔍 DOM check:', { 
-      hasSidebar: !!sidebar, 
-      hasSidebarNav: !!sidebarNav,
-      hasAppContainer: !!appContainer,
-      readyState: document.readyState,
-      appDisplay: appContainer ? window.getComputedStyle(appContainer).display : 'N/A',
-      sidebarDisplay: sidebar ? window.getComputedStyle(sidebar).display : 'N/A'
-    });
-    
-    if (!sidebar) {
-      console.error('❌ CRITICAL: global-sidebar element not found in DOM');
-      throw new Error('global-sidebar element not found');
-    }
-    if (!appContainer) {
-      console.error('❌ CRITICAL: .app container not found in DOM');
-      throw new Error('.app container not found');
-    }
-    if (!sidebarNav) {
-      console.error('❌ CRITICAL: global-sidebar-nav element not found in DOM');
-      throw new Error('global-sidebar-nav element not found');
-    }
-    
-    // Force visibility immediately
-    appContainer.style.setProperty('display', 'grid', 'important');
-    appContainer.style.setProperty('visibility', 'visible', 'important');
-    sidebar.style.setProperty('display', 'flex', 'important');
-    sidebar.style.setProperty('visibility', 'visible', 'important');
-    
-    console.log('✅ DOM elements found and made visible');
-    
-    // Import and initialize
-    console.log('📦 Importing modules...');
-    
-    try {
-      // Import required feature modules first (needed by inline code)
-      console.log('📦 Importing FileManagement...');
-      const FileManagementModule = await import('./src/features/fileManagement.js');
-      window.FileManagement = FileManagementModule; // Use namespace import
-      console.log('✅ FileManagement imported');
-      
-      console.log('📦 Importing ExportImport...');
-      const ExportImportModule = await import('./src/features/exportImport.js');
-      window.ExportImport = ExportImportModule; // Use namespace import
-      console.log('✅ ExportImport imported');
-      
-      console.log('📦 Importing TaskOperations...');
-      const TaskOperationsModule = await import('./src/features/taskOperations.js');
-      window.TaskOperations = TaskOperationsModule; // Use namespace import
-      console.log('✅ TaskOperations imported');
-    } catch (featureErr) {
-      console.error('❌ Error importing feature modules:', featureErr);
-      console.error('Feature import error details:', {
-        message: featureErr.message,
-        stack: featureErr.stack,
-        name: featureErr.name
-      });
-      // Continue anyway - these might be set up by initApp
-    }
-    
-    // Now import and initialize the app
-    console.log('📦 Importing initApp...');
-    let initApp;
-    try {
-      const initModule = await import('./src/app/init.js');
-      initApp = initModule.initApp;
-      if (!initApp) {
-        throw new Error('initApp function not found in module');
-      }
-      console.log('✅ initApp imported');
-    } catch (importErr) {
-      console.error('❌ Failed to import initApp:', importErr);
-      console.error('Import error details:', {
-        message: importErr.message,
-        stack: importErr.stack,
-        name: importErr.name,
-        fileName: importErr.fileName,
-        lineNumber: importErr.lineNumber
-      });
-      // Try to get more details about the import failure
-      if (importErr.message.includes('Failed to fetch')) {
-        console.error('🔍 This is a module loading error. Checking if file exists...');
-        // The file path in the error should help debug
-      }
-      throw importErr; // Re-throw to show error in UI
-    }
-    
-    console.log('🚀 Calling initApp()...');
+    // Import and call the module's initApp (handles all initialization)
+    const { initApp } = await import('./src/app/init.js');
     await initApp();
-    console.log('✅ initApp completed');
     
-    // Set up window globals that inline code expects (after initApp has loaded modules)
-    try {
-      if (window.Petal?.features?.fileManagement) {
-        window.FileManagement = window.Petal.features.fileManagement;
-        window.FILE_STATUSES = window.Petal.features.fileManagement.FILE_STATUSES;
-        
-        // Set up wrapper functions for backward compatibility
-        window.Petal.features.fileManagement = {
-          buildFileRegistry: (commit = true) => {
-            const ctx = createPageContext();
-            const result = window.FileManagement.buildFileRegistry({
-              ...ctx,
-              fileRegistry: window.fileRegistry || {},
-              fileHistory: window.fileHistory || {}
-            }, { commit });
-            window.fileRegistry = result.fileRegistry;
-            window.fileHistory = result.fileHistory;
-            return result;
-          },
-          getTaskFiles: (task) => {
-            return window.FileManagement.getTaskFiles(task, createPageContext());
-          },
-          resolveFileIds: (projectId, fileIds) => {
-            return window.FileManagement.resolveFileIds(projectId, fileIds, createPageContext());
-          },
-          findOrCreateCanonicalFile: (projectId, fileLink) => {
-            return window.FileManagement.findOrCreateCanonicalFile(projectId, fileLink, createPageContext());
-          },
-          trackFileOpen: async (fileLink) => {
-            const ctx = createPageContext();
-            await window.FileManagement.trackFileOpen(fileLink, {
-              ...ctx,
-              fileRegistry: ctx.fileRegistry || {},
-              fileHistory: ctx.fileHistory || {}
-            });
-          },
-          refreshFileMetadata: async (fileLink) => {
-            const ctx = createPageContext();
-            return await window.FileManagement.refreshFileMetadata(fileLink, {
-              ...ctx,
-              fileHistory: window.fileHistory || {}
-            });
-          },
-          updateFileStatus: async (fileKey, status) => {
-            const ctx = createPageContext();
-            await window.FileManagement.updateFileStatus(fileKey, status, {
-              ...ctx,
-              fileRegistry: window.fileRegistry || {},
-              currentView: window.currentView || 'tasks',
-              renderFiles: window.renderFiles
-            });
-          },
-          showFileRelations: (fileKey) => {
-            const ctx = createPageContext();
-            window.FileManagement.showFileRelations(fileKey, {
-              ...ctx,
-              fileRegistry: window.fileRegistry || {}
-            });
-          },
-          editSubmissionMeta: async (fileKey) => {
-            const ctx = createPageContext();
-            await window.FileManagement.editSubmissionMeta(fileKey, {
-              ...ctx,
-              fileRegistry: window.fileRegistry || {},
-              currentView: window.currentView || 'tasks',
-              renderFiles: window.renderFiles
-            });
-          },
-          ensureRegistryInitialized: () => {
-            return window.FileManagement.ensureRegistryInitialized();
-          }
-        };
-        
-        console.log('✅ FileManagement set up on window');
-      }
-      if (window.Petal?.features?.exportImport) {
-        window.ExportImport = window.Petal.features.exportImport;
-        window.exportData = window.Petal.features.exportImport.exportData;
-        window.importData = window.Petal.features.exportImport.importData;
-        console.log('✅ ExportImport set up on window');
-      }
-      if (window.Petal?.features?.taskOperations) {
-        window.TaskOperations = window.Petal.features.taskOperations;
-        
-        // Set up wrapper functions for backward compatibility
-        window.Petal.features.taskOperations = {
-          ...window.Petal.features.taskOperations, // Keep existing methods from initApp
-          getColumnTasks: (status, projectFilter, excludeTaskId) => {
-            const ctx = createPageContext();
-            return window.TaskOperations.getColumnTasks(ctx.tasks, status, projectFilter, excludeTaskId);
-          },
-          nextBoardOrderForNewTask: (status, projectId) => {
-            const ctx = createPageContext();
-            return window.TaskOperations.nextBoardOrderForNewTask(
-              ctx.tasks,
-              status,
-              projectId,
-              window.boardProjectFilter || 'all'
-            );
-          },
-          extractTags: (text) => {
-            return window.TaskOperations.extractTags(text);
-          },
-          removeTags: (text) => {
-            return window.TaskOperations.removeTags(text);
-          },
-          getStageForLaneAndStatus: (lane, status) => {
-            return window.TaskOperations.getStageForLaneAndStatus(lane, status);
-          },
-          addTask: async (titleOverride, statusOverride) => {
-            const ctx = createPageContext();
-            ctx.render = window.render;
-            ctx.boardProjectFilter = window.boardProjectFilter || 'all';
-            await window.TaskOperations.addTask(ctx, titleOverride, statusOverride);
-          },
-          toggleTask: async (id) => {
-            const ctx = createPageContext();
-            ctx.render = window.render;
-            await window.TaskOperations.toggleTask(ctx, id);
-          },
-          toggleSubtask: async (projectId, subtaskId) => {
-            const ctx = createPageContext();
-            ctx.render = window.render;
-            await window.TaskOperations.toggleSubtask(ctx, projectId, subtaskId);
-          },
-          updateTagPreview: () => {
-            window.TaskOperations.updateTagPreview();
-          },
-          editTask: (id) => {
-            const ctx = createPageContext();
-            window.TaskOperations.editTask(ctx, id);
-          },
-          deleteTask: (taskId, isSubtask = false, projectId = null, parentTaskId = null) => {
-            const store = window.Petal?.store;
-            const state = store?.getState?.() || {};
-            const ctx = {
-              store,
-              state,
-              tasks: Array.isArray(state.tasks) ? state.tasks : [],
-              projects: Array.isArray(state.projects) ? state.projects : [],
-              save: window.Petal?.handlers?.save || window.save,
-              render: window.Petal?.handlers?.render || window.render,
-            };
-            if (window.Petal?.features?.deleteHandlers?.confirmDeleteTask) {
-              window.Petal.features.deleteHandlers.confirmDeleteTask(ctx, taskId, isSubtask, projectId, parentTaskId);
-            }
-          }
-        };
-        
-        console.log('✅ TaskOperations set up on window');
-      }
-      if (window.Petal?.features?.search) {
-        window.Search = window.Petal.features.search;
-        window.matchesSearch = window.Petal.features.search.matchesSearch;
-        window.handleSearch = window.Petal.features.search.handleSearch;
-        window.clearSearch = window.Petal.features.search.clearSearch;
-        console.log('✅ Search set up on window');
-      }
-      
-      // Set up tag functions
-      if (window.TaskOperations) {
-        window.extractTags = window.TaskOperations.extractTags;
-        window.removeTags = window.TaskOperations.removeTags;
-        console.log('✅ Tag functions set up on window');
-      }
-      
-      // Ensure parseTime and formatTime are available globally
-      if (window.Petal?.parseTime && window.Petal?.formatTime) {
-        window.parseTime = window.Petal.parseTime;
-        window.formatTime = window.Petal.formatTime;
-        console.log('✅ Time functions set up on window');
-      }
-      
-      // Wire up task drawer wrapper functions (TaskDrawer is set up by initApp)
-      if (window.Petal?.features?.taskDrawer) {
-        const TaskDrawer = window.Petal.features.taskDrawer;
-        // Set up context-aware wrapper functions for backward compatibility
-        window.Petal.features.taskDrawer = {
-          ...TaskDrawer, // Keep existing methods from initApp
-          openTaskDrawer: (taskId) => {
-            const ctx = createPageContext();
-            TaskDrawer.openTaskDrawer(ctx, taskId);
-          },
-          closeTaskDrawer: () => {
-            TaskDrawer.closeTaskDrawer();
-          },
-          switchTaskDrawerTab: (tabName) => {
-            TaskDrawer.switchTaskDrawerTab(tabName);
-          },
-          debounceSaveTaskNoteFromDrawer: () => {
-            const ctx = createPageContext();
-            TaskDrawer.debounceSaveTaskNoteFromDrawer(ctx);
-          },
-          renderTaskLogEntries: () => {
-            const ctx = createPageContext();
-            TaskDrawer.renderTaskLogEntries(ctx);
-          },
-          addTaskLogEntry: async () => {
-            const ctx = createPageContext();
-            ctx.render = window.render;
-            await TaskDrawer.addTaskLogEntry(ctx);
-          },
-          deleteTaskLogEntry: async (entryId) => {
-            const ctx = createPageContext();
-            ctx.render = window.render;
-            await TaskDrawer.deleteTaskLogEntry(ctx, entryId);
-          },
-          renderTaskDrawerFiles: () => {
-            const ctx = createPageContext();
-            TaskDrawer.renderTaskDrawerFiles(ctx);
-          },
-          linkExistingFileToTask: async () => {
-            const ctx = createPageContext();
-            ctx.render = window.render;
-            await TaskDrawer.linkExistingFileToTask(ctx);
-          },
-          addNewFileToTask: () => {
-            TaskDrawer.addNewFileToTask();
-          },
-          unlinkFileFromTask: async (fileId) => {
-            const ctx = createPageContext();
-            ctx.render = window.render;
-            await TaskDrawer.unlinkFileFromTask(ctx, fileId);
-          },
-          renderTaskDrawerSubtasks: () => {
-            const ctx = createPageContext();
-            TaskDrawer.renderTaskDrawerSubtasks(ctx);
-          },
-          addSubtaskToTask: async () => {
-            const ctx = createPageContext();
-            ctx.render = window.render;
-            await TaskDrawer.addSubtaskToTask(ctx);
-          }
-        };
-        console.log('✅ TaskDrawer wrapper functions set up');
-      }
-      
-      // Data recovery function
+    // Set up backward compatibility aliases (if needed by inline handlers)
+    // Most of this is already done by initApp, but we ensure window.* aliases exist
+    if (window.Petal?.features?.fileManagement) {
+      window.FileManagement = window.Petal.features.fileManagement;
+      window.FILE_STATUSES = window.Petal.features.fileManagement.FILE_STATUSES;
+    }
+    if (window.Petal?.features?.exportImport) {
+      window.ExportImport = window.Petal.features.exportImport;
+      window.exportData = window.Petal.features.exportImport.exportData;
+      window.importData = window.Petal.features.exportImport.importData;
+    }
+    if (window.Petal?.features?.taskOperations) {
+      window.TaskOperations = window.Petal.features.taskOperations;
+      window.extractTags = window.TaskOperations.extractTags;
+      window.removeTags = window.TaskOperations.removeTags;
+    }
+    if (window.Petal?.features?.search) {
+      window.Search = window.Petal.features.search;
+      window.matchesSearch = window.Petal.features.search.matchesSearch;
+      window.handleSearch = window.Petal.features.search.handleSearch;
+      window.clearSearch = window.Petal.features.search.clearSearch;
+    }
+    if (window.Petal?.parseTime && window.Petal?.formatTime) {
+      window.parseTime = window.Petal.parseTime;
+      window.formatTime = window.Petal.formatTime;
+    }
+    
+    // Data recovery function (if Electron API available)
+    if (window.electronAPI) {
       window.recoverData = async function() {
-        if (!window.electronAPI) {
-          alert('Recovery functions are only available in Electron. Please restart the app completely (quit and reopen) for recovery features to work.');
+        if (!window.electronAPI?.listBackups) {
+          alert('⚠️ Recovery handlers not loaded.\n\nPlease QUIT the app completely (not just reload) and reopen it.');
           return;
         }
-        
-        if (!window.electronAPI.listBackups) {
-          alert('⚠️ Recovery handlers not loaded.\n\nPlease QUIT the app completely (not just reload) and reopen it.\n\nThe new recovery features need a full app restart to be available.');
-          console.error('Recovery API not available. App needs full restart.');
-          return;
-        }
-        
         try {
           const result = await window.electronAPI.listBackups();
-          
           if (result.error) {
             alert(`Error loading backups: ${result.error}`);
             return;
           }
-          
           const backups = result.backups || [];
-          
           if (backups.length === 0) {
-            alert('No backup files found. Your data may not be recoverable.');
+            alert('No backup files found.');
             return;
           }
-          
-          // Show most recent backup info
           const mostRecent = backups[0];
           const date = new Date(mostRecent.mtime).toLocaleString();
           const message = `Found ${backups.length} backup file(s).\n\nMost recent: ${mostRecent.filename}\nDate: ${date}\nContains: ${mostRecent.tasks} tasks, ${mostRecent.projects} projects, ${mostRecent.files} files\n\nWould you like to restore from the most recent backup?`;
-          
           if (confirm(message)) {
             const restoreResult = await window.electronAPI.restoreFromBackup(mostRecent.filename);
-            
             if (restoreResult.ok) {
               alert(`✅ Successfully restored!\n\nRestored ${restoreResult.tasks} tasks, ${restoreResult.projects} projects, ${restoreResult.files} files.\n\nPlease restart the app to see your recovered data.`);
-              // Optionally reload the page
               if (confirm('Would you like to reload the app now?')) {
                 location.reload();
               }
@@ -1958,77 +1638,10 @@ async function startApp() {
           console.error('Recovery error:', error);
         }
       };
-      
-      console.log('✅ Data recovery function available: window.recoverData()');
-    } catch (setupErr) {
-      console.warn('⚠️ Error setting up window globals:', setupErr);
     }
-    
-    // Force initial render after a brief delay to ensure everything is set up
-    setTimeout(() => {
-      console.log('🔍 Post-init: Forcing render and view switch...');
-      
-      // Ensure visibility again
-      if (appContainer) {
-        appContainer.style.setProperty('display', 'grid', 'important');
-        appContainer.style.setProperty('visibility', 'visible', 'important');
-      }
-      if (sidebar) {
-        sidebar.style.setProperty('display', 'flex', 'important');
-        sidebar.style.setProperty('visibility', 'visible', 'important');
-      }
-      
-      // Only render if store is initialized
-      if (window.Petal?.store && window.render) {
-        console.log('🔍 Calling window.render()...');
-        window.render();
-      } else {
-        console.warn('⚠️ Cannot render: store or render function not available', {
-          hasStore: !!window.Petal?.store,
-          hasRender: !!window.render
-        });
-      }
-      
-      if (window.switchView && window.Petal?.store) {
-        const currentView = window.Petal.store.getState()?.currentView || window.currentView || 'tasks';
-        console.log('🔍 Switching to initial view:', currentView);
-        window.switchView(currentView).catch(err => {
-          console.error('❌ Error in forced view switch:', err);
-          // Fallback: manually show the view
-          const viewEl = document.getElementById(`view-${currentView}`);
-          if (viewEl) {
-            document.querySelectorAll('[id^="view-"]').forEach(el => {
-              el.style.display = el.id === `view-${currentView}` ? 'block' : 'none';
-            });
-          }
-        });
-      } else {
-        console.warn('⚠️ window.switchView not available');
-        // Fallback: manually show the tasks view
-        const viewEl = document.getElementById('view-tasks');
-        if (viewEl) {
-          document.querySelectorAll('[id^="view-"]').forEach(el => {
-            el.style.display = el.id === 'view-tasks' ? 'block' : 'none';
-          });
-        }
-      }
-      
-      // Final visibility check
-      console.log('🔍 Final visibility check:', {
-        appDisplay: appContainer ? window.getComputedStyle(appContainer).display : 'N/A',
-        sidebarDisplay: sidebar ? window.getComputedStyle(sidebar).display : 'N/A',
-        tasksViewDisplay: document.getElementById('view-tasks') ? window.getComputedStyle(document.getElementById('view-tasks')).display : 'N/A',
-        hasStore: !!window.Petal?.store,
-        hasSwitchView: !!window.switchView,
-        hasRender: !!window.render
-      });
-    }, 200);
     
   } catch (err) {
     console.error('❌ Failed to initialize app:', err);
-    console.error('Error name:', err.name);
-    console.error('Error message:', err.message);
-    console.error('Error stack:', err.stack);
     
     // Show error in UI
     const appContainer = document.querySelector('.app');
@@ -2059,95 +1672,59 @@ if (document.readyState === 'loading') {
 }
 
 // Create page context helper function
+// createPageContext() - simplified version that delegates to module when available
+// The comprehensive version is in src/app/init.js (handlers.createPageContext)
 function createPageContext() {
-  const tasks = window.tasks || [];
-  const projects = window.projects || [];
-  const settings = window.settings || {};
-  const fileRegistry = window.fileRegistry || {};
-  const fileHistory = window.fileHistory || {};
+  // Create context directly from store to avoid circular calls
+  // DO NOT call window.Petal?.handlers?.createPageContext() as it will call back to this function
+  const state = window.Petal?.store?.getState() || {};
+  const tasks = state.tasks || window.tasks || [];
+  const projects = state.projects || window.projects || [];
   
   return {
     tasks,
     projects,
-    settings,
-    fileRegistry,
-    fileHistory,
-    save: async () => {
-      // Call the global save function if it exists
-      if (typeof window.save === 'function') {
-        return await window.save();
-      }
-      // Fallback: try to find save function in global scope
-      if (typeof save === 'function') {
-        return await save();
-      }
-      console.warn('save function not found');
-    },
-    render: window.render,
-    // Project operations helpers
-    getFileLinks: typeof getFileLinks === 'function' ? getFileLinks : (window.Petal?.features?.fileOperations?.getFileLinks || undefined),
-    getFileLinksNormalized: typeof getFileLinksNormalized === 'function' ? getFileLinksNormalized : (window.Petal?.features?.fileOperations?.getFileLinksNormalized || undefined),
-    refreshProjectSelects: typeof refreshProjectSelects === 'function' ? refreshProjectSelects : undefined,
-    renderFilesTab: typeof renderFilesTab === 'function' ? renderFilesTab : undefined,
-    renderProjectFiles: typeof renderProjectFiles === 'function' ? renderProjectFiles : undefined,
-    renderProjectMilestones: typeof renderProjectMilestones === 'function' ? renderProjectMilestones : undefined,
-    renderProjectHeader: typeof renderProjectHeader === 'function' ? renderProjectHeader : undefined,
-    saveState: typeof saveState === 'function' ? saveState : (typeof save === 'function' ? save : undefined),
-    defaultProjectBrief: typeof defaultProjectBrief === 'function' ? defaultProjectBrief : (window.Petal?.utils?.defaultProjectBrief || (() => ({ objective: '', hypothesis: '', keyOutputs: '', focus: '', definitionOfDone: '', nextMilestone: '' }))),
-    // Protocol operations helpers
-    renderProtocolTab: typeof renderProtocolTab === 'function' ? renderProtocolTab : undefined,
-    calculateProtocolDayIndex: typeof calculateProtocolDayIndex === 'function' ? calculateProtocolDayIndex : undefined,
-    // Modal operations helpers
-    addTaskFromModal: typeof addTaskFromModal === 'function' ? addTaskFromModal : undefined,
-    addTaskToProjectFromModal: typeof addTaskToProjectFromModal === 'function' ? addTaskToProjectFromModal : undefined,
-    addTaskToMatrixFromModal: typeof addTaskToMatrixFromModal === 'function' ? addTaskToMatrixFromModal : undefined,
-    addFileToProjectFromModal: typeof addFileToProjectFromModal === 'function' ? addFileToProjectFromModal : undefined,
-    addFileToMatrixFromModal: typeof addFileToMatrixFromModal === 'function' ? addFileToMatrixFromModal : undefined,
-    linkFilesToTaskFromModal: typeof linkFilesToTaskFromModal === 'function' ? linkFilesToTaskFromModal : undefined,
-    getSubFileLinks: window.Petal?.features?.projectOperations?.getSubFileLinks || undefined,
-    getSubFileLinksNormalized: window.Petal?.features?.projectOperations?.getSubFileLinksNormalized || undefined,
-    findOrCreateCanonicalFile: typeof findOrCreateCanonicalFile === 'function' ? findOrCreateCanonicalFile : undefined,
-    normalizeProjectIdValue: typeof normalizeProjectIdValue === 'function' ? normalizeProjectIdValue : undefined,
-    renderWorkflowMatrix: typeof renderWorkflowMatrix === 'function' ? renderWorkflowMatrix : undefined,
-    renderMatrixTaskCard: window.Petal?.ui?.renderMatrixTaskCard || undefined,
-    renderMatrixSidebar: window.Petal?.ui?.renderMatrixSidebar || undefined,
-    renderTodayTimeline: window.Petal?.ui?.renderTodayTimeline || undefined,
-    renderActiveProtocols: window.Petal?.ui?.renderActiveProtocols || undefined,
-    renderCellLog: window.Petal?.ui?.renderCellLog || undefined,
-    renderCompWindow: window.Petal?.ui?.renderCompWindow || undefined,
-    renderDeadlinesHorizon: window.Petal?.ui?.renderDeadlinesHorizon || undefined,
-    renderProjectTasks: window.Petal?.ui?.renderProjectTasks || undefined,
-    renderMindMap: window.Petal?.ui?.renderMindMap || undefined,
-    renderTaskItemCompact: window.Petal?.ui?.renderTaskItemCompact || (typeof renderTaskItemCompact === 'function' ? renderTaskItemCompact : undefined),
-    renderTaskItem: window.Petal?.ui?.renderTaskItem || (typeof renderTaskItem === 'function' ? renderTaskItem : undefined),
-    renderFileItem: window.Petal?.ui?.renderFileItem || (typeof renderFileItem === 'function' ? renderFileItem : undefined),
-    detectFileConflicts: window.Petal?.ui?.detectFileConflicts || (typeof detectFileConflicts === 'function' ? detectFileConflicts : undefined),
-    selectProjectForMatrix: typeof selectProjectForMatrix === 'function' ? selectProjectForMatrix : undefined,
-    selectedProjectId: typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : undefined,
-    currentProjFilter: typeof window.currentProjFilter !== 'undefined' ? window.currentProjFilter : 'all',
-    rerenderViewIfActive: typeof rerenderViewIfActive === 'function' ? rerenderViewIfActive : undefined,
-    esc: typeof esc === 'function' ? esc : undefined,
-    escAttr: typeof escAttr === 'function' ? escAttr : undefined,
-    escJsonForDataAttr: typeof escJsonForDataAttr === 'function' ? escJsonForDataAttr : undefined,
-    escJsonForAttr: typeof escJsonForAttr === 'function' ? escJsonForAttr : undefined,
-    fileIcon: typeof fileIcon === 'function' ? fileIcon : undefined,
-    // Task operations helpers
-    getTaskSubtasks: window.Petal?.features?.taskOperations?.getTaskSubtasks || undefined,
-    getTaskFiles: window.Petal?.features?.fileManagement?.getTaskFiles || undefined,
-    getWorkflowLanesDisplay: window.Petal?.utils?.getWorkflowLanesDisplay || undefined,
-    parseDate: window.Petal?.utils?.parseDate || (typeof parseDate === 'function' ? parseDate : undefined),
-    dueLabel: window.Petal?.utils?.dueLabel || (typeof dueLabel === 'function' ? dueLabel : undefined),
-    today: window.Petal?.utils?.today || (typeof today === 'function' ? today : undefined),
-    getMatrixStage: typeof getMatrixStage === 'function' ? getMatrixStage : (window.Petal?.getMatrixStage || undefined),
-    isTaskBlocked: typeof isTaskBlocked === 'function' ? isTaskBlocked : (window.Petal?.isTaskBlocked || undefined),
-    projectNameById: typeof projectNameById === 'function' ? projectNameById : undefined,
-    renderLane: window.Petal?.ui?.renderLane || (typeof renderLane === 'function' ? renderLane : undefined),
-    renderUnassignedLane: window.Petal?.ui?.renderUnassignedLane || (typeof renderUnassignedLane === 'function' ? renderUnassignedLane : undefined),
-    toggleAddPinnedFile: typeof toggleAddPinnedFile === 'function' ? toggleAddPinnedFile : undefined,
-    removePinnedFile: typeof removePinnedFile === 'function' ? removePinnedFile : undefined,
-    editProjectHeaderField: typeof editProjectHeaderField === 'function' ? editProjectHeaderField : undefined,
-    addFileRow: typeof addFileRow === 'function' ? addFileRow : undefined,
-    // Add other globals as needed
+    events: state.events || window.events || [],
+    recurringRules: state.recurringRules || window.recurringRules || [],
+    settings: state.settings || window.settings || {},
+    fileRegistry: state.fileRegistry || window.fileRegistry || {},
+    fileHistory: state.fileHistory || window.fileHistory || {},
+    save: window.Petal?.handlers?.save || window.save || (async () => {}),
+    render: window.Petal?.handlers?.render || window.render || (() => {}),
+    store: window.Petal?.store,
+    state,
+    // Delegate to window.Petal namespaces for helpers (modules handle these)
+    getFileLinks: window.Petal?.features?.fileOperations?.getFileLinks,
+    getFileLinksNormalized: window.Petal?.features?.fileOperations?.getFileLinksNormalized,
+    getSubFileLinks: window.Petal?.features?.projectOperations?.getSubFileLinks,
+    getSubFileLinksNormalized: window.Petal?.features?.projectOperations?.getSubFileLinksNormalized,
+    findOrCreateCanonicalFile: window.Petal?.features?.fileManagement?.findOrCreateCanonicalFile,
+    getTaskFiles: window.Petal?.features?.fileManagement?.getTaskFiles,
+    getTaskSubtasks: window.Petal?.features?.taskOperations?.getTaskSubtasks,
+    getWorkflowLanesDisplay: window.Petal?.utils?.getWorkflowLanesDisplay,
+    projectNameById: window.Petal?.utils?.projectHelpers?.projectNameById ? 
+      (id) => window.Petal.utils.projectHelpers.projectNameById(projects, id) : undefined,
+    // UI render functions
+    renderTaskItemCompact: window.Petal?.ui?.renderTaskItemCompact,
+    renderTaskItem: window.Petal?.ui?.renderTaskItem,
+    renderFileItem: window.Petal?.ui?.renderFileItem,
+    detectFileConflicts: window.Petal?.ui?.detectFileConflicts,
+    renderLane: window.Petal?.ui?.renderLane,
+    renderUnassignedLane: window.Petal?.ui?.renderUnassignedLane,
+    // Utility functions
+    esc: window.Petal?.esc || window.esc,
+    escAttr: window.Petal?.utils?.strings?.escAttr || window.escAttr,
+    escJsonForAttr: window.Petal?.utils?.strings?.escJsonForAttr || window.escJsonForAttr,
+    escJsonForDataAttr: window.Petal?.utils?.strings?.escJsonForDataAttr || window.escJsonForDataAttr,
+    fileIcon: window.Petal?.fileIcon || window.fileIcon,
+    parseDate: window.Petal?.parseDate || window.parseDate,
+    dueLabel: window.Petal?.dueLabel || window.dueLabel,
+    today: window.Petal?.today || window.today,
+    getMatrixStage: window.Petal?.getMatrixStage || window.getMatrixStage,
+    isTaskBlocked: window.Petal?.isTaskBlocked || window.isTaskBlocked,
+    // State values
+    selectedProjectId: state.selectedProjectId || window.selectedProjectId,
+    currentProjFilter: state.currentProjFilter || window.currentProjFilter || 'all'
   };
 }
 
@@ -2489,75 +2066,22 @@ function normalizeProjectIdValue(value) {
 
 
 
+// refreshProjectSelects has been moved to src/ui/selects.js
 function refreshProjectSelects() {
-  // ═══════════════════════ PHASE 3 FIX: Read from store only ═══════════════════════
-  try {
-    // DEBUG: Confirm store has projects when dropdown is empty
-    const store = window.Petal?.store;
-    if (!store) {
-      console.error('❌ refreshProjectSelects: Store not available!');
-      return;
-    }
-    
-    const state = store.getState();
-    console.log('🔍 DEBUG projects snapshot (refreshProjectSelects):', {
-      storeProjects: state.projects?.length || 0,
-      storeProjectIds: (state.projects || []).map(p => p.id)
-    });
-    
-    // Phase 3: Read ONLY from store (single source of truth)
-    // Never read from globals, never accept params, never sync local vars
-    const projectsFromStore = state.projects || [];
-    
-    // Step 3 cleanup: Use extracted helper if available
-    if (window.Petal?.ui?.refreshProjectSelects) {
-      window.Petal.ui.refreshProjectSelects(state);
-    } else {
-      // Fallback: old implementation - but use projectsFromStore
-      document.querySelectorAll('#in-project, #pr-project').forEach(sel => {
-        if (!sel) return;
-        const current = sel.value;
-        sel.innerHTML = '<option value="">No project</option>';
-        projectsFromStore.filter(p => !p.done).forEach(p => {
-          const opt = document.createElement('option');
-          opt.value = p.id;
-          opt.textContent = p.name;
-          sel.appendChild(opt);
-        });
-        if (current) sel.value = current;
-      });
-
-      const cellLogProjectSelect = document.getElementById('cell-log-project-select');
-      if (cellLogProjectSelect) {
-        const selected = cellLogProjectSelect.value;
-        cellLogProjectSelect.innerHTML = '<option value="">No project</option>' +
-          projectsFromStore.filter(p => !p.done).map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
-        if (selected) {
-          cellLogProjectSelect.value = projectsFromStore.some((p) => String(p.id) === selected) ? selected : '';
-        }
-      }
-      
-      updateLaneOptions();
-      updateProjectFilesSelect();
-    
-      // Also populate depends-on dropdown (use tasks from store)
-      const tasksFromStore = state.tasks || [];
-      document.querySelectorAll('#in-depends-on').forEach(sel => {
-        if (!sel) return;
-        const current = sel.value;
-        sel.innerHTML = '<option value="">None</option>';
-        tasksFromStore.filter(t => !t.done).forEach(t => {
-          const opt = document.createElement('option');
-          opt.value = t.id;
-          opt.textContent = t.title;
-          sel.appendChild(opt);
-        });
-        if (current) sel.value = current;
-      });
-    }
-  } catch (e) {
-    console.error('❌ refreshProjectSelects crashed:', e);
-    console.error('Stack:', e?.stack);
+  const store = window.Petal?.store;
+  if (!store) {
+    console.error('❌ refreshProjectSelects: Store not available!');
+    return;
+  }
+  
+  const state = store.getState();
+  
+  // Use module version if available
+  if (window.Petal?.ui?.refreshProjectSelects) {
+    window.Petal.ui.refreshProjectSelects(state);
+  } else {
+    // Minimal fallback - just log error
+    console.error('refreshProjectSelects module not loaded');
   }
 }
 
@@ -2569,10 +2093,9 @@ function updateTaskSelectedFiles() {
 }
 
 // Initialize state (async)
-// Update vault badge in UI
-// Functions: updateVaultBadge, waitForVaultResolved, verifySaveLocation, updateFileButtons
-// Available via window.Petal.utils.* or window.* (for backward compatibility)
-
+// NOTE: initState() has been moved to src/app/initState.js
+// The module version is called by src/app/init.js during initialization
+// This wrapper is kept for backward compatibility but should never execute
 async function initState() {
   // GUARD: Prevent double initialization if module system has already initialized
   if (window.Petal?.store && window.Petal.store.getState && window.__appInitialized) {
@@ -2580,364 +2103,32 @@ async function initState() {
     return;
   }
   
-  // CRITICAL: Wait for vault resolution before loading state
-  let vaultResolved = false;
-  let vaultResolvedData = null;
+  // If we reach here, the module system hasn't initialized yet
+  // This should never happen in normal operation, but we provide a minimal fallback
+  console.warn('⚠️ initState(): Module system not initialized, using minimal fallback');
   
-  // Check vault setup if in Electron
-  if (typeof window !== 'undefined' && window.electronAPI) {
-    try {
-      // Set up event listeners for vault resolution (for UI updates, but we poll for certainty)
-      window.electronAPI.onVaultResolved((data) => {
-        console.log('✓ Vault resolved event received:', data);
-      });
-      
-      window.electronAPI.onVaultNeedsChoice((data) => {
-        console.log('⚠️ Vault needs user choice:', data);
-      });
-      
-      // Check vault status using new vault system
-      const vaultStatus = await window.electronAPI.vaultGetStatus();
-      
-      // If vault is already resolved, proceed
-      if (vaultStatus.resolved && vaultStatus.activeVaultPath) {
-        console.log('✓ Vault already resolved:', vaultStatus.activeVaultPath);
-        vaultResolved = true;
-        vaultResolvedData = {
-          vaultPath: vaultStatus.activeVaultPath,
-          vaultId: vaultStatus.vaultId,
-          source: 'config'
-        };
-        // Update UI badge
-        await updateVaultBadge();
-      } else if (vaultStatus.initialized && vaultStatus.activeVault && vaultStatus.activeVault.is_valid) {
-        // Backward compatibility check
-        console.log('✓ Vault already resolved (legacy format):', vaultStatus.activeVault.path);
-        vaultResolved = true;
-        vaultResolvedData = {
-          vaultPath: vaultStatus.activeVault.path,
-          manifest: vaultStatus.activeVault.manifest,
-          source: 'config'
-        };
-        // Update UI badge
-        await updateVaultBadge();
-      } else {
-        // Wait for vault resolution using polling (deterministic)
-        console.log('⏳ Waiting for vault resolution...');
-        
-        // If no vault is active, prompt user to create/choose one
-        if (!vaultStatus.initialized || !vaultStatus.activeVault) {
-          // Discover existing vaults first
-          const discovered = await window.electronAPI.vaultDiscover();
-          
-          let message = 'Welcome to Petal!\n\n';
-          if (discovered.success && discovered.vaults && discovered.vaults.length > 0) {
-            message += `Found ${discovered.vaults.length} existing vault${discovered.vaults.length > 1 ? 's' : ''}.\n\n`;
-            message += 'Would you like to:\n';
-            message += '• Use an existing vault\n';
-            message += '• Create a new vault\n\n';
-            message += 'Click OK to choose, or Cancel to use the default location.';
-          } else {
-            message += 'Choose a folder for your Petal Vault. This is where your tasks will be stored.\n\n';
-            message += 'Recommended: Choose a folder in OneDrive (Windows) or iCloud Drive (Mac) for automatic sync.\n\n';
-            message += 'Click OK to choose a folder, or Cancel to use the default location.';
-          }
-          
-          const shouldChoose = confirm(message);
-          
-          if (shouldChoose) {
-            const result = await window.electronAPI.vaultChoose();
-            if (!result || !result.success) {
-              console.log('Using default vault location');
-            } else {
-              console.log('Vault selected:', result.vaultPath);
-            }
-          }
-        }
-        
-        // Ensure resolution is triggered, then poll until vault is resolved (deterministic - no "proceed anyway")
-        try {
-          // Trigger resolution state machine first
-          console.log('Triggering vault resolution...');
-          await window.electronAPI.vaultEnsureResolved();
-          
-          // Poll until resolved
-          vaultResolvedData = await waitForVaultResolved();
-          vaultResolved = true;
-          console.log("✓ Vault resolved:", vaultResolvedData.vaultPath);
-          // Update UI badge
-          await updateVaultBadge();
-        } catch (e) {
-          console.error("✗ Vault resolution failed:", e);
-          // Show a blocking modal instead of proceeding
-          alert("Vault not ready. Please restart the app or choose a vault.");
-          return; // Don't proceed without a vault
+  // Try to import and use the module version
+  try {
+    const { initStateInternal } = await import('./src/app/initState.js');
+    await initStateInternal();
+  } catch (err) {
+    console.error('❌ Failed to load module initState:', err);
+    // Minimal fallback - just load from storage if available
+    if (window.storage?.loadState) {
+      const loadResult = await window.storage.loadState();
+      if (loadResult && !loadResult.error) {
+        const loadedData = loadResult.data || loadResult;
+        if (window.Petal?.store) {
+          window.Petal.store.loadState({
+            tasks: loadedData.tasks || [],
+            projects: loadedData.projects || [],
+            settings: loadedData.settings || {},
+            events: loadedData.events || [],
+            recurringRules: loadedData.recurringRules || []
+          });
         }
       }
-      
-      // Check OneDrive root (for file linking)
-      const oneDriveRoot = await window.electronAPI.getOneDriveRoot();
-      if (!oneDriveRoot) {
-        const shouldSetOneDrive = confirm(
-          'OneDrive Detection\n\n' +
-          'Petal can detect your OneDrive folder to make file links work across devices.\n\n' +
-          'Would you like to set your OneDrive folder now? (You can skip and set it later)'
-        );
-        
-        if (shouldSetOneDrive) {
-          await window.electronAPI.chooseOneDriveRoot();
-        }
-      }
-      
-      // Show vault path
-      const vaultPath = vaultResolvedData?.vaultPath || await window.electronAPI.getVaultPath();
-      const dataPath = await window.electronAPI.getDataPath();
-      const pathEl = document.getElementById('data-path');
-      if (pathEl && vaultPath) {
-        const displayPath = vaultPath.replace(/\\/g, '/').split('/').slice(-2).join('/');
-        pathEl.textContent = '📁 ' + displayPath;
-        pathEl.title = `Vault: ${vaultPath}\nData file: ${dataPath}\n\nClick to open in Finder`;
-        pathEl.style.cursor = 'pointer';
-        pathEl.style.display = 'block';
-        pathEl.onclick = async () => {
-          // Open vault folder in Finder/Explorer
-          if (window.electronAPI && window.electronAPI.openFile) {
-            await window.electronAPI.openFile(vaultPath);
-          } else {
-            // Fallback: show path
-            alert(`Vault location:\n${vaultPath}\n\nData file:\n${dataPath}`);
-          }
-        };
-        // Right-click or Ctrl+Click to open diagnostics
-        pathEl.oncontextmenu = (e) => {
-          e.preventDefault();
-          if (typeof window !== 'undefined' && window.electronAPI) {
-            openDiagnosticsModal();
-          }
-        };
-      }
-      
-      // Verify save location (log to console)
-      await verifySaveLocation();
-    } catch (e) {
-      console.warn('Could not check vault:', e);
     }
-  }
-  
-  // Update file button text and hints based on Electron API availability
-  updateFileButtons();
-  
-  // CRITICAL: Only load state after vault is resolved
-  if (typeof window !== 'undefined' && window.electronAPI && !vaultResolved) {
-    console.warn('⚠️ WARNING: Loading state without confirmed vault resolution');
-  }
-  
-  // Prevent saves during initial load/migration
-  if (typeof setLoading === 'function') {
-    setLoading(true);
-  }
-  
-  // Load state (with conflict detection)
-  const loadResult = await window.storage.loadState();
-  
-  // Check for vault resolution errors
-  if (loadResult.ok === false && loadResult.error === 'Vault not resolved') {
-    console.error('❌ ERROR: Cannot load state - vault not resolved');
-    alert('Error: Vault not resolved. Please restart the app.');
-    return;
-  }
-  
-  // Extract data (handle both Electron and browser formats)
-  let loadedData;
-  if (loadResult.hasConflicts !== undefined) {
-    // Electron: has conflict info
-    loadedData = loadResult.data;
-    
-    // Show corruption recovery banner if recovered from backup
-    if (loadResult.recoveredFromBackup) {
-      console.log('✅ Data recovered from backup');
-      // Banner will be shown by event listener
-    }
-    
-    // Show conflict banner if conflicts exist
-    if (loadResult.hasConflicts && loadResult.conflicts && loadResult.conflicts.length > 0) {
-      showConflictBanner(loadResult.conflicts, loadResult.newerConflicts);
-    }
-  } else {
-    // Browser: simple state
-    loadedData = loadResult;
-  }
-  
-  // DEBUG: Log what was loaded
-  console.log('🔍 DEBUG: Loaded data:', {
-    tasksCount: loadedData.tasks?.length || 0,
-    projectsCount: loadedData.projects?.length || 0,
-    eventsCount: loadedData.events?.length || 0,
-    openProjects: loadedData.openProjects || []
-  });
-  
-  // Load data into store (Step 2: Wire store)
-  // Wait for module to load if needed (module scripts are deferred)
-  if (!window.Petal || !window.Petal.store) {
-    console.warn('Store not available yet, waiting...');
-    // Retry after a short delay
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
-  
-  if (window.Petal && window.Petal.store) {
-    const stateToLoad = {
-      tasks: loadedData.tasks || [],
-      projects: loadedData.projects || [],
-      openProjects: loadedData.openProjects || [],
-      settings: loadedData.settings || {},
-      events: loadedData.events || [],
-      recurringRules: loadedData.recurringRules || [],
-      currentView: currentView,
-      currentSort: currentSort,
-      currentFilter: currentFilter,
-      currentProjFilter: currentProjFilter,
-      selectedColor: selectedColor,
-      taskMode: taskMode,
-      boardProjectFilter: boardProjectFilter,
-      searchQuery: searchQuery,
-      currentFileView: currentFileView,
-      selectedProjectId: selectedProjectId,
-      fileRegistry: loadedData.fileRegistry || {},
-      fileHistory: loadedData.fileHistory || {},
-      files: loadedData.files || [] // Phase 3 Fix: Load persisted files
-    };
-    
-    // Phase 3 Fix: Debug log to prove files are being loaded
-    console.log('🧪 loaded snapshot', { 
-      files: (loadedData.files || []).length, 
-      first: (loadedData.files || [])[0]?.name 
-    });
-    
-    console.log('🔍 DEBUG: Loading into store:', {
-      tasksCount: stateToLoad.tasks.length,
-      projectsCount: stateToLoad.projects.length,
-      openProjectsCount: stateToLoad.openProjects.length,
-      filesCount: stateToLoad.files.length
-    });
-    
-    window.Petal.store.loadState(stateToLoad);
-    
-    // GUARANTEE: Ensure registry is always initialized (defensive check)
-    if (window.Petal.store.ensureRegistryInitialized) {
-      window.Petal.store.ensureRegistryInitialized();
-    }
-    // Also ensure via FileManagement module if available
-    if (window.Petal?.features?.fileManagement?.ensureRegistryInitialized) {
-      window.Petal.features.fileManagement.ensureRegistryInitialized();
-    }
-    
-    // Verify what's in the store after loading
-    const storeState = window.Petal.store.getState();
-    
-    // Step 3: Test debug IPC to verify we're talking to the right main process
-    if (window.electronAPI?.debugPid) {
-      try {
-        const debugInfo = await window.electronAPI.debugPid();
-        console.log('🔍 debugPid result:', debugInfo);
-      } catch (e) {
-        console.error('❌ debugPid failed:', e);
-      }
-    }
-    
-    // Phase 3 Fix: Invariant logging after load (exact types)
-    console.log('INVARIANT after load:', {
-      projectsCount: storeState.projects?.length || 0,
-      tasksCount: storeState.tasks?.length || 0,
-      openProjectsType: storeState.openProjects instanceof Set ? 'Set' : Array.isArray(storeState.openProjects) ? 'Array' : typeof storeState.openProjects,
-      openProjectsValue: storeState.openProjects instanceof Set ? Array.from(storeState.openProjects) : storeState.openProjects,
-      openProjectsLength: Array.isArray(storeState.openProjects) ? storeState.openProjects.length : (storeState.openProjects?.size || 0)
-    });
-    
-    // Wire render function to store changes (Step 2b)
-    // Only subscribe if render function is available
-    if (typeof render === 'function') {
-      window.Petal.store.subscribe(() => {
-        // Double-check store is still available when subscription fires
-        if (window.Petal?.store && typeof render === 'function') {
-          render();
-        }
-      });
-    } else {
-      console.warn('⚠️ initState: render function not available, skipping store subscription');
-    }
-    
-    console.log('✓ Store loaded and render subscription wired');
-  } else {
-    console.error('❌ ERROR: Store not available!', {
-      hasPetal: !!window.Petal,
-      hasStore: !!(window.Petal && window.Petal.store)
-    });
-  }
-  
-  // Keep global variables as sync proxies for backward compatibility (Step 2f)
-  // Sync from store to globals (read-only - window globals are now getters)
-  const state = window.Petal?.store?.getState() || {};
-  tasks = state.tasks || [];
-  projects = state.projects || [];
-  openProjects = state.openProjects || new Set();
-  settings = state.settings || {};
-  events = state.events || [];
-  recurringRules = state.recurringRules || [];
-  fileHistory = state.fileHistory || {};
-  fileRegistry = state.fileRegistry || {};
-  
-  // NOTE: window.tasks, window.projects, etc. are now read-only getters
-  // They automatically read from store, so no assignment needed
-  
-  console.log('✓ Globals synced from store:', {
-    tasksCount: tasks.length,
-    projectsCount: projects.length,
-    windowTasksCount: window.tasks?.length,
-    eventsCount: events.length
-  });
-  
-  // DEBUG: Verify data is actually there
-  if (tasks.length === 0 && projects.length === 0) {
-    console.error('❌ WARNING: No tasks or projects loaded! Check data file.');
-  }
-
-  migrateTasksForKanban();
-  ensureCellLogSettings();
-  const subtasksMigrated = migrateSubtasksToTasks();
-  normalizeProjectsData();
-  migrateNotesFields(); // NEW: Ensure all tasks and files have note fields
-  const fileRegistryMigrated = migrateToCanonicalFileRegistry(); // NEW: Migrate to canonical file registry
-  if (subtasksMigrated || fileRegistryMigrated) {
-    // Phase 3: Use flush() for critical operations like migrations
-    if (window.Petal?.persistence?.flush) {
-      await window.Petal.persistence.flush();
-    } else {
-      await save(); // Fallback
-    }
-  }
-  
-  // Re-enable saves after migrations complete
-  if (typeof setLoading === 'function') {
-    setLoading(false);
-  }
-  
-  // Phase 3 Fix: Only refresh dropdowns if store is ready and has data
-  if (window.Petal?.store) {
-    const state = window.Petal.store.getState();
-    if (state && state.projects) {
-      refreshProjectSelects();
-    }
-  } else {
-    // Fallback: refresh anyway (old behavior)
-    refreshProjectSelects();
-  }
-  setupEventDelegation();
-  
-  // Only render if store is initialized and render function is available
-  if (window.Petal?.store && typeof render === 'function') {
-    render();
-  } else {
-    console.warn('⚠️ initState: Cannot render - store or render function not available');
   }
 }
 
@@ -3427,40 +2618,29 @@ function showFileLinkedTasks(fileKey) {
 
 // Wrapper functions delegate to the new module
 
+// normalizePriorityValue, getEditOnclick, and normalizeDueInput have been moved to src/utils/
 function normalizePriorityValue(priority, fallback = 'medium') {
   if (window.Petal?.utils?.normalizePriorityValue) {
     return window.Petal.utils.normalizePriorityValue(priority, fallback);
-  } else {
-    // Fallback
-    const value = String(priority || '').toLowerCase().trim();
-    if (value === 'high' || value === 'medium' || value === 'low') return value;
-    return fallback;
   }
+  console.error('Utils module not loaded');
+  return fallback;
 }
 
 function getEditOnclick(task) {
   if (window.Petal?.utils?.getEditOnclick) {
     return window.Petal.utils.getEditOnclick(task);
-  } else {
-    // Fallback
-    if (task.isSubtask) {
-      return 'editSubtask(' + task.projectId + ',' + task.id + ')';
-    } else {
-      return 'editTask(' + task.id + ')';
-    }
   }
+  console.error('Utils module not loaded');
+  return task.isSubtask ? `editSubtask(${task.projectId},${task.id})` : `editTask(${task.id})`;
 }
 
 function normalizeDueInput(value) {
   if (window.Petal?.utils?.normalizeDueInput) {
     return window.Petal.utils.normalizeDueInput(value);
-  } else {
-    // Fallback
-    const trimmed = String(value || '').trim();
-    if (!trimmed) return ''; // Allow blank to clear due date
-    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
-    return null; // Invalid format
   }
+  console.error('Utils module not loaded');
+  return null;
 }
 let editingTaskId = null;
 let editingSubtaskInfo = null; // {projectId, subtaskId}
@@ -3468,7 +2648,20 @@ let editingSubtaskInfo = null; // {projectId, subtaskId}
 // Make editTask globally accessible
 function editTask(id) {
   if (window.Petal?.features?.taskOperations?.editTask) {
-    window.Petal.features.taskOperations.editTask(id);
+    // editTask expects (ctx, id) - create context directly from store to avoid circular calls
+    const state = window.Petal?.store?.getState() || {};
+    const ctx = {
+      tasks: state.tasks || [],
+      projects: state.projects || [],
+      events: state.events || [],
+      recurringRules: state.recurringRules || [],
+      settings: state.settings || {},
+      fileRegistry: window.fileRegistry || {},
+      fileHistory: window.fileHistory || {},
+      render: window.render || (() => {}),
+      save: window.Petal?.handlers?.save || (() => Promise.resolve())
+    };
+    window.Petal.features.taskOperations.editTask(ctx, id);
   } else {
     console.error('Task operations module not loaded');
   }
@@ -3503,34 +2696,21 @@ function toggleProtocolFields() {
   }
 }
 
+// formatDateTimeLocal and calculateProtocolDayIndex have been moved to src/features/taskOperations.js
 function formatDateTimeLocal(date) {
   if (window.Petal?.features?.taskOperations?.formatDateTimeLocal) {
     return window.Petal.features.taskOperations.formatDateTimeLocal(date);
-  } else {
-    // Fallback
-    if (!date) return '';
-    const d = new Date(date);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    const hours = String(d.getHours()).padStart(2, '0');
-    const minutes = String(d.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
   }
+  console.error('Task operations module not loaded');
+  return '';
 }
 
 function calculateProtocolDayIndex(startAt) {
   if (window.Petal?.features?.taskOperations?.calculateProtocolDayIndex) {
     return window.Petal.features.taskOperations.calculateProtocolDayIndex(startAt);
-  } else {
-    // Fallback
-    if (!startAt) return 1;
-    const start = new Date(startAt);
-    const now = new Date();
-    const diffTime = now - start;
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    return Math.max(1, diffDays + 1);
   }
+  console.error('Task operations module not loaded');
+  return 1;
 }
 
 async function saveProtocolDailyEntry() {
@@ -3756,8 +2936,21 @@ function toggleTaskNotes(taskId, toggleEl) {
     toggleEl.classList.add('expanded');
   }
 }
-function setSort(s,btn){currentSort=s;document.querySelectorAll('.sort-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');render();}
-function setFilter(f,btn){currentFilter=f;document.querySelectorAll('.filter-chip').forEach(b=>b.classList.remove('active'));btn.classList.add('active');render();}
+// setSort and setFilter have been moved to src/ui/handlers.js
+function setSort(s, btn) {
+  if (window.Petal?.ui?.handlers?.setSort) {
+    window.Petal.ui.handlers.setSort(s, btn);
+  } else {
+    console.error('UI handlers module not loaded');
+  }
+}
+function setFilter(f, btn) {
+  if (window.Petal?.ui?.handlers?.setFilter) {
+    window.Petal.ui.handlers.setFilter(f, btn);
+  } else {
+    console.error('UI handlers module not loaded');
+  }
+}
 
 // ═══════════════════════ WEEKLY REVIEW ═══════════════════════
 // startWeeklyReview has been moved to src/features/reviewOperations.js
@@ -3789,18 +2982,13 @@ async function addProject() {
   }
 }
 
+// toggleProjectDone and toggleProjectOpen have been moved to src/features/projectOperations.js
 async function toggleProjectDone(id) {
   if (window.Petal?.features?.projectOperations?.toggleProjectDone) {
     const ctx = createPageContext();
     await window.Petal.features.projectOperations.toggleProjectDone(ctx, id);
   } else {
-    // Fallback for backward compatibility
-    const p = projects.find(p => p.id === id);
-    if (p) {
-      p.done = !p.done;
-      await save();
-      render();
-    }
+    console.error('Project operations module not loaded');
   }
 }
 
@@ -3809,24 +2997,7 @@ async function toggleProjectOpen(id) {
     const ctx = createPageContext();
     await window.Petal.features.projectOperations.toggleProjectOpen(ctx, id);
   } else {
-    // Fallback for backward compatibility
-    const store = window.Petal?.store;
-    if (store) {
-      const state = store.getState();
-      const open = Array.isArray(state.openProjects) ? state.openProjects : [];
-      const next = open.includes(id) 
-        ? open.filter(x => x !== id) 
-        : [...open, id];
-      store.setState({ openProjects: next });
-    } else {
-      const open = Array.isArray(openProjects) ? openProjects : (openProjects instanceof Set ? Array.from(openProjects) : []);
-      const next = open.includes(id) 
-        ? open.filter(x => x !== id) 
-        : [...open, id];
-      openProjects = next;
-    }
-    await save();
-    render();
+    console.error('Project operations module not loaded');
   }
 }
 
@@ -3874,16 +3045,19 @@ async function toggleFilePinned(projectId, fileDataAttr) {
   }
 }
 
+// toggleAddPinnedFile has been moved to src/features/projectOperations.js
 function toggleAddPinnedFile() {
-  try {
-    if (!selectedProjectId) {
-      console.warn('toggleAddPinnedFile: No project selected');
-      return;
-    }
+  if (!selectedProjectId) {
+    console.warn('toggleAddPinnedFile: No project selected');
+    return;
+  }
+  if (window.Petal?.features?.modalOperations?.openProjectAddFileModal) {
+    const ctx = createPageContext();
+    window.Petal.features.modalOperations.openProjectAddFileModal(ctx, selectedProjectId);
+  } else if (typeof openProjectAddFileModal === 'function') {
     openProjectAddFileModal(selectedProjectId);
-  } catch (error) {
-    console.error('Error in toggleAddPinnedFile:', error);
-    alert('Error opening add file modal: ' + error.message);
+  } else {
+    console.error('Modal operations module not loaded');
   }
 }
 
@@ -4358,7 +3532,14 @@ async function addFileToProject(projId) {
   }
 }
 
-function setProjFilter(f,btn){currentProjFilter=f;document.querySelectorAll('#view-projects .filter-chip').forEach(b=>b.classList.remove('active'));btn.classList.add('active');render();}
+// setProjFilter has been moved to src/ui/handlers.js
+function setProjFilter(f, btn) {
+  if (window.Petal?.ui?.handlers?.setProjFilterLegacy) {
+    window.Petal.ui.handlers.setProjFilterLegacy(f, btn);
+  } else {
+    console.error('UI handlers module not loaded');
+  }
+}
 
 // ── SUBTASKS ──
 async function addSubtask(projId) {
@@ -4397,102 +3578,96 @@ async function getSubFileLinksNormalized(projId) {
   }
 }
 
-async function addSubFileRow(projId){
-  const c=document.getElementById('sub-files-'+projId);
-  if(!c){
-    console.error('Subtask file container not found for project:', projId);
-    return;
-  }
-  
-  const id=Date.now();
-  const row=document.createElement('div');
-  row.className='file-link-row sub-file-row';
-  row.dataset.id=id;
-  
-  // Use file picker if in Electron, otherwise manual input
-  if (window.electronAPI && window.electronAPI.chooseFile) {
-    try {
-      console.log('Opening file picker for subtask in project:', projId);
-      const fileLink = await window.electronAPI.chooseFile();
-      console.log('File picker result:', fileLink);
-      if (fileLink) {
-        row.innerHTML=`
-          <input type="text" placeholder="Label" id="sfn-${projId}-${id}" value="${esc(fileLink.label)}" style="flex:1.2">
-          <input type="text" placeholder="File path" id="sfu-${projId}-${id}" value="${esc(fileLink.abs_path || '')}" readonly style="background:var(--bg2);flex:2">
-          <input type="hidden" id="sfl-${projId}-${id}" value="${esc(JSON.stringify(fileLink))}">
-          <button class="btn-remove" onclick="this.parentElement.remove()">✕</button>`;
-        c.appendChild(row);
-        return;
-      }
-      // User cancelled file picker - don't add row
-      console.log('File picker was cancelled');
-      return;
-    } catch (e) {
-      console.error('File picker error:', e);
-      // Fall back to manual input on error
-    }
+// addSubFileRow has been moved to src/features/fileOperations.js
+async function addSubFileRow(projId) {
+  if (window.Petal?.features?.fileOperations?.addSubFileRow) {
+    await window.Petal.features.fileOperations.addSubFileRow(projId);
   } else {
-    console.log('Electron API not available, using manual input');
+    console.error('File operations module not loaded');
   }
-  
-  // Fallback: manual input (only if not in Electron or if file picker failed)
-  row.innerHTML=`
-    <input type="text" placeholder="Label" id="sfn-${projId}-${id}" style="flex:1.2">
-    <input type="url"  placeholder="URL or file path" id="sfu-${projId}-${id}" style="flex:2">
-    <button class="btn-remove" onclick="this.parentElement.remove()">✕</button>`;
-  c.appendChild(row);
 }
 
 // ═══════════════════════ DATE UTILS ═══════════════════════
-function today(){return new Date(new Date().toDateString());}
-function parseDate(s){return s?new Date(s+'T00:00:00'):null;}
-function inRange(task){
-  if(currentSort==='all')return true;
-  const due=parseDate(task.due);if(!due)return false;
-  const t=today();
-  if(currentSort==='day') return due.toDateString()===t.toDateString();
-  if(currentSort==='week'){const e=new Date(t);e.setDate(t.getDate()+7);return due>=t&&due<=e;}
-  if(currentSort==='month')return due.getMonth()===t.getMonth()&&due.getFullYear()===t.getFullYear();
+// Utility functions have been moved to src/utils/dates.js and src/utils/strings.js
+function today() {
+  if (window.Petal?.today) return window.Petal.today();
+  if (window.Petal?.utils?.dates?.today) return window.Petal.utils.dates.today();
+  return new Date(new Date().toDateString());
+}
+function parseDate(s) {
+  if (window.Petal?.parseDate) return window.Petal.parseDate(s);
+  if (window.Petal?.utils?.dates?.parseDate) return window.Petal.utils.dates.parseDate(s);
+  return s ? new Date(s + 'T00:00:00') : null;
+}
+function inRange(task) {
+  const currentSort = window.Petal?.store?.getState()?.currentSort || currentSort || 'all';
+  if (window.Petal?.utils?.dates?.inRange) {
+    return window.Petal.utils.dates.inRange(task, currentSort);
+  }
+  // Fallback
+  if (currentSort === 'all') return true;
+  const due = parseDate(task.due);
+  if (!due) return false;
+  const t = today();
+  if (currentSort === 'day') return due.toDateString() === t.toDateString();
+  if (currentSort === 'week') {
+    const e = new Date(t);
+    e.setDate(t.getDate() + 7);
+    return due >= t && due <= e;
+  }
+  if (currentSort === 'month') return due.getMonth() === t.getMonth() && due.getFullYear() === t.getFullYear();
   return true;
 }
-function dueLabel(due,small){
-  if(!due)return null;
-  const d=parseDate(due),t=today(),diff=Math.round((d-t)/86400000);
-  if(diff<0)  return{cls:'overdue',text:`Overdue${small?'':` by ${Math.abs(diff)}d`}`};
-  if(diff===0)return{cls:'soon',   text:'Today'};
-  if(diff<=3) return{cls:'soon',   text:`In ${diff}d`};
-  return{cls:'',text:d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:d.getFullYear()!==t.getFullYear()?'numeric':undefined})};
+function dueLabel(due, small) {
+  if (window.Petal?.dueLabel) return window.Petal.dueLabel(due, small);
+  if (window.Petal?.utils?.dates?.dueLabel) return window.Petal.utils.dates.dueLabel(due, small);
+  // Fallback
+  if (!due) return null;
+  const d = parseDate(due);
+  const t = today();
+  const diff = Math.round((d - t) / 86400000);
+  if (diff < 0) return { cls: 'overdue', text: `Overdue${small ? '' : ` by ${Math.abs(diff)}d`}` };
+  if (diff === 0) return { cls: 'soon', text: 'Today' };
+  if (diff <= 3) return { cls: 'soon', text: `In ${diff}d` };
+  return { cls: '', text: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: d.getFullYear() !== t.getFullYear() ? 'numeric' : undefined }) };
 }
-function fileIcon(fileLink){
-  // Handle both string (legacy) and object (new format)
+function fileIcon(fileLink) {
+  if (window.Petal?.fileIcon) return window.Petal.fileIcon(fileLink);
+  if (window.Petal?.utils?.strings?.fileIcon) return window.Petal.utils.strings.fileIcon(fileLink);
+  // Fallback
   let path = '';
   if (typeof fileLink === 'string') {
     path = fileLink;
   } else if (fileLink) {
     path = fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url || '';
   }
-  const ext=(path||'').split('.').pop().toLowerCase().split('?')[0].split('/')[0];
-  const m={pdf:'📄',doc:'📝',docx:'📝',xls:'📊',xlsx:'📊',ppt:'📑',pptx:'📑',png:'🖼',jpg:'🖼',jpeg:'🖼',gif:'🖼',mp4:'🎬',mov:'🎬',mp3:'🎵',zip:'📦',txt:'📃',md:'📃',js:'💻',ts:'💻',py:'💻',html:'🌐',css:'🎨'};
-  return m[ext]||'🔗';
+  const ext = (path || '').split('.').pop().toLowerCase().split('?')[0].split('/')[0];
+  const m = { pdf: '📄', doc: '📝', docx: '📝', xls: '📊', xlsx: '📊', ppt: '📑', pptx: '📑', png: '🖼', jpg: '🖼', jpeg: '🖼', gif: '🖼', mp4: '🎬', mov: '🎬', mp3: '🎵', zip: '📦', txt: '📃', md: '📃', js: '💻', ts: '💻', py: '💻', html: '🌐', css: '🎨' };
+  return m[ext] || '🔗';
 }
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function esc(s) {
+  if (window.Petal?.esc) return window.Petal.esc(s);
+  if (window.Petal?.utils?.strings?.esc) return window.Petal.utils.strings.esc(s);
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 // Escape JSON for use in HTML attributes (JavaScript in onclick handlers)
 function escJsonForAttr(jsonObj) {
+  if (window.Petal?.utils?.strings?.escJsonForAttr) return window.Petal.utils.strings.escJsonForAttr(jsonObj);
+  // Fallback
   const jsonStr = JSON.stringify(jsonObj);
-  // Escape for HTML attribute context - escape quotes and HTML entities
   return jsonStr.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
-
 // Escape JSON for use in data attributes (only escape the quote used in the attribute)
 function escJsonForDataAttr(jsonObj) {
+  if (window.Petal?.utils?.strings?.escJsonForDataAttr) return window.Petal.utils.strings.escJsonForDataAttr(jsonObj);
+  // Fallback
   const jsonStr = JSON.stringify(jsonObj);
-  // For data attributes with single quotes, we only need to escape single quotes
-  // HTML entities are not needed in data attributes - they're safe as-is
   return jsonStr.replace(/'/g, '&#39;');
 }
-
 // Escape a string for safe use in HTML attributes
 function escAttr(s) {
+  if (window.Petal?.utils?.strings?.escAttr) return window.Petal.utils.strings.escAttr(s);
+  // Fallback
   if (s == null) return '';
   return String(s)
     .replace(/&/g, '&amp;')
@@ -4561,31 +3736,30 @@ async function renderSettingsFallback(containerEl, state) {
 let _rendering = false;
 
 // This function only delegates to router - it does NOT render views directly
+// render() has been moved to src/app/viewManager.js
+// This wrapper delegates to the module version
 async function render(){
-  // Prevent infinite loops - if already rendering, skip
-  if (_rendering) {
+  // Prevent infinite loops
+  if (_rendering) return;
+  
+  // Check if store is initialized
+  if (!window.Petal?.store) {
+    console.warn('⚠️ render(): Store not initialized yet');
     return;
   }
   
-  // CRITICAL: Check if store is initialized before rendering
-  if (!window.Petal || !window.Petal.store) {
-    console.warn('⚠️ render(): Store not initialized yet, skipping render');
-    return;
-  }
-  
-  // If router just switched, skip view rendering but still update sidebar
-  const routerJustSwitched = window.__routerJustSwitched;
-  if (routerJustSwitched) {
-    console.log('⏭️ render(): Router just switched, skipping view rendering but updating sidebar');
-    // Still update sidebar to reflect current view
-    const state = window.Petal.store.getState() || {};
-    if (typeof renderGlobalSidebar === 'function') {
-      renderGlobalSidebar(state);
+  // Use module version if available
+  if (window.Petal?.handlers?.render) {
+    _rendering = true;
+    try {
+      await window.Petal.handlers.render();
+    } finally {
+      _rendering = false;
     }
     return;
   }
   
-  // Get current view from store (single source of truth)
+  // Fallback: delegate to router
   const state = window.Petal.store.getState() || {};
   const currentViewToRender = state.currentView || window.currentView || currentView;
   
@@ -4596,22 +3770,14 @@ async function render(){
   
   _rendering = true;
   try {
-    // Delegate to router - router is the single source of truth for view switching
-    // Use routerSwitchView if available, fallback to switchView (they're the same function)
-    // Force re-render to ensure data updates are reflected even if already on this view
     const switchViewFn = window.routerSwitchView || window.switchView;
     if (switchViewFn) {
-      console.log('🔍 render(): Delegating to router for view:', currentViewToRender);
-      try {
-        await switchViewFn(currentViewToRender, { force: true });
-      } catch (err) {
-        console.error('❌ render(): Router error:', err);
-      }
+      await switchViewFn(currentViewToRender, { force: true });
     } else {
-      console.error('❌ render(): Router not available! Cannot render view:', currentViewToRender);
+      console.error('❌ render(): Router not available!');
     }
     
-    // Sync store to globals for backward compatibility (after router has rendered)
+    // Sync store to globals for backward compatibility
     const storeTasks = state.tasks || [];
     const storeProjects = state.projects || [];
     tasks = storeTasks;
@@ -4632,36 +3798,29 @@ async function render(){
     searchQuery = state.searchQuery || searchQuery;
     currentFileView = state.currentFileView || currentFileView;
     selectedProjectId = state.selectedProjectId || selectedProjectId;
+    
+    window.settings = settings;
+    window.fileRegistry = fileRegistry;
+    window.fileHistory = fileHistory;
+    window.currentView = currentView;
+    
+    // Update sidebar
+    requestAnimationFrame(() => {
+      if (typeof renderGlobalSidebar === 'function') {
+        renderGlobalSidebar(state);
+      }
+    });
+    
+    // Hide forms
+    setTimeout(() => {
+      if (typeof hideAllForms === 'function') hideAllForms();
+      if (typeof forceHideAllForms === 'function') forceHideAllForms();
+    }, 10);
   } catch (err) {
-    console.error('❌ render(): Error during render:', err);
+    console.error('❌ render(): Error:', err);
   } finally {
     _rendering = false;
   }
-  
-  // NOTE: window.tasks, window.projects, etc. are now read-only getters
-  // They automatically read from store, so no assignment needed
-  // Only non-store globals need assignment:
-  window.settings = settings; // settings is not in store yet
-  window.fileRegistry = fileRegistry;
-  window.fileHistory = fileHistory;
-  window.currentView = currentView;
-  
-  // Render global sidebar AFTER router has rendered page (non-blocking)
-  // Router already updates sidebar, but we do it here too for backward compatibility
-  requestAnimationFrame(() => {
-    if (typeof renderGlobalSidebar === 'function') {
-      renderGlobalSidebar(state);
-    }
-  });
-  
-  // Always hide all forms after rendering (use setTimeout to ensure DOM is updated)
-  setTimeout(() => {
-    if (typeof hideAllForms === 'function') hideAllForms();
-    if (typeof forceHideAllForms === 'function') forceHideAllForms();
-  }, 10);
-  setTimeout(() => {
-    if (typeof forceHideAllForms === 'function') forceHideAllForms();
-  }, 100);
 }
 
 // ═══════════════════════ TODAY VIEW ═══════════════════════
@@ -4726,21 +3885,49 @@ async function renderTaskList(){
   }
 }
 
+// projectNameById has been moved to src/utils/projectHelpers.js
 function projectNameById(projectId) {
-  if (!projectId) return '';
-  const project = projects.find((p) => String(p.id) === String(projectId));
-  return project ? project.name : '';
+  if (window.Petal?.utils?.projectHelpers?.projectNameById) {
+    const ctx = createPageContext();
+    return window.Petal.utils.projectHelpers.projectNameById(ctx.projects, projectId);
+  } else {
+    // Fallback
+    if (!projectId) return '';
+    const ctx = createPageContext();
+    const project = (ctx.projects || []).find((p) => String(p.id) === String(projectId));
+    return project ? project.name : '';
+  }
 }
 
+// getBoardListForProjectFilter has been moved to src/domain/ordering.js
 function getBoardListForProjectFilter(status, projectFilter, excludeTaskId = null) {
-  // Include all tasks including subtasks (tasks with parentTaskId), excluding deleted
-  return tasks
-    .filter((t) => !t.deletedAt) // Filter out deleted tasks
-    .filter((t) => t.status === status)
-    .filter((t) => projectFilter === 'all' || String(t.projectId || '') === String(projectFilter))
-    .filter((t) => excludeTaskId === null || t.id !== excludeTaskId)
-    .filter((t) => matchesSearch(t, searchQuery))
-    .sort((a, b) => (a.boardOrder - b.boardOrder) || (a.id - b.id));
+  if (window.Petal?.domain?.ordering?.getBoardListForProjectFilter) {
+    const ctx = createPageContext();
+    const state = window.Petal?.store?.getState() || {};
+    const searchQuery = state.searchQuery || (typeof window.searchQuery !== 'undefined' ? window.searchQuery : '');
+    const matchesSearchFn = window.matchesSearch || window.Petal?.features?.search?.matchesSearch;
+    return window.Petal.domain.ordering.getBoardListForProjectFilter(
+      ctx.tasks || [],
+      status,
+      projectFilter,
+      excludeTaskId,
+      searchQuery,
+      matchesSearchFn
+    );
+  } else {
+    // Fallback
+    const ctx = createPageContext();
+    const state = window.Petal?.store?.getState() || {};
+    const searchQuery = state.searchQuery || (typeof window.searchQuery !== 'undefined' ? window.searchQuery : '');
+    const matchesSearchFn = window.matchesSearch || window.Petal?.features?.search?.matchesSearch;
+    return (ctx.tasks || [])
+      .filter((t) => !t.deletedAt)
+      .filter((t) => t.status === status)
+      .filter((t) => projectFilter === 'all' || String(t.projectId || '') === String(projectFilter))
+      .filter((t) => excludeTaskId === null || t.id !== excludeTaskId)
+      .filter((t) => !searchQuery || !searchQuery.trim() || !matchesSearchFn || matchesSearchFn(t, searchQuery))
+      .sort((a, b) => (a.boardOrder - b.boardOrder) || (a.id - b.id));
+  }
 }
 
 
@@ -4899,15 +4086,18 @@ function updateCompWindow() {
   }
 }
 
+// renderCompWindow has been moved to src/ui/renderProjectViews.js
+// This wrapper handles parameter resolution from selectedProjectId
 function renderCompWindow(project, projectTasks) {
   if (window.Petal?.ui?.renderCompWindow) {
     const ctx = createPageContext();
     // If called without arguments, get project and tasks from selectedProjectId
     if (!project || !projectTasks) {
       if (!selectedProjectId) return;
-      project = projects.find(p => p.id === selectedProjectId);
+      const state = window.Petal?.store?.getState() || {};
+      project = (state.projects || []).find(p => p.id === selectedProjectId);
       if (!project) return;
-      projectTasks = tasks.filter(t => {
+      projectTasks = (state.tasks || []).filter(t => {
         if (t.deletedAt) return false;
         const taskProjectId = t.projectId ? (typeof t.projectId === 'number' ? t.projectId : parseInt(t.projectId)) : null;
         return taskProjectId === selectedProjectId;
@@ -4965,32 +4155,14 @@ function renderTaskItem(task, isStale = false, depTask = null) {
   }
 }
 
+// getNext3Tasks has been moved to src/utils/
 function getNext3Tasks(activeTasks) {
   if (window.Petal?.utils?.getNext3Tasks) {
     const allTasks = getAllTasks();
     return window.Petal.utils.getNext3Tasks(activeTasks, allTasks);
-  } else {
-    // Fallback
-    const candidates = activeTasks.filter(t => {
-      if (t.done || isTaskBlocked(t)) return false;
-      if (t.priority === 'high') return true;
-      if (t.due) {
-        const due = parseDate(t.due);
-        const daysUntilDue = (due - today()) / (24 * 60 * 60 * 1000);
-        if (daysUntilDue <= 3 && daysUntilDue >= 0) return true;
-      }
-      return false;
-    });
-    candidates.sort((a, b) => {
-      if (a.priority === 'high' && b.priority !== 'high') return -1;
-      if (b.priority === 'high' && a.priority !== 'high') return 1;
-      if (a.due && b.due) {
-        return parseDate(a.due) - parseDate(b.due);
-      }
-      return 0;
-    });
-    return candidates.slice(0, 3);
   }
+  console.error('Utils module not loaded');
+  return [];
 }
 
 async function renderActiveFiles(project, projectTasks) {
@@ -5051,39 +4223,22 @@ function renderProjectTasks(project, projectTasks) {
   }
 }
 
-let doneTasksExpanded = false;
+// toggleDoneTasks and addWorkingLogEntry have been moved to src/features/projectOperations.js
 function toggleDoneTasks() {
-  const list = document.getElementById('done-tasks-list');
-  const toggle = document.getElementById('done-tasks-toggle');
-  if (!list || !toggle) return;
-  
-  doneTasksExpanded = !doneTasksExpanded;
-  list.style.display = doneTasksExpanded ? 'block' : 'none';
-  toggle.textContent = doneTasksExpanded ? '▲' : '▼';
+  if (window.Petal?.features?.projectOperations?.toggleDoneTasks) {
+    window.Petal.features.projectOperations.toggleDoneTasks();
+  } else {
+    console.error('Project operations module not loaded');
+  }
 }
 
-// Add Working Log Entry
 async function addWorkingLogEntry() {
-  if (!selectedProjectId) return;
-  const project = projects.find(p => p.id === selectedProjectId);
-  if (!project) return;
-  
-  const text = prompt('What did you finish?');
-  if (!text || !text.trim()) return;
-  
-  if (!project.workingLog) {
-    project.workingLog = [];
+  if (window.Petal?.features?.projectOperations?.addWorkingLogEntry) {
+    const ctx = createPageContext();
+    await window.Petal.features.projectOperations.addWorkingLogEntry(ctx);
+  } else {
+    console.error('Project operations module not loaded');
   }
-  
-  project.workingLog.push({
-    id: Date.now(),
-    at: new Date().toISOString(),
-    text: text.trim(),
-    fileIds: []
-  });
-  
-  await save();
-  renderWorkingLog(project);
 }
 
 // renderArtifacts has been moved to src/ui/renderProjectViews.js

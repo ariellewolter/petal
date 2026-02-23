@@ -1,0 +1,1032 @@
+<!-- ═══════════════════════════════════════════════════════════
+   PETAL WORKFLOW PAGE
+   Canvas-based workflow view inspired by LabOS
+   Adapted for Petal with petal styling and full hookups
+═══════════════════════════════════════════════════════════ -->
+
+<style>
+/* ── WORKFLOW CANVAS VIEW ──────────────────────────────────── */
+#view-workflow-canvas {
+  height: calc(100vh - 58px);
+  position: relative;
+  overflow: hidden;
+  background: var(--bg);
+  background-image:
+    linear-gradient(rgba(232, 224, 216, 0.3) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(232, 224, 216, 0.3) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+#view-workflow-canvas::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(250, 248, 245, 0.85) 100%);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.wf-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3000px;
+  height: 2000px;
+  transform-origin: top left;
+}
+
+.wf-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Project/Task cluster card */
+.wf-proj {
+  position: absolute;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: 260px;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+  z-index: 20;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+.wf-proj:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(160, 110, 100, 0.15);
+  border-color: var(--rose-soft);
+}
+.wf-proj.selected {
+  box-shadow: 0 0 0 2px var(--rose-soft), 0 8px 32px rgba(0, 0, 0, 0.12);
+  border-color: var(--rose);
+}
+
+.wf-proj-header {
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.wf-proj-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+.wf-proj-title-wrap {
+  flex: 1;
+  min-width: 0;
+}
+.wf-proj-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 15px;
+  color: var(--text);
+  line-height: 1.3;
+  font-weight: 400;
+}
+.wf-proj-type {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 3px;
+  letter-spacing: 0.05em;
+}
+.wf-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+.wf-status-dot.active {
+  background: var(--rose);
+  animation: wfpulse 2s infinite;
+}
+.wf-status-dot.done {
+  background: var(--sage);
+}
+.wf-status-dot.hold {
+  background: var(--taupe);
+}
+.wf-status-dot.plan {
+  background: var(--border2);
+}
+@keyframes wfpulse {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 4px rgba(201, 139, 139, 0.5);
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.wf-proj-body {
+  padding: 10px 14px 12px;
+}
+.wf-mini-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.wf-mtask {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+.wf-mt-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--border2);
+  flex-shrink: 0;
+}
+.wf-mtask.done-t .wf-mt-dot {
+  background: var(--sage);
+}
+.wf-mtask.done-t span {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.wf-proj-footer {
+  padding: 8px 14px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.wf-prog {
+  flex: 1;
+  height: 3px;
+  background: var(--bg2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.wf-prog-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+.wf-pct {
+  font-size: 9px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+/* WF tags */
+.wf-tags {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.wf-tag {
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  letter-spacing: 0.03em;
+}
+.wf-tag.rose {
+  background: var(--rose-pale);
+  color: var(--rose);
+}
+.wf-tag.sage {
+  background: var(--sage-pale);
+  color: var(--sage);
+}
+.wf-tag.mauve {
+  background: var(--mauve-pale);
+  color: var(--mauve);
+}
+.wf-tag.taupe {
+  background: var(--bg2);
+  color: var(--taupe);
+}
+
+/* dependency label on edge */
+.wf-edge-label {
+  position: absolute;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 9px;
+  color: var(--text-dim);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 15;
+}
+
+/* Zoom + legend */
+.wf-controls {
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 50;
+}
+.wf-btn {
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-dim);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+.wf-btn:hover {
+  border-color: var(--rose);
+  color: var(--rose);
+  background: var(--rose-pale);
+}
+
+.wf-legend {
+  position: absolute;
+  bottom: 24px;
+  left: 24px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  z-index: 50;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+.wfl-title {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+.wfl-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  color: var(--text);
+  margin-bottom: 5px;
+}
+.wfl-row:last-child {
+  margin-bottom: 0;
+}
+.wfl-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.wfl-line {
+  width: 20px;
+  height: 2px;
+  flex-shrink: 0;
+  border-radius: 1px;
+}
+
+/* Detail panel */
+.detail-panel {
+  position: fixed;
+  right: 0;
+  top: 58px;
+  width: 320px;
+  height: calc(100vh - 58px);
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(330px);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.08);
+}
+.detail-panel.open {
+  transform: translateX(0);
+}
+.dp-head {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--bg2);
+}
+.dp-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 16px;
+  color: var(--text);
+  line-height: 1.4;
+  font-weight: 400;
+}
+.dp-sub {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+.dp-close {
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.dp-close:hover {
+  border-color: var(--rose);
+  color: var(--rose);
+  background: var(--rose-pale);
+}
+.dp-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.dp-body::-webkit-scrollbar {
+  width: 4px;
+}
+.dp-body::-webkit-scrollbar-thumb {
+  background: var(--border2);
+  border-radius: 2px;
+}
+.dp-sec-title {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+.dp-stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.dp-stat {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+.dp-stat-label {
+  font-size: 9px;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+  letter-spacing: 0.05em;
+}
+.dp-stat-value {
+  font-size: 14px;
+  color: var(--text);
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 400;
+}
+.dp-open-btn {
+  width: 100%;
+  padding: 10px;
+  background: var(--rose-pale);
+  border: 1px solid var(--rose-soft);
+  border-radius: 6px;
+  color: var(--rose);
+  font-family: 'Jost', sans-serif;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-top: 8px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+}
+.dp-open-btn:hover {
+  background: var(--rose-soft);
+  color: var(--text);
+}
+
+/* Task list in detail panel */
+.dp-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dp-task {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 6px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.dp-task:hover {
+  border-color: var(--rose-soft);
+}
+.dp-task-check {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1.5px solid var(--border2);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  background: var(--surface);
+}
+.dp-task-check.done {
+  background: var(--sage);
+  border-color: var(--sage);
+}
+.dp-task-check.done::after {
+  content: '✓';
+  font-size: 8px;
+  color: white;
+}
+.dp-task.done-t .dp-task-label {
+  text-decoration: line-through;
+  color: var(--text-dim);
+  opacity: 0.7;
+}
+
+/* Files in detail panel */
+.dp-files {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dp-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 6px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.dp-file:hover {
+  border-color: var(--rose);
+  color: var(--rose);
+}
+.dp-file-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+  background: var(--rose-pale);
+}
+</style>
+
+<!-- Workflow Canvas View -->
+<div id="view-workflow-canvas" style="display:none;">
+  <div class="wf-canvas" id="wfCanvas">
+    <svg class="wf-svg" id="wfSvg"></svg>
+    <!-- Project cards will be inserted here by JS -->
+  </div>
+
+  <!-- WF Controls -->
+  <div class="wf-controls">
+    <button class="wf-btn" id="wfZoomIn" title="Zoom In">+</button>
+    <button class="wf-btn" id="wfZoomOut" title="Zoom Out">−</button>
+    <button class="wf-btn" id="wfFit" title="Fit to View" style="font-size:10px;letter-spacing:.04em">FIT</button>
+  </div>
+
+  <div class="wf-legend">
+    <div class="wfl-title">Status</div>
+    <div class="wfl-row">
+      <div class="wfl-dot" style="background:var(--rose);animation:wfpulse 2s infinite"></div>
+      <span>Active</span>
+    </div>
+    <div class="wfl-row">
+      <div class="wfl-dot" style="background:var(--sage)"></div>
+      <span>Complete</span>
+    </div>
+    <div class="wfl-row">
+      <div class="wfl-dot" style="background:var(--taupe)"></div>
+      <span>On Hold</span>
+    </div>
+    <div class="wfl-title" style="margin-top:12px">Connections</div>
+    <div class="wfl-row">
+      <div class="wfl-line" style="background:rgba(201,139,139,.4)"></div>
+      <span>Related</span>
+    </div>
+    <div class="wfl-row">
+      <div class="wfl-line" style="background:rgba(154,171,148,.4);border-style:dashed;border-width:1px 0"></div>
+      <span>Dependency</span>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Panel -->
+<div class="detail-panel" id="detailPanel">
+  <div class="dp-head">
+    <div>
+      <div class="dp-title" id="dp-title">–</div>
+      <div class="dp-sub" id="dp-sub">–</div>
+    </div>
+    <button class="dp-close" onclick="closeWfDetail()" title="Close">×</button>
+  </div>
+  <div class="dp-body" id="dp-body"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// WORKFLOW CANVAS RENDERING
+// ═══════════════════════════════════════════════════════════
+
+let wfScale = 0.7;
+let wfTx = 60;
+let wfTy = 40;
+let wfPanning = false;
+let wfSx, wfSy, wfStx, wfSty;
+let selectedProjectId = null;
+
+/**
+ * Render workflow canvas view
+ * @param {HTMLElement} containerEl - Container element
+ * @param {Object} state - Current app state
+ * @param {Object} handlers - Event handlers
+ */
+async function renderWorkflowCanvas(containerEl, state, handlers) {
+  if (!containerEl) return;
+  
+  const { tasks, projects } = state;
+  const workflow = state.workflow || {};
+  const placement = workflow.placement || {};
+  
+  // Get active projects (not done)
+  const activeProjects = (projects || []).filter(p => !p.done);
+  
+  // Clear existing cards
+  const canvas = document.getElementById('wfCanvas');
+  const existingCards = canvas.querySelectorAll('.wf-proj');
+  existingCards.forEach(card => card.remove());
+  
+  // Position projects on canvas
+  const positions = calculateProjectPositions(activeProjects, placement);
+  
+  // Render project cards
+  activeProjects.forEach((project, index) => {
+    const pos = positions[project.id] || { x: 100 + (index % 4) * 300, y: 100 + Math.floor(index / 4) * 250 };
+    
+    // Get project tasks
+    const projectTasks = (tasks || []).filter(t => 
+      t.projectId === project.id && !t.deletedAt && !t.parentTaskId
+    );
+    
+    const doneTasks = projectTasks.filter(t => t.done);
+    const openTasks = projectTasks.filter(t => !t.done);
+    const progress = projectTasks.length > 0 
+      ? Math.round((doneTasks.length / projectTasks.length) * 100) 
+      : 0;
+    
+    // Determine status
+    let status = 'plan';
+    let statusDot = 'plan';
+    if (openTasks.length > 0) {
+      status = 'active';
+      statusDot = 'active';
+    } else if (projectTasks.length > 0 && doneTasks.length === projectTasks.length) {
+      status = 'done';
+      statusDot = 'done';
+    }
+    
+    // Get project color
+    const colorVar = `--proj-${(project.color || 1)}`;
+    const color = getComputedStyle(document.documentElement).getPropertyValue(colorVar) || 'var(--rose)';
+    
+    // Create card
+    const card = document.createElement('div');
+    card.className = 'wf-proj';
+    card.id = `wf-proj-${project.id}`;
+    card.style.left = `${pos.x}px`;
+    card.style.top = `${pos.y}px`;
+    card.onclick = () => openWfDetail(project.id, state, handlers);
+    
+    // Get workflow lane for project (from first task or default)
+    const firstTask = openTasks[0] || projectTasks[0];
+    const lane = firstTask?.workflowLane || firstTask?.lane || 'unassigned';
+    const laneLabel = getLaneLabel(lane);
+    
+    // Get tags/labels
+    const tags = [];
+    if (lane !== 'unassigned') tags.push({ text: laneLabel, class: getLaneTagClass(lane) });
+    if (project.due) {
+      const dueDate = new Date(project.due);
+      const now = new Date();
+      const diffDays = Math.floor((dueDate - now) / (1000 * 60 * 60 * 24));
+      if (diffDays < 7 && diffDays >= 0) tags.push({ text: 'Due Soon', class: 'rose' });
+    }
+    
+    card.innerHTML = `
+      <div class="wf-proj-header">
+        <div class="wf-proj-dot" style="background:${color}"></div>
+        <div class="wf-proj-title-wrap">
+          <div class="wf-proj-name">${escapeHtml(project.name || 'Untitled Project')}</div>
+          <div class="wf-proj-type">${escapeHtml(project.desc || 'Project')}</div>
+        </div>
+        <div class="wf-status-dot ${statusDot}"></div>
+      </div>
+      <div class="wf-proj-body">
+        ${tags.length > 0 ? `<div class="wf-tags">${tags.map(t => `<span class="wf-tag ${t.class}">${escapeHtml(t.text)}</span>`).join('')}</div>` : ''}
+        <div class="wf-mini-tasks">
+          ${openTasks.slice(0, 4).map(t => `
+            <div class="wf-mtask ${t.done ? 'done-t' : ''}">
+              <div class="wf-mt-dot"></div>
+              <span>${escapeHtml(t.title || 'Untitled')}</span>
+            </div>
+          `).join('')}
+          ${openTasks.length > 4 ? `<div class="wf-mtask" style="color:var(--text-light);font-size:9px;">+${openTasks.length - 4} more</div>` : ''}
+          ${openTasks.length === 0 && projectTasks.length > 0 ? '<div class="wf-mtask" style="color:var(--sage);font-size:9px;">All tasks complete</div>' : ''}
+        </div>
+      </div>
+      <div class="wf-proj-footer">
+        <div class="wf-prog">
+          <div class="wf-prog-fill" style="width:${progress}%;background:${color}"></div>
+        </div>
+        <div class="wf-pct">${progress}%</div>
+      </div>
+    `;
+    
+    canvas.appendChild(card);
+  });
+  
+  // Draw connections
+  setTimeout(() => {
+    drawWfEdges(activeProjects, state);
+  }, 100);
+  
+  // Setup pan/zoom
+  setupPanZoom();
+}
+
+/**
+ * Calculate positions for projects on canvas
+ */
+function calculateProjectPositions(projects, placement) {
+  const positions = {};
+  const gridCols = 4;
+  const spacingX = 300;
+  const spacingY = 250;
+  
+  projects.forEach((project, index) => {
+    // Try to get saved position from workflow state
+    const savedPos = placement[`pos_${project.id}`];
+    if (savedPos) {
+      positions[project.id] = { x: savedPos.x, y: savedPos.y };
+    } else {
+      // Default grid layout
+      const col = index % gridCols;
+      const row = Math.floor(index / gridCols);
+      positions[project.id] = {
+        x: 100 + col * spacingX,
+        y: 100 + row * spacingY
+      };
+    }
+  });
+  
+  return positions;
+}
+
+/**
+ * Draw edges/connections between related projects
+ */
+function drawWfEdges(projects, state) {
+  const svg = document.getElementById('wfSvg');
+  if (!svg) return;
+  
+  const { tasks } = state;
+  const edges = [];
+  
+  // Find connections: projects that share tasks or have dependencies
+  projects.forEach(p1 => {
+    projects.forEach(p2 => {
+      if (p1.id === p2.id) return;
+      
+      // Check if projects share related tasks
+      const p1Tasks = (tasks || []).filter(t => t.projectId === p1.id);
+      const p2Tasks = (tasks || []).filter(t => t.projectId === p2.id);
+      
+      // Simple heuristic: if projects are in same workflow lane, they might be related
+      const p1Lane = p1Tasks[0]?.workflowLane || p1Tasks[0]?.lane;
+      const p2Lane = p2Tasks[0]?.workflowLane || p2Tasks[0]?.lane;
+      
+      if (p1Lane && p1Lane === p2Lane && p1Lane !== 'unassigned') {
+        edges.push({
+          from: `wf-proj-${p1.id}`,
+          to: `wf-proj-${p2.id}`,
+          type: 'related',
+          label: ''
+        });
+      }
+    });
+  });
+  
+  // Draw edges
+  let svgContent = `<defs>
+    <marker id="wf-arr" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L7,3.5 z" fill="var(--border2)"/>
+    </marker>
+    <marker id="wf-arr-rose" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L7,3.5 z" fill="var(--rose-soft)"/>
+    </marker>
+  </defs>`;
+  
+  edges.forEach(e => {
+    const fromEl = document.getElementById(e.from);
+    const toEl = document.getElementById(e.to);
+    if (!fromEl || !toEl) return;
+    
+    const fromRect = fromEl.getBoundingClientRect();
+    const toRect = toEl.getBoundingClientRect();
+    const canvasRect = document.getElementById('wfCanvas').getBoundingClientRect();
+    
+    const x1 = parseFloat(fromEl.style.left) + 130; // center of card
+    const y1 = parseFloat(fromEl.style.top) + 60;
+    const x2 = parseFloat(toEl.style.left) + 130;
+    const y2 = parseFloat(toEl.style.top) + 60;
+    
+    const cx1 = x1 + (x2 - x1) * 0.45;
+    const cx2 = x2 - (x2 - x1) * 0.45;
+    
+    const strokeColor = e.type === 'dependency' 
+      ? 'rgba(154, 171, 148, 0.4)' 
+      : 'rgba(201, 139, 139, 0.35)';
+    const dashArray = e.type === 'dependency' ? '6 4' : '';
+    const marker = e.type === 'dependency' ? 'wf-arr' : 'wf-arr-rose';
+    
+    svgContent += `<path d="M${x1},${y1} C${cx1},${y1} ${cx2},${y2} ${x2},${y2}" 
+      fill="none" 
+      stroke="${strokeColor}" 
+      stroke-width="1.5" 
+      stroke-dasharray="${dashArray}"
+      marker-end="url(#${marker})"/>`;
+  });
+  
+  svg.innerHTML = svgContent;
+}
+
+/**
+ * Setup pan and zoom
+ */
+function setupPanZoom() {
+  const wfWrap = document.getElementById('view-workflow-canvas');
+  const wfCanvas = document.getElementById('wfCanvas');
+  if (!wfWrap || !wfCanvas) return;
+  
+  // Apply transform
+  function wfApply() {
+    wfCanvas.style.transform = `translate(${wfTx}px, ${wfTy}px) scale(${wfScale})`;
+  }
+  wfApply();
+  
+  // Pan
+  wfWrap.addEventListener('mousedown', (e) => {
+    if (e.target.closest('.wf-proj') || e.target.closest('.wf-controls') || e.target.closest('.wf-legend')) return;
+    wfPanning = true;
+    wfSx = e.clientX;
+    wfSy = e.clientY;
+    wfStx = wfTx;
+    wfSty = wfTy;
+    wfWrap.style.cursor = 'grabbing';
+  });
+  
+  document.addEventListener('mousemove', (e) => {
+    if (!wfPanning) return;
+    wfTx = wfStx + (e.clientX - wfSx);
+    wfTy = wfSty + (e.clientY - wfSy);
+    wfApply();
+  });
+  
+  document.addEventListener('mouseup', () => {
+    wfPanning = false;
+    if (wfWrap) wfWrap.style.cursor = '';
+  });
+  
+  // Zoom with wheel
+  wfWrap.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const d = e.deltaY > 0 ? -0.07 : 0.07;
+    const ns = Math.max(0.3, Math.min(1.6, wfScale + d));
+    const rect = wfWrap.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    wfTx = mx - (mx - wfTx) * (ns / wfScale);
+    wfTy = my - (my - wfTy) * (ns / wfScale);
+    wfScale = ns;
+    wfApply();
+  }, { passive: false });
+  
+  // Zoom buttons
+  const zoomIn = document.getElementById('wfZoomIn');
+  const zoomOut = document.getElementById('wfZoomOut');
+  const fit = document.getElementById('wfFit');
+  
+  if (zoomIn) {
+    zoomIn.onclick = () => {
+      wfScale = Math.min(1.6, wfScale + 0.1);
+      wfApply();
+    };
+  }
+  
+  if (zoomOut) {
+    zoomOut.onclick = () => {
+      wfScale = Math.max(0.3, wfScale - 0.1);
+      wfApply();
+    };
+  }
+  
+  if (fit) {
+    fit.onclick = () => {
+      wfScale = 0.7;
+      wfTx = 60;
+      wfTy = 40;
+      wfApply();
+    };
+  }
+}
+
+/**
+ * Open detail panel for project
+ */
+function openWfDetail(projectId, state, handlers) {
+  const { projects, tasks } = state;
+  const project = (projects || []).find(p => p.id === projectId);
+  if (!project) return;
+  
+  // Get project tasks
+  const projectTasks = (tasks || []).filter(t => 
+    t.projectId === projectId && !t.deletedAt && !t.parentTaskId
+  );
+  
+  const doneTasks = projectTasks.filter(t => t.done);
+  const openTasks = projectTasks.filter(t => !t.done);
+  const progress = projectTasks.length > 0 
+    ? Math.round((doneTasks.length / projectTasks.length) * 100) 
+    : 0;
+  
+  // Get project files
+  const projectFiles = project.files || [];
+  
+  // Update panel
+  document.getElementById('dp-title').textContent = project.name || 'Untitled Project';
+  document.getElementById('dp-sub').textContent = project.desc || 'Project';
+  
+  const statsHtml = `
+    <div class="dp-stat">
+      <div class="dp-stat-label">Status</div>
+      <div class="dp-stat-value">${openTasks.length > 0 ? 'Active' : 'Complete'}</div>
+    </div>
+    <div class="dp-stat">
+      <div class="dp-stat-label">Progress</div>
+      <div class="dp-stat-value">${progress}%</div>
+    </div>
+    <div class="dp-stat">
+      <div class="dp-stat-label">Tasks</div>
+      <div class="dp-stat-value">${openTasks.length} / ${projectTasks.length}</div>
+    </div>
+    <div class="dp-stat">
+      <div class="dp-stat-label">Files</div>
+      <div class="dp-stat-value">${projectFiles.length}</div>
+    </div>
+  `;
+  
+  const tasksHtml = projectTasks.length > 0 
+    ? projectTasks.map(t => `
+      <div class="dp-task ${t.done ? 'done-t' : ''}" 
+           onclick="if(window.Petal?.handlers?.openTaskDrawer){window.Petal.handlers.openTaskDrawer(${t.id})}">
+        <div class="dp-task-check ${t.done ? 'done' : ''}" 
+             onclick="event.stopPropagation();if(window.Petal?.handlers?.toggleTask){window.Petal.handlers.toggleTask(${t.id})}"></div>
+        <div class="dp-task-label">${escapeHtml(t.title || 'Untitled')}</div>
+      </div>
+    `).join('')
+    : '<div style="padding:12px;text-align:center;color:var(--text-dim);font-size:11px;">No tasks</div>';
+  
+  const filesHtml = projectFiles.length > 0
+    ? projectFiles.map(f => {
+        const fileObj = typeof f === 'string' ? { name: f } : f;
+        const label = fileObj.label || fileObj.name || 'File';
+        return `
+          <div class="dp-file" onclick="if(window.Petal?.handlers?.openFile){window.Petal.handlers.openFile(${JSON.stringify(fileObj).replace(/"/g, '&quot;')})}">
+            <div class="dp-file-icon">📄</div>
+            <div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(label)}</div>
+          </div>
+        `;
+      }).join('')
+    : '<div style="padding:12px;text-align:center;color:var(--text-dim);font-size:11px;">No files</div>';
+  
+  document.getElementById('dp-body').innerHTML = `
+    <div>
+      <div class="dp-sec-title">Overview</div>
+      <div class="dp-stat-grid">${statsHtml}</div>
+    </div>
+    <div>
+      <div class="dp-sec-title">Tasks</div>
+      <div class="dp-tasks">${tasksHtml}</div>
+    </div>
+    ${projectFiles.length > 0 ? `
+    <div>
+      <div class="dp-sec-title">Files</div>
+      <div class="dp-files">${filesHtml}</div>
+    </div>
+    ` : ''}
+    <button class="dp-open-btn" onclick="if(window.Petal?.handlers?.openProject){window.Petal.handlers.openProject(${projectId})}">
+      Open Project →
+    </button>
+  `;
+  
+  document.getElementById('detailPanel').classList.add('open');
+  selectedProjectId = projectId;
+}
+
+/**
+ * Close detail panel
+ */
+function closeWfDetail() {
+  document.getElementById('detailPanel').classList.remove('open');
+  selectedProjectId = null;
+}
+
+// Close on Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeWfDetail();
+});
+
+/**
+ * Helper functions
+ */
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function getLaneLabel(lane) {
+  const labels = {
+    'lab': '🧪 Lab',
+    'comp': '💻 Computational',
+    'writing': '📝 Writing',
+    'presentation': '📊 Presentation',
+    'personal': '👤 Personal',
+    'product': '🚀 Product'
+  };
+  return labels[lane] || lane;
+}
+
+function getLaneTagClass(lane) {
+  const classes = {
+    'lab': 'rose',
+    'comp': 'sage',
+    'writing': 'mauve',
+    'presentation': 'taupe',
+    'personal': 'rose',
+    'product': 'sage'
+  };
+  return classes[lane] || 'taupe';
+}
+
+// Export for use in main app
+if (typeof window !== 'undefined') {
+  window.renderWorkflowCanvas = renderWorkflowCanvas;
+  window.closeWfDetail = closeWfDetail;
+}
+</script>

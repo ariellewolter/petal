@@ -31,9 +31,44 @@ function bind(container, features) {
     if (action === 'toggle-project' || btn.classList.contains('btn-icon') && btn.textContent.includes('▼') || btn.textContent.includes('▶')) {
       // Toggle project expand/collapse
       if (projectId && features?.projectOperations?.toggleProjectOpen) {
-        features.projectOperations.toggleProjectOpen(projectId);
+        // toggleProjectOpen expects (ctx, id) - create a minimal context
+        const ctx = {
+          save: () => Promise.resolve(),
+          render: window.render || (() => {})
+        };
+        features.projectOperations.toggleProjectOpen(ctx, projectId);
       } else if (projectId && window.toggleProjectOpen) {
         window.toggleProjectOpen(projectId);
+      }
+      return;
+    }
+    
+    if (action === 'open-project') {
+      // Open project individual page
+      // Get state from store if available
+      const currentState = window.Petal?.store?.getState() || {};
+      if (projectId && features?.matrixOperations?.openProjectView) {
+        // openProjectView expects (ctx, projectId)
+        const ctx = {
+          tasks: currentState.tasks || [],
+          projects: currentState.projects || [],
+          createPageContext: () => ({
+            tasks: currentState.tasks || [],
+            projects: currentState.projects || [],
+            render: window.render || (() => {})
+          })
+        };
+        features.matrixOperations.openProjectView(ctx, projectId);
+      } else if (projectId && features?.projectOperations?.selectProjectForMatrix) {
+        // Fallback: use selectProjectForMatrix which also opens the project
+        const ctx = window.Petal?.handlers?.createPageContext?.() || {
+          tasks: currentState.tasks || [],
+          projects: currentState.projects || [],
+          render: window.render || (() => {})
+        };
+        features.projectOperations.selectProjectForMatrix(ctx, projectId);
+      } else if (projectId && window.selectProjectForMatrix) {
+        window.selectProjectForMatrix(projectId);
       }
       return;
     }

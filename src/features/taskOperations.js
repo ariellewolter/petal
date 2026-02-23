@@ -887,9 +887,9 @@ export async function saveProtocolDailyEntry(ctx) {
     await save();
   }
   
-  // Re-render protocol tab if function exists
-  if (typeof renderProtocolTab === 'function') {
-    renderProtocolTab();
+  // Re-render protocol tab
+  if (window.Petal?.features?.taskOperations?.renderProtocolTab) {
+    window.Petal.features.taskOperations.renderProtocolTab(ctx);
   }
 }
 
@@ -1076,5 +1076,427 @@ export function editTask(ctx, id) {
   } catch (error) {
     console.error('Error in editTask:', error, error.stack);
     alert('Error opening edit modal: ' + error.message);
+  }
+}
+
+// ═══════════════════════ PROTOCOL FUNCTIONS (REMAINING) ═══════════════════════
+
+/**
+ * Link file to protocol entry (placeholder for future enhancement)
+ */
+export async function linkFileToProtocolEntry() {
+  const currentDrawerTaskId = typeof window.currentDrawerTaskId !== 'undefined' ? window.currentDrawerTaskId : null;
+  if (!currentDrawerTaskId) return;
+  
+  // For now, just show a message - file linking to protocol entries can be enhanced later
+  alert('File attachment to protocol entries coming soon. For now, you can link files to the task itself in the Files tab.');
+}
+
+/**
+ * Toggle protocol steps section visibility
+ */
+export function toggleProtocolSteps() {
+  const section = document.getElementById('protocol-steps-section');
+  if (section) {
+    section.style.display = section.style.display === 'none' ? 'block' : 'none';
+  }
+}
+
+/**
+ * Add a new protocol step
+ */
+export async function addProtocolStep(ctx) {
+  const { tasks, save, renderProtocolTab } = ctx;
+  const currentDrawerTaskId = typeof window.currentDrawerTaskId !== 'undefined' ? window.currentDrawerTaskId : null;
+  
+  if (!currentDrawerTaskId) return;
+  const task = findActiveTask(tasks, currentDrawerTaskId);
+  if (!task || !task.protocol || !task.protocol.enabled) return;
+  
+  const title = prompt('Enter step title:');
+  if (!title || !title.trim()) return;
+  
+  if (!task.protocol.steps) {
+    task.protocol.steps = [];
+  }
+  
+  const newStep = {
+    id: `step_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    title: title.trim(),
+    done: false
+  };
+  
+  task.protocol.steps.push(newStep);
+  
+  // Use store if available
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    const updatedTasks = (state.tasks || []).map(t => {
+      if (t.id === currentDrawerTaskId) {
+        return {
+          ...t,
+          protocol: {
+            ...t.protocol,
+            steps: [...(t.protocol.steps || []), newStep]
+          }
+        };
+      }
+      return t;
+    });
+    updateStoreSafely({ tasks: updatedTasks });
+  } else {
+    if (save) await save();
+  }
+  
+  // Re-render protocol tab
+  if (renderProtocolTab) {
+    renderProtocolTab();
+  }
+}
+
+/**
+ * Render protocol tab content
+ */
+export function renderProtocolTab(ctx) {
+  const { tasks, esc } = ctx;
+  const currentDrawerTaskId = typeof window.currentDrawerTaskId !== 'undefined' ? window.currentDrawerTaskId : null;
+  
+  if (!currentDrawerTaskId) return;
+  const task = findActiveTask(tasks, currentDrawerTaskId);
+  if (!task || !task.protocol || !task.protocol.enabled) return;
+  
+  // Update protocol status
+  const statusEl = document.getElementById('protocol-status');
+  if (statusEl) {
+    const startDate = task.protocol.startAt ? new Date(task.protocol.startAt) : null;
+    const endDate = task.protocol.expectedEndAt ? new Date(task.protocol.expectedEndAt) : null;
+    const dayIndex = task.protocol.dayIndex || calculateProtocolDayIndex(task.protocol.startAt);
+    
+    let statusText = `Day ${dayIndex}`;
+    if (startDate) {
+      statusText += ` • Started ${startDate.toLocaleDateString()}`;
+    }
+    if (endDate) {
+      const daysRemaining = Math.ceil((endDate - new Date()) / (1000 * 60 * 60 * 24));
+      if (daysRemaining > 0) {
+        statusText += ` • ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} remaining`;
+      } else if (daysRemaining === 0) {
+        statusText += ` • Ends today`;
+      } else {
+        statusText += ` • Ended ${Math.abs(daysRemaining)} day${Math.abs(daysRemaining) !== 1 ? 's' : ''} ago`;
+      }
+    }
+    statusEl.textContent = statusText;
+  }
+  
+  // Render daily log
+  const logEl = document.getElementById('protocol-daily-log');
+  if (logEl) {
+    const dailyLog = task.protocol.dailyLog || [];
+    if (dailyLog.length === 0) {
+      logEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-dim);font-size:12px;">No entries yet</div>';
+    } else {
+      const escFn = esc || ((s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'));
+      logEl.innerHTML = dailyLog.slice().reverse().map(entry => {
+        const date = new Date(entry.at);
+        return `
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
+              <div style="font-size:11px;color:var(--text-dim);">${date.toLocaleDateString()} ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+            </div>
+            <div style="font-size:13px;color:var(--text);line-height:1.6;white-space:pre-wrap;">${escFn(entry.text)}</div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+  
+  // Render steps
+  const stepsEl = document.getElementById('protocol-steps-list');
+  if (stepsEl) {
+    const steps = task.protocol.steps || [];
+    if (steps.length === 0) {
+      stepsEl.innerHTML = '<div style="text-align:center;padding:12px;color:var(--text-dim);font-size:11px;">No steps yet</div>';
+    } else {
+      const escFn = esc || ((s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'));
+      // Use global toggleProtocolStep wrapper function for inline handlers
+      const toggleFn = typeof toggleProtocolStep === 'function' 
+        ? 'toggleProtocolStep' 
+        : 'window.Petal?.features?.taskOperations?.toggleProtocolStep';
+      stepsEl.innerHTML = steps.map(step => `
+        <div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--surface);border-radius:6px;">
+          <input type="checkbox" ${step.done ? 'checked' : ''} onchange="${toggleFn}('${step.id}')" style="width:16px;height:16px;cursor:pointer;">
+          <span style="flex:1;font-size:12px;color:var(--text);${step.done ? 'text-decoration:line-through;opacity:0.6;' : ''}">${escFn(step.title)}</span>
+        </div>
+      `).join('');
+    }
+  }
+}
+
+/**
+ * Toggle protocol step completion
+ */
+export async function toggleProtocolStep(ctx, stepId) {
+  const { tasks, save, renderProtocolTab } = ctx;
+  const currentDrawerTaskId = typeof window.currentDrawerTaskId !== 'undefined' ? window.currentDrawerTaskId : null;
+  
+  if (!currentDrawerTaskId) return;
+  const task = findActiveTask(tasks, currentDrawerTaskId);
+  if (!task || !task.protocol || !task.protocol.steps) return;
+  
+  const step = task.protocol.steps.find(s => s.id === stepId);
+  if (step) {
+    step.done = !step.done;
+    
+    // Use store if available
+    if (window.Petal?.store) {
+      const state = window.Petal.store.getState();
+      const updatedTasks = (state.tasks || []).map(t => {
+        if (t.id === currentDrawerTaskId) {
+          return {
+            ...t,
+            protocol: {
+              ...t.protocol,
+              steps: (t.protocol.steps || []).map(s => s.id === stepId ? { ...s, done: !s.done } : s)
+            }
+          };
+        }
+        return t;
+      });
+      updateStoreSafely({ tasks: updatedTasks });
+    } else {
+      if (save) await save();
+    }
+    
+    // Re-render protocol tab
+    if (renderProtocolTab) {
+      renderProtocolTab();
+    }
+  }
+}
+
+/**
+ * Get protocol badge HTML for a task
+ */
+export function getProtocolBadge(task) {
+  if (!task.protocol || !task.protocol.enabled) return '';
+  
+  // Use calculateProtocolDayIndex from this module
+  const dayIndex = task.protocol.dayIndex || calculateProtocolDayIndex(task.protocol.startAt);
+  const startDate = task.protocol.startAt ? new Date(task.protocol.startAt) : null;
+  const endDate = task.protocol.expectedEndAt ? new Date(task.protocol.expectedEndAt) : null;
+  
+  let badgeText = `Protocol Day ${dayIndex}`;
+  if (endDate && new Date() > endDate) {
+    badgeText = 'Protocol ended';
+  } else if (startDate && new Date() < startDate) {
+    badgeText = 'Protocol pending';
+  } else {
+    badgeText = `Protocol Day ${dayIndex}`;
+  }
+  
+  // Use global openTaskDrawer if available, otherwise use window.Petal
+  const openDrawerFn = typeof openTaskDrawer === 'function' 
+    ? `openTaskDrawer(${task.id})` 
+    : `window.Petal?.features?.taskDrawer?.openTaskDrawer?.({ tasks: window.tasks || [], projects: window.projects || [] }, ${task.id})`;
+  const switchTabFn = typeof switchTaskDrawerTab === 'function'
+    ? `switchTaskDrawerTab('protocol')`
+    : `window.Petal?.features?.taskDrawer?.switchTaskDrawerTab?.('protocol')`;
+  
+  return `<span class="protocol-badge" style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:var(--sage-pale);color:var(--sage);border-radius:12px;font-size:10px;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;" onclick="event.stopPropagation();${openDrawerFn};${switchTabFn};" title="Click to view protocol">⚗️ ${badgeText}</span>`;
+}
+
+// ═══════════════════════ TASK SUBTASK OPERATIONS ═══════════════════════
+
+/**
+ * Toggle task subtask section visibility
+ */
+export async function toggleTaskSubtaskSection(ctx, taskId) {
+  const { rerenderViewIfActive } = ctx;
+  
+  // Use global openTaskSubtasks Set if available
+  const openTaskSubtasks = typeof window.openTaskSubtasks !== 'undefined' 
+    ? window.openTaskSubtasks 
+    : (window.openTaskSubtasks = new Set());
+  
+  if (openTaskSubtasks.has(taskId)) {
+    openTaskSubtasks.delete(taskId);
+  } else {
+    openTaskSubtasks.add(taskId);
+  }
+  
+  // Re-render projects view if visible
+  if (rerenderViewIfActive) {
+    await rerenderViewIfActive('projects');
+  }
+}
+
+/**
+ * Toggle add subtask form visibility
+ */
+export function toggleAddSubtaskToTask(taskId) {
+  const section = document.getElementById('add-subtask-to-task-' + taskId);
+  if (section) {
+    section.style.display = section.style.display === 'none' ? 'block' : 'none';
+  }
+}
+
+/**
+ * Get subtasks for a task (tasks with parentTaskId matching taskId)
+ */
+export function getTaskSubtasks(ctx, taskId) {
+  const { tasks } = ctx;
+  return (tasks || []).filter(t => t.parentTaskId === taskId);
+}
+
+/**
+ * Add subtask to task inline (from form)
+ */
+export async function addSubtaskToTaskInline(ctx, taskId) {
+  const { tasks, save, render } = ctx;
+  
+  const t = (tasks || []).find(t => t.id === taskId);
+  if (!t) return;
+  
+  const titleInput = document.getElementById('subtask-title-' + taskId);
+  if (!titleInput) return;
+  
+  const title = titleInput.value.trim();
+  if (!title) {
+    titleInput.focus();
+    return;
+  }
+  
+  const priorityInput = document.getElementById('subtask-pri-' + taskId);
+  const dueInput = document.getElementById('subtask-due-' + taskId);
+  
+  const priority = priorityInput?.value || 'medium';
+  const due = dueInput?.value || '';
+  
+  // Create a new task with parentTaskId instead of nested subtask
+  const newSubtask = {
+    id: Date.now(),
+    title,
+    notes: '',
+    note: '',
+    noteUpdatedAt: '',
+    priority,
+    due,
+    files: [],
+    done: false,
+    status: 'Todo',
+    projectId: t.projectId || null,
+    parentTaskId: taskId,
+    lane: t.lane || null,
+    stage: t.stage || 'planned',
+    boardOrder: 1024
+  };
+  
+  // Use store if available
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    updateStoreSafely({
+      tasks: [newSubtask, ...(state.tasks || [])]
+    });
+  } else {
+    if (tasks) tasks.unshift(newSubtask);
+    if (save) await save();
+  }
+  
+  // Re-render
+  if (render) {
+    render();
+  }
+  
+  // Clear form
+  if (titleInput) titleInput.value = '';
+  if (priorityInput) priorityInput.value = 'medium';
+  if (dueInput) dueInput.value = '';
+  const formSection = document.getElementById('add-subtask-to-task-' + taskId);
+  if (formSection) formSection.style.display = 'none';
+}
+
+/**
+ * Toggle task subtask completion
+ */
+export async function toggleTaskSubtask(ctx, taskId, subtaskId) {
+  const { tasks, save, render } = ctx;
+  
+  // subtaskId is now a task ID, not a nested subtask
+  const st = (tasks || []).find(t => t.id === subtaskId);
+  if (st) {
+    st.done = !st.done;
+    if (st.done) {
+      st.status = 'Done';
+    } else if (st.status === 'Done') {
+      st.status = 'Todo';
+    }
+    
+    // Use store if available
+    if (window.Petal?.store) {
+      const state = window.Petal.store.getState();
+      const updatedTasks = (state.tasks || []).map(t => {
+        if (t.id === subtaskId) {
+          return {
+            ...t,
+            done: !t.done,
+            status: !t.done ? 'Done' : (t.status === 'Done' ? 'Todo' : t.status)
+          };
+        }
+        return t;
+      });
+      updateStoreSafely({ tasks: updatedTasks });
+    } else {
+      if (save) await save();
+    }
+    
+    // Re-render
+    if (render) {
+      render();
+    }
+  }
+}
+
+/**
+ * Edit task subtask (opens edit modal)
+ */
+export function editTaskSubtask(ctx, taskId, subtaskId) {
+  const { tasks } = ctx;
+  
+  // subtaskId is now a task ID
+  const st = (tasks || []).find(t => t.id === subtaskId);
+  if (!st) return;
+  
+  // Use global editingTaskId if available
+  if (typeof window !== 'undefined') {
+    window.editingTaskId = subtaskId; // Edit as a regular task
+    window.editingSubtaskInfo = null;
+  }
+  
+  // Populate modal
+  const currentTitle = [st.title, ...(st.tags || [])].filter(Boolean).join(' ').trim();
+  const modalTitle = document.getElementById('edit-modal-title');
+  const titleInput = document.getElementById('edit-title');
+  const notesInput = document.getElementById('edit-notes');
+  const priorityInput = document.getElementById('edit-priority');
+  const dueInput = document.getElementById('edit-due');
+  const notesField = document.getElementById('edit-notes-field');
+  const tagsHint = document.getElementById('edit-tags-hint');
+  const modal = document.getElementById('edit-modal');
+  
+  if (modalTitle) modalTitle.textContent = 'Edit Subtask';
+  if (titleInput) titleInput.value = currentTitle || st.title || '';
+  if (notesInput) notesInput.value = st.notes || '';
+  if (priorityInput) priorityInput.value = st.priority || 'medium';
+  if (dueInput) dueInput.value = st.due || '';
+  if (notesField) notesField.style.display = '';
+  if (tagsHint) tagsHint.style.display = '';
+  
+  // Show modal
+  if (modal) {
+    modal.classList.add('active');
+    if (titleInput) {
+      setTimeout(() => titleInput.focus(), 100);
+    }
   }
 }

@@ -34,6 +34,25 @@ export async function renderTasks(containerEl, state, handlers) {
   const kanbanContainer = document.getElementById('kanban-container');
   if (kanbanContainer) kanbanContainer.style.display = taskMode === 'kanban' ? '' : 'none';
   
+  // Populate task project filter dropdown (visible in list mode)
+  const taskProjectFilterEl = document.getElementById('task-project-filter');
+  if (taskProjectFilterEl) {
+    const currentValue = taskProjectFilterEl.value || boardProjectFilter || 'all';
+    taskProjectFilterEl.innerHTML = '<option value="all">All projects</option>';
+    (projects || []).filter(p => !p.done).forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = esc(p.name || 'Untitled Project');
+      taskProjectFilterEl.appendChild(opt);
+    });
+    taskProjectFilterEl.value = currentValue;
+    // Show in list mode, hide in kanban mode
+    const selectorContainer = taskProjectFilterEl.closest('.task-project-selector');
+    if (selectorContainer) {
+      selectorContainer.style.display = taskMode === 'list' ? '' : 'none';
+    }
+  }
+  
   if (taskMode === 'kanban') {
     // Kanban rendering would go here
     // For now, fall back to list view
@@ -203,74 +222,10 @@ async function renderTaskList(containerEl, state, handlers) {
     window.lucide.createIcons();
   }
   
-  // DEBUG: Prove clicks reach the task list container
-  if (!c.__clickProbeInstalled) {
-    c.__clickProbeInstalled = true;
-    c.addEventListener('click', (e) => {
-      const btn = e.target.closest?.('button');
-      console.log('🧪 task list click probe:', {
-        target: e.target?.tagName,
-        buttonClass: btn?.className || null,
-        buttonText: btn?.textContent?.trim() || null,
-        hasDataAction: btn?.getAttribute('data-action') || null,
-      });
-    }, true); // capture=true to beat overlays/bubbling issues
-  }
-  
-  // Install event delegation for task actions (delete, edit, etc.)
-  if (!c.__taskActionsInstalled) {
-    c.__taskActionsInstalled = true;
-    
-    c.addEventListener('click', (e) => {
-      // Guard: prevent double handling if another handler already processed this event
-      if (e.__petalDeleteHandled) return;
-      
-      const btn = e.target.closest?.('[data-action]');
-      if (!btn) return;
-      
-      const action = btn.getAttribute('data-action');
-      const taskId = btn.getAttribute('data-id') || btn.getAttribute('data-task-id');
-      
-      console.log('🧨 task action click:', { action, taskId, button: btn });
-      
-        if (action === 'delete' || action === 'delete-task') {
-          // Mark as handled to prevent duplicate processing
-          e.__petalDeleteHandled = true;
-          e.preventDefault();
-          e.stopPropagation();
-          
-          const isSubtask = btn.getAttribute('data-is-subtask') === 'true';
-          // Only use projectId from attribute, never derive from taskId
-          const projectIdAttr = btn.getAttribute('data-project-id');
-          const projectId = projectIdAttr && projectIdAttr !== '' && projectIdAttr !== 'null' ? projectIdAttr : null;
-          const parentTaskId = btn.getAttribute('data-parent-task-id') || null;
-          
-          console.log('🧨 delete action:', { taskId, isSubtask, projectId, parentTaskId });
-          
-          // Use the taskOperations wrapper (like edit does)
-          if (window.Petal?.features?.taskOperations?.deleteTask) {
-            window.Petal.features.taskOperations.deleteTask(taskId, isSubtask, projectId, parentTaskId);
-          } else if (window.Petal?.features?.deleteHandlers?.confirmDeleteTask) {
-            // Fallback: build context from store
-            const store = window.Petal?.store;
-            const state = store?.getState?.() || {};
-            const ctx = {
-              store,
-              state,
-              tasks: Array.isArray(state.tasks) ? state.tasks : [],
-              projects: Array.isArray(state.projects) ? state.projects : [],
-              save: window.Petal?.handlers?.save || window.save,
-              render: window.Petal?.handlers?.render || window.render,
-            };
-            console.log('🧨 calling confirmDeleteTask with ctx:', ctx);
-            window.Petal.features.deleteHandlers.confirmDeleteTask(ctx, taskId, isSubtask, projectId, parentTaskId);
-          } else {
-            console.error('❌ No delete handler available');
-            alert('Delete functionality not available. Please check console for details.');
-          }
-        }
-    });
-  }
+  // NOTE: Event delegation is handled by TasksPage.js, not here.
+  // This keeps authority in one place and prevents duplicate handlers.
+  // TasksPage installs delegation on the container (#view-tasks),
+  // which will catch all clicks including those in the task list.
 }
 
 /**

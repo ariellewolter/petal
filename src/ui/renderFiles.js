@@ -14,14 +14,22 @@ import { fileIcon } from '../utils/strings.js';
 export async function renderFiles(containerEl, state, handlers) {
   const { files: persistedFiles, fileRegistry, fileHistory, currentFileView, currentFileProjectFilter, tasks, projects } = state;
   
-  const c = containerEl || document.getElementById('files-view-container');
-  if (!c) {
-    console.error('Files view container not found!');
+  // CONTRACT: containerEl is required - no global fallback
+  if (!containerEl) {
+    console.error('❌ renderFiles: containerEl is required (no global fallback allowed)');
     return;
   }
   
-  // Update project filter dropdown
-  const projectFilterEl = document.getElementById('file-project-filter');
+  // Find the files list container within the provided container
+  // This ensures we're scoped to the page container, not global DOM
+  const c = containerEl.querySelector('#files-view-container') || containerEl.querySelector('[data-files-list]') || containerEl;
+  if (!c) {
+    console.error('Files view container not found within provided containerEl!');
+    return;
+  }
+  
+  // Update project filter dropdown - MUST be scoped to containerEl
+  const projectFilterEl = containerEl.querySelector('#file-project-filter') || containerEl.querySelector('[data-file-project-filter]');
   if (projectFilterEl) {
     const currentValue = projectFilterEl.value || currentFileProjectFilter || 'all';
     projectFilterEl.innerHTML = '<option value="all">All Projects</option>';
@@ -156,7 +164,7 @@ export async function renderFiles(containerEl, state, handlers) {
     c.innerHTML = `<div class="empty-state" style="text-align:center;padding:60px 20px;">
       <div style="font-size:20px;margin-bottom:12px;color:var(--text);">No files yet</div>
       <small style="display:block;margin-bottom:24px;color:var(--text-dim);">Link files to tasks or projects, or add files directly</small>
-      <button onclick="addFileToRegistry()" style="background:linear-gradient(135deg,#d4a0a0 0%,#c98b8b 100%) !important;border:none !important;border-radius:10px !important;color:white !important;font-size:14px !important;padding:12px 24px !important;cursor:pointer !important;display:block !important;margin:0 auto !important;box-shadow:0 4px 14px rgba(201,139,139,.25) !important;">+ Add Your First File</button>
+      <button data-action="file:add" style="background:linear-gradient(135deg,#d4a0a0 0%,#c98b8b 100%) !important;border:none !important;border-radius:10px !important;color:white !important;font-size:14px !important;padding:12px 24px !important;cursor:pointer !important;display:block !important;margin:0 auto !important;box-shadow:0 4px 14px rgba(201,139,139,.25) !important;">+ Add Your First File</button>
     </div>`;
     return;
   }
@@ -232,9 +240,9 @@ function renderFileCard(file, fileHistory) {
     </div>
     ${file.notes ? `<div style="margin-top:12px;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--text-dim);line-height:1.5;max-height:60px;overflow:hidden;text-overflow:ellipsis;white-space:pre-wrap;">${esc(file.notes.length > 100 ? file.notes.substring(0, 100) + '...' : file.notes)}</div>` : ''}
     <div class="file-card-actions" style="margin-top:12px;display:flex;gap:8px;">
-      <button class="file-open-btn btn-secondary" data-path="${escAttr(JSON.stringify(fileLink))}" style="font-size:11px;padding:6px 12px;">Open</button>
-      ${file.key ? `<button onclick="window.Petal?.features?.fileManagement?.showFileRelations('${esc(file.key)}')" class="btn-secondary" style="font-size:11px;padding:6px 12px;">Relations</button>` : ''}
-      <button onclick="openFileNotesModal('${esc(file.id || file.key || filePath)}')" class="btn-secondary" style="font-size:11px;padding:6px 12px;" title="Add or edit notes for this file">${file.notes ? '📝' : '📄'} Notes</button>
+      <button class="file-open-btn btn-secondary" data-action="file:open" data-path="${escAttr(JSON.stringify(fileLink))}" style="font-size:11px;padding:6px 12px;">Open</button>
+      ${file.key ? `<button data-action="file:show-relations" data-file-key="${esc(file.key)}" class="btn-secondary" style="font-size:11px;padding:6px 12px;">Relations</button>` : ''}
+      <button data-action="file:notes" data-file-id="${esc(file.id || file.key || filePath)}" class="btn-secondary" style="font-size:11px;padding:6px 12px;" title="Add or edit notes for this file">${file.notes ? '📝' : '📄'} Notes</button>
     </div>
   </div>`;
 }

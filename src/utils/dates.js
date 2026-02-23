@@ -61,3 +61,21 @@ export function groupKey(task) {
     sort: task.due
   };
 }
+
+/**
+ * Parse time string "HH:MM" to minutes since midnight
+ */
+export function parseTime(timeStr) {
+  if (!timeStr) return 0;
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+/**
+ * Format minutes since midnight to "HH:MM"
+ */
+export function formatTime(minutes) {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+}

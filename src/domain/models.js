@@ -100,12 +100,17 @@ function dedupeTasks(list) {
  * Uses stable keys to handle tasks with/without IDs, subtasks, and legacy duplicates
  */
 export function getAllTasks(tasks, projects) {
-  const allTasks = [...tasks];
-  const taskIds = new Set(tasks.map(t => t.id).filter(id => id != null));
+  // Filter out deleted tasks first
+  const activeTasks = (tasks || []).filter(t => !t.deletedAt);
+  const allTasks = [...activeTasks];
+  const taskIds = new Set(activeTasks.map(t => t.id).filter(id => id != null));
   
   // Add project subtasks, but only if they're not already in tasks array
-  projects.forEach(p => {
+  (projects || []).forEach(p => {
     (p.subtasks || []).forEach(st => {
+      // Skip deleted subtasks
+      if (st.deletedAt) return;
+      
       // Skip if this subtask is already in the tasks array (by ID)
       // This prevents double-counting when subtasks have been migrated to tasks
       if (st.id && taskIds.has(st.id)) {
@@ -130,9 +135,29 @@ export function getAllTasks(tasks, projects) {
  */
 export function getTasksByProject(tasks, projects, projectId) {
   const allTasks = getAllTasks(tasks, projects);
+  // Normalize projectId comparison to handle both string and number types
+  // Also handle decimal projectIds (e.g., 1771714801103.9167 should match project 1771714801103)
+  const normalizedProjectId = String(projectId).trim();
+  const projectIdAsNumber = Number(projectId);
+  
   return allTasks.filter(t => {
-    const taskProjectId = t.projectId ? (typeof t.projectId === 'number' ? t.projectId : parseInt(t.projectId)) : null;
-    return taskProjectId === projectId;
+    if (!t.projectId) return false;
+    
+    // Try exact string match first
+    const taskProjectId = String(t.projectId).trim();
+    if (taskProjectId === normalizedProjectId) return true;
+    
+    // If task projectId is a decimal number, check if the integer part matches
+    // This handles cases where task.projectId = 1771714801103.9167 and project.id = 1771714801103
+    const taskProjectIdNum = Number(t.projectId);
+    if (!isNaN(taskProjectIdNum) && !isNaN(projectIdAsNumber)) {
+      // Compare integer parts (floor both values)
+      if (Math.floor(taskProjectIdNum) === Math.floor(projectIdAsNumber)) {
+        return true;
+      }
+    }
+    
+    return false;
   });
 }
 

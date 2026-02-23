@@ -16,6 +16,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   checkVaultExists: () => ipcRenderer.invoke('storage:checkVaultExists'),
   exportData: (data) => ipcRenderer.invoke('storage:export', data),
   
+  // Recovery operations
+  listBackups: () => ipcRenderer.invoke('storage:listBackups'),
+  restoreFromBackup: (backupFilename) => ipcRenderer.invoke('storage:restoreFromBackup', backupFilename),
+  
   // Conflict resolution
   readConflictFile: (filePath) => ipcRenderer.invoke('storage:readConflictFile', filePath),
   resolveConflict: (action, filePath) => ipcRenderer.invoke('storage:resolveConflict', action, filePath),

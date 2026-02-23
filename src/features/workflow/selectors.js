@@ -18,10 +18,12 @@ export function selectWorkflowTasks(state) {
   // Filter by project if needed
   let filteredTasks = allTasks;
   if (projectFilter !== 'all') {
-    const projectIdNum = parseInt(projectFilter);
+    // Normalize projectId comparison to handle both string and number types
+    const normalizedProjectId = String(projectFilter).trim();
     filteredTasks = allTasks.filter(t => {
-      const taskProjectId = t.projectId ? (typeof t.projectId === 'number' ? t.projectId : parseInt(t.projectId)) : null;
-      return taskProjectId === projectIdNum;
+      if (!t.projectId) return false;
+      const taskProjectId = String(t.projectId).trim();
+      return taskProjectId === normalizedProjectId;
     });
   }
   

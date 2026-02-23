@@ -11,7 +11,7 @@ import { renderRegistry } from './renderRegistry.js';
 
 // Import page modules
 import * as CellLogPage from '../pages/CellLogPage.js';
-import { renderSettingsPage } from '../pages/SettingsPage.js';
+import { renderSettingsPage, renderSettingsFallback } from '../pages/SettingsPage.js';
 import { renderTodayPage } from '../pages/TodayPage.js';
 import { renderWorkflowPage, switchWorkflowView, toggleWorkflowFilter, filterWorkflowProjects, setWorkflowProjectFilter, toggleWorkflowExpand, buildWorkflowTimeline, toggleTlExpand, renderWorkflowList } from '../pages/WorkflowPage.js';
 import { renderPlannerPage } from '../pages/PlannerPage.js';
@@ -34,6 +34,7 @@ import * as Search from '../features/search.js';
 // Import domain and utilities
 import { LANE_STAGES, MATRIX_STAGES, MATRIX_LANES, DEFAULT_BOARD_COLUMNS } from '../domain/schema.js';
 import { getMatrixStage, isTaskBlocked, getAllTasks } from '../domain/models.js';
+import * as ordering from '../domain/ordering.js';
 import { today, parseDate, dueLabel, parseTime, formatTime } from '../utils/dates.js';
 import { esc, fileIcon, normalizePriorityValue, getEditOnclick, normalizeDueInput } from '../utils/strings.js';
 import * as uiModules from '../ui/index.js';
@@ -54,12 +55,19 @@ import * as RoutinesFeature from '../features/routines.js';
 import { renderPlannerHabits } from '../ui/renderPlannerHabits.js';
 import { renderPlannerRoutines } from '../ui/renderPlannerRoutines.js';
 import * as RenderProjectUI from '../ui/renderProjectUI.js';
+import * as RenderProjectViews from '../ui/renderProjectViews.js';
+import * as RenderWorkflowMatrix from '../ui/renderWorkflowMatrix.js';
+import * as RenderLanes from '../ui/renderLanes.js';
+import * as PlannerOperations from '../features/plannerOperations.js';
+import * as MatrixOperations from '../features/matrixOperations.js';
+import * as ReviewOperations from '../features/reviewOperations.js';
 
 // Note: Event delegation is now set up in TodayPage.js
 
 // Import render functions
 import { renderGlobalSidebar, render } from './viewManager.js';
 import { setupEventDelegation } from './delegation.js';
+import * as buttonHandlers from '../ui/buttonHandlers.js';
 
 /**
  * Initialize the application
@@ -97,14 +105,11 @@ export async function initApp() {
   window.Petal.handlers = handlers;
   
   // Add createPageContext helper to handlers if not already present
-  // Use window.createPageContext if available (defined in tasklist.html), otherwise provide fallback
+  // Create page context directly from store to avoid circular calls
+  // DO NOT call window.createPageContext as it may call back to handlers.createPageContext
   if (!handlers.createPageContext) {
     handlers.createPageContext = function() {
-      // Use window.createPageContext if available (more comprehensive version from tasklist.html)
-      if (typeof window.createPageContext === 'function') {
-        return window.createPageContext();
-      }
-      // Fallback: create minimal context from store
+      // Create context directly from store (no circular calls)
       const state = appStore.getState();
       return {
         store: appStore,
@@ -122,6 +127,10 @@ export async function initApp() {
     };
   }
   
+  // Set up window.Petal.app namespace
+  window.Petal.app = window.Petal.app || {};
+  window.Petal.app.setupEventDelegation = setupEventDelegation;
+  
   // Set up window.Petal.ui namespace
   window.Petal.ui = window.Petal.ui || {};
   Object.assign(window.Petal.ui, uiModules);
@@ -129,7 +138,21 @@ export async function initApp() {
   Object.assign(window.Petal.ui, uiHelpersNew);
   window.Petal.ui.renderPlannerHabits = renderPlannerHabits;
   window.Petal.ui.renderPlannerRoutines = renderPlannerRoutines;
+  Object.assign(window.Petal.ui, RenderProjectViews);
+  // Expose UI handlers for legacy functions
+  window.Petal.ui.handlers = handlers.uiHandlers;
+  
+  // Set up window.Petal.domain namespace
+  window.Petal.domain = window.Petal.domain || {};
+  window.Petal.domain.ordering = ordering;
+  
+  // Set up window.Petal.utils namespace
+  window.Petal.utils = window.Petal.utils || {};
+  window.Petal.utils.projectHelpers = projectHelpers;
   Object.assign(window.Petal.ui, RenderProjectUI);
+  Object.assign(window.Petal.ui, buttonHandlers);
+  Object.assign(window.Petal.ui, RenderWorkflowMatrix);
+  Object.assign(window.Petal.ui, RenderLanes);
   
   // Set up window.Petal.features namespace
   window.Petal.features = window.Petal.features || {};
@@ -139,6 +162,9 @@ export async function initApp() {
   window.Petal.features.projectOperations = ProjectOperations;
   window.Petal.features.modalOperations = ModalOperations;
   window.Petal.features.deleteHandlers = DeleteHandlers;
+  window.Petal.features.matrixOperations = MatrixOperations;
+  window.Petal.features.plannerOperations = PlannerOperations;
+  window.Petal.features.reviewOperations = ReviewOperations;
   window.Petal.features.taskDrawer = TaskDrawer;
   window.Petal.features.exportImport = ExportImport;
   window.Petal.features.search = Search;
@@ -382,6 +408,7 @@ function setupReadOnlyGlobals() {
 function exposePageRenderers() {
   window.renderTodayPage = renderTodayPage;
   window.renderSettingsPage = renderSettingsPage;
+  window.renderSettingsFallback = renderSettingsFallback;
   window.renderPlannerPage = renderPlannerPage;
   window.renderProjectsPage = renderProjectsPage;
   window.renderTasksPage = renderTasksPage;

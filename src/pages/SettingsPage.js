@@ -94,6 +94,14 @@ export async function renderSettingsPage(containerEl, state, handlers) {
               <button class="settings-btn" data-action="import-data">📤 Import Data</button>
             </div>
           </div>
+          
+          ${isElectron ? `
+          <div class="settings-recovery" style="margin-top:24px;padding-top:24px;border-top:1px solid var(--border);">
+            <h4 class="settings-subtitle">Recover Data</h4>
+            <p class="settings-subtitle-desc">If you've lost data, restore from an automatic backup file.</p>
+            <button class="settings-btn" data-action="recover-data" style="background:var(--rose-soft);color:var(--rose);">🔧 Recover from Backup</button>
+          </div>
+          ` : ''}
         </div>
       </div>
 
@@ -169,6 +177,15 @@ export async function renderSettingsPage(containerEl, state, handlers) {
       case 'refresh-vault-status':
         if (isElectron) {
           await renderSettingsPage(containerEl, state, handlers);
+        }
+        break;
+      case 'recover-data':
+        if (isElectron && window.recoverData) {
+          await window.recoverData();
+          // Re-render after recovery attempt
+          await renderSettingsPage(containerEl, state, handlers);
+        } else {
+          alert('Recovery function not available. Please use the console: window.recoverData()');
         }
         break;
     }

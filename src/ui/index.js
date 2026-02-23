@@ -6,3 +6,4 @@ export { renderTasks } from './renderTasks.js';
 export { renderProjects } from './renderProjects.js';
 export { renderWorkflow } from './renderWorkflow.js';
 export { renderFiles } from './renderFiles.js';
+// renderToday moved to src/pages/TodayPage.js

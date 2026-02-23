@@ -1138,5 +1138,5 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 .settings-about p{margin-bottom:8px;font-size:13px;color:var(--text);}
 .settings-version{font-size:11px;color:var(--text-dim);}
 
-/* 3D Printing page loaded from pages/3d-print.html - styles included there */
+/* 3D Printing page styles injected by src/pages/ThreeDPrintPage.js */
 

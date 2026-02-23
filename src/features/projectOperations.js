@@ -2,6 +2,8 @@
 // Core project management functions
 
 import { defaultProjectBrief, normalizeListValue, defaultMilestonesFromTemplate } from '../utils/projectHelpers.js';
+import { esc, escAttr, fileIcon } from '../utils/strings.js';
+import { LANE_STAGES } from '../domain/schema.js';
 
 /**
  * Helper: Update store with safety - preserves all state fields
@@ -228,8 +230,32 @@ export async function toggleProjectOpen(ctx, id) {
   if (window.Petal?.store) {
     const state = window.Petal.store.getState();
     const open = Array.isArray(state.openProjects) ? state.openProjects : [];
-    const next = open.includes(id) 
-      ? open.filter(x => x !== id) 
+    // Normalize ID for comparison (handle string/number mismatch)
+    const idStr = String(id).trim();
+    const idNum = Number(id);
+    // Check if ID exists (as string or number, or decimal match)
+    const isOpen = open.some(x => {
+      const xStr = String(x).trim();
+      const xNum = Number(x);
+      // Exact match (string or number)
+      if (xStr === idStr || x === id) return true;
+      // Decimal match (compare integer parts)
+      if (!isNaN(idNum) && !isNaN(xNum)) {
+        return Math.floor(idNum) === Math.floor(xNum);
+      }
+      return false;
+    });
+    const next = isOpen
+      ? open.filter(x => {
+          const xStr = String(x).trim();
+          const xNum = Number(x);
+          // Remove if exact match or decimal match
+          if (xStr === idStr || x === id) return false;
+          if (!isNaN(idNum) && !isNaN(xNum)) {
+            return Math.floor(idNum) !== Math.floor(xNum);
+          }
+          return true;
+        })
       : [...open, id];
     updateStoreSafely({ openProjects: next });
   } else {
@@ -970,4 +996,1022 @@ export async function addFileVersion(ctx, projectId, fileDataAttr) {
     console.error('Error adding file version:', e);
     alert('Error adding version');
   }
+}
+
+/**
+ * Add a checkpoint to a project
+ * @deprecated This is a legacy function - consider using milestones instead
+ */
+export function addProjectCheckpoint(ctx, projectId, name, note) {
+  const { projects } = ctx;
+  const project = projects.find(p => p.id === projectId);
+  if (!project) return false;
+  
+  if (!project.checkpoints) {
+    project.checkpoints = [];
+  }
+  
+  const checkpoint = {
+    id: `checkpoint_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    at: new Date().toISOString(),
+    name: name || '',
+    note: note || ''
+  };
+  
+  project.checkpoints.push(checkpoint);
+  
+  // Use store if available
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    const updatedProjects = (state.projects || []).map(p => {
+      if (p.id === projectId) {
+        return { ...p, checkpoints: project.checkpoints };
+      }
+      return p;
+    });
+    updateStoreSafely({ projects: updatedProjects });
+  }
+  
+  return true;
+}
+
+/**
+ * Add file version internally (low-level helper)
+ * @deprecated Use addFileVersion instead
+ */
+export function addFileVersionInternal(ctx, projectId, fileId, versionString, note) {
+  const { projects } = ctx;
+  const project = projects.find(p => p.id === projectId);
+  if (!project || !project.files) return false;
+  
+  const file = project.files.find(f => f && f.id === fileId);
+  if (!file) return false;
+  
+  if (!file.versions) {
+    file.versions = [];
+  }
+  
+  const version = {
+    id: `v${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    at: new Date().toISOString(),
+    version: versionString || `v${file.versions.length + 1}`,
+    note: note || ''
+  };
+  
+  file.versions.push(version);
+  file.versionCurrent = version.version;
+  
+  // Use store if available
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    const updatedProjects = (state.projects || []).map(p => {
+      if (p.id === projectId) {
+        return { ...p, files: project.files };
+      }
+      return p;
+    });
+    updateStoreSafely({ projects: updatedProjects });
+  } else {
+    // Fallback: update project directly (legacy)
+    // Note: This won't persist without save() being called
+  }
+  
+  return true;
+}
+
+/**
+ * Add files to project from form container (non-modal)
+ */
+export async function addFileToProject(ctx, projId) {
+  const { projects, getFileLinks, getFileLinksNormalized, save, render } = ctx;
+  
+  const p = projects.find(p => p.id === projId);
+  if (!p) return;
+  
+  const files = window.electronAPI 
+    ? await getFileLinksNormalized('proj-files-'+projId, 'p-'+projId)
+    : getFileLinks('proj-files-'+projId, 'p-'+projId);
+  
+  if (files.length === 0) {
+    alert('Please add at least one file');
+    return;
+  }
+  
+  if (!p.files) p.files = [];
+  p.files = [...p.files, ...files];
+  
+  // Use store if available
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    const updatedProjects = (state.projects || []).map(proj => {
+      if (proj.id === projId) {
+        return { ...proj, files: p.files };
+      }
+      return proj;
+    });
+    updateStoreSafely({ projects: updatedProjects });
+  } else {
+    if (save) await save();
+  }
+  
+  if (render) render();
+  
+  // Clear file container and update hint
+  const container = document.getElementById('proj-files-'+projId);
+  const hint = document.getElementById('file-hint-'+projId);
+  if (container) container.innerHTML = '';
+  if (hint) hint.style.display = 'none';
+}
+
+/**
+ * Add subtask to project
+ */
+export async function addSubtask(ctx, projId) {
+  const { projects, save, render } = ctx;
+  const { LANE_STAGES } = await import('../domain/schema.js');
+  
+  const p = projects.find(p => p.id === projId);
+  if (!p) return;
+  
+  const title = document.getElementById('sub-title-' + projId)?.value.trim();
+  if (!title) {
+    document.getElementById('sub-title-' + projId)?.focus();
+    return;
+  }
+  
+  const getSubFileLinksFn = ctx.getSubFileLinks || getSubFileLinks;
+  const getSubFileLinksNormalizedFn = ctx.getSubFileLinksNormalized || getSubFileLinksNormalized;
+  
+  const files = window.electronAPI 
+    ? (getSubFileLinksNormalizedFn ? await getSubFileLinksNormalizedFn(projId) : [])
+    : (getSubFileLinksFn ? getSubFileLinksFn(projId) : []);
+  
+  const lane = document.getElementById('sub-lane-' + projId)?.value || '';
+  const stage = lane && LANE_STAGES[lane] ? LANE_STAGES[lane][0] : null;
+  
+  if (!p.subtasks) p.subtasks = [];
+  p.subtasks.push({
+    id: Date.now(),
+    title,
+    priority: document.getElementById('sub-pri-' + projId)?.value || 'medium',
+    due: document.getElementById('sub-due-' + projId)?.value || '',
+    files,
+    done: false,
+    lane: lane || null,
+    stage: stage || null
+  });
+  
+  if (save) await save();
+  if (render) render();
+  
+  // Clear form
+  const titleEl = document.getElementById('sub-title-' + projId);
+  const dueEl = document.getElementById('sub-due-' + projId);
+  const priEl = document.getElementById('sub-pri-' + projId);
+  const laneEl = document.getElementById('sub-lane-' + projId);
+  if (titleEl) titleEl.value = '';
+  if (dueEl) dueEl.value = '';
+  if (priEl) priEl.value = 'medium';
+  if (laneEl) laneEl.value = '';
+}
+
+/**
+ * Toggle subtask done status
+ */
+export async function toggleSubtask(ctx, projId, subId) {
+  const { projects, save, render } = ctx;
+  
+  const p = projects.find(p => p.id === projId);
+  if (!p) return;
+  
+  const s = (p.subtasks || []).find(s => s.id === subId);
+  if (s) s.done = !s.done;
+  
+  if (save) await save();
+  if (render) render();
+}
+
+/**
+ * Get file links for subtask form
+ */
+export function getSubFileLinks(projId) {
+  const c = document.getElementById('sub-files-' + projId);
+  if (!c) return [];
+  
+  return [...c.querySelectorAll('.file-link-row')].map(r => {
+    const id = r.dataset.id;
+    return {
+      name: document.getElementById('sfn-' + projId + '-' + id)?.value.trim(),
+      url: document.getElementById('sfu-' + projId + '-' + id)?.value.trim()
+    };
+  }).filter(f => f.name && f.url);
+}
+
+/**
+ * Get normalized file links for subtask form (Electron API)
+ */
+export async function getSubFileLinksNormalized(projId) {
+  const links = getSubFileLinks(projId);
+  
+  if (!window.electronAPI) {
+    // Return in legacy format if no Electron API
+    return links.map(link => ({
+      name: link.name || link.label,
+      url: link.url || link.abs_path
+    }));
+  }
+  
+  // If links already have the new format (with abs_path, onedrive_rel, etc.), return as-is
+  if (links.length > 0 && (links[0].abs_path || links[0].onedrive_rel)) {
+    return links;
+  }
+  
+  // Normalize file paths using Electron API
+  const normalized = [];
+  for (const link of links) {
+    if (!link.url) continue;
+    
+    try {
+      const normalizedPath = await window.electronAPI.normalizePath(link.url);
+      normalized.push({
+        name: link.name || 'File',
+        abs_path: normalizedPath,
+        onedrive_rel: normalizedPath, // Default to same path
+        label: link.name || 'File'
+      });
+    } catch (error) {
+      console.error('Error normalizing path:', link.url, error);
+      // Fallback: use original URL
+      normalized.push({
+        name: link.name || 'File',
+        abs_path: link.url,
+        onedrive_rel: link.url,
+        label: link.name || 'File'
+      });
+    }
+  }
+  
+  return normalized;
+}
+
+/**
+ * Save artifact notes
+ */
+export async function saveArtifactNotes(ctx, artifactId) {
+  const { projects, save, renderArtifacts: renderArtifactsFn } = ctx;
+  
+  const selectedProjectId = typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null;
+  if (!selectedProjectId) return;
+  
+  const project = (projects || []).find(p => p.id === selectedProjectId);
+  if (!project) return;
+  
+  const artifact = (project.artifacts || []).find(a => a.id === artifactId);
+  if (!artifact) return;
+  
+  const notesEl = document.getElementById(`artifact-notes-${artifactId}`);
+  if (!notesEl) return;
+  
+  artifact.notes = notesEl.value;
+  artifact.updatedAt = Date.now();
+  
+  if (save) await save();
+  
+  // Re-render artifacts if render function is available
+  if (renderArtifactsFn) {
+    renderArtifactsFn();
+  } else if (typeof window.renderArtifacts === 'function') {
+    window.renderArtifacts();
+  }
+}
+
+/**
+ * Open artifact detail modal
+ */
+export function openArtifactDetail(ctx, artifactId) {
+  const { projects, tasks, esc: escFn, escAttr: escAttrFn, fileIcon: fileIconFn, selectedProjectId: selectedProjectIdValue, renderArtifacts: renderArtifactsFn } = ctx;
+  
+  const escFunction = escFn || esc;
+  const escAttrFunction = escAttrFn || escAttr;
+  const fileIconFunction = fileIconFn || fileIcon;
+  const selectedProjectId = selectedProjectIdValue || (typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null);
+  
+  if (!selectedProjectId) return;
+  
+  const project = (projects || []).find(p => p.id === selectedProjectId);
+  if (!project) return;
+  
+  const artifact = (project.artifacts || []).find(a => a.id === artifactId);
+  if (!artifact) return;
+  
+  const modal = document.getElementById('artifact-detail-modal');
+  const content = document.getElementById('artifact-detail-content');
+  if (!modal || !content) return;
+  
+  // Get files for this artifact
+  const artifactFiles = ((project.files || []).filter(f => artifact.fileIds && artifact.fileIds.includes(f.id)));
+  
+  let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">`;
+  html += `<h2 style="font-size:20px;font-weight:600;color:var(--text);margin:0;">${escFunction(artifact.name)}</h2>`;
+  html += `<button onclick="closeArtifactDetail()" style="padding:6px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-size:12px;cursor:pointer;">Close</button>`;
+  html += `</div>`;
+  
+  // Description
+  if (artifact.description) {
+    html += `<div style="margin-bottom:20px;padding:12px;background:var(--bg2);border-radius:6px;">`;
+    html += `<div style="font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">Description</div>`;
+    html += `<div style="font-size:13px;color:var(--text);line-height:1.6;">${escFunction(artifact.description)}</div>`;
+    html += `</div>`;
+  }
+  
+  // Files with version tracking
+  html += `<div style="margin-bottom:20px;">`;
+  html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">`;
+  html += `<div style="font-size:13px;font-weight:600;color:var(--text);text-transform:uppercase;letter-spacing:.08em;">Files</div>`;
+  html += `<button onclick="addFileToArtifact(${artifactId})" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;">+ Add File</button>`;
+  html += `</div>`;
+  
+  if (artifactFiles.length === 0) {
+    html += `<div style="text-align:center;padding:20px;color:var(--text-dim);font-size:12px;">No files yet. Add files to this artifact.</div>`;
+  } else {
+    html += `<div style="display:flex;flex-direction:column;gap:8px;">`;
+    
+    // Group files by version (current first)
+    const currentFiles = artifactFiles.filter(f => f.isCurrent);
+    const supersededFiles = artifactFiles.filter(f => !f.isCurrent);
+    
+    [...currentFiles, ...supersededFiles].forEach(file => {
+      const fileLink = typeof file === 'string' ? { abs_path: file } : file;
+      const label = file.label || file.name || 'File';
+      const safeLink = escFunction(JSON.stringify(fileLink).replace(/'/g, "\\'"));
+      const icon = fileIconFunction(fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url || '');
+      
+      html += `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:12px;">`;
+      html += `<div style="display:flex;align-items:flex-start;gap:12px;">`;
+      html += `<span style="font-size:16px;flex-shrink:0;">${icon}</span>`;
+      html += `<div style="flex:1;min-width:0;">`;
+      html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">`;
+      html += `<div style="font-size:13px;font-weight:500;color:var(--text);">${escFunction(label)}</div>`;
+      if (file.isCurrent) {
+        html += `<span style="font-size:10px;padding:2px 6px;background:var(--sage-pale);color:var(--sage);border-radius:8px;">Current</span>`;
+      } else {
+        html += `<span style="font-size:10px;padding:2px 6px;background:var(--bg);color:var(--text-dim);border-radius:8px;">Superseded</span>`;
+      }
+      if (file.version) {
+        html += `<span style="font-size:10px;color:var(--text-dim);">v${escFunction(file.version)}</span>`;
+      }
+      html += `</div>`;
+      if (file.description) {
+        html += `<div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">${escFunction(file.description)}</div>`;
+      }
+      if (file.whatChanged) {
+        html += `<div style="font-size:11px;color:var(--text-dim);margin-bottom:2px;"><strong>Changed:</strong> ${escFunction(file.whatChanged)}</div>`;
+      }
+      html += `</div>`;
+      html += `<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">`;
+      html += `<button class="file-open-btn" data-path="${escAttrFunction(JSON.stringify(file))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">Open</button>`;
+      html += `<button onclick="editFileNotes('${file.id}')" style="padding:4px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;font-size:10px;cursor:pointer;color:var(--text-dim);">Notes</button>`;
+      html += `</div>`;
+      html += `</div></div>`;
+    });
+    
+    html += `</div>`;
+  }
+  html += `</div>`;
+  
+  // Notes
+  html += `<div style="margin-bottom:20px;">`;
+  html += `<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em;">Notes</div>`;
+  html += `<textarea id="artifact-notes-${artifactId}" style="width:100%;min-height:120px;padding:12px;font-size:12px;font-family:'Jost',sans-serif;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text);resize:vertical;" placeholder="Add notes about this artifact...">${escFunction(artifact.notes || '')}</textarea>`;
+  html += `<button onclick="saveArtifactNotes(${artifactId})" style="margin-top:8px;padding:6px 12px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:11px;cursor:pointer;">Save Notes</button>`;
+  html += `</div>`;
+  
+  // Version History
+  if (artifact.versionHistory && artifact.versionHistory.length > 0) {
+    html += `<div style="margin-bottom:20px;">`;
+    html += `<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em;">Version History</div>`;
+    html += `<div style="display:flex;flex-direction:column;gap:8px;">`;
+    artifact.versionHistory.forEach((version, idx) => {
+      html += `<div style="padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;">`;
+      html += `<div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:4px;">${escFunction(version.version || `v${idx + 1}`)}</div>`;
+      if (version.notes) {
+        html += `<div style="font-size:11px;color:var(--text-dim);">${escFunction(version.notes)}</div>`;
+      }
+      if (version.date) {
+        html += `<div style="font-size:10px;color:var(--text-light);margin-top:4px;">${new Date(version.date).toLocaleDateString()}</div>`;
+      }
+      html += `</div>`;
+    });
+    html += `</div></div>`;
+  }
+  
+  content.innerHTML = html;
+  modal.style.display = 'flex';
+}
+
+/**
+ * Close artifact detail modal
+ */
+export function closeArtifactDetail() {
+  const modal = document.getElementById('artifact-detail-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+/**
+ * Create new artifact
+ */
+export async function openCreateArtifactModal(ctx) {
+  const { projects, save, renderArtifacts: renderArtifactsFn, selectedProjectId: selectedProjectIdValue } = ctx;
+  
+  const selectedProjectId = selectedProjectIdValue || (typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null);
+  
+  const name = prompt('Artifact name (e.g., "Figure 2A", "GelPredict GUI", "Dataset v1"):');
+  if (!name || !name.trim()) return;
+  
+  const type = prompt('Type (figure/dataset/build/protocol/manuscript):', 'figure') || 'figure';
+  const description = prompt('Description (optional):') || '';
+  
+  if (!selectedProjectId) return;
+  const project = (projects || []).find(p => p.id === selectedProjectId);
+  if (!project) return;
+  
+  if (!project.artifacts) project.artifacts = [];
+  
+  const newArtifact = {
+    id: Date.now(),
+    name: name.trim(),
+    type: type.trim(),
+    description: description.trim(),
+    notes: '',
+    fileIds: [],
+    subtasks: [],
+    versionHistory: [],
+    status: 'draft',
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
+  
+  project.artifacts.push(newArtifact);
+  if (save) await save();
+  
+  if (renderArtifactsFn) {
+    renderArtifactsFn();
+  } else if (typeof window.renderArtifacts === 'function') {
+    window.renderArtifacts();
+  }
+}
+
+/**
+ * Add file to artifact
+ */
+export async function addFileToArtifact(ctx, artifactId) {
+  const { projects, save, selectedProjectId: selectedProjectIdValue } = ctx;
+  
+  const selectedProjectId = selectedProjectIdValue || (typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null);
+  if (!selectedProjectId) return;
+  
+  const project = (projects || []).find(p => p.id === selectedProjectId);
+  if (!project) return;
+  
+  const artifact = (project.artifacts || []).find(a => a.id === artifactId);
+  if (!artifact) return;
+  
+  // Use file picker if in Electron, otherwise prompt for URL
+  if (window.electronAPI && window.electronAPI.chooseFile) {
+    try {
+      const fileLink = await window.electronAPI.chooseFile();
+      if (!fileLink) {
+        return; // User cancelled
+      }
+      
+      // Create file entry in project if it doesn't exist
+      if (!project.files) project.files = [];
+      
+      // Check if file already exists in project
+      const existingFile = project.files.find(f => {
+        const fPath = typeof f === 'object' ? (f.abs_path || f.onedrive_rel || f.share_url) : f;
+        const newPath = fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url || '';
+        return fPath === newPath;
+      });
+      
+      let fileId;
+      if (existingFile) {
+        fileId = existingFile.id || Date.now();
+        if (!existingFile.id) existingFile.id = fileId;
+      } else {
+        // Create new file entry
+        fileId = Date.now();
+        const newFile = {
+          id: fileId,
+          label: fileLink.label || fileLink.name || 'File',
+          abs_path: fileLink.abs_path || '',
+          onedrive_rel: fileLink.onedrive_rel || '',
+          share_url: fileLink.share_url || '',
+          fileLink: fileLink,
+          isCurrent: true,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        };
+        project.files.push(newFile);
+      }
+      
+      // Add to artifact's fileIds if not already there
+      if (!artifact.fileIds) artifact.fileIds = [];
+      if (!artifact.fileIds.includes(fileId)) {
+        artifact.fileIds.push(fileId);
+        artifact.updatedAt = Date.now();
+      }
+      
+      if (save) await save();
+      
+      // Refresh the modal
+      if (window.Petal?.features?.projectOperations?.openArtifactDetail) {
+        window.Petal.features.projectOperations.openArtifactDetail(ctx, artifactId);
+      } else if (typeof window.openArtifactDetail === 'function') {
+        window.openArtifactDetail(artifactId);
+      }
+    } catch (e) {
+      console.error('File picker error:', e);
+      alert('Could not open file picker: ' + e.message);
+    }
+  } else {
+    // Fallback: prompt for URL
+    const url = prompt('File URL or path:');
+    if (!url || !url.trim()) return;
+    
+    // Create file entry
+    if (!project.files) project.files = [];
+    const fileId = Date.now();
+    const newFile = {
+      id: fileId,
+      label: url.split('/').pop() || 'File',
+      abs_path: url.trim(),
+      isCurrent: true,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    project.files.push(newFile);
+    
+    // Add to artifact
+    if (!artifact.fileIds) artifact.fileIds = [];
+    artifact.fileIds.push(fileId);
+    artifact.updatedAt = Date.now();
+    
+    if (save) await save();
+    
+    // Refresh the modal
+    if (window.Petal?.features?.projectOperations?.openArtifactDetail) {
+      const ctx = createPageContext();
+      window.Petal.features.projectOperations.openArtifactDetail(ctx, artifactId);
+    } else if (typeof window.openArtifactDetail === 'function') {
+      window.openArtifactDetail(artifactId);
+    }
+  }
+}
+
+/**
+ * Add cell log entry (prompt-based)
+ */
+export async function openAddCellLogEntry(ctx) {
+  const { projects, save, selectedProjectId: selectedProjectIdValue, renderCellLog: renderCellLogFn } = ctx;
+  
+  const selectedProjectId = selectedProjectIdValue || (typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null);
+  if (!selectedProjectId) {
+    alert('Please select a project first');
+    return;
+  }
+  
+  const project = (projects || []).find(p => p.id === selectedProjectId);
+  if (!project) return;
+  
+  const line = prompt('Cell line (e.g., MCF10A):');
+  if (!line || !line.trim()) return;
+  
+  const passage = prompt('Passage number (optional):') || '';
+  const seededDensity = prompt('Seeded density (optional, e.g., 50k):') || '';
+  const location = prompt('Location (optional, e.g., T75 flask):') || '';
+  const notes = prompt('Notes (optional):') || '';
+  
+  if (!project.cellLog) {
+    project.cellLog = [];
+  }
+  
+  project.cellLog.push({
+    id: Date.now(),
+    date: new Date().toISOString(),
+    line: line.trim(),
+    passage: passage.trim() || null,
+    seededDensity: seededDensity.trim() || null,
+    location: location.trim() || null,
+    notes: notes.trim() || null
+  });
+  
+  if (save) await save();
+  
+  if (renderCellLogFn) {
+    renderCellLogFn(project);
+  } else if (typeof window.renderCellLog === 'function') {
+    window.renderCellLog(project);
+  }
+}
+
+/**
+ * Open protocol run detail modal
+ */
+export function openProtocolRunDetail(ctx, runId) {
+  const { projects, tasks, esc: escFn, selectedProjectId: selectedProjectIdValue } = ctx;
+  
+  const escFunction = escFn || esc;
+  const selectedProjectId = selectedProjectIdValue || (typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null);
+  
+  if (!selectedProjectId) return;
+  
+  const project = (projects || []).find(p => p.id === selectedProjectId);
+  if (!project) return;
+  
+  const run = ((project.protocolRuns || []).find(r => r.id === runId));
+  if (!run) return;
+  
+  const modal = document.getElementById('protocol-run-detail-modal');
+  const content = document.getElementById('protocol-run-detail-content');
+  if (!modal || !content) return;
+  
+  const startDate = run.startDate ? new Date(run.startDate) : null;
+  const expectedEnd = run.expectedEndDate ? new Date(run.expectedEndDate) : null;
+  const today = new Date();
+  const daysElapsed = startDate ? Math.floor((today - startDate) / (1000 * 60 * 60 * 24)) + 1 : 0;
+  const daysExpected = expectedEnd && startDate ? Math.floor((expectedEnd - startDate) / (1000 * 60 * 60 * 24)) : null;
+  
+  const linkedArtifact = run.linkedArtifactId 
+    ? ((project.artifacts || []).find(a => a.id === run.linkedArtifactId))
+    : null;
+  
+  // Get linked tasks
+  const linkedTasks = ((run.subtasks || []).map(taskId => (tasks || []).find(t => t.id === taskId)).filter(t => t));
+  
+  let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">`;
+  html += `<h2 style="font-size:20px;font-weight:600;color:var(--text);margin:0;">${escFunction(run.protocolName)}</h2>`;
+  html += `<button onclick="closeProtocolRunDetail()" style="padding:6px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-size:12px;cursor:pointer;">Close</button>`;
+  html += `</div>`;
+  
+  // Status and timeline
+  html += `<div style="margin-bottom:20px;padding:12px;background:var(--bg2);border-radius:6px;">`;
+  html += `<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">`;
+  html += `<span style="font-size:10px;padding:3px 8px;background:${run.status === 'active' ? 'var(--sage-pale)' : run.status === 'paused' ? 'var(--bg)' : 'var(--bg)'};color:${run.status === 'active' ? 'var(--sage)' : 'var(--text-dim)'};border-radius:12px;text-transform:uppercase;letter-spacing:.08em;">${run.status}</span>`;
+  if (daysExpected) {
+    html += `<div style="font-size:13px;color:var(--text);">Day ${daysElapsed} of ${daysExpected}</div>`;
+  } else if (daysElapsed > 0) {
+    html += `<div style="font-size:13px;color:var(--text);">Day ${daysElapsed}</div>`;
+  }
+  html += `</div>`;
+  if (startDate) {
+    html += `<div style="font-size:12px;color:var(--text-dim);">Started: ${startDate.toLocaleDateString()}</div>`;
+  }
+  if (expectedEnd) {
+    html += `<div style="font-size:12px;color:var(--text-dim);">Expected end: ${expectedEnd.toLocaleDateString()}</div>`;
+  }
+  html += `</div>`;
+  
+  // Linked artifact
+  if (linkedArtifact) {
+    html += `<div style="margin-bottom:20px;padding:12px;background:var(--bg2);border-radius:6px;">`;
+    html += `<div style="font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">Linked Artifact</div>`;
+    html += `<div style="font-size:13px;color:var(--text);cursor:pointer;" onclick="closeProtocolRunDetail();openArtifactDetail(${linkedArtifact.id})">📦 ${escFunction(linkedArtifact.name)}</div>`;
+    html += `</div>`;
+  }
+  
+  // Daily log entries
+  html += `<div style="margin-bottom:20px;">`;
+  html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">`;
+  html += `<div style="font-size:13px;font-weight:600;color:var(--text);text-transform:uppercase;letter-spacing:.08em;">Daily Log</div>`;
+  html += `<button onclick="addProtocolRunLogEntry(${runId})" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;">+ Add Entry</button>`;
+  html += `</div>`;
+  
+  if (!run.dailyLog || run.dailyLog.length === 0) {
+    html += `<div style="text-align:center;padding:20px;color:var(--text-dim);font-size:12px;">No log entries yet. Add your first entry to track progress.</div>`;
+  } else {
+    html += `<div style="display:flex;flex-direction:column;gap:8px;">`;
+    run.dailyLog.forEach((entry, idx) => {
+      const entryText = typeof entry === 'string' ? entry : entry.entry || '';
+      const entryDate = typeof entry === 'object' && entry.date ? new Date(entry.date) : null;
+      html += `<div style="padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;">`;
+      if (entryDate) {
+        html += `<div style="font-size:10px;color:var(--text-light);margin-bottom:4px;">${entryDate.toLocaleDateString()}</div>`;
+      }
+      html += `<div style="font-size:12px;color:var(--text);line-height:1.6;">${escFunction(entryText)}</div>`;
+      html += `</div>`;
+    });
+    html += `</div>`;
+  }
+  html += `</div>`;
+  
+  // Linked tasks
+  if (linkedTasks.length > 0) {
+    html += `<div style="margin-bottom:20px;">`;
+    html += `<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em;">Linked Tasks</div>`;
+    html += `<div style="display:flex;flex-direction:column;gap:6px;">`;
+    linkedTasks.forEach(task => {
+      html += `<div style="padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--text);">`;
+      html += `<span style="font-weight:500;">${escFunction(task.title)}</span>`;
+      if (task.priority) {
+        html += ` <span style="color:var(--text-dim);">(${task.priority})</span>`;
+      }
+      html += `</div>`;
+    });
+    html += `</div></div>`;
+  }
+  
+  content.innerHTML = html;
+  modal.style.display = 'flex';
+}
+
+/**
+ * Close protocol run detail modal
+ */
+export function closeProtocolRunDetail() {
+  const modal = document.getElementById('protocol-run-detail-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+/**
+ * Create new protocol run
+ */
+export async function openCreateProtocolRunModal(ctx) {
+  const { projects, save, renderProtocolRuns: renderProtocolRunsFn, selectedProjectId: selectedProjectIdValue } = ctx;
+  
+  const selectedProjectId = selectedProjectIdValue || (typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null);
+  
+  const protocolName = prompt('Protocol name (e.g., "dECM Digestion – Batch 4"):');
+  if (!protocolName || !protocolName.trim()) return;
+  
+  const startDate = prompt('Start date (YYYY-MM-DD) or leave blank for today:', new Date().toISOString().split('T')[0]);
+  const expectedEndDate = prompt('Expected end date (YYYY-MM-DD, optional):') || '';
+  
+  if (!selectedProjectId) return;
+  const project = (projects || []).find(p => p.id === selectedProjectId);
+  if (!project) return;
+  
+  if (!project.protocolRuns) project.protocolRuns = [];
+  
+  const newRun = {
+    id: Date.now(),
+    protocolName: protocolName.trim(),
+    startDate: startDate || new Date().toISOString().split('T')[0],
+    expectedEndDate: expectedEndDate || '',
+    status: 'active',
+    linkedArtifactId: null,
+    dailyLog: [],
+    subtasks: [],
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
+  
+  project.protocolRuns.push(newRun);
+  if (save) await save();
+  
+  if (renderProtocolRunsFn) {
+    renderProtocolRunsFn();
+  } else if (typeof window.renderProtocolRuns === 'function') {
+    window.renderProtocolRuns();
+  }
+}
+
+/**
+ * Add log entry to protocol run
+ */
+export async function addProtocolRunLogEntry(ctx, runId) {
+  const { projects, save, selectedProjectId: selectedProjectIdValue } = ctx;
+  
+  const selectedProjectId = selectedProjectIdValue || (typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null);
+  if (!selectedProjectId) return;
+  
+  const project = (projects || []).find(p => p.id === selectedProjectId);
+  if (!project) return;
+  
+  const run = ((project.protocolRuns || []).find(r => r.id === runId));
+  if (!run) return;
+  
+  const entry = prompt('Daily log entry:');
+  if (!entry || !entry.trim()) return;
+  
+  if (!run.dailyLog) run.dailyLog = [];
+  run.dailyLog.push({
+    entry: entry.trim(),
+    date: new Date().toISOString()
+  });
+  
+  run.updatedAt = Date.now();
+  
+  if (save) await save();
+  
+  // Refresh the modal
+  if (window.Petal?.features?.projectOperations?.openProtocolRunDetail) {
+    window.Petal.features.projectOperations.openProtocolRunDetail(ctx, runId);
+  } else if (typeof window.openProtocolRunDetail === 'function') {
+    window.openProtocolRunDetail(runId);
+  }
+}
+
+/**
+ * Edit file notes (description, whatChanged, whyExists)
+ */
+export async function editFileNotes(ctx, fileId) {
+  const { projects, save, selectedProjectId: selectedProjectIdValue } = ctx;
+  
+  const selectedProjectId = selectedProjectIdValue || (typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null);
+  if (!selectedProjectId) return;
+  
+  const project = (projects || []).find(p => p.id === selectedProjectId);
+  if (!project) return;
+  
+  const file = (project.files || []).find(f => f.id === fileId);
+  if (!file) return;
+  
+  const description = prompt('File description:', file.description || '');
+  if (description === null) return;
+  
+  const whatChanged = prompt('What changed in this version?', file.whatChanged || '');
+  if (whatChanged === null) return;
+  
+  const whyExists = prompt('Why does this file exist?', file.whyExists || '');
+  if (whyExists === null) return;
+  
+  file.description = description;
+  file.whatChanged = whatChanged;
+  file.whyExists = whyExists;
+  file.updatedAt = Date.now();
+  
+  if (save) await save();
+  
+  // Refresh artifact detail if open
+  const modal = document.getElementById('artifact-detail-modal');
+  if (modal && modal.style.display !== 'none') {
+    // Find which artifact this file belongs to
+    const artifact = (project.artifacts || []).find(a => a.fileIds && a.fileIds.includes(fileId));
+    if (artifact) {
+      if (window.Petal?.features?.projectOperations?.openArtifactDetail) {
+        window.Petal.features.projectOperations.openArtifactDetail(ctx, artifact.id);
+      } else if (typeof window.openArtifactDetail === 'function') {
+        window.openArtifactDetail(artifact.id);
+      }
+    }
+  }
+}
+
+/**
+ * Toggle done tasks visibility
+ */
+export function toggleDoneTasks() {
+  const list = document.getElementById('done-tasks-list');
+  const toggle = document.getElementById('done-tasks-toggle');
+  if (!list || !toggle) return;
+  
+  // Get current state from element or use default
+  const isExpanded = list.style.display !== 'none';
+  const newState = !isExpanded;
+  
+  list.style.display = newState ? 'block' : 'none';
+  toggle.textContent = newState ? '▲' : '▼';
+}
+
+/**
+ * Add working log entry to project
+ */
+export async function addWorkingLogEntry(ctx) {
+  const { projects, save, renderWorkingLog, selectedProjectId: selectedProjectIdValue } = ctx;
+  
+  const selectedProjectId = selectedProjectIdValue || (typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null);
+  if (!selectedProjectId) return;
+  
+  const project = (projects || []).find(p => p.id === selectedProjectId);
+  if (!project) return;
+  
+  const text = prompt('What did you finish?');
+  if (!text || !text.trim()) return;
+  
+  if (!project.workingLog) {
+    project.workingLog = [];
+  }
+  
+  project.workingLog.push({
+    id: Date.now(),
+    at: new Date().toISOString(),
+    text: text.trim(),
+    fileIds: []
+  });
+  
+  // Update store if available
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    const updatedProjects = (state.projects || []).map(p => 
+      p.id === selectedProjectId ? project : p
+    );
+    window.Petal.store.setState({ projects: updatedProjects });
+  } else {
+    // Fallback
+    if (save) await save();
+  }
+  
+  if (renderWorkingLog) {
+    renderWorkingLog(project);
+  } else if (typeof window.renderWorkingLog === 'function') {
+    window.renderWorkingLog(project);
+  }
+}
+
+/**
+ * Select project color
+ */
+export function selectColor(ctx, n, el) {
+  const { selectedColor: selectedColorValue } = ctx;
+  
+  // Update global selectedColor if available
+  if (typeof window.selectedColor !== 'undefined') {
+    window.selectedColor = n;
+  }
+  
+  // Update UI
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+  if (el) el.classList.add('selected');
+}
+
+/**
+ * Add task to project (inline form)
+ */
+export async function addTaskToProject(ctx, projId) {
+  const { projects, tasks, save, render, normalizeProjectIdValue: normalizeProjectIdValueFn, selectedProjectId: selectedProjectIdValue } = ctx;
+  
+  const normalizeProjectIdValueFunction = normalizeProjectIdValueFn || ((value) => {
+    if (window.Petal?.utils?.normalizeProjectIdValue) {
+      return window.Petal.utils.normalizeProjectIdValue(value);
+    }
+    return value ? parseInt(value) : null;
+  });
+  
+  const normalizedProjId = normalizeProjectIdValueFunction(projId);
+  const p = (projects || []).find(p => p.id === normalizedProjId);
+  if (!p) return;
+  
+  const title = document.getElementById('proj-task-title-' + projId)?.value.trim();
+  if (!title) {
+    document.getElementById('proj-task-title-' + projId)?.focus();
+    return;
+  }
+  
+  const priority = document.getElementById('proj-task-pri-' + projId)?.value || 'medium';
+  const due = document.getElementById('proj-task-due-' + projId)?.value || '';
+  const lane = document.getElementById('proj-task-lane-' + projId)?.value || '';
+  
+  // Determine stage based on lane
+  let stage = 'planned';
+  if (lane && LANE_STAGES[lane]) {
+    stage = LANE_STAGES[lane][0];
+  }
+  
+  const newTask = {
+    id: Date.now(),
+    title,
+    notes: '',
+    priority,
+    due,
+    fileIds: [], // NEW: Use canonical registry
+    files: [], // Keep for backward compatibility
+    done: false,
+    status: 'Todo',
+    lane: lane || null,
+    stage: stage,
+    projectId: normalizedProjId,
+    subtasks: []
+  };
+  
+  // Phase 2: Immutable update through store
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    window.Petal.store.setState({
+      tasks: [newTask, ...(state.tasks || [])]
+    });
+  } else {
+    // Fallback for backward compatibility
+    if (tasks) {
+      tasks.unshift(newTask);
+    }
+    if (save) await save();
+  }
+  
+  if (render) {
+    render();
+  } else if (typeof window.render === 'function') {
+    window.render();
+  }
+  
+  // Clear form
+  const titleInput = document.getElementById('proj-task-title-' + projId);
+  const priInput = document.getElementById('proj-task-pri-' + projId);
+  const dueInput = document.getElementById('proj-task-due-' + projId);
+  const laneInput = document.getElementById('proj-task-lane-' + projId);
+  
+  if (titleInput) titleInput.value = '';
+  if (priInput) priInput.value = 'medium';
+  if (dueInput) dueInput.value = '';
+  if (laneInput) laneInput.value = '';
 }

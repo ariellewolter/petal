@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Recover Data - Petal</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #e0e0e0;
+    }
+    h1 {
+      color: #ff6b9d;
+      margin-bottom: 10px;
+    }
+    .backup-item {
+      background: #2a2a2a;
+      border: 1px solid #3a3a3a;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 12px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .backup-info {
+      flex: 1;
+    }
+    .backup-info strong {
+      color: #ff6b9d;
+      display: block;
+      margin-bottom: 8px;
+    }
+    .backup-stats {
+      font-size: 13px;
+      color: #a0a0a0;
+      margin-top: 4px;
+    }
+    button {
+      background: #ff6b9d;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    button:hover {
+      background: #ff8bb3;
+    }
+    button:disabled {
+      background: #555;
+      cursor: not-allowed;
+    }
+    .status {
+      padding: 12px;
+      border-radius: 6px;
+      margin: 16px 0;
+    }
+    .status.success {
+      background: #2a5a2a;
+      color: #90ee90;
+    }
+    .status.error {
+      background: #5a2a2a;
+      color: #ff6b6b;
+    }
+    .status.info {
+      background: #2a2a5a;
+      color: #6b9dff;
+    }
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #a0a0a0;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔧 Data Recovery</h1>
+  <p>If your data was lost, you can restore it from a backup file. Select the most recent backup that contains your data.</p>
+  
+  <div id="status"></div>
+  <div id="backups-list"></div>
+  
+  <script>
+    let backups = [];
+    
+    async function loadBackups() {
+      const statusEl = document.getElementById('status');
+      const listEl = document.getElementById('backups-list');
+      
+      statusEl.innerHTML = '<div class="status info">Loading backup files...</div>';
+      listEl.innerHTML = '<div class="loading">Loading...</div>';
+      
+      try {
+        const result = await window.electronAPI.listBackups();
+        
+        if (result.error) {
+          statusEl.innerHTML = `<div class="status error">Error: ${result.error}</div>`;
+          listEl.innerHTML = '';
+          return;
+        }
+        
+        backups = result.backups || [];
+        
+        if (backups.length === 0) {
+          statusEl.innerHTML = '<div class="status error">No backup files found. Your data may not be recoverable.</div>';
+          listEl.innerHTML = '<p style="color: #a0a0a0;">No backup files were found in your vault directory.</p>';
+          return;
+        }
+        
+        statusEl.innerHTML = `<div class="status info">Found ${backups.length} backup file(s). Select one to restore.</div>`;
+        
+        listEl.innerHTML = backups.map((backup, index) => {
+          const date = new Date(backup.mtime).toLocaleString();
+          const isMostRecent = index === 0;
+          return `
+            <div class="backup-item" style="${isMostRecent ? 'border-color: #ff6b9d;' : ''}">
+              <div class="backup-info">
+                <strong>${backup.filename} ${isMostRecent ? '⭐ (Most Recent)' : ''}</strong>
+                <div class="backup-stats">
+                  📅 ${date}<br>
+                  📊 ${backup.tasks} tasks, ${backup.projects} projects, ${backup.files} files
+                </div>
+              </div>
+              <button onclick="restoreBackup('${backup.filename}')">Restore</button>
+            </div>
+          `;
+        }).join('');
+        
+      } catch (error) {
+        statusEl.innerHTML = `<div class="status error">Error loading backups: ${error.message}</div>`;
+        listEl.innerHTML = '';
+      }
+    }
+    
+    async function restoreBackup(filename) {
+      const statusEl = document.getElementById('status');
+      
+      if (!confirm(`Are you sure you want to restore from "${filename}"?\n\nThis will replace your current data with the backup. A backup of your current data will be created first.`)) {
+        return;
+      }
+      
+      statusEl.innerHTML = '<div class="status info">Restoring backup...</div>';
+      
+      try {
+        const result = await window.electronAPI.restoreFromBackup(filename);
+        
+        if (result.ok) {
+          statusEl.innerHTML = `
+            <div class="status success">
+              ✅ Successfully restored from backup!<br>
+              Restored ${result.tasks} tasks, ${result.projects} projects, ${result.files} files.<br>
+              <strong>Please restart the app to see your recovered data.</strong>
+            </div>
+          `;
+        } else {
+          statusEl.innerHTML = `<div class="status error">Error: ${result.error}</div>`;
+        }
+      } catch (error) {
+        statusEl.innerHTML = `<div class="status error">Error restoring backup: ${error.message}</div>`;
+      }
+    }
+    
+    // Load backups when page loads
+    loadBackups();
+  </script>
+</body>
+</html>

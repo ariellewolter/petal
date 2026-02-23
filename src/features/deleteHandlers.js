@@ -259,19 +259,96 @@ export async function softDeleteTask(ctx, taskId) {
   
   // Mark task as deleted
   const deletedAt = new Date().toISOString();
-  task.deletedAt = deletedAt;
-  console.log('✅ Task marked as deleted', { taskId: task.id, title: task.title, deletedAt, taskObject: task });
   
-  // Also soft delete all subtasks (only active ones) - normalize ID for matching
+  // Find all subtasks that need to be deleted
   const subtasks = tasks.filter(t => {
     if (!t || !t.parentTaskId || t.deletedAt) return false;
     return String(t.parentTaskId) === taskIdStr || 
            t.parentTaskId === taskId ||
            Number(t.parentTaskId) === Number(taskId);
   });
-  subtasks.forEach(subtask => {
-    subtask.deletedAt = new Date().toISOString();
-  });
+  
+  // Update store with immutable updates (CRITICAL: prevents data loss)
+  const store = window.Petal?.store;
+  if (store) {
+    const state = store.getState();
+    const currentTasks = state.tasks || [];
+    
+    // SAFETY CHECK: Ensure we have tasks before proceeding
+    if (currentTasks.length === 0) {
+      console.error('❌ CRITICAL: No tasks in store! Aborting delete to prevent data loss.');
+      alert('Error: No tasks found in store. Cannot delete task. Please check your data.');
+      return;
+    }
+    
+    // Count how many tasks will be marked as deleted (should be 1 + subtasks)
+    let tasksToDelete = 0;
+    const updatedTasks = currentTasks.map(t => {
+      // Check if this is the task to delete
+      const tIdStr = String(t.id);
+      const tIdNum = Number(t.id);
+      const taskIdNum = Number(taskId);
+      const isTargetTask = tIdStr === taskIdStr || 
+                          t.id === taskId || 
+                          (tIdNum === taskIdNum && !isNaN(tIdNum) && !isNaN(taskIdNum));
+      
+      // Check if this is a subtask of the task being deleted
+      const isSubtask = t.parentTaskId && (
+        String(t.parentTaskId) === taskIdStr ||
+        t.parentTaskId === taskId ||
+        Number(t.parentTaskId) === Number(taskId)
+      );
+      
+      if (isTargetTask || isSubtask) {
+        tasksToDelete++;
+        // Return updated task with deletedAt timestamp
+        return { ...t, deletedAt };
+      }
+      
+      return t;
+    });
+    
+    // SAFETY CHECK: If we're about to delete all tasks, abort!
+    const remainingTasks = updatedTasks.filter(t => !t.deletedAt).length;
+    if (remainingTasks === 0 && currentTasks.length > 0) {
+      console.error('❌ CRITICAL: Delete would remove ALL tasks! Aborting to prevent data loss.', {
+        originalCount: currentTasks.length,
+        tasksToDelete,
+        taskId
+      });
+      alert('Error: This operation would delete all tasks. Aborted to prevent data loss.');
+      return;
+    }
+    
+    // SAFETY CHECK: Ensure we're only deleting a reasonable number of tasks
+    if (tasksToDelete > currentTasks.length * 0.5) {
+      console.error('❌ CRITICAL: Delete would remove more than 50% of tasks! Aborting.', {
+        originalCount: currentTasks.length,
+        tasksToDelete,
+        percentage: (tasksToDelete / currentTasks.length * 100).toFixed(1) + '%'
+      });
+      alert(`Error: This operation would delete ${tasksToDelete} out of ${currentTasks.length} tasks (${(tasksToDelete / currentTasks.length * 100).toFixed(1)}%). Aborted to prevent data loss.`);
+      return;
+    }
+    
+    // Update store with immutable task array
+    store.setState({ tasks: updatedTasks });
+    console.log('✅ Task and subtasks marked as deleted in store', { 
+      taskId, 
+      deletedAt, 
+      subtasksDeleted: subtasks.length,
+      tasksToDelete,
+      remainingTasks,
+      updatedTasksCount: updatedTasks.length
+    });
+  } else {
+    // Fallback: mutate directly (not ideal, but for backward compatibility)
+    console.warn('⚠️ Store not available, using direct mutation (fallback)');
+    task.deletedAt = deletedAt;
+    subtasks.forEach(subtask => {
+      subtask.deletedAt = deletedAt;
+    });
+  }
 }
 
 /**

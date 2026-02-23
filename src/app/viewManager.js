@@ -161,7 +161,15 @@ export function renderGlobalSidebar(state) {
 /**
  * Main render function - re-renders the current view
  */
+// Guard to prevent render loops
+let _rendering = false;
+
 export function render() {
+  // Prevent infinite loops - if already rendering, skip
+  if (_rendering) {
+    return;
+  }
+  
   const store = window.Petal?.store;
   if (!store) {
     console.warn('⚠️ render: Store not available');
@@ -176,34 +184,44 @@ export function render() {
   
   const currentView = state.currentView || window.currentView || 'today';
   
-  // Update sidebar first (always render sidebar)
-  renderGlobalSidebar(state);
-  
-  // Re-render current view using router
-  if (window.switchView) {
-    // Use router to re-render current view (it will handle the rendering)
-    window.switchView(currentView).catch(err => {
-      console.error('❌ Error re-rendering view:', err);
+  _rendering = true;
+  try {
+    // Update sidebar first (always render sidebar)
+    renderGlobalSidebar(state);
+    
+    // Re-render current view using router
+    if (window.switchView) {
+      // Use router to re-render current view with force flag to ensure it updates
+      // This is important when data changes (tasks/projects added) but view hasn't changed
+      window.switchView(currentView, { force: true }).catch(err => {
+        console.error('❌ Error re-rendering view:', err);
+        // Fallback: try to show the view manually
+        const viewEl = document.getElementById(`view-${currentView}`);
+        if (viewEl) {
+          viewEl.style.display = 'block';
+        }
+      }).finally(() => {
+        _rendering = false;
+      });
+    } else {
       // Fallback: try to show the view manually
+      console.warn('⚠️ render: switchView not available, using fallback');
       const viewEl = document.getElementById(`view-${currentView}`);
       if (viewEl) {
+        // Hide all views
+        document.querySelectorAll('[id^="view-"]').forEach(el => {
+          if (el.id !== `view-${currentView}`) {
+            el.style.display = 'none';
+          }
+        });
+        // Show current view
         viewEl.style.display = 'block';
       }
-    });
-  } else {
-    // Fallback: try to show the view manually
-    console.warn('⚠️ render: switchView not available, using fallback');
-    const viewEl = document.getElementById(`view-${currentView}`);
-    if (viewEl) {
-      // Hide all views
-      document.querySelectorAll('[id^="view-"]').forEach(el => {
-        if (el.id !== `view-${currentView}`) {
-          el.style.display = 'none';
-        }
-      });
-      // Show current view
-      viewEl.style.display = 'block';
+      _rendering = false;
     }
+  } catch (err) {
+    console.error('❌ render: Error during render:', err);
+    _rendering = false;
   }
 }
 

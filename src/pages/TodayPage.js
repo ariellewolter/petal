@@ -84,20 +84,33 @@ export async function renderTodayPage(containerEl, state, handlers) {
   
   // Debug logging to help diagnose missing tasks (always log)
   const tasksWithProjectId = allTasks.filter(t => t.projectId && !t.deletedAt);
+  const sampleTasks = tasksWithProjectId.slice(0, 5).map(t => {
+    const dueKey = typeof t.due === "string" ? t.due.slice(0, 10) : "";
+    const isToday = dueKey === todayKey;
+    return {
+      id: t.id,
+      title: t.title?.substring(0, 30),
+      projectId: t.projectId,
+      due: t.due,
+      dueKey: dueKey,
+      isToday: isToday,
+      done: t.done,
+      deletedAt: t.deletedAt
+    };
+  });
+  
   console.log('🔍 TodayPage: Tasks breakdown', {
     allTasksCount: allTasks.length,
     tasksWithProjectId: tasksWithProjectId.length,
     tasksTodayCount: tasksToday.length,
     todayKey,
-    sampleTasks: tasksWithProjectId.slice(0, 3).map(t => ({
-      id: t.id,
-      title: t.title?.substring(0, 30),
-      projectId: t.projectId,
-      due: t.due,
-      done: t.done,
-      deletedAt: t.deletedAt
-    }))
+    sampleTasks: sampleTasks
   });
+  
+  if (tasksToday.length === 0 && tasksWithProjectId.length > 0) {
+    console.warn('⚠️ No tasks due today, but tasks exist with projectId');
+    console.log('Sample tasks:', sampleTasks);
+  }
 
   const doneToday = allTasks.filter(t => {
     const dueKey = typeof t?.due === "string" ? t.due.slice(0, 10) : "";
@@ -208,7 +221,7 @@ export async function renderTodayPage(containerEl, state, handlers) {
             <span class="today-card-action" data-nav="projects">All →</span>
           </div>
           <div class="today-project-list">
-            ${renderProjectsCard(activeProjects)}
+            ${renderProjectsCard(activeProjects, state)}
           </div>
         </div>
 
@@ -570,7 +583,21 @@ function renderTodayTasks(tasksToday, doneToday, projects) {
   return all.map(t => {
     const id = String(t.id);
     const done = !!t.done;
-    const projectName = t.projectId ? (projects.find(p => String(p.id) === String(t.projectId))?.name || '') : '';
+    // Normalize projectId comparison to handle decimal projectIds
+    let projectName = '';
+    if (t.projectId) {
+      const taskProjectIdNum = Number(t.projectId);
+      const project = projects.find(p => {
+        const pId = Number(p.id);
+        if (!isNaN(taskProjectIdNum) && !isNaN(pId)) {
+          // Compare integer parts for decimal projectIds
+          return Math.floor(taskProjectIdNum) === Math.floor(pId);
+        }
+        // Fallback to string comparison
+        return String(p.id) === String(t.projectId);
+      });
+      projectName = project?.name || '';
+    }
     const lane = t.lane || '';
     const tagClass = lane === 'lab' ? 'tag-green' : lane === 'comp' ? 'tag-blue' : 'tag-orange';
     return `
@@ -673,7 +700,7 @@ function renderCellLogEntries(entries) {
   }).join('');
 }
 
-function renderProjectsCard(activeProjects) {
+function renderProjectsCard(activeProjects, state) {
   if (activeProjects.length === 0) {
     return `
       <div class="today-project-item" style="cursor:default">
@@ -682,14 +709,34 @@ function renderProjectsCard(activeProjects) {
     `;
   }
   
+  // Get all tasks to count project tasks properly
+  const allTasks = getAllTasks(state.tasks || [], state.projects || []);
+  
   return activeProjects.map(p => {
-    // Calculate progress (simplified - could use task completion)
-    const subtasks = p.subtasks || [];
-    const doneSubtasks = subtasks.filter(s => s.done).length;
-    const progress = subtasks.length > 0 ? Math.round((doneSubtasks / subtasks.length) * 100) : 0;
+    // Count all tasks for this project (including standalone tasks with projectId)
+    const normalizedProjectId = String(p.id).trim();
+    const projectIdAsNumber = Number(p.id);
+    const projectTasks = allTasks.filter(t => {
+      if (!t.projectId || t.deletedAt) return false;
+      const taskProjectId = String(t.projectId).trim();
+      // Try exact string match first
+      if (taskProjectId === normalizedProjectId) return true;
+      // If task projectId is a decimal number, check if the integer part matches
+      const taskProjectIdNum = Number(t.projectId);
+      if (!isNaN(taskProjectIdNum) && !isNaN(projectIdAsNumber)) {
+        if (Math.floor(taskProjectIdNum) === Math.floor(projectIdAsNumber)) {
+          return true;
+        }
+      }
+      return false;
+    });
     
-    // Count tasks
-    const taskCount = subtasks.length;
+    // Calculate progress from tasks
+    const doneTasks = projectTasks.filter(t => t.done).length;
+    const progress = projectTasks.length > 0 ? Math.round((doneTasks / projectTasks.length) * 100) : 0;
+    
+    // Count tasks (all tasks, not just subtasks)
+    const taskCount = projectTasks.length;
     const connectedFiles = (p.files || []).length;
     
     // Format due date

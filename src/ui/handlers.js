@@ -186,6 +186,60 @@ export const uiHandlers = {
     appStore.setState({ currentProjFilter: filter });
   },
   
+  /**
+   * Set sort (legacy wrapper for inline onclick handlers)
+   * Updates UI state and triggers render
+   */
+  setSort(s, btn) {
+    const state = appStore.getState();
+    appStore.setState({ currentSort: s });
+    
+    // Update UI
+    document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    
+    // Trigger render
+    if (typeof window.render === 'function') {
+      window.render();
+    }
+  },
+  
+  /**
+   * Set filter (legacy wrapper for inline onclick handlers)
+   * Updates UI state and triggers render
+   */
+  setFilter(f, btn) {
+    const state = appStore.getState();
+    appStore.setState({ currentFilter: f });
+    
+    // Update UI
+    document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    
+    // Trigger render
+    if (typeof window.render === 'function') {
+      window.render();
+    }
+  },
+  
+  /**
+   * Set project filter (legacy wrapper for inline onclick handlers)
+   * Updates UI state and triggers render
+   */
+  setProjFilterLegacy(f, btn) {
+    const state = appStore.getState();
+    appStore.setState({ currentProjFilter: f });
+    
+    // Update UI
+    document.querySelectorAll('#view-projects .filter-chip').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    
+    // Trigger render
+    if (typeof window.render === 'function') {
+      window.render();
+    }
+  },
+  
   setTaskMode(mode) {
     appStore.setState({ taskMode: mode });
   },
