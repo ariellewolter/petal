@@ -47,3 +47,46 @@ export function escAttr(s) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
 }
+
+/**
+ * Escape HTML entities using DOM API (more robust than regex)
+ * Handles all HTML entities automatically, including edge cases
+ * @param {string} text - Text to escape
+ * @returns {string} Escaped HTML string
+ */
+export function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+/**
+ * Normalize priority value to standard format
+ */
+export function normalizePriorityValue(priority, fallback = 'medium') {
+  const value = String(priority || '').toLowerCase().trim();
+  if (value === 'high' || value === 'medium' || value === 'low') return value;
+  return fallback;
+}
+
+/**
+ * Get edit onclick handler string for a task
+ */
+export function getEditOnclick(task) {
+  if (task.isSubtask) {
+    return 'editSubtask(' + task.projectId + ',' + task.id + ')';
+  } else {
+    return 'editTask(' + task.id + ')';
+  }
+}
+
+/**
+ * Normalize due date input value
+ */
+export function normalizeDueInput(value) {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return ''; // Allow blank to clear due date
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  return null; // Invalid format
+}

@@ -598,7 +598,7 @@ export async function updateFileStatus(fileKey, status, ctx) {
     fileRegistry = {};
   }
   
-  const { tasks = [], projects = [], save, currentView, renderFiles } = ctx || {};
+  const { tasks = [], projects = [], save, currentView } = ctx || {};
   
   if (!fileRegistry[fileKey]) {
     if (DEBUG_MODE) {
@@ -737,8 +737,20 @@ export async function updateFileStatus(fileKey, status, ctx) {
   // Only save if we actually made changes
   if (needsUpdate) {
     await save();
-    if (currentView === 'files' && renderFiles) {
-      await renderFiles();
+    // Re-render files view if currently active (use router instead of direct render call)
+    if (currentView === 'files') {
+      if (window.routerSwitchView) {
+        await window.routerSwitchView('files').catch(err => {
+          console.error('Router error re-rendering files view:', err);
+        });
+      } else if (window.Petal?.ui?.renderFiles) {
+        // Fallback: direct module call if router not available
+        const containerEl = document.getElementById('files-view-container');
+        if (containerEl) {
+          const state = window.Petal.store?.getState() || {};
+          await window.Petal.ui.renderFiles(containerEl, state, window.Petal.handlers);
+        }
+      }
     }
   }
 }
@@ -850,7 +862,7 @@ export async function editSubmissionMeta(fileKey, ctx) {
     fileRegistry = {};
   }
   
-  const { tasks, projects, save, currentView, renderFiles } = ctx || {};
+  const { tasks, projects, save, currentView } = ctx || {};
   const file = fileRegistry[fileKey];
   if (!file) return;
   
@@ -922,8 +934,209 @@ export async function editSubmissionMeta(fileKey, ctx) {
   // Only save if we actually made changes
   if (needsUpdate) {
     await save();
-    if (currentView === 'files' && renderFiles) {
-      await renderFiles();
+    // Re-render files view if currently active (use router instead of direct render call)
+    if (currentView === 'files') {
+      if (window.routerSwitchView) {
+        await window.routerSwitchView('files').catch(err => {
+          console.error('Router error re-rendering files view:', err);
+        });
+      } else if (window.Petal?.ui?.renderFiles) {
+        // Fallback: direct module call if router not available
+        const containerEl = document.getElementById('files-view-container');
+        if (containerEl) {
+          const state = window.Petal.store?.getState() || {};
+          await window.Petal.ui.renderFiles(containerEl, state, window.Petal.handlers);
+        }
+      }
     }
+  }
+}
+
+// Debounce timers for file note saves (module-level state)
+const fileNoteSaveTimers = {};
+
+/**
+ * Toggle file note visibility
+ */
+export function toggleFileNote(fileId, btnEl) {
+  const contentEl = document.getElementById('file-note-' + fileId);
+  if (!contentEl) return;
+  
+  const isExpanded = contentEl.classList.contains('expanded');
+  if (isExpanded) {
+    contentEl.classList.remove('expanded');
+    contentEl.classList.add('collapsed');
+    contentEl.style.display = 'none';
+  } else {
+    contentEl.classList.remove('collapsed');
+    contentEl.classList.add('expanded');
+    contentEl.style.display = 'block';
+    const textarea = contentEl.querySelector('.file-note-textarea');
+    if (textarea) {
+      setTimeout(() => textarea.focus(), 50);
+    }
+  }
+}
+
+/**
+ * Debounce save file note
+ */
+export function debounceSaveFileNote(ctx, fileId, projectId, fileIndex, value) {
+  const { projects, save, rerenderViewIfActive } = ctx;
+  
+  // Clear existing timer
+  const timerKey = 'file-' + fileId;
+  if (fileNoteSaveTimers[timerKey]) {
+    clearTimeout(fileNoteSaveTimers[timerKey]);
+  }
+  
+  // Set new timer (750ms debounce)
+  fileNoteSaveTimers[timerKey] = setTimeout(async () => {
+    const project = projects.find(p => p.id === projectId);
+    if (project && project.files && project.files[fileIndex]) {
+      const file = project.files[fileIndex];
+      if (typeof file === 'object') {
+        file.note = value || '';
+        file.noteUpdatedAt = new Date().toISOString();
+      } else {
+        // Convert string to object
+        project.files[fileIndex] = {
+          label: file,
+          abs_path: file,
+          note: value || '',
+          noteUpdatedAt: new Date().toISOString()
+        };
+      }
+      
+      // Use store if available
+      if (window.Petal?.store) {
+        const state = window.Petal.store.getState();
+        const updatedProjects = (state.projects || []).map(p => {
+          if (p.id === projectId && p.files && p.files[fileIndex]) {
+            const updatedFiles = [...p.files];
+            const file = updatedFiles[fileIndex];
+            if (typeof file === 'object') {
+              updatedFiles[fileIndex] = { ...file, note: value || '', noteUpdatedAt: new Date().toISOString() };
+            } else {
+              updatedFiles[fileIndex] = {
+                label: file,
+                abs_path: file,
+                note: value || '',
+                noteUpdatedAt: new Date().toISOString()
+              };
+            }
+            return { ...p, files: updatedFiles };
+          }
+          return p;
+        });
+        window.Petal.store.setState({ projects: updatedProjects });
+      } else {
+        await save();
+        // Re-render projects view if visible
+        if (rerenderViewIfActive) {
+          await rerenderViewIfActive('projects');
+        }
+      }
+    }
+    delete fileNoteSaveTimers[timerKey];
+  }, 750);
+}
+
+/**
+ * Edit file note from Files view
+ */
+export function editFileNote(ctx, fileKey) {
+  const { projects, save, rerenderViewIfActive } = ctx;
+  
+  // Find the file in the canonical registry
+  let targetFile = null;
+  let targetProject = null;
+  let targetIndex = -1;
+  
+  for (const project of projects) {
+    if (!project.files) continue;
+    const index = project.files.findIndex(f => {
+      if (!f || typeof f !== 'object') return false;
+      const key = f.onedrive_rel || f.abs_path || f.share_url || '';
+      return key === fileKey || f.id === fileKey;
+    });
+    if (index >= 0) {
+      targetFile = project.files[index];
+      targetProject = project;
+      targetIndex = index;
+      break;
+    }
+  }
+  
+  if (!targetFile || !targetProject) {
+    alert('File not found in canonical registry');
+    return;
+  }
+  
+  const currentNote = targetFile.note || '';
+  const newNote = prompt('Edit file note:', currentNote);
+  if (newNote === null) return; // User cancelled
+  
+  targetFile.note = newNote || '';
+  targetFile.noteUpdatedAt = new Date().toISOString();
+  
+  // Use store if available
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    const updatedProjects = (state.projects || []).map(p => {
+      if (p.id === targetProject.id && p.files && p.files[targetIndex]) {
+        const updatedFiles = [...p.files];
+        updatedFiles[targetIndex] = { ...p.files[targetIndex], note: newNote || '', noteUpdatedAt: new Date().toISOString() };
+        return { ...p, files: updatedFiles };
+      }
+      return p;
+    });
+    window.Petal.store.setState({ projects: updatedProjects });
+  } else {
+    save();
+    // Re-render files view if visible
+    if (rerenderViewIfActive) {
+      rerenderViewIfActive('files');
+    }
+  }
+}
+
+/**
+ * Show tasks linked to a file
+ */
+export function showFileLinkedTasks(ctx, fileKey) {
+  const { tasks, projects, openTaskDrawer } = ctx;
+  
+  // Find all tasks that reference this file
+  const linkedTasks = [];
+  
+  for (const task of tasks) {
+    if (!task.fileIds || !task.fileIds.length) continue;
+    
+    // Check if task's project has this file
+    if (!task.projectId) continue;
+    const project = projects.find(p => p.id === task.projectId);
+    if (!project || !project.files) continue;
+    
+    const file = project.files.find(f => {
+      if (!f || typeof f !== 'object') return false;
+      const key = f.onedrive_rel || f.abs_path || f.share_url || '';
+      return key === fileKey || f.id === fileKey;
+    });
+    
+    if (file && task.fileIds.includes(file.id)) {
+      linkedTasks.push(task);
+    }
+  }
+  
+  if (linkedTasks.length === 0) {
+    alert('No tasks linked to this file');
+    return;
+  }
+  
+  const taskList = linkedTasks.map(t => `• ${t.title}`).join('\n');
+  const choice = confirm(`Tasks linked to this file:\n\n${taskList}\n\nOpen first task?`);
+  if (choice && linkedTasks[0] && openTaskDrawer) {
+    openTaskDrawer(linkedTasks[0].id);
   }
 }

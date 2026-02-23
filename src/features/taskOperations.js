@@ -1,7 +1,7 @@
 // ═══════════════════════ TASK OPERATIONS ═══════════════════════
 // Core task management functions
 
-import { esc } from '../utils/strings.js';
+import { esc, normalizePriorityValue, normalizeDueInput } from '../utils/strings.js';
 
 /**
  * Helper: Update store with safety - preserves all state fields
@@ -379,6 +379,518 @@ export function updateTagPreview() {
   preview.innerHTML = tags.length > 0 
     ? tags.map(tag => `<span class="tag-chip" data-tag="${esc(tag)}">${esc(tag)}</span>`).join('')
     : '';
+}
+
+/**
+ * Toggle task note visibility
+ */
+export function toggleTaskNote(taskId, toggleEl) {
+  const contentEl = document.getElementById('note-' + taskId);
+  if (!contentEl) return;
+  
+  const isExpanded = contentEl.classList.contains('expanded');
+  if (isExpanded) {
+    contentEl.classList.remove('expanded');
+    contentEl.classList.add('collapsed');
+    contentEl.style.display = 'none';
+  } else {
+    contentEl.classList.remove('collapsed');
+    contentEl.classList.add('expanded');
+    contentEl.style.display = 'block';
+    const textarea = contentEl.querySelector('.task-note-textarea');
+    if (textarea) {
+      setTimeout(() => textarea.focus(), 50);
+    }
+  }
+}
+
+/**
+ * Open task note editor
+ */
+export function openTaskNoteEditor(taskId, btnEl) {
+  const contentEl = document.getElementById('note-' + taskId);
+  if (!contentEl) return;
+  
+  contentEl.style.display = 'block';
+  contentEl.classList.remove('collapsed');
+  contentEl.classList.add('expanded');
+  
+  if (btnEl) {
+    btnEl.style.display = 'none';
+  }
+  
+  const textarea = contentEl.querySelector('.task-note-textarea');
+  if (textarea) {
+    setTimeout(() => textarea.focus(), 50);
+  }
+}
+
+// Debounce timers for note saves (module-level state)
+const noteSaveTimers = {};
+
+/**
+ * Debounce save task note
+ */
+export function debounceSaveTaskNote(ctx, taskId, value) {
+  const { tasks, save, render } = ctx;
+  
+  // Clear existing timer
+  if (noteSaveTimers[taskId]) {
+    clearTimeout(noteSaveTimers[taskId]);
+  }
+  
+  // Set new timer (750ms debounce)
+  noteSaveTimers[taskId] = setTimeout(async () => {
+    const task = findActiveTask(tasks, taskId);
+    if (task) {
+      task.note = value || '';
+      task.noteUpdatedAt = new Date().toISOString();
+      
+      // Use store if available
+      if (window.Petal?.store) {
+        const state = window.Petal.store.getState();
+        const updatedTasks = (state.tasks || []).map(t => 
+          t.id === taskId ? { ...t, note: value || '', noteUpdatedAt: new Date().toISOString() } : t
+        );
+        updateStoreSafely({ tasks: updatedTasks });
+      } else {
+        await save();
+        if (render) render();
+      }
+    }
+    delete noteSaveTimers[taskId];
+  }, 750);
+}
+
+/**
+ * Edit a subtask (project subtask - legacy)
+ */
+export function editSubtask(ctx, projId, subId) {
+  const { projects } = ctx;
+  
+  // Handle both string and number IDs
+  const projIdNum = typeof projId === 'string' ? parseInt(projId) : Number(projId);
+  const subIdNum = typeof subId === 'string' ? parseInt(subId) : Number(subId);
+  const p = projects.find(project => {
+    const projIdCheck = Number(project.id);
+    return projIdCheck === projIdNum || project.id === projId || String(project.id) === String(projId);
+  });
+  if (!p) {
+    alert('Project not found. projId: ' + projId);
+    return;
+  }
+  const s = (p.subtasks || []).find(subtask => {
+    const subtaskIdCheck = Number(subtask.id);
+    return subtaskIdCheck === subIdNum || subtask.id === subId || String(subtask.id) === String(subId);
+  });
+  if (!s) {
+    alert('Subtask not found. subId: ' + subId + ' in project: ' + projId);
+    return;
+  }
+  
+  // Set global editing state
+  if (typeof window !== 'undefined') {
+    window.editingTaskId = null;
+    window.editingSubtaskInfo = { projectId: p.id, subtaskId: s.id };
+  }
+  
+  // Populate modal
+  const titleEl = document.getElementById('edit-modal-title');
+  const titleInput = document.getElementById('edit-title');
+  const prioritySelect = document.getElementById('edit-priority');
+  const dueInput = document.getElementById('edit-due');
+  const notesField = document.getElementById('edit-notes-field');
+  const tagsHint = document.getElementById('edit-tags-hint');
+  
+  if (titleEl) titleEl.textContent = 'Edit Subtask';
+  if (titleInput) titleInput.value = s.title || '';
+  if (document.getElementById('edit-notes')) {
+    document.getElementById('edit-notes').value = '';
+  }
+  if (prioritySelect) prioritySelect.value = s.priority || 'medium';
+  if (dueInput) dueInput.value = s.due || '';
+  if (notesField) notesField.style.display = 'none';
+  if (tagsHint) tagsHint.style.display = 'none';
+  
+  // Show modal
+  const modal = document.getElementById('edit-modal');
+  if (modal) {
+    modal.classList.add('active');
+    modal.style.display = 'flex';
+    if (titleInput) {
+      setTimeout(() => titleInput.focus(), 100);
+    }
+  }
+}
+
+/**
+ * Save edit modal (handles both tasks and subtasks)
+ */
+export async function saveEditModal(ctx) {
+  const { tasks, projects, save, render, extractTags, removeTags } = ctx;
+  
+  const titleInput = document.getElementById('edit-title');
+  if (!titleInput) return;
+  
+  const titleValue = titleInput.value.trim();
+  if (!titleValue) {
+    alert('Title cannot be empty.');
+    return;
+  }
+  
+  // Support both window.editingTaskId (from TaskOperations) and global editingTaskId
+  const currentEditingTaskId = window.editingTaskId !== undefined ? window.editingTaskId : (typeof editingTaskId !== 'undefined' ? editingTaskId : null);
+  const currentEditingSubtaskInfo = window.editingSubtaskInfo !== undefined ? window.editingSubtaskInfo : (typeof editingSubtaskInfo !== 'undefined' ? editingSubtaskInfo : null);
+  
+  if (currentEditingSubtaskInfo) {
+    // Check if it's a task subtask or project subtask
+    if (currentEditingSubtaskInfo.taskId) {
+      // Editing a task subtask
+      const t = tasks.find(task => task.id === currentEditingSubtaskInfo.taskId);
+      if (!t || !t.subtasks) {
+        alert('Task not found.');
+        if (typeof closeEditModal === 'function') closeEditModal();
+        return;
+      }
+      const s = t.subtasks.find(sub => sub.id === currentEditingSubtaskInfo.subtaskId);
+      if (!s) {
+        alert('Subtask not found.');
+        if (typeof closeEditModal === 'function') closeEditModal();
+        return;
+      }
+      
+      const dueInput = document.getElementById('edit-due');
+      const dueValue = dueInput ? dueInput.value : '';
+      const normalizedDue = normalizeDueInput(dueValue);
+      if (normalizedDue === null && dueValue.trim() !== '') {
+        alert('Invalid date format. Please use YYYY-MM-DD (e.g., 2024-12-25) or leave blank.');
+        return;
+      }
+      
+      const prioritySelect = document.getElementById('edit-priority');
+      const priorityValue = prioritySelect ? prioritySelect.value : 'medium';
+      
+      s.title = titleValue;
+      s.priority = normalizePriorityValue(priorityValue, s.priority || 'medium');
+      s.due = normalizedDue || '';
+      
+      // Use store if available
+      if (window.Petal?.store) {
+        const state = window.Petal.store.getState();
+        const updatedTasks = (state.tasks || []).map(task => {
+          if (task.id === currentEditingSubtaskInfo.taskId && task.subtasks) {
+            return {
+              ...task,
+              subtasks: task.subtasks.map(sub => 
+                sub.id === currentEditingSubtaskInfo.subtaskId 
+                  ? { ...sub, title: titleValue, priority: normalizePriorityValue(priorityValue, sub.priority || 'medium'), due: normalizedDue || '' }
+                  : sub
+              )
+            };
+          }
+          return task;
+        });
+        updateStoreSafely({ tasks: updatedTasks });
+      } else {
+        await save();
+        if (render) render();
+      }
+      
+      if (typeof closeEditModal === 'function') closeEditModal();
+    } else {
+      // Editing a project subtask (legacy - should be removed eventually)
+      const p = projects.find(proj => proj.id === currentEditingSubtaskInfo.projectId);
+      if (!p) {
+        alert('Project not found.');
+        if (typeof closeEditModal === 'function') closeEditModal();
+        return;
+      }
+      const s = (p.subtasks || []).find(sub => sub.id === currentEditingSubtaskInfo.subtaskId);
+      if (!s) {
+        alert('Subtask not found.');
+        if (typeof closeEditModal === 'function') closeEditModal();
+        return;
+      }
+      
+      const dueInput = document.getElementById('edit-due');
+      const dueValue = dueInput ? dueInput.value : '';
+      const normalizedDue = normalizeDueInput(dueValue);
+      if (normalizedDue === null && dueValue.trim() !== '') {
+        alert('Invalid date format. Please use YYYY-MM-DD (e.g., 2024-12-25) or leave blank.');
+        return;
+      }
+      
+      const prioritySelect = document.getElementById('edit-priority');
+      const priorityValue = prioritySelect ? prioritySelect.value : 'medium';
+      
+      s.title = titleValue;
+      s.priority = normalizePriorityValue(priorityValue, s.priority || 'medium');
+      s.due = normalizedDue || '';
+      
+      // Use store if available
+      if (window.Petal?.store) {
+        const state = window.Petal.store.getState();
+        const updatedProjects = (state.projects || []).map(proj => {
+          if (proj.id === currentEditingSubtaskInfo.projectId && proj.subtasks) {
+            return {
+              ...proj,
+              subtasks: proj.subtasks.map(sub => 
+                sub.id === currentEditingSubtaskInfo.subtaskId 
+                  ? { ...sub, title: titleValue, priority: normalizePriorityValue(priorityValue, sub.priority || 'medium'), due: normalizedDue || '' }
+                  : sub
+              )
+            };
+          }
+          return proj;
+        });
+        updateStoreSafely({ projects: updatedProjects });
+      } else {
+        await save();
+        if (render) render();
+      }
+      
+      if (typeof closeEditModal === 'function') closeEditModal();
+    }
+  } else if (currentEditingTaskId) {
+    // Editing a regular task - exclude deleted tasks
+    // Get task from store if available, otherwise from global tasks array
+    const state = window.Petal?.store?.getState();
+    const tasksArray = state?.tasks || tasks;
+    const t = findActiveTask(tasksArray, currentEditingTaskId);
+    if (!t) {
+      alert('Task not found or has been deleted.');
+      if (typeof closeEditModal === 'function') closeEditModal();
+      return;
+    }
+    
+    const cleanTitle = removeTags ? removeTags(titleValue) : titleValue.replace(/#\w+/g, '').trim();
+    if (!cleanTitle) {
+      alert('Task title cannot be empty.');
+      return;
+    }
+    
+    const notesInput = document.getElementById('edit-notes');
+    const notesValue = notesInput ? notesInput.value.trim() : '';
+    const dueInput = document.getElementById('edit-due');
+    const dueValue = dueInput ? dueInput.value : '';
+    const normalizedDue = normalizeDueInput(dueValue);
+    if (normalizedDue === null && dueValue.trim() !== '') {
+      alert('Invalid date format. Please use YYYY-MM-DD (e.g., 2024-12-25) or leave blank.');
+      return;
+    }
+    
+    // Build updated task object
+    const prioritySelect = document.getElementById('edit-priority');
+    const estimatedMinutesInput = document.getElementById('edit-estimated-minutes');
+    const timeBlockSelect = document.getElementById('edit-time-block');
+    const artifactTagInput = document.getElementById('edit-artifact-tag');
+    
+    const updatedTask = {
+      ...t,
+      title: cleanTitle,
+      tags: extractTags ? extractTags(titleValue) : [],
+      notes: notesValue,
+      priority: prioritySelect ? (parseInt(prioritySelect.value) || 2) : 2,
+      estimatedMinutes: estimatedMinutesInput ? (parseInt(estimatedMinutesInput.value) || null) : null,
+      timeBlock: timeBlockSelect ? (timeBlockSelect.value || null) : null,
+      artifactTag: artifactTagInput ? (artifactTagInput.value.trim() || null) : null,
+      due: normalizedDue || '',
+      updatedAt: Date.now()
+    };
+    
+    // Update fileIds from project files select
+    const editFilesSelect = document.getElementById('edit-project-files-select');
+    if (editFilesSelect && updatedTask.projectId) {
+      const selectedFileIds = Array.from(editFilesSelect.selectedOptions)
+        .map(option => option.value)
+        .filter(id => id);
+      
+      // Merge with existing fileIds (keep any that aren't in project files)
+      const existingFileIds = updatedTask.fileIds || [];
+      const projectsArray = state?.projects || projects;
+      const project = projectsArray.find(p => p.id === updatedTask.projectId);
+      const projectFileIds = project && project.files ? project.files.map(f => f && f.id).filter(Boolean) : [];
+      
+      // Keep existing fileIds that are still valid, add new selections
+      const newFileIds = [...new Set([
+        ...existingFileIds.filter(id => projectFileIds.includes(id) || !projectFileIds.length),
+        ...selectedFileIds
+      ])];
+      
+      updatedTask.fileIds = newFileIds;
+    }
+    
+    // Save protocol settings
+    const protocolEnabledInput = document.getElementById('edit-protocol-enabled');
+    const protocolEnabled = protocolEnabledInput ? protocolEnabledInput.checked : false;
+    if (protocolEnabled) {
+      if (!updatedTask.protocol) {
+        updatedTask.protocol = { enabled: true, dailyLog: [], steps: [] };
+      }
+      updatedTask.protocol.enabled = true;
+      
+      const startInput = document.getElementById('edit-protocol-start');
+      const endInput = document.getElementById('edit-protocol-end');
+      const dayIndexInput = document.getElementById('edit-protocol-day-index');
+      
+      if (startInput && startInput.value) {
+        updatedTask.protocol.startAt = new Date(startInput.value).toISOString();
+      }
+      if (endInput && endInput.value) {
+        updatedTask.protocol.expectedEndAt = new Date(endInput.value).toISOString();
+      }
+      
+      // Calculate day index if needed
+      if (updatedTask.protocol.startAt) {
+        const calculateProtocolDayIndex = (startAt) => {
+          if (!startAt) return 1;
+          const start = new Date(startAt);
+          const now = new Date();
+          const diffTime = now - start;
+          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+          return Math.max(1, diffDays + 1);
+        };
+        
+        if (dayIndexInput && dayIndexInput.value) {
+          updatedTask.protocol.dayIndex = parseInt(dayIndexInput.value) || calculateProtocolDayIndex(updatedTask.protocol.startAt);
+        } else {
+          updatedTask.protocol.dayIndex = calculateProtocolDayIndex(updatedTask.protocol.startAt);
+        }
+      }
+      
+      // Ensure dailyLog and steps arrays exist
+      if (!updatedTask.protocol.dailyLog) updatedTask.protocol.dailyLog = [];
+      if (!updatedTask.protocol.steps) updatedTask.protocol.steps = [];
+    } else {
+      // Disable protocol (but keep data in case user re-enables)
+      if (updatedTask.protocol) {
+        updatedTask.protocol.enabled = false;
+      }
+    }
+    
+    // Update task in store if available, otherwise use legacy save
+    if (window.Petal?.store) {
+      const currentState = window.Petal.store.getState();
+      const updatedTasks = (currentState.tasks || []).map(task => 
+        task.id === currentEditingTaskId ? updatedTask : task
+      );
+      updateStoreSafely({ tasks: updatedTasks });
+    } else {
+      // Legacy: directly mutate and save
+      Object.assign(t, updatedTask);
+      await save();
+      if (render) render();
+    }
+    
+    if (typeof closeEditModal === 'function') closeEditModal();
+  } else {
+    console.warn('saveEditModal: No editingTaskId or editingSubtaskInfo found');
+    alert('No task is being edited.');
+  }
+}
+
+/**
+ * Toggle protocol fields visibility in edit modal
+ */
+export function toggleProtocolFields() {
+  const enabledInput = document.getElementById('edit-protocol-enabled');
+  const fields = document.getElementById('edit-protocol-fields');
+  if (!enabledInput || !fields) return;
+  
+  const enabled = enabledInput.checked;
+  fields.style.display = enabled ? 'block' : 'none';
+}
+
+/**
+ * Format date for datetime-local input
+ */
+export function formatDateTimeLocal(date) {
+  if (!date) return '';
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+/**
+ * Calculate protocol day index from start date
+ */
+export function calculateProtocolDayIndex(startAt) {
+  if (!startAt) return 1;
+  const start = new Date(startAt);
+  const now = new Date();
+  const diffTime = now - start;
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  return Math.max(1, diffDays + 1);
+}
+
+/**
+ * Save protocol daily entry
+ */
+export async function saveProtocolDailyEntry(ctx) {
+  const { tasks, save } = ctx;
+  
+  if (!window.currentDrawerTaskId) return;
+  const task = findActiveTask(tasks, window.currentDrawerTaskId);
+  if (!task || !task.protocol || !task.protocol.enabled) return;
+  
+  const textarea = document.getElementById('protocol-daily-entry');
+  if (!textarea) return;
+  
+  const text = textarea.value.trim();
+  if (!text) {
+    alert('Please enter some text for today\'s entry.');
+    return;
+  }
+  
+  if (!task.protocol.dailyLog) {
+    task.protocol.dailyLog = [];
+  }
+  
+  const entry = {
+    id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    at: new Date().toISOString(),
+    text: text,
+    fileIds: []
+  };
+  
+  task.protocol.dailyLog.push(entry);
+  
+  // Update day index if needed
+  if (task.protocol.startAt) {
+    task.protocol.dayIndex = calculateProtocolDayIndex(task.protocol.startAt);
+  }
+  
+  textarea.value = '';
+  
+  // Use store if available
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    const updatedTasks = (state.tasks || []).map(t => {
+      if (t.id === window.currentDrawerTaskId) {
+        return {
+          ...t,
+          protocol: {
+            ...t.protocol,
+            dailyLog: [...(t.protocol.dailyLog || []), entry],
+            dayIndex: t.protocol.startAt ? calculateProtocolDayIndex(t.protocol.startAt) : t.protocol.dayIndex
+          }
+        };
+      }
+      return t;
+    });
+    updateStoreSafely({ tasks: updatedTasks });
+  } else {
+    await save();
+  }
+  
+  // Re-render protocol tab if function exists
+  if (typeof renderProtocolTab === 'function') {
+    renderProtocolTab();
+  }
 }
 
 /**

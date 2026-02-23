@@ -24,6 +24,7 @@ import { renderCellLogPage } from '../pages/CellLogPage.js';
 import * as FileManagement from '../features/fileManagement.js';
 import * as FileOperations from '../features/fileOperations.js';
 import * as TaskOperations from '../features/taskOperations.js';
+import * as ProjectOperations from '../features/projectOperations.js';
 import * as DeleteHandlers from '../features/deleteHandlers.js';
 import * as TaskDrawer from '../features/taskDrawer.js';
 import * as ExportImport from '../features/exportImport.js';
@@ -33,7 +34,7 @@ import * as Search from '../features/search.js';
 import { LANE_STAGES, MATRIX_STAGES, MATRIX_LANES, DEFAULT_BOARD_COLUMNS } from '../domain/schema.js';
 import { getMatrixStage, isTaskBlocked, getAllTasks } from '../domain/models.js';
 import { today, parseDate, dueLabel, parseTime, formatTime } from '../utils/dates.js';
-import { esc, fileIcon } from '../utils/strings.js';
+import { esc, fileIcon, normalizePriorityValue, getEditOnclick, normalizeDueInput } from '../utils/strings.js';
 import * as uiModules from '../ui/index.js';
 import * as uiHelpers from '../ui/helpers.js';
 import * as projectHelpers from '../utils/projectHelpers.js';
@@ -102,6 +103,7 @@ export async function initApp() {
   window.Petal.features.fileManagement = FileManagement;
   window.Petal.features.fileOperations = FileOperations;
   window.Petal.features.taskOperations = TaskOperations;
+  window.Petal.features.projectOperations = ProjectOperations;
   window.Petal.features.deleteHandlers = DeleteHandlers;
   window.Petal.features.taskDrawer = TaskDrawer;
   window.Petal.features.exportImport = ExportImport;
@@ -115,6 +117,9 @@ export async function initApp() {
   Object.assign(window.Petal.utils, migrations);
   Object.assign(window.Petal.utils, vaultUtils);
   Object.assign(window.Petal.utils, settingsUtils);
+  window.Petal.utils.normalizePriorityValue = normalizePriorityValue;
+  window.Petal.utils.getEditOnclick = getEditOnclick;
+  window.Petal.utils.normalizeDueInput = normalizeDueInput;
   
   // Domain functions (wrapped to take state explicitly from store)
   window.Petal.getMatrixStage = (task) => {
@@ -272,6 +277,61 @@ function setupReadOnlyGlobals() {
     set: () => { 
       console.error("❌ ERROR: Cannot assign to window.recurringRules - use store.setState()");
       throw new Error("Cannot assign to window.recurringRules - use store.setState()");
+    },
+    configurable: true
+  });
+  
+  // Planner state - read-only getters from store
+  Object.defineProperty(window, "plannerViewDate", {
+    get: () => {
+      const state = window.Petal?.store?.getState();
+      return state?.plannerViewDate || new Date();
+    },
+    set: () => { 
+      console.error("❌ ERROR: Cannot assign to window.plannerViewDate - use handlers.setPlannerViewDate()");
+      throw new Error("Cannot assign to window.plannerViewDate - use handlers.setPlannerViewDate()");
+    },
+    configurable: true
+  });
+  
+  Object.defineProperty(window, "currentPlannerView", {
+    get: () => window.Petal?.store?.getState()?.currentPlannerView || 'daily',
+    set: () => { 
+      console.error("❌ ERROR: Cannot assign to window.currentPlannerView - use handlers.setCurrentPlannerView()");
+      throw new Error("Cannot assign to window.currentPlannerView - use handlers.setCurrentPlannerView()");
+    },
+    configurable: true
+  });
+  
+  Object.defineProperty(window, "plannerWeekOffset", {
+    get: () => window.Petal?.store?.getState()?.plannerWeekOffset || 0,
+    set: () => { 
+      console.error("❌ ERROR: Cannot assign to window.plannerWeekOffset - use handlers.setPlannerWeekOffset()");
+      throw new Error("Cannot assign to window.plannerWeekOffset - use handlers.setPlannerWeekOffset()");
+    },
+    configurable: true
+  });
+  
+  Object.defineProperty(window, "plannerCalYear", {
+    get: () => {
+      const state = window.Petal?.store?.getState();
+      return state?.plannerCalYear !== null ? state.plannerCalYear : new Date().getFullYear();
+    },
+    set: () => { 
+      console.error("❌ ERROR: Cannot assign to window.plannerCalYear - use handlers.setPlannerCalYear()");
+      throw new Error("Cannot assign to window.plannerCalYear - use handlers.setPlannerCalYear()");
+    },
+    configurable: true
+  });
+  
+  Object.defineProperty(window, "plannerCalMonth", {
+    get: () => {
+      const state = window.Petal?.store?.getState();
+      return state?.plannerCalMonth !== null ? state.plannerCalMonth : new Date().getMonth();
+    },
+    set: () => { 
+      console.error("❌ ERROR: Cannot assign to window.plannerCalMonth - use handlers.setPlannerCalMonth()");
+      throw new Error("Cannot assign to window.plannerCalMonth - use handlers.setPlannerCalMonth()");
     },
     configurable: true
   });
