@@ -36,9 +36,9 @@
 </script>
 </head>
 <body>
-<div class="app">
+<div class="app" style="display: grid !important; visibility: visible !important; opacity: 1 !important;">
   <!-- GLOBAL SIDEBAR -->
-  <aside id="global-sidebar" class="global-sidebar">
+  <aside id="global-sidebar" class="global-sidebar" style="display: flex !important; visibility: visible !important; opacity: 1 !important;">
     <div class="global-sidebar-header">
       <div class="global-sidebar-brand">
         <span class="wordmark-title">Petal</span>
@@ -49,7 +49,7 @@
       <!-- Will be populated by JS -->
     </nav>
     <div class="global-sidebar-bottom">
-      <a class="global-sidebar-nav-item" href="#" data-nav="settings" onclick="if(window.routerSwitchView){window.routerSwitchView('settings').catch(err=>console.error('Router error:',err));}else if(window.switchView){window.switchView('settings');}else if(window.switchViewSafe){window.switchViewSafe('settings');}else{console.error('switchView not available');}return false;">
+      <a class="global-sidebar-nav-item" href="#" data-nav="settings" data-action="nav:settings">
         <span class="global-sidebar-nav-icon">◯</span> Settings
       </a>
       <div id="vaultBadge" class="vault-badge" title="Vault location" style="display:none;margin-top:12px;width:100%;justify-content:flex-start;"></div>
@@ -212,7 +212,7 @@
     <div class="quick-capture-box" style="max-width:520px;" onclick="event.stopPropagation()">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
         <h3 id="edit-modal-title" style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;font-style:italic;color:var(--rose);margin:0;">Edit Task</h3>
-        <button onclick="closeEditModal()" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
+        <button data-action="modal:close-edit" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
       </div>
       
       <div class="field" style="margin-bottom:16px;">
@@ -295,8 +295,8 @@
       </div>
       
       <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:8px;border-top:1px solid var(--border);">
-        <button onclick="closeEditModal()" class="btn-secondary">Cancel</button>
-        <button onclick="saveEditModal()" class="btn-submit">Save</button>
+        <button data-action="modal:close-edit" class="btn-secondary">Cancel</button>
+        <button data-action="modal:save-edit" class="btn-submit">Save</button>
       </div>
     </div>
   </div>
@@ -306,7 +306,7 @@
     <div class="quick-capture-box" style="max-width:420px;" onclick="event.stopPropagation()">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
         <h3 id="delete-confirm-title" style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;font-style:italic;color:var(--rose);margin:0;">Confirm Delete</h3>
-        <button onclick="closeDeleteConfirmModal()" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
+        <button data-action="modal:close-delete" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
       </div>
       
       <div style="margin-bottom:20px;">
@@ -314,8 +314,8 @@
       </div>
       
       <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:8px;border-top:1px solid var(--border);">
-        <button onclick="closeDeleteConfirmModal()" class="btn-secondary">Cancel</button>
-        <button id="delete-confirm-btn" onclick="executeDelete()" class="btn-submit" style="background:linear-gradient(135deg,#c47a7a 0%,#c47a7a 100%);">Delete</button>
+        <button data-action="modal:close-delete" class="btn-secondary">Cancel</button>
+        <button id="delete-confirm-btn" data-action="modal:delete-confirm" class="btn-submit" style="background:linear-gradient(135deg,#c47a7a 0%,#c47a7a 100%);">Delete</button>
       </div>
     </div>
   </div>
@@ -325,7 +325,7 @@
     <div class="quick-capture-box" style="max-width:600px;max-height:80vh;overflow-y:auto;" onclick="event.stopPropagation()">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
         <h3 style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;font-style:italic;color:var(--rose);margin:0;">Diagnostics</h3>
-        <button onclick="closeDiagnosticsModal()" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
+        <button data-action="modal:close-diagnostics" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
       </div>
       
       <div id="diagnostics-content" style="color:var(--text);font-size:13px;line-height:1.8;font-family:monospace;white-space:pre-wrap;background:var(--bg2);padding:16px;border-radius:8px;border:1px solid var(--border);max-height:60vh;overflow-y:auto;">
@@ -333,11 +333,11 @@
       </div>
       
       <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--border);margin-top:16px;flex-wrap:wrap;">
-        <button onclick="copyDiagnostics()" class="btn-secondary" style="font-size:11px;">Copy Diagnostics</button>
-        <button onclick="openLogsFolder()" class="btn-secondary" style="font-size:11px;">Open Logs</button>
-        <button onclick="openVaultFolder()" class="btn-secondary" style="font-size:11px;">Open Vault</button>
-        <button onclick="refreshDiagnostics()" class="btn-secondary">Refresh</button>
-        <button onclick="closeDiagnosticsModal()" class="btn-submit">Close</button>
+        <button data-action="diagnostics:copy" class="btn-secondary" style="font-size:11px;">Copy Diagnostics</button>
+        <button data-action="diagnostics:open-logs" class="btn-secondary" style="font-size:11px;">Open Logs</button>
+        <button data-action="diagnostics:open-vault" class="btn-secondary" style="font-size:11px;">Open Vault</button>
+        <button data-action="diagnostics:refresh" class="btn-secondary">Refresh</button>
+        <button data-action="modal:close-diagnostics" class="btn-submit">Close</button>
       </div>
     </div>
   </div>
@@ -347,7 +347,7 @@
     <div class="quick-capture-box" style="max-width:520px;" onclick="event.stopPropagation()">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
         <h3 id="add-task-modal-title" style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;font-style:italic;color:var(--rose);margin:0;">Add Task</h3>
-        <button onclick="closeAddTaskModal()" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
+        <button data-action="modal:close-add-task" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
       </div>
       
       <div class="field" style="margin-bottom:16px;">
@@ -378,8 +378,8 @@
       </div>
       
       <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:8px;border-top:1px solid var(--border);">
-        <button onclick="closeAddTaskModal()" class="btn-secondary">Cancel</button>
-        <button onclick="submitAddTaskModal()" class="btn-submit">Add Task</button>
+        <button data-action="modal:close-add-task" class="btn-secondary">Cancel</button>
+        <button data-action="modal:submit-add-task" class="btn-submit">Add Task</button>
       </div>
     </div>
   </div>
@@ -389,7 +389,7 @@
     <div class="quick-capture-box" style="max-width:520px;" onclick="event.stopPropagation()">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
         <h3 id="add-file-modal-title" style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;font-style:italic;color:var(--rose);margin:0;">Add File</h3>
-        <button onclick="closeAddFileModal()" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
+        <button data-action="modal:close-add-file" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
       </div>
       
       <div class="field" style="margin-bottom:16px;">
@@ -405,13 +405,13 @@
             <div>Drop files here</div>
           </div>
         </div>
-        <button class="btn-add-file" id="modal-add-file-btn" onclick="addFileRow('modal-files-container','modal')" style="width:100%;margin-bottom:8px;">＋ Choose file</button>
+        <button class="btn-add-file" id="modal-add-file-btn" data-action="file:add-row" data-container="modal-files-container" data-context="modal" style="width:100%;margin-bottom:8px;">＋ Choose file</button>
         <div id="modal-file-hint" style="font-size:9px;color:var(--text-light);display:none;margin-bottom:10px;">Files in OneDrive will work across all devices</div>
       </div>
       
       <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:8px;border-top:1px solid var(--border);">
-        <button onclick="closeAddFileModal()" class="btn-secondary">Cancel</button>
-        <button onclick="submitAddFileModal()" class="btn-submit">Add File</button>
+        <button data-action="modal:close-add-file" class="btn-secondary">Cancel</button>
+        <button data-action="modal:submit-add-file" class="btn-submit">Add File</button>
       </div>
     </div>
   </div>
@@ -421,7 +421,7 @@
     <div class="quick-capture-box" style="max-width:600px;" onclick="event.stopPropagation()">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
         <h3 id="file-notes-modal-title" style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;font-style:italic;color:var(--rose);margin:0;">File Notes</h3>
-        <button onclick="closeFileNotesModal()" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
+        <button data-action="modal:close-file-notes" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
       </div>
       
       <div class="field" style="margin-bottom:16px;">
@@ -430,8 +430,8 @@
       </div>
       
       <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:8px;border-top:1px solid var(--border);">
-        <button onclick="closeFileNotesModal()" class="btn-secondary">Cancel</button>
-        <button onclick="saveFileNotes()" class="btn-submit">Save Notes</button>
+        <button data-action="modal:close-file-notes" class="btn-secondary">Cancel</button>
+        <button data-action="modal:save-file-notes" class="btn-submit">Save Notes</button>
       </div>
     </div>
   </div>
@@ -441,7 +441,7 @@
     <div class="quick-capture-box" style="max-width:520px;" onclick="event.stopPropagation()">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
         <h3 id="event-modal-title" style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;font-style:italic;color:var(--rose);margin:0;">Add Event</h3>
-        <button onclick="closeEventModal()" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
+        <button data-action="modal:close-event" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
       </div>
       
       <div class="field" style="margin-bottom:16px;">
@@ -560,7 +560,7 @@
       
       <div style="display:flex;gap:10px;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid var(--border);">
         <div>
-          <button id="event-delete-btn" onclick="if(confirm('Delete this event?')){deleteEvent(editingEventId);closeEventModal();}" 
+          <button id="event-delete-btn" data-action="event:delete" 
                   class="btn-secondary" 
                   style="display:none;background:var(--overdue);color:white;border-color:var(--overdue);"
                   onmouseover="this.style.background='var(--overdue)';this.style.opacity='0.9';" 
@@ -569,8 +569,8 @@
           </button>
         </div>
         <div style="display:flex;gap:10px;">
-          <button onclick="closeEventModal()" class="btn-secondary">Cancel</button>
-          <button onclick="submitEventModal()" class="btn-submit">Save Event</button>
+          <button data-action="modal:close-event" class="btn-secondary">Cancel</button>
+          <button data-action="modal:submit-event" class="btn-submit">Save Event</button>
         </div>
       </div>
     </div>
@@ -581,7 +581,7 @@
     <div class="quick-capture-box" style="max-width:520px;" onclick="event.stopPropagation()">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
         <h3 id="recurring-modal-title" style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;font-style:italic;color:var(--rose);margin:0;">Add Recurring Event</h3>
-        <button onclick="closeRecurringModal()" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
+        <button data-action="modal:close-recurring" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
       </div>
       
       <div class="field" style="margin-bottom:16px;">
@@ -666,8 +666,8 @@
       </div>
       
       <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:8px;border-top:1px solid var(--border);">
-        <button onclick="closeRecurringModal()" class="btn-secondary">Cancel</button>
-        <button onclick="submitRecurringModal()" class="btn-submit">Save Recurring Event</button>
+        <button data-action="modal:close-recurring" class="btn-secondary">Cancel</button>
+        <button data-action="modal:submit-recurring" class="btn-submit">Save Recurring Event</button>
       </div>
     </div>
   </div>
@@ -680,15 +680,15 @@
           <h3 id="task-drawer-title" style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:400;color:var(--rose);margin:0 0 4px 0;"></h3>
           <div id="task-drawer-meta" style="font-size:11px;color:var(--text-dim);"></div>
         </div>
-        <button onclick="closeTaskDrawer()" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
+        <button data-action="task-drawer:close" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
       </div>
       
       <!-- Tabs -->
       <div style="display:flex;gap:8px;margin-bottom:20px;border-bottom:1px solid var(--border);flex-shrink:0;">
-        <button id="task-drawer-tab-notes" onclick="switchTaskDrawerTab('notes')" class="task-drawer-tab active">📝 Notes</button>
-        <button id="task-drawer-tab-protocol" onclick="switchTaskDrawerTab('protocol')" class="task-drawer-tab" style="display:none;">⚗️ Protocol</button>
-        <button id="task-drawer-tab-files" onclick="switchTaskDrawerTab('files')" class="task-drawer-tab">📎 Files</button>
-        <button id="task-drawer-tab-subtasks" onclick="switchTaskDrawerTab('subtasks')" class="task-drawer-tab">📋 Subtasks</button>
+        <button id="task-drawer-tab-notes" data-action="task-drawer:switch-tab" data-tab="notes" class="task-drawer-tab active">📝 Notes</button>
+        <button id="task-drawer-tab-protocol" data-action="task-drawer:switch-tab" data-tab="protocol" class="task-drawer-tab" style="display:none;">⚗️ Protocol</button>
+        <button id="task-drawer-tab-files" data-action="task-drawer:switch-tab" data-tab="files" class="task-drawer-tab">📎 Files</button>
+        <button id="task-drawer-tab-subtasks" data-action="task-drawer:switch-tab" data-tab="subtasks" class="task-drawer-tab">📋 Subtasks</button>
       </div>
       
       <!-- Tab Content -->
@@ -703,7 +703,7 @@
           <div style="margin-bottom:20px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
               <label style="display:block;font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;">Log Entries</label>
-              <button onclick="addTaskLogEntry()" style="padding:6px 12px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:11px;cursor:pointer;font-weight:500;">+ Add Entry</button>
+              <button data-action="task-drawer:add-log-entry" style="padding:6px 12px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:11px;cursor:pointer;font-weight:500;">+ Add Entry</button>
             </div>
             <div id="task-drawer-log-entries" style="display:flex;flex-direction:column;gap:12px;"></div>
           </div>
@@ -724,15 +724,15 @@
             <label style="display:block;font-size:12px;color:var(--text-dim);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em;">Today's Entry</label>
             <textarea id="protocol-daily-entry" placeholder="What did you do today? Add notes, observations, changes..." style="width:100%;min-height:100px;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-family:inherit;font-size:13px;resize:vertical;"></textarea>
             <div style="display:flex;gap:8px;margin-top:8px;">
-              <button onclick="saveProtocolDailyEntry()" style="padding:8px 16px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:500;">Save Entry</button>
-              <button onclick="linkFileToProtocolEntry()" style="padding:8px 16px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;">Attach File</button>
+              <button data-action="task-drawer:save-protocol-entry" style="padding:8px 16px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:500;">Save Entry</button>
+              <button data-action="task-drawer:link-file-protocol" style="padding:8px 16px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;">Attach File</button>
             </div>
           </div>
           
           <div style="margin-bottom:20px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
               <label style="display:block;font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;">Daily Log</label>
-              <button onclick="toggleProtocolSteps()" style="padding:4px 8px;background:var(--bg2);color:var(--text-dim);border:1px solid var(--border);border-radius:4px;font-size:10px;cursor:pointer;">Steps</button>
+              <button data-action="task-drawer:toggle-protocol-steps" style="padding:4px 8px;background:var(--bg2);color:var(--text-dim);border:1px solid var(--border);border-radius:4px;font-size:10px;cursor:pointer;">Steps</button>
             </div>
             <div id="protocol-daily-log" style="display:flex;flex-direction:column;gap:12px;"></div>
           </div>
@@ -741,7 +741,7 @@
           <div id="protocol-steps-section" style="display:none;margin-bottom:20px;padding:16px;background:var(--bg2);border-radius:8px;border:1px solid var(--border);">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
               <label style="display:block;font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;">Steps Checklist</label>
-              <button onclick="addProtocolStep()" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">+ Add Step</button>
+              <button data-action="task-drawer:add-protocol-step" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">+ Add Step</button>
             </div>
             <div id="protocol-steps-list" style="display:flex;flex-direction:column;gap:8px;"></div>
           </div>
@@ -750,8 +750,8 @@
         <!-- Files Tab -->
         <div id="task-drawer-files" class="task-drawer-tab-content" style="display:none;">
           <div style="margin-bottom:16px;">
-            <button onclick="linkExistingFileToTask()" style="padding:8px 16px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;margin-right:8px;">Link Existing File</button>
-            <button id="btn-add-new-file-to-task" onclick="addNewFileToTask()" style="padding:8px 16px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;">Add New File</button>
+            <button data-action="task-drawer:link-existing-file" style="padding:8px 16px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;margin-right:8px;">Link Existing File</button>
+            <button id="btn-add-new-file-to-task" data-action="task-drawer:add-new-file" style="padding:8px 16px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;">Add New File</button>
           </div>
           <div id="task-drawer-files-list" style="display:flex;flex-direction:column;gap:12px;"></div>
         </div>
@@ -760,7 +760,7 @@
         <div id="task-drawer-subtasks" class="task-drawer-tab-content" style="display:none;">
           <div style="margin-bottom:16px;display:flex;gap:8px;">
             <input type="text" id="subtask-input" placeholder="Enter subtask title..." style="flex:1;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:12px;outline:none;" onkeydown="if(event.key==='Enter'){event.preventDefault();addSubtaskToTask();}">
-            <button onclick="addSubtaskToTask()" style="padding:8px 16px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;">+ Add</button>
+            <button data-action="task-drawer:add-subtask" style="padding:8px 16px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;">+ Add</button>
           </div>
           <div id="task-drawer-subtasks-list" style="display:flex;flex-direction:column;gap:8px;"></div>
         </div>
@@ -806,17 +806,17 @@
       <div style="display:flex;align-items:center;gap:20px;">
         <div class="wf-page-title" style="font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:400;letter-spacing:-.3px;color:var(--text);">Workflow</div>
         <div class="wf-view-toggle" style="display:flex;background:var(--bg2);border:1px solid var(--border);border-radius:7px;overflow:hidden;padding:3px;gap:2px;">
-          <button class="wf-view-btn active" id="wf-btn-list" onclick="switchWorkflowView('list',this)" style="padding:4px 14px;font-size:10px;font-family:'Jost',sans-serif;color:var(--text-dim);cursor:pointer;transition:all .15s;border:none;background:transparent;letter-spacing:.06em;border-radius:5px;">List</button>
-          <button class="wf-view-btn" id="wf-btn-timeline" onclick="switchWorkflowView('timeline',this)" style="padding:4px 14px;font-size:10px;font-family:'Jost',sans-serif;color:var(--text-dim);cursor:pointer;transition:all .15s;border:none;background:transparent;letter-spacing:.06em;border-radius:5px;">Timeline</button>
-          <button class="wf-view-btn" id="wf-btn-workflow" onclick="switchWorkflowView('workflow',this)" style="padding:4px 14px;font-size:10px;font-family:'Jost',sans-serif;color:var(--text-dim);cursor:pointer;transition:all .15s;border:none;background:transparent;letter-spacing:.06em;border-radius:5px;">Workflow</button>
+          <button class="wf-view-btn active" id="wf-btn-list" data-action="workflow:switch-view" data-view="list" style="padding:4px 14px;font-size:10px;font-family:'Jost',sans-serif;color:var(--text-dim);cursor:pointer;transition:all .15s;border:none;background:transparent;letter-spacing:.06em;border-radius:5px;">List</button>
+          <button class="wf-view-btn" id="wf-btn-timeline" data-action="workflow:switch-view" data-view="timeline" style="padding:4px 14px;font-size:10px;font-family:'Jost',sans-serif;color:var(--text-dim);cursor:pointer;transition:all .15s;border:none;background:transparent;letter-spacing:.06em;border-radius:5px;">Timeline</button>
+          <button class="wf-view-btn" id="wf-btn-workflow" data-action="workflow:switch-view" data-view="workflow" style="padding:4px 14px;font-size:10px;font-family:'Jost',sans-serif;color:var(--text-dim);cursor:pointer;transition:all .15s;border:none;background:transparent;letter-spacing:.06em;border-radius:5px;">Workflow</button>
         </div>
         <div class="wf-filter-bar" id="wfFilterBar" style="display:flex;align-items:center;gap:8px;">
           <select id="wf-project-filter" onchange="setWorkflowProjectFilter(this.value)" style="padding:4px 10px;border-radius:20px;font-size:10px;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all .15s;background:var(--surface);font-family:'Jost',sans-serif;min-width:140px;">
             <option value="all">All Projects</option>
           </select>
-          <button class="wf-filter-chip on" onclick="toggleWorkflowFilter(this)" style="padding:4px 10px;border-radius:20px;font-size:10px;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all .15s;background:var(--rose-pale);border-color:var(--rose-soft);color:var(--rose);">All</button>
-          <button class="wf-filter-chip" onclick="toggleWorkflowFilter(this)" style="padding:4px 10px;border-radius:20px;font-size:10px;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all .15s;">Active</button>
-          <button class="wf-filter-chip" onclick="toggleWorkflowFilter(this)" style="padding:4px 10px;border-radius:20px;font-size:10px;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all .15s;">On Hold</button>
+          <button class="wf-filter-chip on" data-action="workflow:toggle-filter" style="padding:4px 10px;border-radius:20px;font-size:10px;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all .15s;background:var(--rose-pale);border-color:var(--rose-soft);color:var(--rose);">All</button>
+          <button class="wf-filter-chip" data-action="workflow:toggle-filter" style="padding:4px 10px;border-radius:20px;font-size:10px;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all .15s;">Active</button>
+          <button class="wf-filter-chip" data-action="workflow:toggle-filter" style="padding:4px 10px;border-radius:20px;font-size:10px;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all .15s;">On Hold</button>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;">
@@ -918,7 +918,7 @@
         <div class="dp-title" id="wf-dp-title" style="font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--text);line-height:1.4;font-weight:400;">–</div>
         <div class="dp-sub" id="wf-dp-sub" style="font-size:11px;color:var(--text-dim);margin-top:4px;">–</div>
       </div>
-      <button class="dp-close" onclick="closeWfDetail()" title="Close" style="width:24px;height:24px;border-radius:5px;background:var(--surface);border:1px solid var(--border);color:var(--text-dim);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;transition:all 0.15s;">×</button>
+      <button class="dp-close" data-action="workflow:close-detail" title="Close" style="width:24px;height:24px;border-radius:5px;background:var(--surface);border:1px solid var(--border);color:var(--text-dim);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;transition:all 0.15s;">×</button>
     </div>
     <div class="dp-body" id="wf-dp-body" style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:16px;"></div>
   </div>
@@ -929,16 +929,16 @@
     <!-- Planner Top Bar (view switcher) -->
     <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 20px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;gap:12px;">
       <div style="display:flex;align-items:center;gap:6px;">
-        <button class="btn icon" onclick="plannerNav(-1)" id="planner-nav-prev" style="height:28px;width:28px;padding:0;border-radius:7px;border:1px solid var(--border2);background:transparent;color:var(--text-dim);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;">‹</button>
+        <button class="btn icon" data-action="planner:nav" data-dir="-1" id="planner-nav-prev" style="height:28px;width:28px;padding:0;border-radius:7px;border:1px solid var(--border2);background:transparent;color:var(--text-dim);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;">‹</button>
         <span class="period-label" id="planner-period-label" style="font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);min-width:220px;text-align:center;letter-spacing:0.01em;">—</span>
-        <button class="btn icon" onclick="plannerNav(1)" id="planner-nav-next" style="height:28px;width:28px;padding:0;border-radius:7px;border:1px solid var(--border2);background:transparent;color:var(--text-dim);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;">›</button>
+        <button class="btn icon" data-action="planner:nav" data-dir="1" id="planner-nav-next" style="height:28px;width:28px;padding:0;border-radius:7px;border:1px solid var(--border2);background:transparent;color:var(--text-dim);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;">›</button>
       </div>
       <div style="display:flex;align-items:center;gap:6px;">
         <div class="view-switcher" style="display:flex;background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:2px;gap:2px;">
-          <button class="view-btn active" id="planner-vbtn-day" onclick="setPlannerView('daily', this)" style="padding:4px 14px;font-size:8px;font-family:'Jost',sans-serif;font-weight:700;letter-spacing:0.13em;text-transform:uppercase;border:none;border-radius:6px;cursor:pointer;color:var(--text-muted);background:transparent;transition:all 0.14s;">Day</button>
-          <button class="view-btn" id="planner-vbtn-week" onclick="setPlannerView('weekly', this)" style="padding:4px 14px;font-size:8px;font-family:'Jost',sans-serif;font-weight:700;letter-spacing:0.13em;text-transform:uppercase;border:none;border-radius:6px;cursor:pointer;color:var(--text-muted);background:transparent;transition:all 0.14s;">Week</button>
+          <button class="view-btn active" id="planner-vbtn-day" data-action="planner:set-view" data-view="daily" style="padding:4px 14px;font-size:8px;font-family:'Jost',sans-serif;font-weight:700;letter-spacing:0.13em;text-transform:uppercase;border:none;border-radius:6px;cursor:pointer;color:var(--text-muted);background:transparent;transition:all 0.14s;">Day</button>
+          <button class="view-btn" id="planner-vbtn-week" data-action="planner:set-view" data-view="weekly" style="padding:4px 14px;font-size:8px;font-family:'Jost',sans-serif;font-weight:700;letter-spacing:0.13em;text-transform:uppercase;border:none;border-radius:6px;cursor:pointer;color:var(--text-muted);background:transparent;transition:all 0.14s;">Week</button>
         </div>
-        <button class="btn" onclick="openAddEventModal()" style="height:28px;padding:0 11px;border-radius:7px;border:1px solid var(--border2);background:transparent;color:var(--text-dim);cursor:pointer;font-family:'Jost',sans-serif;font-size:8.5px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;display:flex;align-items:center;gap:5px;">+ Block</button>
+        <button class="btn" data-action="planner:open-add-event" style="height:28px;padding:0 11px;border-radius:7px;border:1px solid var(--border2);background:transparent;color:var(--text-dim);cursor:pointer;font-family:'Jost',sans-serif;font-size:8.5px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;display:flex;align-items:center;gap:5px;">+ Block</button>
       </div>
     </div>
 
@@ -949,9 +949,9 @@
         <!-- Mini Calendar -->
         <div class="mini-cal" style="padding:16px 16px 12px;border-bottom:1px solid var(--border);flex-shrink:0;">
           <div class="cal-nav" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-            <button class="cal-arrow" onclick="plannerCalNav(-1)" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:13px;padding:2px 4px;border-radius:4px;transition:color 0.13s;line-height:1;">‹</button>
+            <button class="cal-arrow" data-action="planner:cal-nav" data-dir="-1" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:13px;padding:2px 4px;border-radius:4px;transition:color 0.13s;line-height:1;">‹</button>
             <span class="cal-month-label" id="planner-cal-month-label" style="font-family:'Cormorant Garamond',serif;font-size:14px;color:var(--text);">—</span>
-            <button class="cal-arrow" onclick="plannerCalNav(1)" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:13px;padding:2px 4px;border-radius:4px;transition:color 0.13s;line-height:1;">›</button>
+            <button class="cal-arrow" data-action="planner:cal-nav" data-dir="1" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:13px;padding:2px 4px;border-radius:4px;transition:color 0.13s;line-height:1;">›</button>
           </div>
           <div class="cal-grid" id="planner-cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;"></div>
         </div>
@@ -965,7 +965,7 @@
         <!-- Upcoming Events -->
         <div class="sidebar-section-header" style="padding:12px 16px 8px;font-family:'Jost',sans-serif;font-size:8px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
           Upcoming
-          <button class="sidebar-add" onclick="openAddEventModal()" style="font-size:16px;color:var(--text-muted);cursor:pointer;transition:color 0.13s;background:none;border:none;line-height:1;">+</button>
+          <button class="sidebar-add" data-action="planner:open-add-event" style="font-size:16px;color:var(--text-muted);cursor:pointer;transition:color 0.13s;background:none;border:none;line-height:1;">+</button>
         </div>
         <div class="events-list" id="planner-events-list" style="flex:1;overflow-y:auto;padding:8px 10px;display:flex;flex-direction:column;gap:2px;"></div>
       </div>
@@ -1003,7 +1003,7 @@
     <div class="quick-capture-box" style="max-width:420px;" onclick="event.stopPropagation()">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
         <h3 id="habit-modal-title" style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;font-style:italic;color:var(--rose);margin:0;">Add Habit</h3>
-        <button onclick="closeHabitModal()" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
+        <button data-action="modal:close-habit" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
       </div>
       
       <div class="field" style="margin-bottom:16px;">
@@ -1055,8 +1055,8 @@
       </div>
       
       <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:8px;border-top:1px solid var(--border);">
-        <button onclick="closeHabitModal()" class="btn-secondary">Cancel</button>
-        <button onclick="submitHabitModal()" class="btn-submit">Add Habit</button>
+        <button data-action="modal:close-habit" class="btn-secondary">Cancel</button>
+        <button data-action="modal:submit-habit" class="btn-submit">Add Habit</button>
       </div>
     </div>
   </div>
@@ -1066,7 +1066,7 @@
     <div class="quick-capture-box" style="max-width:420px;" onclick="event.stopPropagation()">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
         <h3 id="routine-modal-title" style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;font-style:italic;color:var(--rose);margin:0;">Add Routine</h3>
-        <button onclick="closeRoutineModal()" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
+        <button data-action="modal:close-routine" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
       </div>
       
       <div class="field" style="margin-bottom:16px;">
@@ -1129,8 +1129,8 @@
       </div>
       
       <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:8px;border-top:1px solid var(--border);">
-        <button onclick="closeRoutineModal()" class="btn-secondary">Cancel</button>
-        <button onclick="submitRoutineModal()" class="btn-submit">Add Routine</button>
+        <button data-action="modal:close-routine" class="btn-secondary">Cancel</button>
+        <button data-action="modal:submit-routine" class="btn-submit">Add Routine</button>
       </div>
     </div>
   </div>
@@ -1236,8 +1236,8 @@
           <textarea id="cell-log-notes" placeholder="Anything important to remember"></textarea>
         </div>
         <div style="display:flex;gap:8px;">
-          <button class="btn-submit" id="cell-log-submit-btn" onclick="window.Petal?.pages?.cellLog?.addEntry()">Add Cell Log Entry</button>
-          <button class="btn-secondary" id="cell-log-cancel-btn" onclick="window.Petal?.pages?.cellLog?.cancelEdit()" style="display:none;">Cancel</button>
+          <button class="btn-submit" id="cell-log-submit-btn" data-action="cell-log:add-entry">Add Cell Log Entry</button>
+          <button class="btn-secondary" id="cell-log-cancel-btn" data-action="cell-log:cancel-edit" style="display:none;">Cancel</button>
         </div>
         <input type="hidden" id="cell-log-edit-id" value="">
       </div>
@@ -1247,7 +1247,7 @@
           <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;">Reusable Cell Types</div>
           <div style="display:flex;gap:8px;margin-bottom:10px;">
             <input type="text" id="cell-type-input" placeholder="Add reusable cell type">
-            <button class="btn-secondary" onclick="window.Petal?.pages?.cellLog?.addCellType()">Add</button>
+            <button class="btn-secondary" data-action="cell-log:add-cell-type">Add</button>
           </div>
           <div id="cell-types-list" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
         </div>
@@ -1255,7 +1255,7 @@
           <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;">Reusable Media Types</div>
           <div style="display:flex;gap:8px;margin-bottom:10px;">
             <input type="text" id="media-type-input" placeholder="Add reusable media type">
-            <button class="btn-secondary" onclick="window.Petal?.pages?.cellLog?.addMediaType()">Add</button>
+            <button class="btn-secondary" data-action="cell-log:add-media-type">Add</button>
           </div>
           <div id="media-types-list" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
         </div>
@@ -1296,7 +1296,7 @@
 
     <!-- Create Project Form (Collapsible) -->
     <div style="margin-bottom:24px;">
-      <button onclick="toggleCreateProjectForm()" style="width:100%;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text-dim);font-size:12px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:all .15s;">
+      <button data-action="projects:toggle-create-form" style="width:100%;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text-dim);font-size:12px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:all .15s;">
         <span id="create-project-toggle">+</span> Create New Project
       </button>
       <div id="create-project-form" style="display:none;margin-top:16px;">
@@ -1411,7 +1411,7 @@
       <div class="files-section">
         <label style="font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-dim);">Linked Files</label>
         <div id="proj-files-container" style="margin-top:8px;"></div>
-        <button class="btn-add-file" id="btn-add-file-project" onclick="addFileRow('proj-files-container','p')">＋ Choose file</button>
+        <button class="btn-add-file" id="btn-add-file-project" data-action="file:add-row" data-container="proj-files-container" data-context="p">＋ Choose file</button>
         <div id="file-hint-project" style="font-size:9px;color:var(--text-light);margin-top:4px;display:none;">Files in OneDrive will work across all devices</div>
       </div>
       <button class="btn-submit" onclick="addProject()">Create Project</button>
@@ -1532,18 +1532,399 @@
 <script type="module">
 // ═══════════════════════ APP INITIALIZATION ═══════════════════════
 // Single entry point - all initialization logic is now in src/app/init.js
-import { initApp } from './src/app/init.js';
 
-// Initialize the app
-initApp().catch(err => {
-  console.error('❌ Failed to initialize app:', err);
-});
-    tasks = window.tasks || [];
-    projects = window.projects || [];
-    settings = window.settings || {};
-    fileRegistry = window.fileRegistry || {};
-    fileHistory = window.fileHistory || {};
+// Wait for DOM and Electron to be ready
+async function startApp() {
+  try {
+    console.log('🚀 Starting app initialization...');
+    console.log('🔍 Environment check:', {
+      hasElectronAPI: typeof window !== 'undefined' && !!window.electronAPI,
+      readyState: document.readyState,
+      userAgent: navigator.userAgent
+    });
+    
+    // Ensure DOM is ready
+    if (document.readyState === 'loading') {
+      await new Promise(resolve => {
+        document.addEventListener('DOMContentLoaded', resolve, { once: true });
+      });
+    }
+    
+    // Small delay to ensure all elements are in the DOM
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Check if required elements exist
+    const sidebar = document.getElementById('global-sidebar');
+    const appContainer = document.querySelector('.app');
+    const sidebarNav = document.getElementById('global-sidebar-nav');
+    
+    console.log('🔍 DOM check:', { 
+      hasSidebar: !!sidebar, 
+      hasSidebarNav: !!sidebarNav,
+      hasAppContainer: !!appContainer,
+      readyState: document.readyState,
+      appDisplay: appContainer ? window.getComputedStyle(appContainer).display : 'N/A',
+      sidebarDisplay: sidebar ? window.getComputedStyle(sidebar).display : 'N/A'
+    });
+    
+    if (!sidebar) {
+      console.error('❌ CRITICAL: global-sidebar element not found in DOM');
+      throw new Error('global-sidebar element not found');
+    }
+    if (!appContainer) {
+      console.error('❌ CRITICAL: .app container not found in DOM');
+      throw new Error('.app container not found');
+    }
+    if (!sidebarNav) {
+      console.error('❌ CRITICAL: global-sidebar-nav element not found in DOM');
+      throw new Error('global-sidebar-nav element not found');
+    }
+    
+    // Force visibility immediately
+    appContainer.style.setProperty('display', 'grid', 'important');
+    appContainer.style.setProperty('visibility', 'visible', 'important');
+    sidebar.style.setProperty('display', 'flex', 'important');
+    sidebar.style.setProperty('visibility', 'visible', 'important');
+    
+    console.log('✅ DOM elements found and made visible');
+    
+    // Import and initialize
+    console.log('📦 Importing modules...');
+    
+    try {
+      // Import required feature modules first (needed by inline code)
+      console.log('📦 Importing FileManagement...');
+      const FileManagementModule = await import('./src/features/fileManagement.js');
+      window.FileManagement = FileManagementModule; // Use namespace import
+      console.log('✅ FileManagement imported');
+      
+      console.log('📦 Importing ExportImport...');
+      const ExportImportModule = await import('./src/features/exportImport.js');
+      window.ExportImport = ExportImportModule; // Use namespace import
+      console.log('✅ ExportImport imported');
+      
+      console.log('📦 Importing TaskOperations...');
+      const TaskOperationsModule = await import('./src/features/taskOperations.js');
+      window.TaskOperations = TaskOperationsModule; // Use namespace import
+      console.log('✅ TaskOperations imported');
+    } catch (featureErr) {
+      console.error('❌ Error importing feature modules:', featureErr);
+      console.error('Feature import error details:', {
+        message: featureErr.message,
+        stack: featureErr.stack,
+        name: featureErr.name
+      });
+      // Continue anyway - these might be set up by initApp
+    }
+    
+    // Now import and initialize the app
+    console.log('📦 Importing initApp...');
+    let initApp;
+    try {
+      const initModule = await import('./src/app/init.js');
+      initApp = initModule.initApp;
+      if (!initApp) {
+        throw new Error('initApp function not found in module');
+      }
+      console.log('✅ initApp imported');
+    } catch (importErr) {
+      console.error('❌ Failed to import initApp:', importErr);
+      console.error('Import error details:', {
+        message: importErr.message,
+        stack: importErr.stack,
+        name: importErr.name,
+        fileName: importErr.fileName,
+        lineNumber: importErr.lineNumber
+      });
+      // Try to get more details about the import failure
+      if (importErr.message.includes('Failed to fetch')) {
+        console.error('🔍 This is a module loading error. Checking if file exists...');
+        // The file path in the error should help debug
+      }
+      throw importErr; // Re-throw to show error in UI
+    }
+    
+    console.log('🚀 Calling initApp()...');
+    await initApp();
+    console.log('✅ initApp completed');
+    
+    // Set up window globals that inline code expects (after initApp has loaded modules)
+    try {
+      if (window.Petal?.features?.fileManagement) {
+        window.FileManagement = window.Petal.features.fileManagement;
+        window.FILE_STATUSES = window.Petal.features.fileManagement.FILE_STATUSES;
+        
+        // Set up wrapper functions for backward compatibility
+        window.Petal.features.fileManagement = {
+          buildFileRegistry: (commit = true) => {
+            const ctx = createPageContext();
+            const result = window.FileManagement.buildFileRegistry({
+              ...ctx,
+              fileRegistry: window.fileRegistry || {},
+              fileHistory: window.fileHistory || {}
+            }, { commit });
+            window.fileRegistry = result.fileRegistry;
+            window.fileHistory = result.fileHistory;
+            return result;
+          },
+          getTaskFiles: (task) => {
+            return window.FileManagement.getTaskFiles(task, createPageContext());
+          },
+          resolveFileIds: (projectId, fileIds) => {
+            return window.FileManagement.resolveFileIds(projectId, fileIds, createPageContext());
+          },
+          findOrCreateCanonicalFile: (projectId, fileLink) => {
+            return window.FileManagement.findOrCreateCanonicalFile(projectId, fileLink, createPageContext());
+          },
+          trackFileOpen: async (fileLink) => {
+            const ctx = createPageContext();
+            await window.FileManagement.trackFileOpen(fileLink, {
+              ...ctx,
+              fileRegistry: ctx.fileRegistry || {},
+              fileHistory: ctx.fileHistory || {}
+            });
+          },
+          refreshFileMetadata: async (fileLink) => {
+            const ctx = createPageContext();
+            return await window.FileManagement.refreshFileMetadata(fileLink, {
+              ...ctx,
+              fileHistory: window.fileHistory || {}
+            });
+          },
+          updateFileStatus: async (fileKey, status) => {
+            const ctx = createPageContext();
+            await window.FileManagement.updateFileStatus(fileKey, status, {
+              ...ctx,
+              fileRegistry: window.fileRegistry || {},
+              currentView: window.currentView || 'tasks',
+              renderFiles: window.renderFiles
+            });
+          },
+          showFileRelations: (fileKey) => {
+            const ctx = createPageContext();
+            window.FileManagement.showFileRelations(fileKey, {
+              ...ctx,
+              fileRegistry: window.fileRegistry || {}
+            });
+          },
+          editSubmissionMeta: async (fileKey) => {
+            const ctx = createPageContext();
+            await window.FileManagement.editSubmissionMeta(fileKey, {
+              ...ctx,
+              fileRegistry: window.fileRegistry || {},
+              currentView: window.currentView || 'tasks',
+              renderFiles: window.renderFiles
+            });
+          },
+          ensureRegistryInitialized: () => {
+            return window.FileManagement.ensureRegistryInitialized();
+          }
+        };
+        
+        console.log('✅ FileManagement set up on window');
+      }
+      if (window.Petal?.features?.exportImport) {
+        window.ExportImport = window.Petal.features.exportImport;
+        window.exportData = window.Petal.features.exportImport.exportData;
+        window.importData = window.Petal.features.exportImport.importData;
+        console.log('✅ ExportImport set up on window');
+      }
+      if (window.Petal?.features?.taskOperations) {
+        window.TaskOperations = window.Petal.features.taskOperations;
+        
+        // Set up wrapper functions for backward compatibility
+        window.Petal.features.taskOperations = {
+          ...window.Petal.features.taskOperations, // Keep existing methods from initApp
+          getColumnTasks: (status, projectFilter, excludeTaskId) => {
+            const ctx = createPageContext();
+            return window.TaskOperations.getColumnTasks(ctx.tasks, status, projectFilter, excludeTaskId);
+          },
+          nextBoardOrderForNewTask: (status, projectId) => {
+            const ctx = createPageContext();
+            return window.TaskOperations.nextBoardOrderForNewTask(
+              ctx.tasks,
+              status,
+              projectId,
+              window.boardProjectFilter || 'all'
+            );
+          },
+          extractTags: (text) => {
+            return window.TaskOperations.extractTags(text);
+          },
+          removeTags: (text) => {
+            return window.TaskOperations.removeTags(text);
+          },
+          getStageForLaneAndStatus: (lane, status) => {
+            return window.TaskOperations.getStageForLaneAndStatus(lane, status);
+          },
+          addTask: async (titleOverride, statusOverride) => {
+            const ctx = createPageContext();
+            ctx.render = window.render;
+            ctx.boardProjectFilter = window.boardProjectFilter || 'all';
+            await window.TaskOperations.addTask(ctx, titleOverride, statusOverride);
+          },
+          toggleTask: async (id) => {
+            const ctx = createPageContext();
+            ctx.render = window.render;
+            await window.TaskOperations.toggleTask(ctx, id);
+          },
+          toggleSubtask: async (projectId, subtaskId) => {
+            const ctx = createPageContext();
+            ctx.render = window.render;
+            await window.TaskOperations.toggleSubtask(ctx, projectId, subtaskId);
+          },
+          updateTagPreview: () => {
+            window.TaskOperations.updateTagPreview();
+          },
+          editTask: (id) => {
+            const ctx = createPageContext();
+            window.TaskOperations.editTask(ctx, id);
+          },
+          deleteTask: (taskId, isSubtask = false, projectId = null, parentTaskId = null) => {
+            const store = window.Petal?.store;
+            const state = store?.getState?.() || {};
+            const ctx = {
+              store,
+              state,
+              tasks: Array.isArray(state.tasks) ? state.tasks : [],
+              projects: Array.isArray(state.projects) ? state.projects : [],
+              save: window.Petal?.handlers?.save || window.save,
+              render: window.Petal?.handlers?.render || window.render,
+            };
+            if (window.Petal?.features?.deleteHandlers?.confirmDeleteTask) {
+              window.Petal.features.deleteHandlers.confirmDeleteTask(ctx, taskId, isSubtask, projectId, parentTaskId);
+            }
+          }
+        };
+        
+        console.log('✅ TaskOperations set up on window');
+      }
+      if (window.Petal?.features?.search) {
+        window.Search = window.Petal.features.search;
+        window.matchesSearch = window.Petal.features.search.matchesSearch;
+        window.handleSearch = window.Petal.features.search.handleSearch;
+        window.clearSearch = window.Petal.features.search.clearSearch;
+        console.log('✅ Search set up on window');
+      }
+      
+      // Set up tag functions
+      if (window.TaskOperations) {
+        window.extractTags = window.TaskOperations.extractTags;
+        window.removeTags = window.TaskOperations.removeTags;
+        console.log('✅ Tag functions set up on window');
+      }
+      
+      // Ensure parseTime and formatTime are available globally
+      if (window.Petal?.parseTime && window.Petal?.formatTime) {
+        window.parseTime = window.Petal.parseTime;
+        window.formatTime = window.Petal.formatTime;
+        console.log('✅ Time functions set up on window');
+      }
+    } catch (setupErr) {
+      console.warn('⚠️ Error setting up window globals:', setupErr);
+    }
+    
+    // Force initial render after a brief delay to ensure everything is set up
+    setTimeout(() => {
+      console.log('🔍 Post-init: Forcing render and view switch...');
+      
+      // Ensure visibility again
+      if (appContainer) {
+        appContainer.style.setProperty('display', 'grid', 'important');
+        appContainer.style.setProperty('visibility', 'visible', 'important');
+      }
+      if (sidebar) {
+        sidebar.style.setProperty('display', 'flex', 'important');
+        sidebar.style.setProperty('visibility', 'visible', 'important');
+      }
+      
+      // Only render if store is initialized
+      if (window.Petal?.store && window.render) {
+        console.log('🔍 Calling window.render()...');
+        window.render();
+      } else {
+        console.warn('⚠️ Cannot render: store or render function not available', {
+          hasStore: !!window.Petal?.store,
+          hasRender: !!window.render
+        });
+      }
+      
+      if (window.switchView && window.Petal?.store) {
+        const currentView = window.Petal.store.getState()?.currentView || window.currentView || 'tasks';
+        console.log('🔍 Switching to initial view:', currentView);
+        window.switchView(currentView).catch(err => {
+          console.error('❌ Error in forced view switch:', err);
+          // Fallback: manually show the view
+          const viewEl = document.getElementById(`view-${currentView}`);
+          if (viewEl) {
+            document.querySelectorAll('[id^="view-"]').forEach(el => {
+              el.style.display = el.id === `view-${currentView}` ? 'block' : 'none';
+            });
+          }
+        });
+      } else {
+        console.warn('⚠️ window.switchView not available');
+        // Fallback: manually show the tasks view
+        const viewEl = document.getElementById('view-tasks');
+        if (viewEl) {
+          document.querySelectorAll('[id^="view-"]').forEach(el => {
+            el.style.display = el.id === 'view-tasks' ? 'block' : 'none';
+          });
+        }
+      }
+      
+      // Final visibility check
+      console.log('🔍 Final visibility check:', {
+        appDisplay: appContainer ? window.getComputedStyle(appContainer).display : 'N/A',
+        sidebarDisplay: sidebar ? window.getComputedStyle(sidebar).display : 'N/A',
+        tasksViewDisplay: document.getElementById('view-tasks') ? window.getComputedStyle(document.getElementById('view-tasks')).display : 'N/A',
+        hasStore: !!window.Petal?.store,
+        hasSwitchView: !!window.switchView,
+        hasRender: !!window.render
+      });
+    }, 200);
+    
+  } catch (err) {
+    console.error('❌ Failed to initialize app:', err);
+    console.error('Error name:', err.name);
+    console.error('Error message:', err.message);
+    console.error('Error stack:', err.stack);
+    
+    // Show error in UI
+    const appContainer = document.querySelector('.app');
+    if (appContainer) {
+      appContainer.innerHTML = `
+        <div style="padding: 40px; text-align: center; color: var(--text); font-family: system-ui, sans-serif;">
+          <h2 style="color: var(--overdue); margin-bottom: 20px;">Initialization Error</h2>
+          <p style="margin-bottom: 10px;"><strong>${err.name}:</strong> ${err.message}</p>
+          <details style="text-align: left; margin-top: 20px;">
+            <summary style="cursor: pointer; color: var(--text-dim);">Stack trace</summary>
+            <pre style="font-size: 11px; color: var(--text-dim); margin-top: 10px; overflow: auto; max-height: 300px;">${err.stack}</pre>
+          </details>
+          <p style="margin-top: 20px; font-size: 12px; color: var(--text-dim);">
+            Check the console (DevTools) for more details. Press Cmd+Option+I (Mac) or Ctrl+Shift+I (Windows) to open DevTools.
+          </p>
+        </div>
+      `;
+    }
   }
+}
+
+// Start the app when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', startApp);
+} else {
+  // DOM already ready
+  startApp();
+}
+
+// Create page context helper function
+function createPageContext() {
+  const tasks = window.tasks || [];
+  const projects = window.projects || [];
+  const settings = window.settings || {};
+  const fileRegistry = window.fileRegistry || {};
+  const fileHistory = window.fileHistory || {};
   
   return {
     tasks,
@@ -1639,184 +2020,27 @@ window.renderToday = async () => {
   }
 };
 
-// Wire up file management functions
-window.Petal = window.Petal || {};
-window.Petal.features = window.Petal.features || {};
-window.Petal.features.fileManagement = {
-  buildFileRegistry: (commit = true) => {
-    const ctx = createPageContext();
-    const result = FileManagement.buildFileRegistry({
-      ...ctx,
-      fileRegistry: window.fileRegistry || {},
-      fileHistory: window.fileHistory || {}
-    }, { commit }); // Phase 3 Fix: Allow commit control
-    // Update window globals
-    window.fileRegistry = result.fileRegistry;
-    window.fileHistory = result.fileHistory;
-    return result;
-  },
-  getTaskFiles: (task) => {
-    return FileManagement.getTaskFiles(task, createPageContext());
-  },
-  resolveFileIds: (projectId, fileIds) => {
-    return FileManagement.resolveFileIds(projectId, fileIds, createPageContext());
-  },
-  findOrCreateCanonicalFile: (projectId, fileLink) => {
-    return FileManagement.findOrCreateCanonicalFile(projectId, fileLink, createPageContext());
-  },
-  trackFileOpen: async (fileLink) => {
-    const ctx = createPageContext();
-    await FileManagement.trackFileOpen(fileLink, {
-      ...ctx,
-      // ctx already includes fileRegistry and fileHistory from createPageContext()
-      // but ensure they're objects as fallback
-      fileRegistry: ctx.fileRegistry || {},
-      fileHistory: ctx.fileHistory || {}
-    });
-  },
-  refreshFileMetadata: async (fileLink) => {
-    const ctx = createPageContext();
-    return await FileManagement.refreshFileMetadata(fileLink, {
-      ...ctx,
-      fileHistory: window.fileHistory || {}
-    });
-  },
-  updateFileStatus: async (fileKey, status) => {
-    const ctx = createPageContext();
-    await FileManagement.updateFileStatus(fileKey, status, {
-      ...ctx,
-      fileRegistry: window.fileRegistry || {},
-      currentView: window.currentView || 'tasks',
-      renderFiles: window.renderFiles
-    });
-  },
-  showFileRelations: (fileKey) => {
-    const ctx = createPageContext();
-    FileManagement.showFileRelations(fileKey, {
-      ...ctx,
-      fileRegistry: window.fileRegistry || {}
-    });
-  },
-  editSubmissionMeta: async (fileKey) => {
-    const ctx = createPageContext();
-    await FileManagement.editSubmissionMeta(fileKey, {
-      ...ctx,
-      fileRegistry: window.fileRegistry || {},
-      currentView: window.currentView || 'tasks',
-      renderFiles: window.renderFiles
-    });
-  },
-  ensureRegistryInitialized: () => {
-    return FileManagement.ensureRegistryInitialized();
-  }
-};
+// Wire up file management functions (deferred - will be set up after initApp)
+// Note: initApp already sets up window.Petal.features.fileManagement
+// This wrapper code will be executed after modules are loaded (see post-init setup)
 
-// Wire up file operations
-window.Petal.features.fileOperations = {
-  addFileRow: async (containerId, prefix, subtaskProjId, subtaskId) => {
-    await FileOperations.addFileRow(containerId, prefix, subtaskProjId, subtaskId);
-  },
-  normalizeFileUrl: async (url) => {
-    return await FileOperations.normalizeFileUrl(url);
-  },
-  resolveFileUrl: async (url) => {
-    return await FileOperations.resolveFileUrl(url);
-  },
-  getFileLinks: (containerId, prefix) => {
-    return FileOperations.getFileLinks(containerId, prefix);
-  },
-  getFileLinksNormalized: (containerId, prefix) => {
-    return FileOperations.getFileLinksNormalized(containerId, prefix);
-  }
-};
+// Wire up file operations (deferred - will use window.Petal.features after initApp)
+// Note: window.Petal.features.fileOperations is set up by initApp
 
-// Export FILE_STATUSES
-window.FILE_STATUSES = FileManagement.FILE_STATUSES;
+// Export FILE_STATUSES (set up in post-init setup at line 1655)
 
-// Wire up task operations
-window.Petal.features.taskOperations = {
-  getColumnTasks: (status, projectFilter, excludeTaskId) => {
-    const ctx = createPageContext();
-    return TaskOperations.getColumnTasks(ctx.tasks, status, projectFilter, excludeTaskId);
-  },
-  nextBoardOrderForNewTask: (status, projectId) => {
-    const ctx = createPageContext();
-    return TaskOperations.nextBoardOrderForNewTask(
-      ctx.tasks,
-      status,
-      projectId,
-      window.boardProjectFilter || 'all'
-    );
-  },
-  extractTags: (text) => {
-    return TaskOperations.extractTags(text);
-  },
-  removeTags: (text) => {
-    return TaskOperations.removeTags(text);
-  },
-  getStageForLaneAndStatus: (lane, status) => {
-    return TaskOperations.getStageForLaneAndStatus(lane, status);
-  },
-  addTask: async (titleOverride, statusOverride) => {
-    const ctx = createPageContext();
-    ctx.render = window.render;
-    ctx.boardProjectFilter = window.boardProjectFilter || 'all';
-    await TaskOperations.addTask(ctx, titleOverride, statusOverride);
-  },
-  toggleTask: async (id) => {
-    const ctx = createPageContext();
-    ctx.render = window.render;
-    await TaskOperations.toggleTask(ctx, id);
-  },
-  toggleSubtask: async (projectId, subtaskId) => {
-    const ctx = createPageContext();
-    ctx.render = window.render;
-    await TaskOperations.toggleSubtask(ctx, projectId, subtaskId);
-  },
-  updateTagPreview: () => {
-    TaskOperations.updateTagPreview();
-  },
-  editTask: (id) => {
-    console.log('🔍 editTask wrapper called with id:', id, 'type:', typeof id);
-    const ctx = createPageContext();
-    console.log('🔍 Context created:', { tasksCount: ctx.tasks?.length, projectsCount: ctx.projects?.length });
-    try {
-      TaskOperations.editTask(ctx, id);
-      console.log('🔍 TaskOperations.editTask completed');
-    } catch (error) {
-      console.error('❌ Error in TaskOperations.editTask:', error);
-      throw error;
-    }
-  },
-  deleteTask: (taskId, isSubtask = false, projectId = null, parentTaskId = null) => {
-    console.log('🗑️ deleteTask wrapper called', { taskId, isSubtask, projectId, parentTaskId });
-    // Build context from store at click time (guarantees fresh state)
-    const store = window.Petal?.store;
-    const state = store?.getState?.() || {};
-    const ctx = {
-      store,
-      state,
-      tasks: Array.isArray(state.tasks) ? state.tasks : [],
-      projects: Array.isArray(state.projects) ? state.projects : [],
-      save: window.Petal?.handlers?.save || window.save,
-      render: window.Petal?.handlers?.render || window.render,
-    };
-    console.log('🗑️ delete ctx counts', { tasks: ctx.tasks.length, projects: ctx.projects.length });
-    
-    // Call the delete handler with proper context
-    if (window.Petal?.features?.deleteHandlers?.confirmDeleteTask) {
-      window.Petal.features.deleteHandlers.confirmDeleteTask(ctx, taskId, isSubtask, projectId, parentTaskId);
-    } else {
-      console.error('❌ deleteHandlers.confirmDeleteTask not available');
-    }
-  }
-};
+// Wire up task operations (deferred - will be set up after initApp)
+// Note: initApp already sets up window.Petal.features.taskOperations
+// Wrapper functions are set up in post-init setup (see lines 1736+)
 
-// Export tag functions globally for backward compatibility
-window.extractTags = TaskOperations.extractTags;
-window.removeTags = TaskOperations.removeTags;
+// Export tag functions globally for backward compatibility (deferred - set up after initApp)
+// window.extractTags = TaskOperations.extractTags;
+// window.removeTags = TaskOperations.removeTags;
 
-// Wire up delete handlers
+// Wire up delete handlers (deferred - will be set up after initApp)
+// Note: initApp already sets up window.Petal.features.deleteHandlers
+// This wrapper code will be executed after modules are loaded (see post-init setup)
+/*
 window.Petal.features.deleteHandlers = {
   confirmDeleteTask: (ctx, taskId, isSubtask, projectId, parentTaskId) => {
     // Use provided context, or create one from store
@@ -1878,6 +2102,7 @@ window.Petal.features.deleteHandlers = {
     await DeleteHandlers.delSubtask(ctx, projId, subId);
   }
 };
+*/
 
 // Wire up task drawer functions
 window.Petal.features.taskDrawer = {
@@ -2075,150 +2300,10 @@ const PROJECT_TEMPLATES = {
   }
 };
 
-function defaultProjectBrief() {
-  return {
-    objective: '',
-    hypothesis: '',
-    keyOutputs: '',
-    focus: '',
-    definitionOfDone: '',
-    nextMilestone: ''
-  };
-}
-
-function defaultProjectOutputs() {
-  return {
-    figures: [],
-    datasets: [],
-    deliverables: []
-  };
-}
-
-function normalizeListValue(value) {
-  if (!value) return [];
-  if (Array.isArray(value)) {
-    return value.map(v => String(v || '').trim()).filter(Boolean);
-  }
-  return String(value)
-    .split(',')
-    .map(v => v.trim())
-    .filter(Boolean);
-}
-
-function defaultMilestonesFromTemplate(templateId) {
-  const template = PROJECT_TEMPLATES[templateId];
-  if (!template || !template.milestones) return [];
-  return template.milestones.map((title, idx) => ({
-    id: Date.now() + idx + 1,
-    title,
-    done: false,
-    linkedTaskIds: [],
-    linkedFileIds: [],
-    dueDate: ''
-  }));
-}
-
-function normalizeProjectStructure(project) {
-  const normalized = { ...project };
-  const brief = project.brief || {};
-  const outputs = project.outputs || {};
-  normalized.brief = {
-    objective: brief.objective || project.briefObjective || '',
-    hypothesis: brief.hypothesis || project.briefHypothesis || '',
-    keyOutputs: brief.keyOutputs || project.briefKeyOutputs || '',
-    focus: brief.focus || project.briefFocus || '',
-    definitionOfDone: brief.definitionOfDone || '',
-    nextMilestone: brief.nextMilestone || ''
-  };
-  normalized.outputs = {
-    figures: normalizeListValue(outputs.figures || project.outputFigures),
-    datasets: normalizeListValue(outputs.datasets || project.outputDatasets),
-    deliverables: normalizeListValue(outputs.deliverables || project.outputDeliverables)
-  };
-  normalized.milestones = Array.isArray(project.milestones) ? project.milestones.map((ms, idx) => ({
-    id: ms.id || Date.now() + idx + 1,
-    title: ms.title || '',
-    dueDate: ms.dueDate || '',
-    linkedTaskIds: Array.isArray(ms.linkedTaskIds) ? ms.linkedTaskIds : [],
-    linkedFileIds: Array.isArray(ms.linkedFileIds) ? ms.linkedFileIds : [],
-    done: !!ms.done
-  })).filter(ms => ms.title) : [];
-  normalized.workflowLanes = Array.isArray(project.workflowLanes) && project.workflowLanes.length
-    ? project.workflowLanes.filter(l => ['lab', 'comp', 'writing', 'presentation', 'personal', 'product'].includes(l))
-    : ['lab', 'comp', 'writing', 'presentation', 'personal', 'product'];
-  normalized.templateId = project.templateId || '';
-  normalized.checkpoints = Array.isArray(project.checkpoints) ? project.checkpoints : [];
-  
-  // Productivity fields
-  normalized.currentFocus = project.currentFocus || '';
-  normalized.nextAction = project.nextAction || '';
-  normalized.workingLog = Array.isArray(project.workingLog) ? project.workingLog : [];
-  
-  // Cell Log (lightweight cell tracking)
-  normalized.cellLog = Array.isArray(project.cellLog) ? project.cellLog : [];
-  
-  // Artifacts - the center of gravity (figure, dataset, build, protocol, manuscript)
-  normalized.artifacts = Array.isArray(project.artifacts) ? project.artifacts.map((art, idx) => ({
-    id: art.id || Date.now() + idx + 1,
-    name: art.name || '',
-    type: art.type || 'figure', // figure | dataset | build | protocol | manuscript
-    description: art.description || '',
-    notes: art.notes || '',
-    fileIds: Array.isArray(art.fileIds) ? art.fileIds : [],
-    subtasks: Array.isArray(art.subtasks) ? art.subtasks : [], // taskIds belonging to this artifact
-    versionHistory: Array.isArray(art.versionHistory) ? art.versionHistory : [],
-    status: art.status || 'draft', // draft | active | finalized | archived
-    createdAt: art.createdAt || Date.now(),
-    updatedAt: art.updatedAt || Date.now()
-  })) : [];
-  
-  // Protocol Runs - multi-day experiments (dECM digestion, etc.)
-  normalized.protocolRuns = Array.isArray(project.protocolRuns) ? project.protocolRuns.map((run, idx) => ({
-    id: run.id || Date.now() + idx + 1,
-    protocolName: run.protocolName || '',
-    startDate: run.startDate || '',
-    expectedEndDate: run.expectedEndDate || '',
-    status: run.status || 'active', // active | paused | completed
-    linkedArtifactId: run.linkedArtifactId || null,
-    dailyLog: Array.isArray(run.dailyLog) ? run.dailyLog : [],
-    subtasks: Array.isArray(run.subtasks) ? run.subtasks : [], // taskIds belonging to this protocol run
-    createdAt: run.createdAt || Date.now(),
-    updatedAt: run.updatedAt || Date.now()
-  })) : [];
-  
-  // Ensure files have version tracking fields
-  if (normalized.files && Array.isArray(normalized.files)) {
-    normalized.files = normalized.files.map((file, idx) => {
-      const fileObj = typeof file === 'string' ? { abs_path: file, label: file } : file;
-      return {
-        ...fileObj,
-        id: fileObj.id || ('file-' + normalized.id + '-' + idx),
-        isCurrent: fileObj.isCurrent !== undefined ? fileObj.isCurrent : true,
-        supersedes: fileObj.supersedes || null,
-        notes: fileObj.notes || '',
-        description: fileObj.description || '',
-        whatChanged: fileObj.whatChanged || '',
-        whyExists: fileObj.whyExists || '',
-        dependsOn: fileObj.dependsOn || [],
-        version: fileObj.version || '1.0',
-        createdAt: fileObj.createdAt || Date.now(),
-        updatedAt: fileObj.updatedAt || Date.now()
-      };
-    });
-  }
-  
-  return normalized;
-}
-
-function normalizeProjectsData() {
-  // Step 3 cleanup: Use extracted helper if available
-  if (window.Petal?.utils?.normalizeProjectStructure) {
-    projects = (projects || []).map(p => window.Petal.utils.normalizeProjectStructure(p, PROJECT_TEMPLATES));
-  } else {
-    // Fallback: old implementation
-    projects = (projects || []).map(normalizeProjectStructure);
-  }
-}
+// Project helper functions have been moved to src/utils/projectHelpers.js
+// They are available via window.Petal.utils.* or window.* (for backward compatibility)
+// Functions: defaultProjectBrief, defaultProjectOutputs, normalizeListValue, 
+//            defaultMilestonesFromTemplate, normalizeProjectStructure, normalizeProjectsData
 
 function ensureBoardSettings() {
   if (!settings || typeof settings !== 'object') settings = {};
@@ -2255,111 +2340,9 @@ function normalizeProjectIdValue(value) {
   return Number.isFinite(numeric) ? numeric : String(value);
 }
 
-function migrateTasksForKanban() {
-  ensureBoardSettings();
-  const orderByColumn = {};
-  getBoardColumns().forEach((c, idx) => {
-    orderByColumn[c] = (idx + 1) * 1024;
-  });
-  tasks = tasks.map((t) => {
-    const status = getBoardColumns().includes(t.status) ? t.status : (t.done ? 'Done' : 'Todo');
-    const projectId = normalizeProjectIdValue(t.projectId);
-    let boardOrder = Number(t.boardOrder);
-    if (!Number.isFinite(boardOrder)) {
-      boardOrder = orderByColumn[status] || 1024;
-      orderByColumn[status] = boardOrder + 1024;
-    }
-    return { ...t, status, projectId, boardOrder };
-  });
-}
+// Migration functions migrateTasksForKanban and migrateSubtasksToTasks have been moved to src/utils/migrations.js
 
-// Migrate nested subtasks to be actual tasks with parentTaskId
-function migrateSubtasksToTasks() {
-  let migrated = false;
-  tasks.forEach(t => {
-    if (t.subtasks && Array.isArray(t.subtasks) && t.subtasks.length > 0) {
-      // Convert nested subtasks to tasks
-      t.subtasks.forEach(st => {
-        // Check if this subtask was already migrated (exists as a task)
-        const existingTask = tasks.find(task => 
-          task.parentTaskId === t.id && 
-          task.title === st.title &&
-          Math.abs(task.id - st.id) < 1000 // IDs should be close if migrated
-        );
-        
-        if (!existingTask) {
-          // Create a new task from the subtask
-          const newTask = {
-            id: st.id || Date.now() + Math.random(),
-            title: st.title || '',
-            notes: st.notes || '',
-            priority: st.priority || 'medium',
-            due: st.due || '',
-            files: st.files || [],
-            done: st.done || false,
-            status: st.done ? 'Done' : 'Todo',
-            projectId: t.projectId || null,
-            parentTaskId: t.id,
-            lane: t.lane || null,
-            stage: t.stage || 'planned',
-            boardOrder: 1024
-          };
-          tasks.push(newTask);
-          migrated = true;
-        }
-      });
-      // Clear the nested subtasks array
-      delete t.subtasks;
-      migrated = true;
-    }
-  });
-  return migrated;
-}
-
-// Update lane options based on selected project
-function updateLaneOptions() {
-  const projectSelect = document.getElementById('in-project');
-  const laneSelect = document.getElementById('in-lane');
-  if (!projectSelect || !laneSelect) return;
-  
-  const projectId = projectSelect.value;
-  const currentLane = laneSelect.value;
-  
-  if (!projectId) {
-    // No project selected - show all lanes
-    laneSelect.innerHTML = `
-      <option value="">None</option>
-      <option value="lab">🧪 Lab</option>
-      <option value="comp">💻 Computational</option>
-      <option value="writing">📝 Writing</option>
-      <option value="presentation">📊 Presentation</option>
-      <option value="personal">👤 Personal</option>
-      <option value="product">🚀 Product</option>
-    `;
-  } else {
-    const project = projects.find(p => String(p.id) === String(projectId));
-    const allowedLanes = project?.workflowLanes || ['lab', 'comp', 'writing', 'presentation', 'personal', 'product'];
-    
-    const laneLabels = {
-      lab: '🧪 Lab',
-      comp: '💻 Computational',
-      writing: '📝 Writing',
-      presentation: '📊 Presentation',
-      personal: '👤 Personal',
-      product: '🚀 Product'
-    };
-    
-    laneSelect.innerHTML = '<option value="">None</option>' +
-      allowedLanes.map(lane => `<option value="${lane}">${laneLabels[lane]}</option>`).join('');
-  }
-  
-  // Restore current selection if still valid
-  if (currentLane && Array.from(laneSelect.options).some(opt => opt.value === currentLane)) {
-    laneSelect.value = currentLane;
-  } else {
-    laneSelect.value = '';
-  }
-}
+// updateLaneOptions has been moved to src/ui/selects.js
 
 function refreshProjectSelects() {
   // ═══════════════════════ PHASE 3 FIX: Read from store only ═══════════════════════
@@ -2433,77 +2416,7 @@ function refreshProjectSelects() {
   }
 }
 
-// Update project files select dropdown when project is selected (for add task form)
-function updateProjectFilesSelect() {
-  const projectSelect = document.getElementById('in-project');
-  const filesSelectContainer = document.getElementById('task-project-files-select-container');
-  const filesSelect = document.getElementById('task-project-files-select');
-  
-  if (!projectSelect || !filesSelectContainer || !filesSelect) return;
-  
-  const projectId = normalizeProjectIdValue(projectSelect.value || '');
-  
-  if (!projectId) {
-    filesSelectContainer.style.display = 'none';
-    filesSelect.innerHTML = '<option value="" disabled>Select project files to link...</option>';
-    return;
-  }
-  
-  const project = projects.find(p => p.id === projectId);
-  if (!project || !project.files || project.files.length === 0) {
-    filesSelectContainer.style.display = 'none';
-    filesSelect.innerHTML = '<option value="" disabled>No files in this project yet</option>';
-    return;
-  }
-  
-  // Show the select and populate with project files
-  filesSelectContainer.style.display = 'block';
-  filesSelect.innerHTML = '<option value="" disabled>Select project files to link...</option>';
-  
-  // Add project files (excluding deleted)
-  project.files.filter(f => f && !f.deletedAt).forEach(file => {
-    const option = document.createElement('option');
-    option.value = file.id;
-    option.textContent = file.label || file.name || 'Unnamed file';
-    filesSelect.appendChild(option);
-  });
-}
-
-// Update project files select in edit modal
-function updateEditModalProjectFiles(projectId, currentFileIds = []) {
-  const filesSection = document.getElementById('edit-project-files-section');
-  const filesSelect = document.getElementById('edit-project-files-select');
-  
-  if (!filesSection || !filesSelect) return;
-  
-  if (!projectId) {
-    filesSection.style.display = 'none';
-    filesSelect.innerHTML = '<option value="" disabled>Select project files to link...</option>';
-    return;
-  }
-  
-  const project = projects.find(p => p.id === projectId);
-  if (!project || !project.files || project.files.length === 0) {
-    filesSection.style.display = 'none';
-    filesSelect.innerHTML = '<option value="" disabled>No files in this project yet</option>';
-    return;
-  }
-  
-  // Show the select and populate with project files
-  filesSection.style.display = 'block';
-  filesSelect.innerHTML = '<option value="" disabled>Select project files to link...</option>';
-  
-  // Add project files (excluding deleted) and mark currently linked ones as selected
-  project.files.filter(f => f && !f.deletedAt).forEach(file => {
-    const option = document.createElement('option');
-    option.value = file.id;
-    option.textContent = file.label || file.name || 'Unnamed file';
-    if (currentFileIds.includes(file.id)) {
-      option.selected = true;
-    }
-    filesSelect.appendChild(option);
-  });
-}
+// updateProjectFilesSelect and updateEditModalProjectFiles have been moved to src/ui/selects.js
 
 // Update selected files display
 function updateTaskSelectedFiles() {
@@ -2513,73 +2426,17 @@ function updateTaskSelectedFiles() {
 
 // Initialize state (async)
 // Update vault badge in UI
-async function updateVaultBadge() {
-  if (typeof window === 'undefined' || !window.electronAPI) return;
-  
-  const el = document.getElementById("vaultBadge");
-  if (!el) return;
-  
-  try {
-    const s = await window.electronAPI.vaultGetStatus();
-    if (s?.resolved && s?.activeVaultPath) {
-      // Show shortened path (just folder name)
-      const pathParts = s.activeVaultPath.split(/[/\\]/);
-      const displayName = pathParts[pathParts.length - 1] || 'Vault';
-      el.textContent = displayName;
-      el.title = `Vault: ${s.activeVaultPath}\nClick to open folder`;
-      el.dataset.status = "ok";
-      el.style.display = "inline-flex";
-      
-      // Add click handler to open folder
-      el.onclick = async () => {
-        if (s.activeVaultPath) {
-          await window.electronAPI.vaultOpenFolder(s.activeVaultPath);
-        }
-      };
-    } else {
-      el.textContent = "Vault: Not resolved";
-      el.title = "Vault not resolved";
-      el.dataset.status = "bad";
-      el.style.display = "inline-flex";
-      el.onclick = null;
-    }
-  } catch (e) {
-    console.error("Error updating vault badge:", e);
-    el.textContent = "Vault: Error";
-    el.dataset.status = "bad";
-    el.style.display = "inline-flex";
-  }
-}
-
-// Deterministic vault resolution: poll until resolved (no "proceed anyway")
-async function waitForVaultResolved(timeoutMs = 15000) {
-  const start = Date.now();
-  while (Date.now() - start < timeoutMs) {
-    const status = await window.electronAPI.vaultGetStatus();
-    // Check resolved flag first, then fallback to activeVaultPath
-    if (status?.resolved && status?.activeVaultPath) {
-      return {
-        resolved: true,
-        vaultPath: status.activeVaultPath,
-        vaultId: status.vaultId,
-        source: 'polling'
-      };
-    }
-    // Also check backward compatibility shape
-    if (status?.initialized && status?.activeVault && status?.activeVault?.is_valid && status?.activeVault?.path) {
-      return {
-        resolved: true,
-        vaultPath: status.activeVault.path,
-        manifest: status.activeVault.manifest,
-        source: 'polling'
-      };
-    }
-    await new Promise(r => setTimeout(r, 250));
-  }
-  throw new Error("Vault did not resolve in time");
-}
+// Vault utility functions have been moved to src/utils/vault.js
+// Functions: updateVaultBadge, waitForVaultResolved, verifySaveLocation, updateFileButtons
+// Available via window.Petal.utils.* or window.* (for backward compatibility)
 
 async function initState() {
+  // GUARD: Prevent double initialization if module system has already initialized
+  if (window.Petal?.store && window.Petal.store.getState && window.__appInitialized) {
+    console.log('⏭️ initState(): App already initialized via module system, skipping old initState');
+    return;
+  }
+  
   // CRITICAL: Wait for vault resolution before loading state
   let vaultResolved = false;
   let vaultResolvedData = null;
@@ -2854,11 +2711,17 @@ async function initState() {
     });
     
     // Wire render function to store changes (Step 2b)
-    window.Petal.store.subscribe(() => {
-      if (typeof render === 'function') {
-        render();
-      }
-    });
+    // Only subscribe if render function is available
+    if (typeof render === 'function') {
+      window.Petal.store.subscribe(() => {
+        // Double-check store is still available when subscription fires
+        if (window.Petal?.store && typeof render === 'function') {
+          render();
+        }
+      });
+    } else {
+      console.warn('⚠️ initState: render function not available, skipping store subscription');
+    }
     
     console.log('✓ Store loaded and render subscription wired');
   } else {
@@ -2926,235 +2789,18 @@ async function initState() {
     refreshProjectSelects();
   }
   setupEventDelegation();
-  render();
-}
-
-// ═══════════════════════ NOTES MIGRATION ═══════════════════════
-function migrateNotesFields() {
-  let migrated = false;
   
-  // Ensure all tasks have note, noteUpdatedAt, and log fields
-  tasks.forEach(task => {
-    if (task.note === undefined) {
-      task.note = '';
-      migrated = true;
-    }
-    if (task.noteUpdatedAt === undefined) {
-      task.noteUpdatedAt = null;
-      migrated = true;
-    }
-    if (!task.log || !Array.isArray(task.log)) {
-      task.log = [];
-      migrated = true;
-    }
-    // Ensure fileIds exists
-    if (!task.fileIds || !Array.isArray(task.fileIds)) {
-      task.fileIds = [];
-      migrated = true;
-    }
-  });
-  
-  // Ensure all project files have note and noteUpdatedAt fields
-  projects.forEach(project => {
-    if (project.files && Array.isArray(project.files)) {
-      project.files.forEach((file, index) => {
-        if (typeof file === 'object' && file !== null) {
-          if (file.note === undefined) {
-            file.note = '';
-            migrated = true;
-          }
-          if (file.noteUpdatedAt === undefined) {
-            file.noteUpdatedAt = '';
-            migrated = true;
-          }
-          // Ensure file has an ID
-          if (!file.id) {
-            file.id = 'file-' + project.id + '-' + index;
-            migrated = true;
-          }
-        } else if (typeof file === 'string') {
-          // Convert legacy string format to object
-          project.files[index] = {
-            id: 'file-' + project.id + '-' + index,
-            label: file,
-            abs_path: file,
-            note: '',
-            noteUpdatedAt: ''
-          };
-          migrated = true;
-        }
-      });
-    }
-  });
-  
-  // Ensure all task files have note fields
-  tasks.forEach(task => {
-    if (task.files && Array.isArray(task.files)) {
-      task.files.forEach((file, index) => {
-        if (typeof file === 'object' && file !== null) {
-          if (file.note === undefined) {
-            file.note = '';
-            migrated = true;
-          }
-          if (file.noteUpdatedAt === undefined) {
-            file.noteUpdatedAt = '';
-            migrated = true;
-          }
-        }
-      });
-    }
-  });
-  
-  if (migrated) {
-    console.log('✓ Migrated note fields for backward compatibility');
+  // Only render if store is initialized and render function is available
+  if (window.Petal?.store && typeof render === 'function') {
+    render();
+  } else {
+    console.warn('⚠️ initState: Cannot render - store or render function not available');
   }
 }
 
-// ═══════════════════════ CANONICAL FILE REGISTRY MIGRATION ═══════════════════════
-/**
- * Migrates from embedded file objects to canonical file registry.
- * Phase B: Soft migration on load - promotes embedded task.files to project.files registry
- * and replaces them with fileIds references.
- */
-function migrateToCanonicalFileRegistry() {
-  let migrated = false;
-  
-  // Ensure all projects have files array
-  projects.forEach(project => {
-    if (!project.files) {
-      project.files = [];
-      migrated = true;
-    }
-    
-    // Ensure project files have proper structure
-    project.files = project.files.map((file, index) => {
-      if (typeof file === 'string') {
-        return {
-          id: `file_${project.id}_${Date.now()}_${index}`,
-          label: file,
-          abs_path: file,
-          note: '',
-          noteUpdatedAt: '',
-          versions: [],
-          versionCurrent: null,
-          pinned: false
-        };
-      }
-      // Ensure existing file objects have all required fields
-      if (typeof file === 'object' && file !== null) {
-        return {
-          id: file.id || `file_${project.id}_${Date.now()}_${index}`,
-          label: file.label || file.name || '',
-          abs_path: file.abs_path || file.url || '',
-          onedrive_rel: file.onedrive_rel || null,
-          share_url: file.share_url || null,
-          type: file.type || null,
-          note: file.note || '',
-          noteUpdatedAt: file.noteUpdatedAt || '',
-          versions: file.versions || [],
-          versionCurrent: file.versionCurrent || null,
-          pinned: file.pinned || false
-        };
-      }
-      return file;
-    });
-  });
-  
-  // Migrate task.files to canonical registry
-  tasks.forEach(task => {
-    if (!task.fileIds) {
-      task.fileIds = [];
-    }
-    
-    // If task has embedded files, migrate them
-    if (task.files && Array.isArray(task.files) && task.files.length > 0) {
-      const projectId = task.projectId;
-      if (projectId) {
-        const project = projects.find(p => p.id === projectId);
-        if (project) {
-          // Ensure project has files array
-          if (!project.files) {
-            project.files = [];
-          }
-          
-          task.files.forEach(embeddedFile => {
-            // Normalize embedded file to object
-            const fileObj = typeof embeddedFile === 'string' 
-              ? { abs_path: embeddedFile, label: embeddedFile }
-              : embeddedFile;
-            
-            if (!fileObj || typeof fileObj !== 'object') return;
-            
-            // Create a key to identify the file (for deduplication)
-            const fileKey = fileObj.onedrive_rel || fileObj.abs_path || fileObj.share_url || JSON.stringify(fileObj);
-            
-            // Try to find existing file in project registry
-            let canonicalFile = project.files.find(f => {
-              if (!f) return false;
-              return (f.onedrive_rel && fileObj.onedrive_rel && f.onedrive_rel === fileObj.onedrive_rel) ||
-                     (f.abs_path && fileObj.abs_path && f.abs_path === fileObj.abs_path) ||
-                     (f.share_url && fileObj.share_url && f.share_url === fileObj.share_url);
-            });
-            
-            if (!canonicalFile) {
-              // Create new canonical file in registry
-              canonicalFile = {
-                id: fileObj.id || `file_${project.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                label: fileObj.label || fileObj.name || (fileObj.abs_path ? fileObj.abs_path.split(/[/\\]/).pop() : ''),
-                abs_path: fileObj.abs_path || null,
-                onedrive_rel: fileObj.onedrive_rel || null,
-                share_url: fileObj.share_url || null,
-                type: fileObj.type || null,
-                note: fileObj.note || '',
-                noteUpdatedAt: fileObj.noteUpdatedAt || '',
-                versions: fileObj.versions || [],
-                versionCurrent: fileObj.versionCurrent || null,
-                pinned: fileObj.pinned || false,
-                isCurrent: fileObj.isCurrent !== undefined ? fileObj.isCurrent : true, // NEW: Simple version clarity
-                artifactTag: fileObj.artifactTag || null // NEW: Lightweight artifact label
-              };
-              project.files.push(canonicalFile);
-              migrated = true;
-            } else {
-              // Merge any missing fields from embedded file
-              if (fileObj.note && !canonicalFile.note) {
-                canonicalFile.note = fileObj.note;
-                canonicalFile.noteUpdatedAt = fileObj.noteUpdatedAt || new Date().toISOString();
-                migrated = true;
-              }
-            }
-            
-            // Add file ID to task.fileIds if not already present
-            if (!task.fileIds.includes(canonicalFile.id)) {
-              task.fileIds.push(canonicalFile.id);
-              migrated = true;
-            }
-          });
-        }
-      }
-      
-      // Keep task.files for backward compatibility during migration, but mark as legacy
-      if (!task._legacyFiles) {
-        task._legacyFiles = [...task.files];
-        migrated = true;
-      }
-    }
-  });
-  
-  // Initialize project checkpoints if missing
-  projects.forEach(project => {
-    if (!project.checkpoints) {
-      project.checkpoints = [];
-      migrated = true;
-    }
-  });
-  
-  if (migrated) {
-    console.log('✓ Migrated to canonical file registry');
-  }
-  
-  return migrated;
-}
+// Migration functions have been moved to src/utils/migrations.js
+// Functions: migrateNotesFields, migrateToCanonicalFileRegistry
+// Available via window.Petal.utils.* or window.* (for backward compatibility)
 
 /**
  * Helper: Find or create a canonical file in project registry
@@ -3248,72 +2894,9 @@ function addProjectCheckpoint(projectId, name, note) {
 
 // Show conflict resolution banner
 let currentConflicts = [];
-function showConflictBanner(conflicts, newerConflicts) {
-  currentConflicts = conflicts;
-  const banner = document.getElementById('conflict-banner');
-  const details = document.getElementById('conflict-details');
-  
-  if (!banner || !details) return;
-  
-  const conflictCount = conflicts.length;
-  const newerCount = newerConflicts.length;
-  
-  let detailText = '';
-  if (newerCount > 0) {
-    detailText = `${newerCount} conflict file${newerCount > 1 ? 's' : ''} newer than main file detected. `;
-  } else {
-    detailText = `${conflictCount} conflict file${conflictCount > 1 ? 's' : ''} found. `;
-  }
-  
-  const conflictFiles = conflicts.map(c => {
-    const name = c.filename.replace(/^petal\s*\(.*?\)\s*/, '').replace('.json', '');
-    const date = new Date(c.mtime).toLocaleString();
-    return `${name} (${date})`;
-  }).join(', ');
-  
-  detailText += `Files: ${conflictFiles}`;
-  details.textContent = detailText;
-  banner.style.display = 'block';
-}
-
-// Resolve conflict
-async function resolveConflict(action) {
-  if (!window.electronAPI || currentConflicts.length === 0) {
-    alert('Conflict resolution only available in desktop app');
-    return;
-  }
-  
-  try {
-    // For now, resolve the most recent conflict
-    // In a full implementation, you'd let user choose which conflict
-    const conflictToResolve = currentConflicts[0];
-    
-    if (action === 'useMain') {
-      await window.electronAPI.resolveConflict('useMain', conflictToResolve.filePath);
-      alert('Kept current file. Conflict file removed.');
-    } else if (action === 'useConflict') {
-      await window.electronAPI.resolveConflict('useConflict', conflictToResolve.filePath);
-      alert('Replaced with conflict file. Reloading...');
-      location.reload();
-    } else if (action === 'keepBoth') {
-      await window.electronAPI.resolveConflict('keepBoth', conflictToResolve.filePath);
-      alert('Kept both files. Conflict saved for manual review.');
-    }
-    
-    // Hide banner
-    document.getElementById('conflict-banner').style.display = 'none';
-    
-    // Reload if we changed the main file
-    if (action === 'useConflict') {
-      location.reload();
-    } else {
-      // Refresh to check for more conflicts
-      initState();
-    }
-  } catch (error) {
-    alert('Error resolving conflict: ' + error.message);
-  }
-}
+// Conflict banner functions have been moved to src/ui/conflictBanner.js
+// Functions: showConflictBanner, hideConflictBanner, resolveConflict
+// Available via window.Petal.ui.* or window.* (for backward compatibility)
 
 // Save state (async)
 // Phase 3.2: This function is now a no-op wrapper for backward compatibility
@@ -3404,43 +2987,11 @@ async function save() {
 window.save = save;
 
 // ═══════════════════════ VERIFY SAVE LOCATION ═══════════════════════
-async function verifySaveLocation() {
-  if (!window.electronAPI) {
-    console.log('Running in browser - data saved to localStorage');
-    console.log('Tasks:', localStorage.getItem('petal-tasks') ? 'Found' : 'Not found');
-    console.log('Projects:', localStorage.getItem('petal-projects') ? 'Found' : 'Not found');
-    return;
-  }
-  
-  try {
-    const vaultPath = await window.electronAPI.getVaultPath();
-    const dataPath = await window.electronAPI.getDataPath();
-    const vaultCheck = await window.electronAPI.checkVaultExists();
-    
-    // Phase 3 Fix: One-line vault status (reduces noise, keeps confirmation)
-    if (vaultCheck.dataFileExists) {
-      // Try to read and show file info
-      try {
-        const data = await window.electronAPI.loadState();
-        const state = data.data || data;
-        const displayPath = vaultPath.replace(/\\/g, '/').split('/').slice(-2).join('/');
-        console.log(`✓ Vault ready: ${displayPath} (petal.json: exists, tasks: ${state.tasks?.length || 0}, projects: ${state.projects?.length || 0})`);
-      } catch (e) {
-        console.warn('⚠️ Could not read data file:', e);
-      }
-    } else {
-      const displayPath = vaultPath.replace(/\\/g, '/').split('/').slice(-2).join('/');
-      console.log(`✓ Vault ready: ${displayPath} (petal.json: missing)`);
-    }
-  } catch (e) {
-    console.error('Error verifying save location:', e);
-  }
-}
+// verifySaveLocation has been moved to src/utils/vault.js
 
 // ═══════════════════════ EXPORT/IMPORT ═══════════════════════
 // Functions moved to src/features/exportImport.js
-window.exportData = ExportImport.exportData;
-window.importData = ExportImport.importData;
+// Set up in post-init setup at lines 1728-1729
 
 // ═══════════════════════ VIEW SWITCH (REMOVED) ═══════════════════════
 // The old switchView() function has been removed.
@@ -3474,29 +3025,7 @@ window.switchViewSafe = function(v) {
 };
 
 // ═══════════════════════ FILE BUTTONS ═══════════════════════
-function updateFileButtons() {
-  const hasElectron = window.electronAPI && window.electronAPI.chooseFile;
-  
-  // Update task file button
-  const taskBtn = document.getElementById('btn-add-file-task');
-  const taskHint = document.getElementById('file-hint-task');
-  if (taskBtn) {
-    taskBtn.textContent = hasElectron ? '＋ Choose file' : '＋ Attach a file link';
-  }
-  if (taskHint) {
-    taskHint.style.display = hasElectron ? 'block' : 'none';
-  }
-  
-  // Update project file button
-  const projBtn = document.getElementById('btn-add-file-project');
-  const projHint = document.getElementById('file-hint-project');
-  if (projBtn) {
-    projBtn.textContent = hasElectron ? '＋ Choose file' : '＋ Attach a file link';
-  }
-  if (projHint) {
-    projHint.style.display = hasElectron ? 'block' : 'none';
-  }
-}
+// updateFileButtons has been moved to src/utils/vault.js
 
 // ═══════════════════════ FILE ROWS ═══════════════════════
 async function addFileRow(containerId, prefix, subtaskProjId, subtaskId) {
@@ -3994,15 +3523,7 @@ function editSubtask(projId,subId){
   document.getElementById('edit-title').focus();
 }
 
-function closeEditModal() {
-  const modal = document.getElementById('edit-modal');
-  if (modal) {
-    modal.classList.remove('active');
-    modal.style.display = 'none'; // Explicitly hide modal
-  }
-  editingTaskId = null;
-  editingSubtaskInfo = null;
-}
+// closeEditModal has been moved to src/ui/modals.js
 
 async function saveEditModal() {
   const titleInput = document.getElementById('edit-title').value.trim();
@@ -4707,137 +4228,10 @@ async function softDeleteFile(projectId, fileId) {
   }
 }
 
-// Diagnostics modal functions
-function openDiagnosticsModal() {
-  const modal = document.getElementById('diagnostics-modal');
-  if (modal) {
-    modal.style.display = 'flex';
-    refreshDiagnostics();
-  }
-}
-
-function closeDiagnosticsModal() {
-  const modal = document.getElementById('diagnostics-modal');
-  if (modal) {
-    modal.style.display = 'none';
-  }
-}
-
-async function refreshDiagnostics() {
-  const contentEl = document.getElementById('diagnostics-content');
-  if (!contentEl) return;
-  
-  if (typeof window !== 'undefined' && window.electronAPI) {
-    try {
-      const diagnostics = await window.electronAPI.vaultGetDiagnostics();
-      
-      // Format diagnostics for display
-      let output = '=== Petal Diagnostics ===\n\n';
-      
-      output += `App Version: ${diagnostics.app_version || 'Unknown'}\n`;
-      output += `Platform: ${diagnostics.platform || 'Unknown'}\n\n`;
-      
-      output += `Config Path:\n  ${diagnostics.config_path || 'N/A'}\n\n`;
-      output += `Log Path:\n  ${diagnostics.log_path || 'N/A'}\n\n`;
-      
-      if (diagnostics.active_vault) {
-        output += `Active Vault:\n`;
-        output += `  Path: ${diagnostics.active_vault.path || 'N/A'}\n`;
-        output += `  Exists: ${diagnostics.active_vault.exists ? 'Yes' : 'No'}\n`;
-        output += `  Valid: ${diagnostics.active_vault.is_valid ? 'Yes' : 'No'}\n`;
-        
-        if (diagnostics.active_vault.data_file) {
-          const df = diagnostics.active_vault.data_file;
-          output += `\n  Data File (petal.json):\n`;
-          output += `    Path: ${df.path || 'N/A'}\n`;
-          output += `    Exists: ${df.exists ? 'Yes' : 'No'}\n`;
-          if (df.size !== undefined) {
-            output += `    Size: ${df.size} bytes\n`;
-          }
-          if (df.last_modified) {
-            output += `    Last Modified: ${df.last_modified}\n`;
-          }
-        }
-        
-        if (diagnostics.active_vault.manifest) {
-          output += `\n  Manifest:\n`;
-          output += `    Vault ID: ${diagnostics.active_vault.manifest.vault_id || 'N/A'}\n`;
-          output += `    Created: ${diagnostics.active_vault.manifest.created_at || 'N/A'}\n`;
-        }
-      } else {
-        output += `Active Vault: Not set\n\n`;
-      }
-      
-      if (diagnostics.config) {
-        output += `\nConfig:\n`;
-        output += `  Vault Path: ${diagnostics.config.vault_path || 'Not set'}\n`;
-        output += `  Sync Mode: ${diagnostics.config.sync_mode || 'N/A'}\n`;
-        output += `  Last Sync: ${diagnostics.config.last_sync_time || 'Never'}\n`;
-      }
-      
-      // Check preload
-      output += `\n\nPreload Status:\n`;
-      output += `  window.electronAPI: ${typeof window.electronAPI !== 'undefined' ? 'Present' : 'Missing'}\n`;
-      if (window.electronAPI) {
-        const keys = Object.keys(window.electronAPI);
-        output += `  Available APIs: ${keys.length} methods\n`;
-      }
-      if (diagnostics.preload) {
-        output += `\n  Preload Path Info:\n`;
-        output += `    Path: ${diagnostics.preload.path || 'N/A'}\n`;
-        output += `    Exists: ${diagnostics.preload.exists ? 'Yes' : 'No'}\n`;
-        output += `    __dirname: ${diagnostics.preload.resolved_dirname || 'N/A'}\n`;
-      }
-      
-      contentEl.textContent = output;
-    } catch (e) {
-      contentEl.textContent = `Error loading diagnostics:\n${e.message}\n\n${e.stack}`;
-    }
-  } else {
-    contentEl.textContent = 'Not running in Electron - diagnostics unavailable.';
-  }
-}
-
-async function copyDiagnostics() {
-  if (typeof window !== 'undefined' && window.electronAPI) {
-    try {
-      const result = await window.electronAPI.supportCopyDiagnostics();
-      if (result.success) {
-        alert('Diagnostics copied to clipboard!');
-      } else {
-        alert('Error copying diagnostics: ' + result.error);
-      }
-    } catch (e) {
-      alert('Error: ' + e.message);
-    }
-  }
-}
-
-async function openLogsFolder() {
-  if (typeof window !== 'undefined' && window.electronAPI) {
-    try {
-      const result = await window.electronAPI.supportOpenLogsFolder();
-      if (!result.success) {
-        alert('Error opening logs folder: ' + (result.error || 'Unknown error'));
-      }
-    } catch (e) {
-      console.error('Error opening logs folder:', e);
-    }
-  }
-}
-
-async function openVaultFolder() {
-  if (typeof window !== 'undefined' && window.electronAPI) {
-    try {
-      const result = await window.electronAPI.supportOpenVaultFolder();
-      if (!result.success) {
-        alert('Error opening vault folder: ' + (result.error || 'Unknown error'));
-      }
-    } catch (e) {
-      console.error('Error opening vault folder:', e);
-    }
-  }
-}
+// Diagnostics functions have been moved to src/ui/diagnostics.js
+// Functions: openDiagnosticsModal, closeDiagnosticsModal, refreshDiagnostics, 
+//            copyDiagnostics, openLogsFolder, openVaultFolder
+// Available via window.Petal.ui.* or window.* (for backward compatibility)
 
 // Legacy hard delete function (kept for backward compatibility, but now uses soft delete)
 async function delTask(id) {
@@ -7729,12 +7123,18 @@ async function renderSettingsFallback(containerEl, state) {
 // Single source of truth: router handles all view switching and rendering
 // This function only delegates to router - it does NOT render views directly
 async function render(){
+  // CRITICAL: Check if store is initialized before rendering
+  if (!window.Petal || !window.Petal.store) {
+    console.warn('⚠️ render(): Store not initialized yet, skipping render');
+    return;
+  }
+  
   // If router just switched, skip view rendering but still update sidebar
   const routerJustSwitched = window.__routerJustSwitched;
   if (routerJustSwitched) {
     console.log('⏭️ render(): Router just switched, skipping view rendering but updating sidebar');
     // Still update sidebar to reflect current view
-    const state = window.Petal?.store?.getState() || {};
+    const state = window.Petal.store.getState() || {};
     if (typeof renderGlobalSidebar === 'function') {
       renderGlobalSidebar(state);
     }
@@ -7742,7 +7142,7 @@ async function render(){
   }
   
   // Get current view from store (single source of truth)
-  const state = window.Petal?.store?.getState() || {};
+  const state = window.Petal.store.getState() || {};
   const currentViewToRender = state.currentView || window.currentView || currentView;
   
   if (!currentViewToRender) {
@@ -7860,9 +7260,10 @@ async function renderToday() {
 
 // ═══════════════════════ SEARCH ═══════════════════════
 // Functions moved to src/features/search.js
-window.matchesSearch = Search.matchesSearch;
-window.handleSearch = Search.handleSearch;
-window.clearSearch = Search.clearSearch;
+// These will be set up after initApp completes (see post-init setup)
+// window.matchesSearch = Search.matchesSearch;
+// window.handleSearch = Search.handleSearch;
+// window.clearSearch = Search.clearSearch;
 
 async function renderTaskList(){
   console.log("✅ INLINE renderTaskList() LOADED — EDITBTN TEST 2026-02-21");
@@ -8462,42 +7863,9 @@ function openProjectView(projectId) {
 }
 
 // Toggle add task form
-function toggleAddTaskForm() {
-  const form = document.getElementById('add-task-form');
-  const btn = document.getElementById('toggle-add-task-btn');
-  const icon = document.getElementById('toggle-add-task-icon');
-  const text = document.getElementById('toggle-add-task-text');
-  
-  if (!form || !btn || !icon || !text) return;
-  
-  const isVisible = form.style.display !== 'none';
-  form.style.display = isVisible ? 'none' : 'block';
-  icon.textContent = isVisible ? '+' : '−';
-  text.textContent = isVisible ? 'Add Task' : 'Hide Form';
-  
-  // Update button style when expanded
-  if (isVisible) {
-    btn.style.background = 'var(--surface)';
-    btn.style.color = 'var(--text-dim)';
-  } else {
-    btn.style.background = 'var(--rose-pale)';
-    btn.style.color = 'var(--rose)';
-    btn.style.borderColor = 'var(--rose-soft)';
-  }
-}
-
-// Toggle create project form
-function toggleCreateProjectForm() {
-  const form = document.getElementById('create-project-form');
-  const toggle = document.getElementById('create-project-toggle');
-  if (form.style.display === 'none' || !form.style.display) {
-    form.style.display = 'block';
-    toggle.textContent = '−';
-  } else {
-    form.style.display = 'none';
-    toggle.textContent = '+';
-  }
-}
+// Modal toggle functions have been moved to src/ui/modals.js
+// Functions: toggleAddTaskForm, toggleCreateProjectForm
+// Available via window.Petal.ui.* or window.* (for backward compatibility)
 
 // Toggle workflow matrix visibility
 function toggleWorkflowMatrix() {
@@ -11970,7 +11338,9 @@ if ('scrollRestoration' in history) {
 })();
 
 // Initialize app
-initState();
+// NOTE: initState() is now called by src/app/init.js via the module system
+// Do NOT call it here directly to avoid double initialization
+// The module initialization happens in the startApp() function above
 
 // Aggressive scroll reset - run immediately and repeatedly
 function forceScrollToTop() {
@@ -12449,9 +11819,9 @@ function getEventsForDate(date) {
 }
 
 // parseTime and formatTime moved to src/utils/dates.js
-// Imported at top of module section
-window.parseTime = parseTime;
-window.formatTime = formatTime;
+// These will be set up after initApp completes (see post-init setup)
+// window.parseTime = parseTime;
+// window.formatTime = formatTime;
 
 // Update end time when start time or duration changes (for events)
 function updateEventEndTimeFromDuration() {
