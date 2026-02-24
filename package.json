@@ -6,10 +6,10 @@
   "scripts": {
     "start": "electron .",
     "audit": "node scripts/audit.js",
-    "build": "electron-builder",
-    "build:mac": "electron-builder --mac",
-    "build:win": "electron-builder --win",
-    "build:all": "electron-builder --mac --win"
+    "build": "electron-builder --publish never",
+    "build:mac": "electron-builder --mac --publish never",
+    "build:win": "electron-builder --win --publish never",
+    "build:all": "electron-builder --mac --win --publish never"
   },
   "keywords": ["task", "tracker", "productivity"],
   "author": "Your Name",
@@ -41,7 +41,6 @@
     "win": {
       "target": "nsis",
       "icon": "build/icon.ico"
-    },
-    "publish": "never"
+    }
   }
 }
