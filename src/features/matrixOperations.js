@@ -124,8 +124,16 @@ export async function selectProjectForMatrix(ctx, projectId) {
   const projectIdNum = projectId ? parseInt(projectId) : null;
   
   if (projectIdNum) {
-    document.getElementById('workflow-matrix-view').style.display = '';
-    document.getElementById('project-list-view').style.display = 'none';
+    const matrixView = document.getElementById('workflow-matrix-view');
+    const listView = document.getElementById('project-list-view');
+    if (matrixView) {
+      matrixView.style.display = 'block';
+      matrixView.style.visibility = 'visible';
+      matrixView.style.opacity = '1';
+    }
+    if (listView) {
+      listView.style.display = 'none';
+    }
     // Hide project creation form when viewing a project
     if (createFormSection) createFormSection.style.display = 'none';
     
@@ -135,8 +143,14 @@ export async function selectProjectForMatrix(ctx, projectId) {
       await window.renderWorkflowMatrix();
     }
   } else {
-    document.getElementById('workflow-matrix-view').style.display = 'none';
-    document.getElementById('project-list-view').style.display = '';
+    const matrixView = document.getElementById('workflow-matrix-view');
+    const listView = document.getElementById('project-list-view');
+    if (matrixView) {
+      matrixView.style.display = 'none';
+    }
+    if (listView) {
+      listView.style.display = 'block';
+    }
     // Show project creation form when back to project list
     if (createFormSection) createFormSection.style.display = '';
     // Re-render projects view
@@ -163,8 +177,16 @@ export function openProjectView(ctx, projectId) {
   if (typeof window.selectedProjectId !== 'undefined') {
     window.selectedProjectId = parseInt(projectId);
   }
-  document.getElementById('workflow-matrix-view').style.display = '';
-  document.getElementById('project-list-view').style.display = 'none';
+  const matrixView = document.getElementById('workflow-matrix-view');
+  const listView = document.getElementById('project-list-view');
+  if (matrixView) {
+    matrixView.style.display = 'block';
+    matrixView.style.visibility = 'visible';
+    matrixView.style.opacity = '1';
+  }
+  if (listView) {
+    listView.style.display = 'none';
+  }
   // Hide project creation form when viewing a project
   const createFormSection = document.getElementById('project-selector-create-section');
   if (createFormSection) createFormSection.style.display = 'none';

@@ -77,7 +77,7 @@ export function renderMatrixTaskCard(ctx, task, isSubtaskTask = false, subtaskId
         ${isTaskSubtask ? `<span style="font-size:8px;color:var(--text-light);margin-left:4px;">(subtask)</span>` : ''}
       </div>
       <div style="display:flex;gap:4px;flex-shrink:0;">
-        <button class="btn-del" data-action="edit-task" data-task-id="${task.id}" data-is-subtask="${isSubtask}" data-project-id="${projectId}" onclick="event.stopPropagation();handleEditTaskAction(event, this)" title="Edit" style="background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:11px;padding:2px 4px;border-radius:3px;transition:all 0.15s;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='transparent';this.style.color='var(--text-dim)'">✎</button>
+        <button class="btn-del" data-action="edit-task" data-task-id="${task.id}" data-is-subtask="${isSubtask}" data-project-id="${projectId}" title="Edit" style="background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:11px;padding:2px 4px;border-radius:3px;transition:all 0.15s;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='transparent';this.style.color='var(--text-dim)'">✎</button>
         <button class="btn-del btn-delete" data-action="delete" data-id="${String(task.id)}" data-task-id="${String(task.id)}" data-is-subtask="${isSubtask}" data-project-id="${projectId || ''}" title="Delete" style="background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;font-weight:bold;padding:2px 4px;border-radius:3px;transition:all 0.15s;opacity:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--overdue)'" onmouseout="this.style.background='transparent';this.style.color='var(--text-dim)'">×</button>
       </div>
     </div>
@@ -253,7 +253,10 @@ export async function renderWorkflowMatrix(ctx) {
   const selectedProjectIdValue = selectedProjectId || (typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null);
   const currentProjFilterValue = currentProjFilter || (typeof window.currentProjFilter !== 'undefined' ? window.currentProjFilter : 'all');
   
-  if (!selectedProjectIdValue) return;
+  if (!selectedProjectIdValue) {
+    console.warn('⚠️ renderWorkflowMatrix: No selectedProjectId');
+    return;
+  }
   
   // Ensure forms are hidden by default
   const taskSection = document.getElementById('matrix-add-task-section');
@@ -271,8 +274,21 @@ export async function renderWorkflowMatrix(ctx) {
   if (taskToggle) taskToggle.textContent = '▶';
   if (fileToggle) fileToggle.textContent = '▶';
   
-  const project = (projects || []).find(p => p.id === selectedProjectIdValue);
+  // Find project - handle both string and number ID types
+  const project = (projects || []).find(p => {
+    // Normalize both to strings for comparison (handles string/number mismatch)
+    const pId = String(p.id).trim();
+    const selectedId = String(selectedProjectIdValue).trim();
+    return pId === selectedId;
+  });
+  
   if (!project) {
+    console.warn('⚠️ renderWorkflowMatrix: Project not found', {
+      selectedProjectIdValue,
+      selectedProjectIdValueType: typeof selectedProjectIdValue,
+      projectsCount: (projects || []).length,
+      projectIds: (projects || []).map(p => ({ id: p.id, idType: typeof p.id, name: p.name }))
+    });
     if (selectProjectForMatrix) {
       selectProjectForMatrix(null);
     } else if (typeof window.selectProjectForMatrix === 'function') {
@@ -280,6 +296,8 @@ export async function renderWorkflowMatrix(ctx) {
     }
     return;
   }
+  
+  console.log('✅ renderWorkflowMatrix: Found project', { id: project.id, name: project.name });
   
   // Update file button hint for matrix view
   const fileHint = document.getElementById('file-hint-matrix');
@@ -320,7 +338,7 @@ export async function renderWorkflowMatrix(ctx) {
     }
   }
   
-  // Update project selector
+  // Update project selector - handle type mismatches for ID comparison
   const selector = document.getElementById('matrix-project-select');
   if (selector) {
     const current = selector.value;
@@ -328,10 +346,18 @@ export async function renderWorkflowMatrix(ctx) {
     (projects || []).filter(p => !p.done || currentProjFilterValue === 'all').forEach(p => {
       const opt = document.createElement('option');
       opt.value = p.id;
-      opt.textContent = p.name;
-      if (p.id === selectedProjectIdValue) opt.selected = true;
+      opt.textContent = p.name || 'Untitled Project';
+      // Normalize both IDs to strings for comparison
+      const pIdStr = String(p.id).trim();
+      const selectedIdStr = String(selectedProjectIdValue).trim();
+      if (pIdStr === selectedIdStr) {
+        opt.selected = true;
+      }
       selector.appendChild(opt);
     });
+    console.log('✅ Updated matrix-project-select with', (projects || []).filter(p => !p.done || currentProjFilterValue === 'all').length, 'projects');
+  } else {
+    console.warn('⚠️ matrix-project-select not found in renderWorkflowMatrix');
   }
   
   // Get all tasks for this project (including subtasks - tasks with parentTaskId)
@@ -344,11 +370,64 @@ export async function renderWorkflowMatrix(ctx) {
     return taskProjectId === projectId;
   });
   
-  // Update project title
+  // Ensure workflow-matrix-view is visible
+  const matrixView = document.getElementById('workflow-matrix-view');
+  if (matrixView) {
+    matrixView.style.display = 'block';
+    matrixView.style.visibility = 'visible';
+    matrixView.style.opacity = '1';
+  }
+  
+  // Update project title - ensure elements exist and are visible
   const titleEl = document.getElementById('project-title-display');
   const descEl = document.getElementById('project-desc-display');
-  if (titleEl) titleEl.textContent = project.name;
-  if (descEl) descEl.textContent = project.desc || '';
+  
+  if (!titleEl) {
+    console.error('❌ project-title-display element not found');
+  } else {
+    titleEl.textContent = project.name || 'Untitled Project';
+    // Ensure title is visible and not covered by header
+    titleEl.style.display = 'block';
+    titleEl.style.visibility = 'visible';
+    titleEl.style.opacity = '1';
+    titleEl.style.marginTop = '0';
+    titleEl.style.marginBottom = '4px';
+    titleEl.style.position = 'relative';
+    titleEl.style.zIndex = '1';
+    console.log('✅ Updated project title:', project.name);
+  }
+  
+  if (!descEl) {
+    console.warn('⚠️ project-desc-display element not found');
+  } else {
+    descEl.textContent = project.desc || '';
+    if (project.desc) {
+      descEl.style.display = 'block';
+      descEl.style.visibility = 'visible';
+      descEl.style.opacity = '1';
+    } else {
+      descEl.style.display = 'none';
+    }
+  }
+  
+  // Ensure the project title container is visible and positioned correctly
+  const titleContainer = titleEl?.parentElement;
+  if (titleContainer) {
+    titleContainer.style.display = 'block';
+    titleContainer.style.visibility = 'visible';
+    titleContainer.style.opacity = '1';
+    titleContainer.style.position = 'relative';
+    titleContainer.style.zIndex = '1';
+    // Ensure it has proper top margin to not be covered by header
+    titleContainer.style.marginTop = '24px';
+    titleContainer.style.marginBottom = '16px';
+  }
+  
+  // Scroll to top to ensure title is visible
+  const viewProjects = document.getElementById('view-projects');
+  if (viewProjects) {
+    viewProjects.scrollTop = 0;
+  }
   
   // Render research orchestration dashboard
   if (renderTodayTimeline) renderTodayTimeline(ctx, project, projectTasks);
