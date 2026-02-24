@@ -21,7 +21,8 @@ module.exports = {
     // Explicit notarize config to initialize options object
     // Credentials come from environment variables: APPLE_TEAM_ID, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD
     notarize: {
-      appBundleId: "com.petal.tasktracker"
+      appBundleId: "com.petal.tasktracker",
+      teamId: process.env.APPLE_TEAM_ID
     }
   },
 
