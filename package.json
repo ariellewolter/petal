@@ -27,7 +27,7 @@
     "files": [
       "main.js",
       "preload.js",
-      "tasklist (1).html",
+      "tasklist.html",
       "storage.js",
       "manifest.json",
       "icon-192.png",
@@ -36,11 +36,11 @@
     ],
     "mac": {
       "category": "public.app-category.productivity",
-      "icon": "icon-512.png"
+      "icon": "build/icon.icns"
     },
     "win": {
       "target": "nsis",
-      "icon": "icon-512.png"
+      "icon": "build/icon.ico"
     }
   }
 }

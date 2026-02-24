@@ -1024,7 +1024,7 @@ function createWindow() {
     icon: path.join(__dirname, 'icon-512.png')
   });
 
-  mainWindow.loadFile('tasklist (1).html');
+  mainWindow.loadFile('tasklist.html');
 
   // Open DevTools to help debug initialization issues
   // Always open in development, or if PETAL_DEBUG env var is set
@@ -1034,7 +1034,7 @@ function createWindow() {
   
   // Log when page is ready
   mainWindow.webContents.once('did-finish-load', () => {
-    safeLog('✅ Window finished loading tasklist (1).html');
+    safeLog('✅ Window finished loading tasklist.html');
   });
   
   // Log console messages from renderer

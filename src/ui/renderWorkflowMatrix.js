@@ -280,13 +280,15 @@ export async function renderWorkflowMatrix(ctx) {
   }
   
   // Now destructure the rest (excluding selectedProjectId since we already got it)
-  const { projects, tasks, currentProjFilter, parseDate: parseDateFn, today: todayFn, getMatrixStage: getMatrixStageFn, renderTodayTimeline, renderActiveProtocols, renderCellLog, renderCompWindow, renderDeadlinesHorizon, renderProjectTasks, renderMatrixSidebar: renderMatrixSidebarFn, selectProjectForMatrix } = ctx;
+  const { projects, tasks, currentProjFilter, parseDate: parseDateFn, today: todayFn, getMatrixStage: getMatrixStageFn, esc: escFn, escAttr: escAttrFn, renderTodayTimeline, renderActiveProtocols, renderCellLog, renderCompWindow, renderDeadlinesHorizon, renderProjectTasks, renderMatrixSidebar: renderMatrixSidebarFn, selectProjectForMatrix } = ctx;
   
   // Helper functions with fallbacks
   const parseDateFunction = parseDateFn || parseDate;
   const todayFunction = todayFn || today;
   const getMatrixStageFunction = getMatrixStageFn || getMatrixStage;
   const renderMatrixSidebarFunction = renderMatrixSidebarFn || renderMatrixSidebar;
+  const escFunction = escFn || esc;
+  const escAttrFunction = escAttrFn || escAttr;
   
   const currentProjFilterValue = currentProjFilter || (typeof window.currentProjFilter !== 'undefined' ? window.currentProjFilter : 'all');
   
@@ -559,6 +561,71 @@ export async function renderWorkflowMatrix(ctx) {
     } else {
       descEl.style.display = 'none';
     }
+  }
+  
+  // Render linked cell lines section
+  let cellLinesEl = document.getElementById('project-cell-lines-display');
+  if (!cellLinesEl && matrixView) {
+    // Create cell lines container if it doesn't exist
+    const titleContainer = titleEl?.parentElement;
+    if (titleContainer) {
+      cellLinesEl = document.createElement('div');
+      cellLinesEl.id = 'project-cell-lines-display';
+      cellLinesEl.style.marginTop = '12px';
+      cellLinesEl.style.marginBottom = '16px';
+      titleContainer.appendChild(cellLinesEl);
+    }
+  }
+  
+  if (cellLinesEl) {
+    const linkedCellLines = Array.isArray(project.linkedCellLines) ? project.linkedCellLines : [];
+    const projectId = project.id;
+    
+    let cellLinesHTML = '';
+    if (linkedCellLines.length > 0) {
+      cellLinesHTML = `
+        <div class="project-linked-cell-lines" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+          <span style="font-size:11px;color:var(--text-dim);font-weight:500;">Cell Lines:</span>
+          ${linkedCellLines.map(cellLine => `
+            <span class="cell-line-chip" style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;font-size:11px;color:var(--text);">
+              ${escFunction(cellLine)}
+              <button type="button" 
+                      data-action="unlink-cell-line" 
+                      data-project-id="${projectId}" 
+                      data-cell-line="${escAttrFunction(cellLine)}"
+                      style="background:transparent;border:none;color:var(--text-dim);cursor:pointer;padding:0;margin:0;font-size:14px;line-height:1;width:16px;height:16px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all 0.15s;"
+                      onmouseover="this.style.background='var(--bg3)';this.style.color='var(--overdue)'"
+                      onmouseout="this.style.background='transparent';this.style.color='var(--text-dim)'"
+                      title="Remove cell line">×</button>
+            </span>
+          `).join('')}
+          <button type="button" 
+                  data-action="link-cell-line" 
+                  data-project-id="${projectId}"
+                  style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;font-size:11px;color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all 0.15s;"
+                  onmouseover="this.style.background='var(--bg3)';this.style.borderColor='var(--rose)'"
+                  onmouseout="this.style.background='var(--bg2)';this.style.borderColor='var(--border)'"
+                  title="Link cell line">+ Add</button>
+        </div>
+      `;
+    } else {
+      cellLinesHTML = `
+        <div class="project-linked-cell-lines" style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:11px;color:var(--text-dim);">No cell lines linked</span>
+          <button type="button" 
+                  data-action="link-cell-line" 
+                  data-project-id="${projectId}"
+                  style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;font-size:11px;color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all 0.15s;"
+                  onmouseover="this.style.background='var(--bg3)';this.style.borderColor='var(--rose)'"
+                  onmouseout="this.style.background='var(--bg2)';this.style.borderColor='var(--border)'"
+                  title="Link cell line">+ Link Cell Line</button>
+        </div>
+      `;
+    }
+    
+    cellLinesEl.innerHTML = cellLinesHTML;
+    cellLinesEl.style.display = 'block';
+    cellLinesEl.style.visibility = 'visible';
   }
   
   // Render research orchestration dashboard

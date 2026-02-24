@@ -26,6 +26,7 @@ function updateStoreSafely(updates, fallbackFn) {
  * Open Add Task Modal for a specific project
  */
 export function openProjectAddTaskModal(ctx, projId) {
+  console.log('🔘 openProjectAddTaskModal called:', { projId, projectsCount: ctx.projects?.length });
   const { projects } = ctx;
   
   // Update global modal state
@@ -34,10 +35,33 @@ export function openProjectAddTaskModal(ctx, projId) {
     window.currentModalContext = 'project';
   }
   
-  const p = projects.find(p => p.id === projId);
-  if (!p) return;
+  // Normalize projectId for comparison (handle string/number mismatch)
+  const normalizedProjId = typeof projId === 'string' ? parseInt(projId) : projId;
+  const p = projects.find(p => {
+    const pId = typeof p.id === 'string' ? parseInt(p.id) : p.id;
+    return pId === normalizedProjId || String(p.id) === String(projId);
+  });
+  
+  console.log('🔘 Project lookup:', { 
+    projId, 
+    normalizedProjId, 
+    projectFound: !!p, 
+    projectName: p?.name,
+    projectIds: projects?.slice(0, 3).map(p => ({ id: p.id, type: typeof p.id }))
+  });
+  
+  if (!p) {
+    console.warn('⚠️ Project not found for ID:', projId);
+    return;
+  }
   
   const titleEl = document.getElementById('add-task-modal-title');
+  console.log('🔘 Modal elements:', {
+    hasTitleEl: !!titleEl,
+    hasModal: !!document.getElementById('add-task-modal'),
+    hasTitleInput: !!document.getElementById('modal-task-title')
+  });
+  
   if (titleEl) titleEl.textContent = `Add Task to ${p.name}`;
   
   // Setup lane options
@@ -67,9 +91,25 @@ export function openProjectAddTaskModal(ctx, projId) {
   
   // Show modal
   const modal = document.getElementById('add-task-modal');
+  console.log('🔘 Showing modal:', { 
+    hasModal: !!modal, 
+    modalDisplay: modal ? window.getComputedStyle(modal).display : 'N/A',
+    modalVisibility: modal ? window.getComputedStyle(modal).visibility : 'N/A',
+    modalZIndex: modal ? window.getComputedStyle(modal).zIndex : 'N/A'
+  });
+  
   if (modal) {
     modal.style.display = 'flex';
-    if (titleInput) titleInput.focus();
+    modal.style.setProperty('display', 'flex', 'important');
+    modal.style.setProperty('visibility', 'visible', 'important');
+    modal.style.setProperty('opacity', '1', 'important');
+    modal.style.setProperty('z-index', '10000', 'important');
+    console.log('✅ Modal display set to flex');
+    if (titleInput) {
+      setTimeout(() => titleInput.focus(), 100);
+    }
+  } else {
+    console.error('❌ Modal element not found: #add-task-modal');
   }
 }
 
@@ -77,10 +117,26 @@ export function openProjectAddTaskModal(ctx, projId) {
  * Open Add Task Modal for Matrix view
  */
 export function openMatrixAddTaskModal(ctx) {
-  const { projects } = ctx;
-  const selectedProjectId = typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null;
+  console.log('🔘 openMatrixAddTaskModal called:', { 
+    hasCtx: !!ctx, 
+    ctxSelectedProjectId: ctx?.selectedProjectId,
+    windowSelectedProjectId: typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null,
+    projectsCount: ctx?.projects?.length 
+  });
   
-  if (!selectedProjectId) return;
+  const { projects } = ctx;
+  // Get projectId from context first, then fallback to window.selectedProjectId
+  const selectedProjectId = ctx?.selectedProjectId || (typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null);
+  
+  console.log('🔘 Project ID lookup:', { 
+    selectedProjectId, 
+    projectIds: projects?.slice(0, 3).map(p => ({ id: p.id, type: typeof p.id }))
+  });
+  
+  if (!selectedProjectId) {
+    console.warn('⚠️ No selectedProjectId in openMatrixAddTaskModal');
+    return;
+  }
   
   // Update global modal state
   if (typeof window !== 'undefined') {
@@ -88,8 +144,24 @@ export function openMatrixAddTaskModal(ctx) {
     window.currentModalContext = 'matrix';
   }
   
-  const p = projects.find(p => p.id === selectedProjectId);
-  if (!p) return;
+  // Normalize projectId for comparison (handle string/number mismatch)
+  const normalizedProjId = typeof selectedProjectId === 'string' ? parseInt(selectedProjectId) : selectedProjectId;
+  const p = projects.find(p => {
+    const pId = typeof p.id === 'string' ? parseInt(p.id) : p.id;
+    return pId === normalizedProjId || String(p.id) === String(selectedProjectId);
+  });
+  
+  console.log('🔘 Matrix project lookup:', { 
+    selectedProjectId, 
+    normalizedProjId,
+    projectFound: !!p, 
+    projectName: p?.name 
+  });
+  
+  if (!p) {
+    console.warn('⚠️ Project not found for ID:', selectedProjectId);
+    return;
+  }
   
   const titleEl = document.getElementById('add-task-modal-title');
   if (titleEl) titleEl.textContent = `Add Task to ${p.name}`;
@@ -121,12 +193,26 @@ export function openMatrixAddTaskModal(ctx) {
   
   // Show modal and focus
   const modal = document.getElementById('add-task-modal');
+  console.log('🔘 Showing matrix modal:', { 
+    hasModal: !!modal, 
+    modalDisplay: modal ? window.getComputedStyle(modal).display : 'N/A',
+    modalVisibility: modal ? window.getComputedStyle(modal).visibility : 'N/A',
+    modalZIndex: modal ? window.getComputedStyle(modal).zIndex : 'N/A'
+  });
+  
   if (modal) {
     modal.style.display = 'flex';
+    modal.style.setProperty('display', 'flex', 'important');
+    modal.style.setProperty('visibility', 'visible', 'important');
+    modal.style.setProperty('opacity', '1', 'important');
+    modal.style.setProperty('z-index', '10000', 'important');
+    console.log('✅ Matrix modal display set to flex');
     modal.focus();
     setTimeout(() => {
       if (titleInput) titleInput.focus();
     }, 100);
+  } else {
+    console.error('❌ Modal element not found: #add-task-modal');
   }
 }
 

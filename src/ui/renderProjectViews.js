@@ -154,13 +154,62 @@ export function renderActiveProtocols(ctx, project, projectTasks) {
  * Render Cell Log view
  */
 export function renderCellLog(ctx, project) {
-  const { esc: escFn } = ctx;
+  const { esc: escFn, escAttr: escAttrFn } = ctx;
   
   const contentEl = document.getElementById('cell-log-content');
   if (!contentEl) return;
   
   const escFunction = escFn || esc;
+  const escAttrFunction = escAttrFn || escAttr;
   
+  // Get available cell lines from settings
+  const state = window.Petal?.store?.getState() || {};
+  const settings = state.settings || {};
+  const cellLogSettings = settings.cellLog || {};
+  const availableCellLines = Array.isArray(cellLogSettings.cellTypes) ? cellLogSettings.cellTypes : [];
+  
+  // Get linked cell lines for this project
+  const linkedCellLines = Array.isArray(project.linkedCellLines) ? project.linkedCellLines : [];
+  
+  // Build HTML
+  let html = '';
+  
+  // Section 1: Linked Cell Lines
+  html += '<div style="margin-bottom:16px;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;">';
+  html += '<div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;">Linked Cell Lines</div>';
+  
+  // Add cell line dropdown and button
+  html += '<div style="display:flex;gap:8px;margin-bottom:12px;align-items:flex-end;">';
+  html += '<div style="flex:1;">';
+  html += '<select id="cell-line-link-select" style="width:100%;padding:6px 8px;background:var(--surface);border:1px solid var(--border);border-radius:4px;font-size:12px;color:var(--text);">';
+  html += '<option value="">Select a cell line...</option>';
+  availableCellLines.forEach(cellLine => {
+    if (!linkedCellLines.includes(cellLine)) {
+      html += `<option value="${escFunction(cellLine)}">${escFunction(cellLine)}</option>`;
+    }
+  });
+  html += '</select>';
+  html += '</div>';
+  html += `<button onclick="window.Petal?.features?.projectOperations?.addCellLineToProject(${project.id})" style="padding:6px 12px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;font-weight:500;white-space:nowrap;">+ Add</button>`;
+  html += '</div>';
+  
+  // Display linked cell lines
+  if (linkedCellLines.length === 0) {
+    html += '<div style="font-size:12px;color:var(--text-dim);font-style:italic;">No cell lines linked to this project</div>';
+  } else {
+    html += '<div style="display:flex;flex-wrap:gap:6px;">';
+    linkedCellLines.forEach(cellLine => {
+      html += '<div style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:4px;">';
+      html += `<span style="font-size:12px;color:var(--text);">${escFunction(cellLine)}</span>`;
+      const cellLineJson = JSON.stringify(cellLine);
+      html += `<button onclick="window.Petal?.features?.projectOperations?.removeCellLineFromProject(${project.id}, ${escAttrFunction(cellLineJson)})" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;line-height:1;padding:0;width:16px;height:16px;display:flex;align-items:center;justify-content:center;" title="Remove">×</button>`;
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+  html += '</div>';
+  
+  // Section 2: Recent Cell Log Entries
   const cellLog = project.cellLog || [];
   const recentEntries = [...cellLog]
     .sort((a, b) => {
@@ -170,32 +219,32 @@ export function renderCellLog(ctx, project) {
     })
     .slice(0, 10);
   
-  if (recentEntries.length === 0) {
-    contentEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-dim);font-size:12px;">No cell log entries yet. Add entries to track cell culture work.</div>';
-    return;
+  if (recentEntries.length > 0) {
+    html += '<div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;">Recent Entries</div>';
+    html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+    recentEntries.forEach(entry => {
+      const date = entry.date ? new Date(entry.date) : new Date();
+      const dateStr = date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' });
+      
+      html += '<div style="padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;">';
+      html += `<div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">${dateStr}</div>`;
+      html += `<div style="font-size:13px;color:var(--text);">`;
+      if (entry.line) {
+        html += `<strong>${escFunction(entry.line)}</strong>`;
+        if (entry.passage) html += ` P${entry.passage}`;
+        if (entry.seededDensity) html += ` — ${entry.seededDensity}`;
+        if (entry.location) html += ` (${escFunction(entry.location)})`;
+      }
+      if (entry.notes) {
+        html += `<div style="margin-top:4px;font-size:12px;color:var(--text-dim);">${escFunction(entry.notes)}</div>`;
+      }
+      html += '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  } else {
+    html += '<div style="text-align:center;padding:20px;color:var(--text-dim);font-size:12px;">No cell log entries yet. Add entries to track cell culture work.</div>';
   }
-  
-  let html = '<div style="display:flex;flex-direction:column;gap:8px;">';
-  recentEntries.forEach(entry => {
-    const date = entry.date ? new Date(entry.date) : new Date();
-    const dateStr = date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' });
-    
-    html += '<div style="padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;">';
-    html += `<div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">${dateStr}</div>`;
-    html += `<div style="font-size:13px;color:var(--text);">`;
-    if (entry.line) {
-      html += `<strong>${escFunction(entry.line)}</strong>`;
-      if (entry.passage) html += ` P${entry.passage}`;
-      if (entry.seededDensity) html += ` — ${entry.seededDensity}`;
-      if (entry.location) html += ` (${escFunction(entry.location)})`;
-    }
-    if (entry.notes) {
-      html += `<div style="margin-top:4px;font-size:12px;color:var(--text-dim);">${escFunction(entry.notes)}</div>`;
-    }
-    html += '</div>';
-    html += '</div>';
-  });
-  html += '</div>';
   
   contentEl.innerHTML = html;
 }
@@ -380,7 +429,7 @@ export function renderActiveArtifactsFiltered(ctx, project, projectTasks) {
     };
     const typeIcon = typeIcons[artifact.type] || '📦';
     
-    html += '<div onclick="openArtifactDetail(' + artifact.id + ')" style="padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:all .15s;" onmouseover="this.style.borderColor=\'var(--rose-soft)\'" onmouseout="this.style.borderColor=\'var(--border)\'">';
+    html += '<button type="button" data-action="artifact:open-detail" data-artifact-id="' + artifact.id + '" style="width:100%;text-align:left;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:all .15s;" onmouseover="this.style.borderColor=\'var(--rose-soft)\'" onmouseout="this.style.borderColor=\'var(--border)\'">';
     html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">`;
     html += `<span style="font-size:18px;">${typeIcon}</span>`;
     html += `<div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text);">${escFunction(artifact.name)} – ${latestVersion}</div>`;
@@ -388,7 +437,7 @@ export function renderActiveArtifactsFiltered(ctx, project, projectTasks) {
       html += `<div style="font-size:11px;color:var(--sage);margin-top:2px;">${linkedTasks.length} active task${linkedTasks.length > 1 ? 's' : ''}</div>`;
     }
     html += '</div></div>';
-    html += '</div>';
+    html += '</button>';
   });
   html += '</div>';
   
@@ -591,7 +640,7 @@ export function renderTaskItemCompact(ctx, task) {
   const estimated = task.estimatedMinutes ? `<span style="font-size:10px;color:var(--text-dim);margin-left:8px;">(${task.estimatedMinutes} min)</span>` : '';
   
   let html = '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;">';
-  html += `<div class="check-box ${task.done?'checked':''}" onclick="toggleTask(${task.id})" style="flex-shrink:0;"></div>`;
+  html += `<button type="button" class="check-box ${task.done?'checked':''}" data-action="task:toggle" data-task-id="${task.id}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;" title="Toggle task"></button>`;
   html += '<div style="flex:1;min-width:0;">';
   html += `<div style="font-size:13px;color:var(--text);display:flex;align-items:center;gap:6px;">${escFunction(task.title)}${estimated}</div>`;
   if (tdl) {
@@ -620,7 +669,7 @@ export function renderTaskItem(ctx, task, isStale = false, depTask = null) {
   const staleWarning = isStale ? '<span style="color:var(--overdue);font-size:10px;margin-left:8px;">⚠ Stale</span>' : '';
   
   let html = '<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;">';
-  html += `<div class="check-box ${task.done?'checked':''}" onclick="toggleTask(${task.id})" style="flex-shrink:0;"></div>`;
+  html += `<button type="button" class="check-box ${task.done?'checked':''}" data-action="task:toggle" data-task-id="${task.id}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;" title="Toggle task"></button>`;
   html += '<div style="flex:1;min-width:0;">';
   html += `<div style="font-size:13px;color:var(--text);display:flex;align-items:center;gap:6px;">${escFunction(task.title)}${protocolBadge}${staleWarning}</div>`;
   if (depTask) {
@@ -630,7 +679,7 @@ export function renderTaskItem(ctx, task, isStale = false, depTask = null) {
     html += `<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">${escFunction(tdl.text)}</div>`;
   }
   html += '</div>';
-  html += `<button data-action="edit-task" data-task-id="${task.id}" onclick="handleEditTaskAction(event, this)" style="padding:4px 8px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:10px;cursor:pointer;">Edit</button>`;
+  html += `<button data-action="edit-task" data-task-id="${task.id}" data-is-subtask="${task.isSubtask || false}" data-project-id="${task.projectId || ''}" style="padding:4px 8px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:10px;cursor:pointer;">Edit</button>`;
   html += '</div>';
   return html;
 }
@@ -640,7 +689,7 @@ function renderTaskItemCompactFallback(task, escFn, dueLabelFn) {
   const estimated = task.estimatedMinutes ? `<span style="font-size:10px;color:var(--text-dim);margin-left:8px;">(${task.estimatedMinutes} min)</span>` : '';
   
   let html = '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;">';
-  html += `<div class="check-box ${task.done?'checked':''}" onclick="toggleTask(${task.id})" style="flex-shrink:0;"></div>`;
+  html += `<button type="button" class="check-box ${task.done?'checked':''}" data-action="task:toggle" data-task-id="${task.id}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;" title="Toggle task"></button>`;
   html += '<div style="flex:1;min-width:0;">';
   html += `<div style="font-size:13px;color:var(--text);display:flex;align-items:center;gap:6px;">${escFn(task.title)}${estimated}</div>`;
   if (tdl) {
@@ -806,7 +855,7 @@ export function renderArtifacts(ctx) {
     };
     const typeIcon = typeIcons[artifact.type] || '📦';
     
-    html += `<div onclick="openArtifactDetail(${artifact.id})" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px;cursor:pointer;transition:all .15s;" onmouseover="this.style.borderColor='var(--rose-soft)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='var(--border)';this.style.transform='translateY(0)'">`;
+    html += `<button type="button" data-action="artifact:open-detail" data-artifact-id="${artifact.id}" style="width:100%;text-align:left;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px;cursor:pointer;transition:all .15s;" onmouseover="this.style.borderColor='var(--rose-soft)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='var(--border)';this.style.transform='translateY(0)'">`;
     html += `<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">`;
     html += `<span style="font-size:20px;flex-shrink:0;">${typeIcon}</span>`;
     html += `<div style="flex:1;min-width:0;">`;
@@ -829,7 +878,7 @@ export function renderArtifacts(ctx) {
       html += `<span style="margin-left:auto;${isToday ? 'color:var(--sage);font-weight:500;' : ''}">${isToday ? 'Today' : lastUpdated}</span>`;
     }
     html += `</div>`;
-    html += `</div>`;
+    html += `</button>`;
   });
   
   html += '</div>';
@@ -873,7 +922,7 @@ export function renderProtocolRuns(ctx) {
       ? (project.artifacts || []).find(a => a.id === run.linkedArtifactId)
       : null;
     
-    html += `<div onclick="openProtocolRunDetail(${run.id})" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px;cursor:pointer;transition:all .15s;" onmouseover="this.style.borderColor='var(--rose-soft)'" onmouseout="this.style.borderColor='var(--border)'">`;
+    html += `<button type="button" data-action="protocol:open-run-detail" data-run-id="${run.id}" style="width:100%;text-align:left;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px;cursor:pointer;transition:all .15s;" onmouseover="this.style.borderColor='var(--rose-soft)'" onmouseout="this.style.borderColor='var(--border)'">`;
     html += `<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">`;
     html += `<div style="flex:1;">`;
     html += `<div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px;">${escFunction(run.protocolName)}</div>`;
@@ -892,7 +941,7 @@ export function renderProtocolRuns(ctx) {
       const latestLog = run.dailyLog[run.dailyLog.length - 1];
       html += `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:12px;color:var(--text-dim);line-height:1.4;">${escFunction(latestLog.entry || latestLog)}</div>`;
     }
-    html += `</div>`;
+    html += `</button>`;
   });
   
   html += '</div>';

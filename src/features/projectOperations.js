@@ -1616,6 +1616,291 @@ export async function openAddCellLogEntry(ctx) {
 }
 
 /**
+ * Get available cell lines from settings and project cell logs
+ */
+function getAvailableCellLines(ctx) {
+  const { settings, projects } = ctx;
+  const cellLines = new Set();
+  
+  // Get from global cell log settings
+  if (settings?.cellLog?.cellTypes) {
+    settings.cellLog.cellTypes.forEach(type => cellLines.add(type));
+  }
+  
+  // Get from all project cell logs
+  if (projects) {
+    projects.forEach(project => {
+      if (project.cellLog && Array.isArray(project.cellLog)) {
+        project.cellLog.forEach(entry => {
+          if (entry.line) {
+            cellLines.add(entry.line);
+          }
+        });
+      }
+    });
+  }
+  
+  return Array.from(cellLines).sort();
+}
+
+/**
+ * Open modal to link cell line to project
+ */
+export function openLinkCellLineModal(ctx, projectId) {
+  const { projects, esc: escFn, escAttr: escAttrFn, renderProjectHeader: renderProjectHeaderFn } = ctx;
+  const escFunction = escFn || esc;
+  const escAttrFunction = escAttrFn || escAttr;
+  
+  const project = projects.find(p => p.id === projectId);
+  if (!project) return;
+  
+  // Get available cell lines
+  const availableCellLines = getAvailableCellLines(ctx);
+  const linkedCellLines = Array.isArray(project.linkedCellLines) ? project.linkedCellLines : [];
+  const unlinkedCellLines = availableCellLines.filter(line => !linkedCellLines.includes(line));
+  
+  // Create modal HTML
+  const modal = document.getElementById('link-cell-line-modal');
+  if (!modal) {
+    // Create modal if it doesn't exist
+    const modalEl = document.createElement('div');
+    modalEl.id = 'link-cell-line-modal';
+    modalEl.style.cssText = 'display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10000;align-items:center;justify-content:center;';
+    modalEl.innerHTML = `
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto;">
+        <div id="link-cell-line-modal-content"></div>
+      </div>
+    `;
+    document.body.appendChild(modalEl);
+  }
+  
+  const modalContent = document.getElementById('link-cell-line-modal-content');
+  if (!modalContent) return;
+  
+  let contentHTML = `
+    <div style="margin-bottom:16px;">
+      <h2 style="font-size:18px;font-weight:600;color:var(--text);margin:0 0 8px 0;">Link Cell Line to Project</h2>
+      <p style="font-size:12px;color:var(--text-dim);margin:0;">Select a cell line to link to "${escFunction(project.name || 'Untitled Project')}"</p>
+    </div>
+  `;
+  
+  if (unlinkedCellLines.length > 0) {
+    contentHTML += `
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
+        ${unlinkedCellLines.map(cellLine => `
+          <button type="button" 
+                  data-action="select-cell-line" 
+                  data-project-id="${projectId}" 
+                  data-cell-line="${escAttrFunction(cellLine)}"
+                  style="padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;text-align:left;font-size:13px;color:var(--text);cursor:pointer;transition:all 0.15s;"
+                  onmouseover="this.style.background='var(--bg3)';this.style.borderColor='var(--rose)'"
+                  onmouseout="this.style.background='var(--bg2)';this.style.borderColor='var(--border)'">
+            ${escFunction(cellLine)}
+          </button>
+        `).join('')}
+      </div>
+    `;
+  } else {
+    contentHTML += `
+      <div style="padding:20px;text-align:center;color:var(--text-dim);font-size:12px;">
+        No available cell lines. Add cell lines in the Cell Log page first.
+      </div>
+    `;
+  }
+  
+  // Add option to create new cell line
+  contentHTML += `
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+      <label style="display:block;font-size:12px;color:var(--text-dim);margin-bottom:8px;">Or create new cell line:</label>
+      <div style="display:flex;gap:8px;">
+        <input type="text" 
+               id="new-cell-line-input" 
+               placeholder="Enter cell line name (e.g., MCF10A)"
+               style="flex:1;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:13px;color:var(--text);font-family:inherit;"
+               onkeypress="if(event.key==='Enter'){const btn=document.getElementById('create-and-link-cell-line-btn');if(btn)btn.click();}">
+        <button type="button" 
+                id="create-and-link-cell-line-btn"
+                data-action="create-and-link-cell-line" 
+                data-project-id="${projectId}"
+                style="padding:8px 16px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:500;transition:all 0.15s;"
+                onmouseover="this.style.background='var(--rose-dark)'"
+                onmouseout="this.style.background='var(--rose)'">
+          Create & Link
+        </button>
+      </div>
+    </div>
+  `;
+  
+  contentHTML += `
+    <div style="margin-top:16px;display:flex;justify-content:flex-end;">
+      <button type="button" 
+              data-action="close-link-cell-line-modal"
+              style="padding:8px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:13px;color:var(--text);cursor:pointer;transition:all 0.15s;"
+              onmouseover="this.style.background='var(--bg3)'"
+              onmouseout="this.style.background='var(--bg2)'">
+        Cancel
+      </button>
+    </div>
+  `;
+  
+  modalContent.innerHTML = contentHTML;
+  modal.style.display = 'flex';
+  
+  // Focus on input if available
+  const input = document.getElementById('new-cell-line-input');
+  if (input) {
+    setTimeout(() => input.focus(), 100);
+  }
+}
+
+/**
+ * Link cell line to project
+ */
+export async function linkCellLineToProject(ctx, projectId, cellLine) {
+  const { projects, save, renderProjectHeader: renderProjectHeaderFn } = ctx;
+  
+  const project = projects.find(p => p.id === projectId);
+  if (!project) return;
+  
+  if (!project.linkedCellLines) {
+    project.linkedCellLines = [];
+  }
+  
+  // Check if already linked
+  if (project.linkedCellLines.includes(cellLine)) {
+    return; // Already linked
+  }
+  
+  project.linkedCellLines.push(cellLine);
+  
+  // Update store
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    const updatedProjects = (state.projects || []).map(p => {
+      if (p.id === projectId) {
+        return { ...p, linkedCellLines: project.linkedCellLines };
+      }
+      return p;
+    });
+    updateStoreSafely({ projects: updatedProjects });
+  } else {
+    if (save) await save();
+  }
+  
+  // Close modal
+  const modal = document.getElementById('link-cell-line-modal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+  
+  // Re-render project header
+  if (renderProjectHeaderFn) {
+    renderProjectHeaderFn(ctx, project);
+  } else if (window.Petal?.ui?.renderProjectHeader) {
+    window.Petal.ui.renderProjectHeader(ctx, project);
+  }
+  
+  // Re-render if needed
+  if (window.Petal?.handlers?.render) {
+    window.Petal.handlers.render();
+  }
+}
+
+/**
+ * Unlink cell line from project
+ */
+export async function unlinkCellLineFromProject(ctx, projectId, cellLine) {
+  const { projects, save, renderProjectHeader: renderProjectHeaderFn } = ctx;
+  
+  const project = projects.find(p => p.id === projectId);
+  if (!project) return;
+  
+  if (!project.linkedCellLines) {
+    project.linkedCellLines = [];
+  }
+  
+  project.linkedCellLines = project.linkedCellLines.filter(line => line !== cellLine);
+  
+  // Update store
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    const updatedProjects = (state.projects || []).map(p => {
+      if (p.id === projectId) {
+        return { ...p, linkedCellLines: project.linkedCellLines };
+      }
+      return p;
+    });
+    updateStoreSafely({ projects: updatedProjects });
+  } else {
+    if (save) await save();
+  }
+  
+  // Re-render project header
+  if (renderProjectHeaderFn) {
+    renderProjectHeaderFn(ctx, project);
+  } else if (window.Petal?.ui?.renderProjectHeader) {
+    window.Petal.ui.renderProjectHeader(ctx, project);
+  }
+  
+  // Re-render if needed
+  if (window.Petal?.handlers?.render) {
+    window.Petal.handlers.render();
+  }
+}
+
+/**
+ * Create new cell line and link it to project
+ */
+export async function createAndLinkCellLine(ctx, projectId) {
+  const { settings, projects, save } = ctx;
+  
+  const input = document.getElementById('new-cell-line-input');
+  if (!input) return;
+  
+  const cellLineName = input.value.trim();
+  if (!cellLineName) {
+    input.focus();
+    return;
+  }
+  
+  // Add to settings cell types if not already there
+  if (settings && settings.cellLog) {
+    if (!settings.cellLog.cellTypes) {
+      settings.cellLog.cellTypes = [];
+    }
+    const exists = settings.cellLog.cellTypes.some(type => type.toLowerCase() === cellLineName.toLowerCase());
+    if (!exists) {
+      settings.cellLog.cellTypes.push(cellLineName);
+      settings.cellLog.cellTypes.sort((a, b) => a.localeCompare(b));
+      
+      // Update store
+      if (window.Petal?.store) {
+        const state = window.Petal.store.getState();
+        updateStoreSafely({ settings });
+      } else {
+        if (save) await save();
+      }
+    }
+  }
+  
+  // Link to project
+  await linkCellLineToProject(ctx, projectId, cellLineName);
+  
+  // Clear input
+  input.value = '';
+}
+
+/**
+ * Close link cell line modal
+ */
+export function closeLinkCellLineModal() {
+  const modal = document.getElementById('link-cell-line-modal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+}
+
+/**
  * Open protocol run detail modal
  */
 export function openProtocolRunDetail(ctx, runId) {
@@ -2014,4 +2299,126 @@ export async function addTaskToProject(ctx, projId) {
   if (priInput) priInput.value = 'medium';
   if (dueInput) dueInput.value = '';
   if (laneInput) laneInput.value = '';
+}
+
+/**
+ * Add a cell line to a project (dropdown-based)
+ */
+export async function addCellLineToProject(projectId) {
+  const state = window.Petal?.store?.getState();
+  if (!state) return;
+  
+  const project = (state.projects || []).find(p => p.id === projectId);
+  if (!project) return;
+  
+  const selectEl = document.getElementById('cell-line-link-select');
+  if (!selectEl) return;
+  
+  const cellLine = selectEl.value.trim();
+  if (!cellLine) return;
+  
+  const linkedCellLines = Array.isArray(project.linkedCellLines) ? project.linkedCellLines : [];
+  
+  // Check if already linked
+  if (linkedCellLines.includes(cellLine)) {
+    selectEl.value = '';
+    return;
+  }
+  
+  // Add cell line
+  const updatedProjects = (state.projects || []).map(p => {
+    if (p.id === projectId) {
+      return {
+        ...p,
+        linkedCellLines: [...linkedCellLines, cellLine]
+      };
+    }
+    return p;
+  });
+  
+  updateStoreSafely({ projects: updatedProjects });
+  
+  // Clear select
+  selectEl.value = '';
+  
+  // Re-render cell log view
+  const updatedProject = updatedProjects.find(p => p.id === projectId);
+  if (updatedProject) {
+    const updatedState = window.Petal?.store?.getState();
+    const ctx = {
+      esc: window.Petal?.utils?.strings?.esc || ((s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;')),
+      projects: updatedState?.projects || []
+    };
+    
+    // Import and call renderCellLog
+    import('../ui/renderProjectViews.js').then(module => {
+      if (module.renderCellLog) {
+        module.renderCellLog(ctx, updatedProject);
+      }
+    }).catch(() => {
+      // Fallback
+      if (typeof window.renderCellLog === 'function') {
+        window.renderCellLog(updatedProject);
+      }
+    });
+  }
+}
+
+/**
+ * Remove a cell line from a project (dropdown-based)
+ */
+export async function removeCellLineFromProject(projectId, cellLineStr) {
+  const state = window.Petal?.store?.getState();
+  if (!state) return;
+  
+  // Parse cellLineStr if it's a JSON string
+  let cellLine = cellLineStr;
+  try {
+    if (typeof cellLineStr === 'string' && cellLineStr.startsWith('"')) {
+      cellLine = JSON.parse(cellLineStr);
+    }
+  } catch (e) {
+    // If parsing fails, use as-is
+    cellLine = cellLineStr;
+  }
+  
+  const project = (state.projects || []).find(p => p.id === projectId);
+  if (!project) return;
+  
+  const linkedCellLines = Array.isArray(project.linkedCellLines) ? project.linkedCellLines : [];
+  const updatedLinkedCellLines = linkedCellLines.filter(line => line !== cellLine);
+  
+  const updatedProjects = (state.projects || []).map(p => {
+    if (p.id === projectId) {
+      return {
+        ...p,
+        linkedCellLines: updatedLinkedCellLines
+      };
+    }
+    return p;
+  });
+  
+  updateStoreSafely({ projects: updatedProjects });
+  
+  // Re-render cell log view
+  const updatedProject = updatedProjects.find(p => p.id === projectId);
+  if (updatedProject) {
+    const updatedState = window.Petal?.store?.getState();
+    const ctx = {
+      esc: window.Petal?.utils?.strings?.esc || ((s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;')),
+      projects: updatedState?.projects || []
+    };
+    
+    // Import and call renderCellLog
+    import('../ui/renderProjectViews.js').then(module => {
+      if (module.renderCellLog) {
+        module.renderCellLog(ctx, updatedProject);
+      }
+    }).catch(() => {
+      // Fallback
+      if (typeof window.renderCellLog === 'function') {
+        window.renderCellLog(updatedProject);
+      }
+    });
+  }
 }

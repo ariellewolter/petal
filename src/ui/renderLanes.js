@@ -124,7 +124,7 @@ export async function renderLane(ctx, laneName, allTasks) {
     return `<div class="task-card ${t.done?'done':''} ${blocked?'blocked':''}" data-priority="${t.priority}">
       <div class="task-top">
         <div class="task-content">
-          <div class="check-box ${t.done?'checked':''}" onclick="toggleTask(${t.id})"></div>
+          <button type="button" class="check-box ${t.done?'checked':''}" data-action="task:toggle" data-task-id="${t.id}" style="background:none;border:none;padding:0;cursor:pointer;" title="Toggle task"></button>
           <div class="task-body" style="flex:1;">
             <div class="task-title">${escFunction(t.title)}</div>
             <div class="task-meta-row" style="margin-top:6px;">
@@ -144,8 +144,8 @@ export async function renderLane(ctx, laneName, allTasks) {
           </div>
         </div>
         <div class="task-actions">
-          <button type="button" class="btn-del" onclick="openTaskDrawer(${t.id})" title="Open drawer" style="font-size:11px;">📝</button>
-          <button type="button" class="btn-del" data-action="edit-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" onclick="handleEditTaskAction(event, this)" title="Edit">✎</button>
+          <button type="button" class="btn-del" data-action="task:open-drawer" data-task-id="${t.id}" title="Open drawer" style="font-size:11px;">📝</button>
+          <button type="button" class="btn-del" data-action="edit-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" title="Edit">✎</button>
           <button type="button" class="btn-del btn-delete" data-action="delete" data-id="${String(t.id)}" data-task-id="${String(t.id)}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" title="Delete">×</button>
         </div>
       </div>
@@ -238,7 +238,7 @@ export async function renderUnassignedLane(ctx, allTasks) {
     return `<div class="task-card ${t.done?'done':''} ${blocked?'blocked':''}" data-priority="${t.priority}">
       <div class="task-top">
         <div class="task-content">
-          <div class="check-box ${t.done?'checked':''}" onclick="toggleTask(${t.id})"></div>
+          <button type="button" class="check-box ${t.done?'checked':''}" data-action="task:toggle" data-task-id="${t.id}" style="background:none;border:none;padding:0;cursor:pointer;" title="Toggle task"></button>
           <div class="task-body" style="flex:1;">
             <div class="task-title">${escFunction(t.title)}</div>
             <div class="task-meta-row" style="margin-top:6px;">
@@ -256,8 +256,8 @@ export async function renderUnassignedLane(ctx, allTasks) {
           </div>
         </div>
         <div class="task-actions">
-          <button type="button" class="btn-del" onclick="openTaskDrawer(${t.id})" title="Open drawer" style="font-size:11px;">📝</button>
-          <button type="button" class="btn-del" data-action="edit-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" onclick="handleEditTaskAction(event, this)" title="Edit">✎</button>
+          <button type="button" class="btn-del" data-action="task:open-drawer" data-task-id="${t.id}" title="Open drawer" style="font-size:11px;">📝</button>
+          <button type="button" class="btn-del" data-action="edit-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" title="Edit">✎</button>
           <button type="button" class="btn-del btn-delete" data-action="delete" data-id="${String(t.id)}" data-task-id="${String(t.id)}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" title="Delete">×</button>
         </div>
       </div>

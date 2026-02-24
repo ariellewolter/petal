@@ -251,8 +251,8 @@ function renderTaskItem(task, state) {
   return `<div class="task-card ${task.done ? 'done' : ''}" data-id="${task.id}" data-priority="${priorityClass}">
     <div class="task-top">
       <div class="task-content">
-        <div class="check-box ${task.done ? 'checked' : ''}"
-             onclick="window.Petal?.handlers?.toggleTask(${task.id})"></div>
+        <button type="button" class="check-box ${task.done ? 'checked' : ''}"
+             data-action="task:toggle" data-task-id="${task.id}" style="background:none;border:none;padding:0;cursor:pointer;" title="Toggle task"></button>
         
         <div class="task-body">
           <div class="task-title">
@@ -273,8 +273,8 @@ function renderTaskItem(task, state) {
       </div>
       
       <div class="task-actions" style="display:flex;gap:4px;align-items:center;">
-        <button class="btn-del" onclick="if(window.Petal?.features?.taskDrawer?.openTaskDrawer){window.Petal.features.taskDrawer.openTaskDrawer(${task.id})}else if(typeof openTaskDrawer==='function'){openTaskDrawer(${task.id})}" title="Open drawer (Notes, Files, Subtasks)" style="font-size:13px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);">📝</button>
-        <button class="btn-del btn-edit" data-task-id="${String(task.id)}" title="Edit" style="font-size:13px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);">✎</button>
+        <button class="btn-del" data-action="task:open-drawer" data-task-id="${String(task.id)}" title="Open drawer (Notes, Files, Subtasks)" style="font-size:13px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);">📝</button>
+        <button class="btn-del btn-edit" data-action="edit-task" data-task-id="${String(task.id)}" title="Edit" style="font-size:13px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);">✎</button>
         <button class="btn-del btn-delete" data-action="delete" data-id="${String(task.id)}" data-task-id="${String(task.id)}" data-is-subtask="false" data-project-id="${task.projectId || ''}" title="Delete" style="font-size:16px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:bold;opacity:1;">×</button>
       </div>
     </div>

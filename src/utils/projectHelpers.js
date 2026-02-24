@@ -135,6 +135,9 @@ export function normalizeProjectStructure(project) {
   // Cell Log (lightweight cell tracking)
   normalized.cellLog = Array.isArray(project.cellLog) ? project.cellLog : [];
   
+  // Linked Cell Lines - array of cell line names linked to this project
+  normalized.linkedCellLines = Array.isArray(project.linkedCellLines) ? project.linkedCellLines : [];
+  
   // Artifacts - the center of gravity (figure, dataset, build, protocol, manuscript)
   normalized.artifacts = Array.isArray(project.artifacts) ? project.artifacts.map((art, idx) => ({
     id: art.id || Date.now() + idx + 1,

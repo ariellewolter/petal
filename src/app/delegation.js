@@ -62,6 +62,16 @@ export function setupEventDelegation() {
       return;
     }
     
+    // Debug logging
+    console.log('🔘 Button clicked:', {
+      action,
+      target: e.target?.tagName,
+      button: actionBtn.tagName,
+      projectId: actionBtn.getAttribute('data-project-id'),
+      taskId: actionBtn.getAttribute('data-task-id'),
+      hasFeatures: !!window.Petal?.features
+    });
+    
     // Edit task - use helper function
     if (action === 'edit-task') {
       // Pass the button element so handleEditTaskAction can extract taskId correctly
@@ -83,6 +93,133 @@ export function setupEventDelegation() {
       
       if (fileId && projectId && window.confirmDeleteFile) {
         window.confirmDeleteFile(projectId, fileId);
+      }
+      return;
+    }
+    
+    // Link cell line to project
+    if (action === 'link-cell-line') {
+      e.stopPropagation();
+      e.preventDefault();
+      const projectId = actionBtn.getAttribute('data-project-id') || window.selectedProjectId;
+      if (!projectId) {
+        alert('Please select a project first');
+        return;
+      }
+      
+      const state = window.Petal?.store?.getState() || {};
+      const baseCtx = window.Petal?.handlers?.createPageContext?.() || {};
+      const ctx = {
+        ...baseCtx,
+        tasks: state.tasks || [],
+        projects: state.projects || [],
+        settings: state.settings || {},
+        save: window.Petal?.handlers?.save || (() => Promise.resolve()),
+        render: window.Petal?.handlers?.render || (() => {}),
+        renderProjectHeader: window.Petal?.ui?.renderProjectHeader
+      };
+      
+      if (window.Petal?.features?.projectOperations?.openLinkCellLineModal) {
+        window.Petal.features.projectOperations.openLinkCellLineModal(ctx, projectId);
+      } else if (window.openLinkCellLineModal) {
+        window.openLinkCellLineModal(projectId);
+      }
+      return;
+    }
+    
+    // Unlink cell line from project
+    if (action === 'unlink-cell-line') {
+      e.stopPropagation();
+      e.preventDefault();
+      const projectId = actionBtn.getAttribute('data-project-id');
+      const cellLine = actionBtn.getAttribute('data-cell-line');
+      if (!projectId || !cellLine) {
+        return;
+      }
+      
+      const state = window.Petal?.store?.getState() || {};
+      const ctx = {
+        tasks: state.tasks || [],
+        projects: state.projects || [],
+        save: window.Petal?.handlers?.save || (() => Promise.resolve()),
+        render: window.Petal?.handlers?.render || (() => {}),
+        renderProjectHeader: window.Petal?.ui?.renderProjectHeader,
+        ...(window.Petal?.handlers?.createPageContext?.() || {})
+      };
+      
+      if (window.Petal?.features?.projectOperations?.unlinkCellLineFromProject) {
+        window.Petal.features.projectOperations.unlinkCellLineFromProject(ctx, projectId, cellLine);
+      } else if (window.unlinkCellLineFromProject) {
+        window.unlinkCellLineFromProject(projectId, cellLine);
+      }
+      return;
+    }
+    
+    // Select cell line from modal
+    if (action === 'select-cell-line') {
+      e.stopPropagation();
+      e.preventDefault();
+      const projectId = actionBtn.getAttribute('data-project-id');
+      const cellLine = actionBtn.getAttribute('data-cell-line');
+      if (!projectId || !cellLine) {
+        return;
+      }
+      
+      const state = window.Petal?.store?.getState() || {};
+      const ctx = {
+        tasks: state.tasks || [],
+        projects: state.projects || [],
+        save: window.Petal?.handlers?.save || (() => Promise.resolve()),
+        render: window.Petal?.handlers?.render || (() => {}),
+        renderProjectHeader: window.Petal?.ui?.renderProjectHeader,
+        ...(window.Petal?.handlers?.createPageContext?.() || {})
+      };
+      
+      if (window.Petal?.features?.projectOperations?.linkCellLineToProject) {
+        window.Petal.features.projectOperations.linkCellLineToProject(ctx, projectId, cellLine);
+      } else if (window.linkCellLineToProject) {
+        window.linkCellLineToProject(projectId, cellLine);
+      }
+      return;
+    }
+    
+    // Create and link new cell line
+    if (action === 'create-and-link-cell-line') {
+      e.stopPropagation();
+      e.preventDefault();
+      const projectId = actionBtn.getAttribute('data-project-id');
+      if (!projectId) {
+        return;
+      }
+      
+      const state = window.Petal?.store?.getState() || {};
+      const baseCtx = window.Petal?.handlers?.createPageContext?.() || {};
+      const ctx = {
+        ...baseCtx,
+        tasks: state.tasks || [],
+        projects: state.projects || [],
+        settings: state.settings || {},
+        save: window.Petal?.handlers?.save || (() => Promise.resolve()),
+        render: window.Petal?.handlers?.render || (() => {}),
+        renderProjectHeader: window.Petal?.ui?.renderProjectHeader
+      };
+      
+      if (window.Petal?.features?.projectOperations?.createAndLinkCellLine) {
+        window.Petal.features.projectOperations.createAndLinkCellLine(ctx, projectId);
+      } else if (window.createAndLinkCellLine) {
+        window.createAndLinkCellLine(projectId);
+      }
+      return;
+    }
+    
+    // Close link cell line modal
+    if (action === 'close-link-cell-line-modal') {
+      e.stopPropagation();
+      e.preventDefault();
+      if (window.Petal?.features?.projectOperations?.closeLinkCellLineModal) {
+        window.Petal.features.projectOperations.closeLinkCellLineModal();
+      } else if (window.closeLinkCellLineModal) {
+        window.closeLinkCellLineModal();
       }
       return;
     }
@@ -485,6 +622,226 @@ export function setupEventDelegation() {
       return;
     }
     
+    // Task toggle (checkbox)
+    if (action === 'task:toggle') {
+      e.stopPropagation();
+      const taskId = actionBtn.getAttribute('data-task-id') || actionBtn.getAttribute('data-id');
+      if (taskId) {
+        const state = window.Petal?.store?.getState() || {};
+        const ctx = {
+          tasks: state.tasks || [],
+          projects: state.projects || [],
+          save: window.Petal?.handlers?.save || (() => Promise.resolve()),
+          render: window.Petal?.handlers?.render || (() => {})
+        };
+        if (window.Petal?.features?.taskOperations?.toggleTask) {
+          window.Petal.features.taskOperations.toggleTask(ctx, taskId);
+        } else if (window.Petal?.handlers?.toggleTask) {
+          window.Petal.handlers.toggleTask(taskId);
+        } else if (window.toggleTask) {
+          window.toggleTask(taskId);
+        }
+      }
+      return;
+    }
+    
+    // Project actions
+    if (action === 'open-project' || action === 'project:open') {
+      e.stopPropagation();
+      e.preventDefault();
+      const projectId = actionBtn.getAttribute('data-project-id');
+      console.log('🔘 Open project:', { projectId, hasFeatures: !!window.Petal?.features?.matrixOperations });
+      if (projectId) {
+        // Set selectedProjectId before calling openProjectView
+        if (typeof window.selectedProjectId !== 'undefined') {
+          window.selectedProjectId = projectId;
+        }
+        const state = window.Petal?.store?.getState() || {};
+        const ctx = {
+          tasks: state.tasks || [],
+          projects: state.projects || [],
+          selectedProjectId: projectId, // Add selectedProjectId to context
+          save: window.Petal?.handlers?.save || (() => Promise.resolve()),
+          render: window.Petal?.handlers?.render || (() => {})
+        };
+        if (window.Petal?.features?.matrixOperations?.openProjectView) {
+          window.Petal.features.matrixOperations.openProjectView(ctx, projectId);
+        } else if (window.openProjectView) {
+          window.openProjectView(projectId);
+        } else {
+          console.warn('⚠️ openProjectView not available');
+        }
+      }
+      return;
+    }
+    if (action === 'project:toggle-done') {
+      e.stopPropagation();
+      e.preventDefault();
+      const projectId = actionBtn.getAttribute('data-project-id');
+      console.log('🔘 Toggle project done:', { projectId, hasFeatures: !!window.Petal?.features?.projectOperations });
+      if (projectId) {
+        const state = window.Petal?.store?.getState() || {};
+        const ctx = {
+          tasks: state.tasks || [],
+          projects: state.projects || [],
+          save: window.Petal?.handlers?.save || (() => Promise.resolve()),
+          render: window.Petal?.handlers?.render || (() => {})
+        };
+        if (window.Petal?.features?.projectOperations?.toggleProjectDone) {
+          window.Petal.features.projectOperations.toggleProjectDone(ctx, projectId);
+        } else if (window.toggleProjectDone) {
+          window.toggleProjectDone(projectId);
+        } else {
+          console.warn('⚠️ toggleProjectDone not available');
+        }
+      }
+      return;
+    }
+    if (action === 'project:delete') {
+      e.stopPropagation();
+      e.preventDefault();
+      const projectId = actionBtn.getAttribute('data-project-id');
+      if (projectId && window.confirm('Are you sure you want to delete this project?')) {
+        const state = window.Petal?.store?.getState() || {};
+        const ctx = {
+          tasks: state.tasks || [],
+          projects: state.projects || [],
+          save: window.Petal?.handlers?.save || (() => Promise.resolve()),
+          render: window.Petal?.handlers?.render || (() => {})
+        };
+        if (window.Petal?.features?.deleteHandlers?.delProject) {
+          window.Petal.features.deleteHandlers.delProject(ctx, projectId);
+        } else if (window.delProject) {
+          window.delProject(projectId);
+        }
+      }
+      return;
+    }
+    if (action === 'project:toggle-open') {
+      e.stopPropagation();
+      e.preventDefault();
+      const projectId = actionBtn.getAttribute('data-project-id');
+      if (projectId) {
+        const state = window.Petal?.store?.getState() || {};
+        const ctx = {
+          tasks: state.tasks || [],
+          projects: state.projects || [],
+          save: window.Petal?.handlers?.save || (() => Promise.resolve()),
+          render: window.Petal?.handlers?.render || (() => {})
+        };
+        if (window.Petal?.features?.projectOperations?.toggleProjectOpen) {
+          window.Petal.features.projectOperations.toggleProjectOpen(ctx, projectId);
+        } else if (window.toggleProjectOpen) {
+          window.toggleProjectOpen(projectId);
+        }
+      }
+      return;
+    }
+    if (action === 'project:clear-selection') {
+      e.stopPropagation();
+      e.preventDefault();
+      const projectId = actionBtn.getAttribute('data-project-id');
+      if (projectId && window.clearSelection) {
+        window.clearSelection(projectId);
+      }
+      return;
+    }
+    
+    // Project files tab switching
+    if (action === 'project-files:switch-tab' || action === 'switch-project-files-tab') {
+      e.stopPropagation();
+      e.preventDefault();
+      const tab = actionBtn.getAttribute('data-tab');
+      console.log('🔘 Switching project files tab:', { action, tab, hasFunction: !!window.switchProjectFilesTab });
+      if (tab && window.switchProjectFilesTab) {
+        window.switchProjectFilesTab(tab);
+      } else {
+        console.warn('⚠️ switchProjectFilesTab not available');
+      }
+      return;
+    }
+    
+    // Subtask actions
+    if (action === 'subtask:toggle') {
+      e.stopPropagation();
+      const taskId = actionBtn.getAttribute('data-task-id');
+      const subtaskId = actionBtn.getAttribute('data-subtask-id');
+      if (taskId && subtaskId && window.toggleTaskSubtask) {
+        window.toggleTaskSubtask(taskId, subtaskId);
+      }
+      return;
+    }
+    if (action === 'task:toggle-add-subtask') {
+      e.stopPropagation();
+      const taskId = actionBtn.getAttribute('data-task-id');
+      if (taskId && window.toggleAddSubtaskToTask) {
+        window.toggleAddSubtaskToTask(taskId);
+      }
+      return;
+    }
+    if (action === 'task:add-subtask-inline') {
+      e.stopPropagation();
+      e.preventDefault();
+      const taskId = actionBtn.getAttribute('data-task-id');
+      if (taskId && window.addSubtaskToTaskInline) {
+        window.addSubtaskToTaskInline(taskId);
+      }
+      return;
+    }
+    if (action === 'subtask:move-up' || action === 'subtask:move-down') {
+      e.stopPropagation();
+      e.preventDefault();
+      const taskId = actionBtn.getAttribute('data-task-id');
+      const subtaskId = actionBtn.getAttribute('data-subtask-id');
+      const order = parseInt(actionBtn.getAttribute('data-order') || '0');
+      const direction = action === 'subtask:move-up' ? 'up' : 'down';
+      if (taskId && subtaskId && window.moveTaskInSubtask) {
+        window.moveTaskInSubtask(taskId, subtaskId, order, direction);
+      }
+      return;
+    }
+    if (action === 'subtask:add-task') {
+      e.stopPropagation();
+      e.preventDefault();
+      const projectId = actionBtn.getAttribute('data-project-id');
+      const subtaskId = actionBtn.getAttribute('data-subtask-id');
+      if (projectId && subtaskId && window.addTaskToSubtask) {
+        window.addTaskToSubtask(projectId, subtaskId);
+      }
+      return;
+    }
+    
+    // File actions
+    if (action === 'file:toggle-note') {
+      e.stopPropagation();
+      e.preventDefault();
+      const fileId = actionBtn.getAttribute('data-file-id');
+      if (fileId && window.toggleFileNote) {
+        window.toggleFileNote(fileId, actionBtn);
+      }
+      return;
+    }
+    
+    // Artifact actions
+    if (action === 'artifact:open-detail') {
+      e.stopPropagation();
+      const artifactId = actionBtn.getAttribute('data-artifact-id');
+      if (artifactId && window.openArtifactDetail) {
+        window.openArtifactDetail(artifactId);
+      }
+      return;
+    }
+    
+    // Protocol actions
+    if (action === 'protocol:open-run-detail') {
+      e.stopPropagation();
+      const runId = actionBtn.getAttribute('data-run-id');
+      if (runId && window.openProtocolRunDetail) {
+        window.openProtocolRunDetail(runId);
+      }
+      return;
+    }
+    
     // Workflow actions
     if (action === 'workflow:switch-view') {
       e.stopPropagation();
@@ -637,10 +994,12 @@ export function setupEventDelegation() {
     
     // Add project task
     if (action === 'add-project-task') {
+      console.log('🔘 Add project task handler reached');
       e.stopPropagation();
       e.preventDefault();
       // Get projectId from button's data attribute first, then fallback to window.selectedProjectId
       const projectId = actionBtn.getAttribute('data-project-id') || window.selectedProjectId;
+      console.log('🔘 Add project task:', { projectId, hasModalOps: !!window.Petal?.features?.modalOperations });
       if (!projectId) {
         alert('Please select a project first');
         return;
@@ -656,8 +1015,10 @@ export function setupEventDelegation() {
       };
       
       if (window.Petal?.features?.modalOperations?.openProjectAddTaskModal) {
+        console.log('✅ Calling openProjectAddTaskModal with projectId:', projectId);
         window.Petal.features.modalOperations.openProjectAddTaskModal(ctx, projectId);
       } else if (window.openProjectAddTaskModal) {
+        console.log('✅ Calling window.openProjectAddTaskModal with projectId:', projectId);
         // Try calling with context if function accepts it
         if (window.openProjectAddTaskModal.length === 2) {
           window.openProjectAddTaskModal(ctx, projectId);
@@ -668,6 +1029,8 @@ export function setupEventDelegation() {
           }
           window.openProjectAddTaskModal(projectId);
         }
+      } else {
+        console.warn('⚠️ openProjectAddTaskModal not available');
       }
       return;
     }
@@ -719,11 +1082,42 @@ export function setupEventDelegation() {
     // Task actions
     if (action === 'task:add-matrix') {
       e.stopPropagation();
+      e.preventDefault();
+      // Get projectId from button's data attribute, or fallback to window.selectedProjectId
+      const projectId = actionBtn.getAttribute('data-project-id') || window.selectedProjectId;
+      console.log('🔘 Add task to matrix:', { 
+        projectId, 
+        windowSelectedProjectId: window.selectedProjectId,
+        hasModalOps: !!window.Petal?.features?.modalOperations 
+      });
+      
+      if (!projectId) {
+        console.warn('⚠️ No projectId available for task:add-matrix');
+        alert('Please select a project first');
+        return;
+      }
+      
+      // Ensure window.selectedProjectId is set
+      if (typeof window.selectedProjectId !== 'undefined') {
+        window.selectedProjectId = projectId;
+      }
+      
+      const state = window.Petal?.store?.getState() || {};
+      const ctx = {
+        tasks: state.tasks || [],
+        projects: state.projects || [],
+        selectedProjectId: projectId, // Ensure selectedProjectId is in context
+        save: window.Petal?.handlers?.save || (() => Promise.resolve()),
+        render: window.Petal?.handlers?.render || (() => {})
+      };
+      
       if (window.Petal?.features?.modalOperations?.openMatrixAddTaskModal) {
-        const ctx = window.Petal?.handlers?.createPageContext?.() || window.createPageContext?.() || {};
+        console.log('✅ Calling openMatrixAddTaskModal with projectId:', projectId);
         window.Petal.features.modalOperations.openMatrixAddTaskModal(ctx);
       } else if (window.openMatrixAddTaskModal) {
         window.openMatrixAddTaskModal();
+      } else {
+        console.warn('⚠️ openMatrixAddTaskModal not available');
       }
       return;
     }

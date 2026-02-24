@@ -68,10 +68,10 @@ export function renderNextUpStrip(ctx, project, projectTasks) {
     html += '<div class="next-up-card"><div class="next-up-header">Next Up</div>';
     nextUp.forEach(t => {
       const stage = getMatrixStageFunction(t);
-      html += `<div class="next-up-item" onclick="if(window.Petal?.features?.taskDrawer?.openTaskDrawer){window.Petal.features.taskDrawer.openTaskDrawer(${t.id})}">
+      html += `<button type="button" class="next-up-item" data-action="task:open-drawer" data-task-id="${t.id}" style="width:100%;text-align:left;background:none;border:none;padding:8px;cursor:pointer;">
         <div class="next-up-title">${escFunction(t.title || 'Untitled')}</div>
         <div class="next-up-stage ${stage}">${escFunction(stage)}</div>
-      </div>`;
+      </button>`;
     });
     html += '</div>';
   }
@@ -79,9 +79,9 @@ export function renderNextUpStrip(ctx, project, projectTasks) {
   if (blocked.length > 0) {
     html += '<div class="next-up-card blocked"><div class="next-up-header">Blocked</div>';
     blocked.forEach(t => {
-      html += `<div class="next-up-item" onclick="if(window.Petal?.features?.taskDrawer?.openTaskDrawer){window.Petal.features.taskDrawer.openTaskDrawer(${t.id})}">
+      html += `<button type="button" class="next-up-item" data-action="task:open-drawer" data-task-id="${t.id}" style="width:100%;text-align:left;background:none;border:none;padding:8px;cursor:pointer;">
         <div class="next-up-title">${escFunction(t.title || 'Untitled')}</div>
-      </div>`;
+      </button>`;
     });
     html += '</div>';
   }
@@ -89,9 +89,9 @@ export function renderNextUpStrip(ctx, project, projectTasks) {
   if (stale.length > 0) {
     html += '<div class="next-up-card stale"><div class="next-up-header">Stale</div>';
     stale.forEach(t => {
-      html += `<div class="next-up-item" onclick="if(window.Petal?.features?.taskDrawer?.openTaskDrawer){window.Petal.features.taskDrawer.openTaskDrawer(${t.id})}">
+      html += `<button type="button" class="next-up-item" data-action="task:open-drawer" data-task-id="${t.id}" style="width:100%;text-align:left;background:none;border:none;padding:8px;cursor:pointer;">
         <div class="next-up-title">${escFunction(t.title || 'Untitled')}</div>
-      </div>`;
+      </button>`;
     });
     html += '</div>';
   }
@@ -286,10 +286,10 @@ export async function renderProjectFilesSidebar(ctx, tab, project) {
   const tabsEl = document.getElementById('project-files-tabs');
   if (tabsEl) {
     tabsEl.innerHTML = `
-      <button id="project-files-tab-all" class="tab-btn ${tab === 'all' ? 'active' : ''}" onclick="if(window.switchProjectFilesTab){window.switchProjectFilesTab('all')}">All</button>
-      <button id="project-files-tab-current" class="tab-btn ${tab === 'current' ? 'active' : ''}" onclick="if(window.switchProjectFilesTab){window.switchProjectFilesTab('current')}">Current</button>
-      <button id="project-files-tab-versions" class="tab-btn ${tab === 'versions' ? 'active' : ''}" onclick="if(window.switchProjectFilesTab){window.switchProjectFilesTab('versions')}">Versions</button>
-      <button id="project-files-tab-conflicts" class="tab-btn ${tab === 'conflicts' ? 'active' : ''}" onclick="if(window.switchProjectFilesTab){window.switchProjectFilesTab('conflicts')}">Conflicts</button>
+      <button type="button" id="project-files-tab-all" class="tab-btn ${tab === 'all' ? 'active' : ''}" data-action="project-files:switch-tab" data-tab="all">All</button>
+      <button type="button" id="project-files-tab-current" class="tab-btn ${tab === 'current' ? 'active' : ''}" data-action="project-files:switch-tab" data-tab="current">Current</button>
+      <button type="button" id="project-files-tab-versions" class="tab-btn ${tab === 'versions' ? 'active' : ''}" data-action="project-files:switch-tab" data-tab="versions">Versions</button>
+      <button type="button" id="project-files-tab-conflicts" class="tab-btn ${tab === 'conflicts' ? 'active' : ''}" data-action="project-files:switch-tab" data-tab="conflicts">Conflicts</button>
     `;
   }
   
@@ -309,8 +309,9 @@ export async function renderProjectFilesSidebar(ctx, tab, project) {
  * Render project header
  */
 export function renderProjectHeader(ctx, project) {
-  const { esc: escFn, dueLabel: dueLabelFn } = ctx;
+  const { esc: escFn, escAttr: escAttrFn, dueLabel: dueLabelFn } = ctx;
   const escFunction = escFn || esc;
+  const escAttrFunction = escAttrFn || escAttr;
   const dueLabelFunction = dueLabelFn || dueLabel;
   
   const headerEl = document.getElementById('project-header');
@@ -319,6 +320,53 @@ export function renderProjectHeader(ctx, project) {
   const dl = dueLabelFunction(project.due, true);
   const color = `var(--proj-${project.color || 1})`;
   
+  // Get linked cell lines
+  const linkedCellLines = Array.isArray(project.linkedCellLines) ? project.linkedCellLines : [];
+  const projectId = project.id;
+  
+  // Render linked cell lines section
+  let cellLinesHTML = '';
+  if (linkedCellLines.length > 0) {
+    cellLinesHTML = `
+      <div class="project-linked-cell-lines" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+        <span style="font-size:11px;color:var(--text-dim);font-weight:500;">Cell Lines:</span>
+        ${linkedCellLines.map(cellLine => `
+          <span class="cell-line-chip" style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;font-size:11px;color:var(--text);">
+            ${escFunction(cellLine)}
+            <button type="button" 
+                    data-action="unlink-cell-line" 
+                    data-project-id="${projectId}" 
+                    data-cell-line="${escAttrFunction(cellLine)}"
+                    style="background:transparent;border:none;color:var(--text-dim);cursor:pointer;padding:0;margin:0;font-size:14px;line-height:1;width:16px;height:16px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all 0.15s;"
+                    onmouseover="this.style.background='var(--bg3)';this.style.color='var(--overdue)'"
+                    onmouseout="this.style.background='transparent';this.style.color='var(--text-dim)'"
+                    title="Remove cell line">×</button>
+          </span>
+        `).join('')}
+        <button type="button" 
+                data-action="link-cell-line" 
+                data-project-id="${projectId}"
+                style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;font-size:11px;color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all 0.15s;"
+                onmouseover="this.style.background='var(--bg3)';this.style.borderColor='var(--rose)'"
+                onmouseout="this.style.background='var(--bg2)';this.style.borderColor='var(--border)'"
+                title="Link cell line">+ Add</button>
+      </div>
+    `;
+  } else {
+    cellLinesHTML = `
+      <div class="project-linked-cell-lines" style="margin-top:12px;display:flex;align-items:center;gap:8px;">
+        <span style="font-size:11px;color:var(--text-dim);">No cell lines linked</span>
+        <button type="button" 
+                data-action="link-cell-line" 
+                data-project-id="${projectId}"
+                style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;font-size:11px;color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all 0.15s;"
+                onmouseover="this.style.background='var(--bg3)';this.style.borderColor='var(--rose)'"
+                onmouseout="this.style.background='var(--bg2)';this.style.borderColor='var(--border)'"
+                title="Link cell line">+ Link Cell Line</button>
+      </div>
+    `;
+  }
+  
   headerEl.innerHTML = `
     <div class="project-header-content">
       <div class="project-color-bar" style="background:${color};"></div>
@@ -326,6 +374,7 @@ export function renderProjectHeader(ctx, project) {
         <h1 class="project-title">${escFunction(project.name || 'Untitled Project')}</h1>
         ${project.desc ? `<p class="project-description">${escFunction(project.desc)}</p>` : ''}
         ${dl ? `<div class="project-due ${dl.cls}">${escFunction(dl.text)}</div>` : ''}
+        ${cellLinesHTML}
       </div>
     </div>
   `;
@@ -447,7 +496,7 @@ export function projectHTML(ctx, p, tasksFromStore = null, openProjectsFromStore
   return `<div class="project-card" id="proj-${p.id}">
     <div class="project-header">
       <div class="project-color-bar" style="background:${color};"></div>
-      <div style="flex:1;min-width:0;padding-left:8px;cursor:pointer;" onclick="openProjectView(${p.id})" title="Click to open project view">
+      <button type="button" data-action="open-project" data-project-id="${p.id}" style="flex:1;min-width:0;padding-left:8px;text-align:left;background:none;border:none;cursor:pointer;" title="Click to open project view">
         <div class="project-name" style="${p.done?'text-decoration:line-through;opacity:.6':''};display:flex;align-items:center;gap:8px;">
           ${escFunction(p.name)}
           <span style="font-size:11px;color:var(--text-light);font-weight:normal;">→ View Project</span>
@@ -459,7 +508,7 @@ export function projectHTML(ctx, p, tasksFromStore = null, openProjectsFromStore
           <span class="metric-item"><span class="metric-value">${donePct}%</span> done</span>
           ${overdueTasks > 0 ? `<span class="metric-item" style="color:var(--overdue);"><span class="metric-value">${overdueTasks}</span> overdue</span>` : ''}
         </div>` : ''}
-      </div>
+      </button>
       <div class="project-meta" onclick="event.stopPropagation()">
         ${dl?`<span class="project-due ${dl.cls}"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${escFunction(dl.text)}</span>`:''}
         ${p.files?.length?`<span style="font-size:11px;color:var(--text-dim);">📎 ${p.files.length}</span>`:''}
@@ -468,11 +517,11 @@ export function projectHTML(ctx, p, tasksFromStore = null, openProjectsFromStore
           <div class="project-progress-pct">${doneTasks}/${totalTasks} tasks${totalSubtasks > 0 ? ` • ${doneSubtasks}/${totalSubtasks} subtasks` : ''}</div>
         </div>
         <div class="project-actions">
-          <button class="btn-del" onclick="event.stopPropagation();toggleProjectDone(${p.id})" title="${p.done?'Reopen':'Complete'}" style="font-size:14px;">${p.done?'↩':'✓'}</button>
-          <button class="btn-del" onclick="event.stopPropagation();delProject(${p.id})" title="Delete">✕</button>
+          <button type="button" class="btn-del" data-action="project:toggle-done" data-project-id="${p.id}" title="${p.done?'Reopen':'Complete'}" style="font-size:14px;">${p.done?'↩':'✓'}</button>
+          <button type="button" class="btn-del" data-action="project:delete" data-project-id="${p.id}" title="Delete">✕</button>
         </div>
       </div>
-      <div class="project-chevron ${isOpen?'open':''}" id="chev-${p.id}" onclick="event.stopPropagation();toggleProjectOpen(${p.id})" style="cursor:pointer;" title="Toggle details">▶</div>
+      <button type="button" class="project-chevron ${isOpen?'open':''}" id="chev-${p.id}" data-action="project:toggle-open" data-project-id="${p.id}" style="background:none;border:none;cursor:pointer;" title="Toggle details">▶</button>
     </div>
 
     <!-- Workflow Lanes Section -->
@@ -489,7 +538,7 @@ export function projectHTML(ctx, p, tasksFromStore = null, openProjectsFromStore
         <div style="display:flex;align-items:center;gap:8px;">
           <h3 style="font-size:14px;font-weight:600;color:var(--text);margin:0;">📋 Tasks ${totalTasks > 0 ? `(${totalTasks})` : ''}</h3>
         </div>
-        <button onclick="openProjectAddTaskModal(${p.id})" style="padding:8px 16px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;" onmouseover="this.style.background='var(--rose-dark)'" onmouseout="this.style.background='var(--rose)'">
+        <button data-action="add-project-task" data-project-id="${p.id}" style="padding:8px 16px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;" onmouseover="this.style.background='var(--rose-dark)'" onmouseout="this.style.background='var(--rose)'">
           ➕ Add Task
         </button>
       </div>
@@ -507,7 +556,7 @@ export function projectHTML(ctx, p, tasksFromStore = null, openProjectsFromStore
             }).join('')}
             <option value="none">Remove lane</option>
           </select>
-          <button onclick="clearSelection(${p.id})" style="font-size:11px;padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);cursor:pointer;">Clear</button>
+          <button type="button" data-action="project:clear-selection" data-project-id="${p.id}" style="font-size:11px;padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);cursor:pointer;">Clear</button>
         </div>
       </div>
       <div style="display:flex;flex-direction:column;gap:8px;">
@@ -541,7 +590,7 @@ export function projectHTML(ctx, p, tasksFromStore = null, openProjectsFromStore
             }).join('') : '';
             return `<div class="subtask-item ${st.done?'done':''}" style="margin-left:24px;margin-top:6px;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px;">
               <div style="display:flex;align-items:flex-start;gap:8px;">
-                <div class="subtask-check ${st.done?'checked':''}" onclick="toggleTaskSubtask(${t.id},${st.id})" style="margin-top:2px;"></div>
+                <button type="button" class="subtask-check ${st.done?'checked':''}" data-action="subtask:toggle" data-task-id="${t.id}" data-subtask-id="${st.id}" style="margin-top:2px;background:none;border:none;padding:0;cursor:pointer;" title="Toggle subtask"></button>
                 <div class="subtask-body" style="flex:1;">
                   <div class="subtask-title" style="font-weight:500;font-size:13px;">${escFunction(st.title)}</div>
                   <div class="subtask-meta" style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap;">
@@ -556,7 +605,7 @@ export function projectHTML(ctx, p, tasksFromStore = null, openProjectsFromStore
                   </div>` : ''}
                 </div>
                 <div style="display:flex;gap:4px;flex-shrink:0;">
-                  <button class="btn-del" data-action="edit-task" data-task-id="${st.id}" data-is-subtask="false" data-project-id="${t.projectId || ''}" onclick="handleEditTaskAction(event, this)" title="Edit">✎</button>
+                  <button class="btn-del" data-action="edit-task" data-task-id="${st.id}" data-is-subtask="false" data-project-id="${t.projectId || ''}" title="Edit">✎</button>
                   <button class="btn-del btn-delete" data-action="delete" data-id="${String(st.id)}" data-task-id="${String(st.id)}" data-parent-task-id="${String(t.id)}" data-is-subtask="false" data-project-id="${t.projectId || ''}" title="Delete">×</button>
                 </div>
               </div>
@@ -580,7 +629,7 @@ export function projectHTML(ctx, p, tasksFromStore = null, openProjectsFromStore
             <div class="task-top">
               <div class="task-content">
                 <input type="checkbox" class="task-select-checkbox" data-project-id="${p.id}" data-task-id="${t.id}" onchange="updateSelection(${p.id})" style="cursor:pointer;flex-shrink:0;width:18px;height:18px;margin-top:2px;display:none;">
-                <div class="check-box ${t.done ? 'checked' : ''}" onclick="window.Petal?.handlers?.toggleTask(${t.id})"></div>
+                <button type="button" class="check-box ${t.done ? 'checked' : ''}" data-action="task:toggle" data-task-id="${t.id}" style="background:none;border:none;padding:0;cursor:pointer;" title="Toggle task"></button>
                 
                 <div class="task-body">
                   <div class="task-title">
@@ -608,9 +657,9 @@ export function projectHTML(ctx, p, tasksFromStore = null, openProjectsFromStore
                 ${t.lane && t.lane !== 'none' && LANE_STAGES[t.lane] ? `<select onchange="updateTaskStage(${t.id}, '${t.lane}', this.value); window.rerenderViewIfActive('projects');" style="font-size:11px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);cursor:pointer;" title="Change stage">
                   ${LANE_STAGES[t.lane].map(s => `<option value="${s}" ${t.stage === s ? 'selected' : ''}>${escFunction(s)}</option>`).join('')}
                 </select>` : ''}
-                <button class="btn-del" onclick="if(window.Petal?.features?.taskDrawer?.openTaskDrawer){window.Petal.features.taskDrawer.openTaskDrawer(${t.id})}else if(typeof openTaskDrawer==='function'){openTaskDrawer(${t.id})}" title="Open drawer (Notes, Files, Subtasks)" style="font-size:13px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);">📝</button>
-                <button class="btn-del" onclick="event.stopPropagation();toggleTaskSubtaskSection(${t.id})" title="Toggle subtasks" style="font-size:12px;">${taskSubtasks.length > 0 ? (taskSubtasksOpen ? '▼' : '▶') : ''}</button>
-                <button class="btn-del btn-edit" data-action="edit-task" data-task-id="${String(t.id)}" onclick="event.stopPropagation();editTask(${t.id})" title="Edit" style="font-size:13px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);">✎</button>
+                <button class="btn-del" data-action="task:open-drawer" data-task-id="${String(t.id)}" title="Open drawer (Notes, Files, Subtasks)" style="font-size:13px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);">📝</button>
+                <button class="btn-del" data-action="task:toggle-subtasks" data-task-id="${String(t.id)}" title="Toggle subtasks" style="font-size:12px;">${taskSubtasks.length > 0 ? (taskSubtasksOpen ? '▼' : '▶') : ''}</button>
+                <button class="btn-del btn-edit" data-action="edit-task" data-task-id="${String(t.id)}" title="Edit" style="font-size:13px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);">✎</button>
                 <button class="btn-del btn-delete" data-action="delete" data-id="${String(t.id)}" data-task-id="${String(t.id)}" data-is-subtask="false" data-project-id="${t.projectId || ''}" title="Delete" style="font-size:16px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:bold;opacity:1;">×</button>
               </div>
             </div>
@@ -620,7 +669,7 @@ export function projectHTML(ctx, p, tasksFromStore = null, openProjectsFromStore
             </div>` : ''}
             ${taskSubtasks.length > 0 ? `<div id="task-subtasks-${t.id}" style="display:${taskSubtasksOpen ? 'block' : 'none'};margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">
               ${subtasksHTML}
-              <button onclick="toggleAddSubtaskToTask(${t.id})" style="width:100%;padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:11px;margin-top:8px;cursor:pointer;">+ Add Subtask</button>
+              <button type="button" data-action="task:toggle-add-subtask" data-task-id="${t.id}" style="width:100%;padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:11px;margin-top:8px;cursor:pointer;">+ Add Subtask</button>
               <div id="add-subtask-to-task-${t.id}" style="display:none;margin-top:8px;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;">
                 <input type="text" id="subtask-title-${t.id}" placeholder="Subtask title..." style="width:100%;margin-bottom:6px;padding:6px;font-size:12px;">
                 <div style="display:flex;gap:6px;">
@@ -630,7 +679,7 @@ export function projectHTML(ctx, p, tasksFromStore = null, openProjectsFromStore
             <option value="low">Low</option>
           </select>
                   <input type="date" id="subtask-due-${t.id}" style="flex:1;padding:6px;font-size:11px;">
-                  <button onclick="addSubtaskToTaskInline(${t.id})" class="btn-add-sub" style="padding:6px 12px;font-size:11px;">Add</button>
+                  <button type="button" data-action="task:add-subtask-inline" data-task-id="${t.id}" class="btn-add-sub" style="padding:6px 12px;font-size:11px;">Add</button>
         </div>
           </div>
             </div>` : `<div style="margin-top:8px;">
@@ -644,7 +693,7 @@ export function projectHTML(ctx, p, tasksFromStore = null, openProjectsFromStore
                     <option value="low">Low</option>
                   </select>
                   <input type="date" id="subtask-due-${t.id}" style="flex:1;padding:6px;font-size:11px;">
-                  <button onclick="addSubtaskToTaskInline(${t.id})" class="btn-add-sub" style="padding:6px 12px;font-size:11px;">Add</button>
+                  <button type="button" data-action="task:add-subtask-inline" data-task-id="${t.id}" class="btn-add-sub" style="padding:6px 12px;font-size:11px;">Add</button>
         </div>
       </div>
             </div>`}
@@ -660,7 +709,7 @@ export function projectHTML(ctx, p, tasksFromStore = null, openProjectsFromStore
     <div style="padding:12px 20px 12px 32px;border-top:1px solid var(--border);margin-top:8px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <h3 style="font-size:14px;font-weight:600;color:var(--text);margin:0;">📎 Files ${p.files?.length > 0 ? `(${p.files.length})` : ''}</h3>
-        <button onclick="openProjectAddFileModal(${p.id})" style="padding:8px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;" onmouseover="this.style.background='var(--rose-pale)';this.style.borderColor='var(--rose-soft)'" onmouseout="this.style.background='var(--bg2)';this.style.borderColor='var(--border)'">
+        <button data-action="add-file-to-project" data-project-id="${p.id}" style="padding:8px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;" onmouseover="this.style.background='var(--rose-pale)';this.style.borderColor='var(--rose-soft)'" onmouseout="this.style.background='var(--bg2)';this.style.borderColor='var(--border)'">
           ➕ Add File
         </button>
       </div>
@@ -677,11 +726,11 @@ export function projectHTML(ctx, p, tasksFromStore = null, openProjectsFromStore
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:${fileNote ? '6px' : '0'};">
             <a href="#" class="file-chip" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="flex:1;display:flex;align-items:center;gap:6px;text-decoration:none;">${icon} ${escFunction(label)}</a>
             ${fileNote ? `<span class="file-note-icon" title="Has note">📝</span>` : ''}
-            <button class="file-note-toggle-btn" onclick="toggleFileNote('${fileId}', this)" style="padding:4px 8px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:10px;cursor:pointer;">${fileNote ? '📝 Note' : '📝 Add note'}</button>
+            <button type="button" class="file-note-toggle-btn" data-action="file:toggle-note" data-file-id="${fileId}" style="padding:4px 8px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:10px;cursor:pointer;">${fileNote ? '📝 Note' : '📝 Add note'}</button>
           </div>
-          ${fileNote ? `<div class="file-note-preview" onclick="toggleFileNote('${fileId}', this)" style="font-size:11px;color:var(--text-dim);cursor:pointer;padding:6px;background:var(--bg);border-radius:4px;margin-top:4px;">
+          ${fileNote ? `<button type="button" class="file-note-preview" data-action="file:toggle-note" data-file-id="${fileId}" style="width:100%;text-align:left;font-size:11px;color:var(--text-dim);cursor:pointer;padding:6px;background:var(--bg);border:1px solid var(--border);border-radius:4px;margin-top:4px;">
             ${escFunction(fileNote.trim().split('\n')[0].substring(0, 80))}${fileNote.trim().split('\n')[0].length > 80 ? '...' : ''}
-          </div>` : ''}
+          </button>` : ''}
           <div class="file-note-content collapsed" id="file-note-${fileId}" style="display:none;margin-top:6px;">
             <textarea class="file-note-textarea" data-file-id="${fileId}" data-project-id="${p.id}" data-file-index="${idx}" placeholder="Add note..." oninput="debounceSaveFileNote('${fileId}', ${p.id}, ${idx}, this.value)" style="width:100%;min-height:60px;padding:8px;font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;resize:vertical;">${escFunction(fileNote)}</textarea>
           </div>
