@@ -18,13 +18,8 @@ module.exports = {
     category: "public.app-category.productivity",
     icon: "build/icon.icns",
     target: ["dmg", "zip"],
-
-    // Explicit notarization config (pulls from GitHub Secrets env vars)
-    notarize: {
-      teamId: process.env.APPLE_TEAM_ID,
-      appleId: process.env.APPLE_ID,
-      appleIdPassword: process.env.APPLE_APP_SPECIFIC_PASSWORD,
-    }
+    // Notarization is handled automatically via environment variables:
+    // APPLE_TEAM_ID, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD
   },
 
   win: {
