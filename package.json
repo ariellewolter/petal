@@ -6,10 +6,10 @@
   "scripts": {
     "start": "electron .",
     "audit": "node scripts/audit.js",
-    "build": "electron-builder --publish never",
-    "build:mac": "electron-builder --mac --publish never",
-    "build:win": "electron-builder --win --publish never",
-    "build:all": "electron-builder --mac --win --publish never"
+    "build": "electron-builder --publish never --config electron-builder.config.cjs",
+    "build:mac": "electron-builder --mac --publish never --config electron-builder.config.cjs",
+    "build:win": "electron-builder --win --publish never --config electron-builder.config.cjs",
+    "build:all": "electron-builder --mac --win --publish never --config electron-builder.config.cjs"
   },
   "keywords": ["task", "tracker", "productivity"],
   "author": "Your Name",
