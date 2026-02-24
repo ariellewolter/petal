@@ -18,9 +18,11 @@ module.exports = {
     category: "public.app-category.productivity",
     icon: "build/icon.icns",
     target: ["dmg", "zip"],
-    // Notarization is handled automatically via environment variables:
-    // APPLE_TEAM_ID, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD
-    // The explicit config file structure helps electron-builder properly initialize
+    // Minimal notarize config to initialize options object
+    // Credentials come from environment variables: APPLE_TEAM_ID, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD
+    notarize: {
+      appBundleId: "com.petal.tasktracker"
+    }
   },
 
   win: {
