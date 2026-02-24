@@ -56,8 +56,8 @@ export function renderMatrixTaskCard(ctx, task, isSubtaskTask = false, subtaskId
   
   const orderControls = isSubtaskTask ? `
     <div style="display:flex;gap:2px;margin-top:4px;">
-      <button onclick="moveTaskInSubtask(${task.id}, ${subtaskId}, ${order}, 'up')" style="background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:2px 6px;font-size:8px;color:var(--text-dim);cursor:pointer;" title="Move up">↑</button>
-      <button onclick="moveTaskInSubtask(${task.id}, ${subtaskId}, ${order}, 'down')" style="background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:2px 6px;font-size:8px;color:var(--text-dim);cursor:pointer;" title="Move down">↓</button>
+      <button type="button" data-action="subtask:move-up" data-task-id="${task.id}" data-subtask-id="${subtaskId}" data-order="${order}" style="background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:2px 6px;font-size:8px;color:var(--text-dim);cursor:pointer;" title="Move up">↑</button>
+      <button type="button" data-action="subtask:move-down" data-task-id="${task.id}" data-subtask-id="${subtaskId}" data-order="${order}" style="background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:2px 6px;font-size:8px;color:var(--text-dim);cursor:pointer;" title="Move down">↓</button>
     </div>
   ` : '';
 
@@ -114,7 +114,7 @@ export function renderSubtaskGroup(ctx, subtask, subtaskTasks, laneId, stage) {
     <div class="matrix-subtask-header" style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:6px;font-size:11px;font-weight:500;color:var(--text);display:flex;align-items:center;gap:6px;">
       <span style="opacity:0.7;">📁</span>
       <span>${escFunction(subtask.title)}</span>
-      <button onclick="addTaskToSubtask(${selectedProjectIdValue}, ${subtask.id})" style="margin-left:auto;background:var(--rose-pale);border:1px solid var(--rose-soft);border-radius:4px;padding:2px 6px;font-size:9px;color:var(--rose);cursor:pointer;" title="Add task to subtask">+ Task</button>
+      <button type="button" data-action="subtask:add-task" data-project-id="${selectedProjectIdValue}" data-subtask-id="${subtask.id}" style="margin-left:auto;background:var(--rose-pale);border:1px solid var(--rose-soft);border-radius:4px;padding:2px 6px;font-size:9px;color:var(--rose);cursor:pointer;" title="Add task to subtask">+ Task</button>
     </div>
   ` : '';
   
@@ -241,7 +241,46 @@ export async function renderMatrixSidebar(ctx, project, projectTasks) {
  * Render workflow matrix (main function)
  */
 export async function renderWorkflowMatrix(ctx) {
-  const { projects, tasks, selectedProjectId, currentProjFilter, parseDate: parseDateFn, today: todayFn, getMatrixStage: getMatrixStageFn, renderTodayTimeline, renderActiveProtocols, renderCellLog, renderCompWindow, renderDeadlinesHorizon, renderProjectTasks, renderMatrixSidebar: renderMatrixSidebarFn, selectProjectForMatrix } = ctx;
+  // Handle case where ctx might be undefined or not an object
+  if (!ctx || typeof ctx !== 'object') {
+    console.warn('⚠️ renderWorkflowMatrix: Invalid context, using window state');
+    const state = window.Petal?.store?.getState() || {};
+    ctx = {
+      projects: state.projects || [],
+      tasks: state.tasks || [],
+      selectedProjectId: window.selectedProjectId,
+      ...(window.Petal?.handlers?.createPageContext?.() || {})
+    };
+  }
+  
+  // Get selectedProjectId BEFORE destructuring - access it directly first
+  // The property exists in the object but might be undefined when destructured
+  let selectedProjectIdValue = ctx.selectedProjectId;
+  
+  console.log('🔍 renderWorkflowMatrix: Checking selectedProjectId', {
+    directAccess: ctx.selectedProjectId,
+    hasProperty: 'selectedProjectId' in ctx,
+    type: typeof ctx.selectedProjectId,
+    value: ctx.selectedProjectId
+  });
+  
+  // If it's undefined or null, try window
+  if (!selectedProjectIdValue && selectedProjectIdValue !== 0 && typeof window.selectedProjectId !== 'undefined') {
+    selectedProjectIdValue = window.selectedProjectId;
+    console.log('📌 Got selectedProjectId from window:', selectedProjectIdValue);
+  }
+  
+  // Also try to get it from the project selector dropdown
+  if (!selectedProjectIdValue && selectedProjectIdValue !== 0) {
+    const selector = document.getElementById('matrix-project-select');
+    if (selector && selector.value) {
+      selectedProjectIdValue = selector.value;
+      console.log('📌 Got selectedProjectId from dropdown:', selectedProjectIdValue);
+    }
+  }
+  
+  // Now destructure the rest (excluding selectedProjectId since we already got it)
+  const { projects, tasks, currentProjFilter, parseDate: parseDateFn, today: todayFn, getMatrixStage: getMatrixStageFn, renderTodayTimeline, renderActiveProtocols, renderCellLog, renderCompWindow, renderDeadlinesHorizon, renderProjectTasks, renderMatrixSidebar: renderMatrixSidebarFn, selectProjectForMatrix } = ctx;
   
   // Helper functions with fallbacks
   const parseDateFunction = parseDateFn || parseDate;
@@ -249,14 +288,24 @@ export async function renderWorkflowMatrix(ctx) {
   const getMatrixStageFunction = getMatrixStageFn || getMatrixStage;
   const renderMatrixSidebarFunction = renderMatrixSidebarFn || renderMatrixSidebar;
   
-  // Get selectedProjectId from context or window
-  const selectedProjectIdValue = selectedProjectId || (typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null);
   const currentProjFilterValue = currentProjFilter || (typeof window.currentProjFilter !== 'undefined' ? window.currentProjFilter : 'all');
   
-  if (!selectedProjectIdValue) {
-    console.warn('⚠️ renderWorkflowMatrix: No selectedProjectId');
+  // Check if we have a valid selectedProjectId (including 0 as valid)
+  if (selectedProjectIdValue === undefined || selectedProjectIdValue === null || selectedProjectIdValue === '') {
+    console.warn('⚠️ renderWorkflowMatrix: No selectedProjectId', {
+      ctxType: typeof ctx,
+      ctxKeys: ctx ? Object.keys(ctx) : 'no ctx',
+      ctxHasSelectedProjectId: ctx ? 'selectedProjectId' in ctx : false,
+      ctxSelectedProjectIdValue: ctx?.selectedProjectId,
+      ctxSelectedProjectIdType: typeof ctx?.selectedProjectId,
+      fromWindow: typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : 'undefined',
+      fromDropdown: document.getElementById('matrix-project-select')?.value || 'none',
+      rawCtxSelectedProjectId: ctx.selectedProjectId
+    });
     return;
   }
+  
+  console.log('✅ renderWorkflowMatrix: Using selectedProjectId:', selectedProjectIdValue, 'from context:', ctx?.selectedProjectId === selectedProjectIdValue);
   
   // Ensure forms are hidden by default
   const taskSection = document.getElementById('matrix-add-task-section');
@@ -360,6 +409,16 @@ export async function renderWorkflowMatrix(ctx) {
     console.warn('⚠️ matrix-project-select not found in renderWorkflowMatrix');
   }
   
+  // Update all "Add Task" buttons in matrix view to include projectId
+  // This ensures buttons work even if window.selectedProjectId isn't set
+  const addTaskButtons = document.querySelectorAll('#workflow-matrix-view [data-action="task:add-matrix"]');
+  addTaskButtons.forEach(btn => {
+    if (selectedProjectIdValue) {
+      btn.setAttribute('data-project-id', selectedProjectIdValue);
+      console.log('✅ Updated Add Task button with projectId:', selectedProjectIdValue);
+    }
+  });
+  
   // Get all tasks for this project (including subtasks - tasks with parentTaskId)
   // Normalize projectId comparison to handle both string and number types
   const projectTasks = (tasks || []).filter(t => {
@@ -370,37 +429,129 @@ export async function renderWorkflowMatrix(ctx) {
     return taskProjectId === projectId;
   });
   
-  // Ensure workflow-matrix-view is visible
+  // Update project title - ensure elements exist and are visible
+  // First ensure workflow-matrix-view is visible
   const matrixView = document.getElementById('workflow-matrix-view');
   if (matrixView) {
     matrixView.style.display = 'block';
-    matrixView.style.visibility = 'visible';
-    matrixView.style.opacity = '1';
   }
   
-  // Update project title - ensure elements exist and are visible
-  const titleEl = document.getElementById('project-title-display');
-  const descEl = document.getElementById('project-desc-display');
+  // Wait a moment for DOM to be ready
+  await new Promise(resolve => setTimeout(resolve, 50));
+  
+  // Find title element - try multiple ways
+  let titleEl = document.getElementById('project-title-display');
+  if (!titleEl && matrixView) {
+    titleEl = matrixView.querySelector('#project-title-display');
+  }
+  if (!titleEl && matrixView) {
+    titleEl = matrixView.querySelector('h2#project-title-display');
+  }
+  
+  let descEl = document.getElementById('project-desc-display');
+  if (!descEl && matrixView) {
+    descEl = matrixView.querySelector('#project-desc-display');
+  }
+  if (!descEl && matrixView) {
+    descEl = matrixView.querySelector('p#project-desc-display');
+  }
+  
+  console.log('🔍 renderWorkflowMatrix: Title element check', {
+    titleElExists: !!titleEl,
+    descElExists: !!descEl,
+    matrixViewExists: !!matrixView,
+    projectName: project.name,
+    projectId: project.id
+  });
   
   if (!titleEl) {
-    console.error('❌ project-title-display element not found');
-  } else {
-    titleEl.textContent = project.name || 'Untitled Project';
-    // Ensure title is visible and not covered by header
-    titleEl.style.display = 'block';
-    titleEl.style.visibility = 'visible';
-    titleEl.style.opacity = '1';
-    titleEl.style.marginTop = '0';
-    titleEl.style.marginBottom = '4px';
-    titleEl.style.position = 'relative';
-    titleEl.style.zIndex = '1';
-    console.log('✅ Updated project title:', project.name);
+    console.error('❌ project-title-display element not found anywhere');
+    // Create it if it doesn't exist
+    if (matrixView) {
+      const mainContent = matrixView.querySelector('div[style*="flex:1"]');
+      if (mainContent) {
+        const titleContainer = document.createElement('div');
+        titleContainer.style.marginTop = '24px';
+        titleContainer.style.marginBottom = '16px';
+        titleEl = document.createElement('h2');
+        titleEl.id = 'project-title-display';
+        titleEl.style.fontFamily = "'Cormorant Garamond',serif";
+        titleEl.style.fontSize = '28px';
+        titleEl.style.fontWeight = '400';
+        titleEl.style.color = 'var(--text)';
+        titleEl.style.margin = '0 0 4px 0';
+        titleEl.style.display = 'block';
+        titleEl.style.visibility = 'visible';
+        titleContainer.appendChild(titleEl);
+        if (project.desc) {
+          descEl = document.createElement('p');
+          descEl.id = 'project-desc-display';
+          descEl.style.fontSize = '13px';
+          descEl.style.color = 'var(--text-dim)';
+          descEl.style.margin = '0';
+          descEl.style.display = 'block';
+          titleContainer.appendChild(descEl);
+        }
+        // Insert after the back button container
+        const backButtonContainer = matrixView.querySelector('div[style*="margin-bottom:16px"]');
+        if (backButtonContainer && backButtonContainer.nextElementSibling) {
+          const flexContainer = backButtonContainer.nextElementSibling;
+          const firstChild = flexContainer.querySelector('div[style*="flex:1"]');
+          if (firstChild) {
+            firstChild.insertBefore(titleContainer, firstChild.firstChild);
+          }
+        }
+        console.log('✅ Created title element');
+      }
+    }
   }
   
-  if (!descEl) {
-    console.warn('⚠️ project-desc-display element not found');
+  if (titleEl) {
+    // Set the title text - use innerHTML to ensure it's set
+    const projectName = project.name || 'Untitled Project';
+    titleEl.textContent = projectName;
+    titleEl.innerHTML = projectName;
+    
+    // Force visibility with !important via setProperty
+    titleEl.style.setProperty('display', 'block', 'important');
+    titleEl.style.setProperty('visibility', 'visible', 'important');
+    titleEl.style.setProperty('opacity', '1', 'important');
+    titleEl.style.setProperty('color', 'var(--text)', 'important');
+    titleEl.style.setProperty('font-size', '28px', 'important');
+    titleEl.style.setProperty('font-weight', '400', 'important');
+    titleEl.style.setProperty('margin', '0 0 4px 0', 'important');
+    titleEl.style.setProperty('font-family', "'Cormorant Garamond',serif", 'important');
+    
+    console.log('✅ Updated project title:', {
+      name: project.name,
+      textContent: titleEl.textContent,
+      innerHTML: titleEl.innerHTML,
+      display: window.getComputedStyle(titleEl).display,
+      visibility: window.getComputedStyle(titleEl).visibility,
+      opacity: window.getComputedStyle(titleEl).opacity,
+      color: window.getComputedStyle(titleEl).color
+    });
+    
+    // Ensure the parent container is visible
+    const titleContainer = titleEl.parentElement;
+    if (titleContainer) {
+      titleContainer.style.setProperty('display', 'block', 'important');
+      titleContainer.style.setProperty('visibility', 'visible', 'important');
+      titleContainer.style.setProperty('opacity', '1', 'important');
+      titleContainer.style.setProperty('margin-top', '24px', 'important');
+      titleContainer.style.setProperty('margin-bottom', '16px', 'important');
+      console.log('✅ Title container styled:', {
+        display: window.getComputedStyle(titleContainer).display,
+        visibility: window.getComputedStyle(titleContainer).visibility
+      });
+    }
   } else {
+    console.error('❌ Title element still not found after all attempts');
+  }
+  
+  if (descEl) {
     descEl.textContent = project.desc || '';
+    descEl.innerHTML = project.desc || '';
     if (project.desc) {
       descEl.style.display = 'block';
       descEl.style.visibility = 'visible';
@@ -408,25 +559,6 @@ export async function renderWorkflowMatrix(ctx) {
     } else {
       descEl.style.display = 'none';
     }
-  }
-  
-  // Ensure the project title container is visible and positioned correctly
-  const titleContainer = titleEl?.parentElement;
-  if (titleContainer) {
-    titleContainer.style.display = 'block';
-    titleContainer.style.visibility = 'visible';
-    titleContainer.style.opacity = '1';
-    titleContainer.style.position = 'relative';
-    titleContainer.style.zIndex = '1';
-    // Ensure it has proper top margin to not be covered by header
-    titleContainer.style.marginTop = '24px';
-    titleContainer.style.marginBottom = '16px';
-  }
-  
-  // Scroll to top to ensure title is visible
-  const viewProjects = document.getElementById('view-projects');
-  if (viewProjects) {
-    viewProjects.scrollTop = 0;
   }
   
   // Render research orchestration dashboard

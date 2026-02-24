@@ -946,6 +946,10 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 .projects-header-right{display:flex;align-items:center;gap:14px;}
 .projects-header-status{font-size:11px;color:var(--text-dim);}
 
+/* PROJECT TITLE IN MATRIX VIEW */
+#project-title-display{font-family:'Cormorant Garamond',serif !important;font-size:28px !important;font-weight:400 !important;color:var(--text) !important;margin:0 0 4px 0 !important;}
+#project-desc-display{font-size:13px !important;color:var(--text-dim) !important;margin:0 !important;}
+
 /* PLANNER PAGE HEADER */
 .planner-header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;height:58px;display:flex;align-items:center;justify-content:space-between;margin:0;position:absolute;top:0;left:0;right:0;z-index:10;}
 .planner-header-title{display:flex;align-items:baseline;gap:10px;}

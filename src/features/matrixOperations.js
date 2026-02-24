@@ -124,23 +124,79 @@ export async function selectProjectForMatrix(ctx, projectId) {
   const projectIdNum = projectId ? parseInt(projectId) : null;
   
   if (projectIdNum) {
-    const matrixView = document.getElementById('workflow-matrix-view');
+    // First hide the project list view
     const listView = document.getElementById('project-list-view');
+    if (listView) {
+      listView.style.display = 'none';
+      listView.style.visibility = 'hidden';
+    }
+    
+    // Then show the matrix view
+    const matrixView = document.getElementById('workflow-matrix-view');
     if (matrixView) {
       matrixView.style.display = 'block';
       matrixView.style.visibility = 'visible';
       matrixView.style.opacity = '1';
     }
-    if (listView) {
-      listView.style.display = 'none';
-    }
+    
     // Hide project creation form when viewing a project
     if (createFormSection) createFormSection.style.display = 'none';
     
+    // Render the matrix view (this will set the title)
+    // Ensure context has selectedProjectId - get state if needed
+    const state = window.Petal?.store?.getState() || {};
+    
+    // Get additional context first
+    const additionalCtx = window.Petal?.handlers?.createPageContext?.() || {};
+    
+    // Build context - exclude selectedProjectId from ctx spread to prevent undefined from overwriting our value
+    const { selectedProjectId: ctxSelectedId, ...ctxWithoutSelectedId } = ctx || {};
+    const contextWithProjectId = {
+      ...additionalCtx,
+      ...ctxWithoutSelectedId,
+      projects: ctx?.projects || state.projects || [],
+      tasks: ctx?.tasks || state.tasks || [],
+      selectedProjectId: projectIdNum  // Set explicitly AFTER spreading (so it can't be overwritten)
+    };
+    
+    // Verify it's set correctly
+    const verifySelectedId = contextWithProjectId.selectedProjectId;
+    console.log('🔍 selectProjectForMatrix: Context built', {
+      hasRenderFn: !!renderWorkflowMatrixFn,
+      hasWindowFn: typeof window.renderWorkflowMatrix === 'function',
+      selectedProjectId: verifySelectedId,
+      selectedProjectIdType: typeof verifySelectedId,
+      projectIdNum,
+      projectIdNumType: typeof projectIdNum,
+      contextKeys: Object.keys(contextWithProjectId),
+      contextHasSelectedProjectId: 'selectedProjectId' in contextWithProjectId,
+      ctxHadSelectedProjectId: ctx ? 'selectedProjectId' in ctx : false,
+      ctxSelectedProjectIdValue: ctxSelectedId
+    });
+    
+    // Double-check: if it's still undefined, force it
+    if (contextWithProjectId.selectedProjectId === undefined || contextWithProjectId.selectedProjectId === null) {
+      console.warn('⚠️ selectedProjectId is undefined after setting, forcing it');
+      contextWithProjectId.selectedProjectId = projectIdNum;
+    }
+    
     if (renderWorkflowMatrixFn) {
-      await renderWorkflowMatrixFn(ctx);
+      await renderWorkflowMatrixFn(contextWithProjectId);
+    } else if (window.Petal?.ui?.renderWorkflowMatrix) {
+      // Call the module function directly (not the HTML wrapper)
+      // The HTML wrapper calls createPageContext() which has selectedProjectId: undefined
+      await window.Petal.ui.renderWorkflowMatrix(contextWithProjectId);
     } else if (typeof window.renderWorkflowMatrix === 'function') {
-      await window.renderWorkflowMatrix();
+      // Fallback: Ensure window.selectedProjectId is set before calling HTML wrapper
+      // The HTML wrapper will call createPageContext() which reads from window.selectedProjectId
+      window.selectedProjectId = projectIdNum;
+      console.log('🔍 Setting window.selectedProjectId to:', projectIdNum, 'before calling HTML renderWorkflowMatrix');
+      // Also try calling with context if the function accepts it
+      if (window.renderWorkflowMatrix.length > 0) {
+        await window.renderWorkflowMatrix(contextWithProjectId);
+      } else {
+        await window.renderWorkflowMatrix();
+      }
     }
   } else {
     const matrixView = document.getElementById('workflow-matrix-view');
@@ -174,8 +230,9 @@ export function openProjectView(ctx, projectId) {
   }
   
   // Set the selected project and open the matrix view
+  const projectIdNum = projectId ? parseInt(projectId) : null;
   if (typeof window.selectedProjectId !== 'undefined') {
-    window.selectedProjectId = parseInt(projectId);
+    window.selectedProjectId = projectIdNum;
   }
   const matrixView = document.getElementById('workflow-matrix-view');
   const listView = document.getElementById('project-list-view');
@@ -191,8 +248,23 @@ export function openProjectView(ctx, projectId) {
   const createFormSection = document.getElementById('project-selector-create-section');
   if (createFormSection) createFormSection.style.display = 'none';
   
-  if (typeof window.renderWorkflowMatrix === 'function') {
-    window.renderWorkflowMatrix();
+  // Call selectProjectForMatrix to properly render the matrix with context
+  const updatedCtx = { 
+    ...ctx, 
+    selectedProjectId: projectIdNum
+  };
+  
+  if (window.Petal?.features?.matrixOperations?.selectProjectForMatrix) {
+    window.Petal.features.matrixOperations.selectProjectForMatrix(updatedCtx, projectId);
+  } else if (window.selectProjectForMatrix) {
+    window.selectProjectForMatrix(projectId);
+  } else if (typeof window.renderWorkflowMatrix === 'function') {
+    // Fallback: call renderWorkflowMatrix with context if available
+    if (window.renderWorkflowMatrix.length > 0) {
+      window.renderWorkflowMatrix(updatedCtx);
+    } else {
+      window.renderWorkflowMatrix();
+    }
   }
 }
 
