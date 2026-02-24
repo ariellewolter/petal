@@ -31,10 +31,31 @@ function projectNameById(projects, projectId) {
  */
 export function openTaskDrawer(ctx, taskId) {
   const { tasks, projects } = ctx;
+  // Normalize taskId for comparison (handle string/number mismatch)
+  const taskIdNum = Number(taskId);
+  const taskIdStr = String(taskId).trim();
+  
   // Only show active (non-deleted) tasks in drawer
-  const task = tasks.find(t => t.id === taskId && !t.deletedAt);
+  // Try multiple comparison methods to handle type mismatches
+  const task = tasks.find(t => {
+    if (t.deletedAt) return false;
+    // Try exact match first
+    if (t.id === taskId || t.id === taskIdNum || String(t.id) === taskIdStr) return true;
+    // Try number comparison if both are valid numbers
+    if (!isNaN(taskIdNum) && !isNaN(Number(t.id))) {
+      return Number(t.id) === taskIdNum;
+    }
+    return false;
+  });
+  
   if (!task) {
-    console.warn('Task not found or deleted:', taskId);
+    console.warn('Task not found or deleted:', { 
+      taskId, 
+      taskIdNum, 
+      taskIdStr,
+      tasksCount: tasks?.length,
+      sampleTaskIds: tasks?.slice(0, 3).map(t => ({ id: t.id, type: typeof t.id }))
+    });
     return;
   }
   
@@ -419,8 +440,8 @@ export function renderTaskDrawerSubtasks(ctx) {
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center;">
       <span style="font-size:13px;color:var(--text);">${esc(st.title)}</span>
       <div style="display:flex;gap:6px;">
-        <button data-action="edit-task" data-task-id="${st.id}" onclick="if(window.handleEditTaskAction){window.handleEditTaskAction(event, this)}" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;color:var(--text-dim);">Edit</button>
-        <button class="btn-del btn-delete" data-action="delete-task" data-task-id="${st.id}" data-is-subtask="false" data-project-id="${st.projectId || ''}" data-parent-task-id="${st.parentTaskId || ''}" onclick="if(window.handleDeleteTaskAction){window.handleDeleteTaskAction(event, this)}" title="Delete" style="padding:4px 8px;min-width:28px;min-height:28px;background:none;border:1px solid var(--border);border-radius:4px;font-size:13px;cursor:pointer;color:var(--text-dim);display:flex;align-items:center;justify-content:center;">✕</button>
+        <button data-action="edit-task" data-task-id="${st.id}" data-is-subtask="false" data-project-id="${st.projectId || ''}" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;color:var(--text-dim);">Edit</button>
+        <button class="btn-del btn-delete" data-action="delete" data-task-id="${st.id}" data-is-subtask="false" data-project-id="${st.projectId || ''}" data-parent-task-id="${st.parentTaskId || ''}" title="Delete" style="padding:4px 8px;min-width:28px;min-height:28px;background:none;border:1px solid var(--border);border-radius:4px;font-size:13px;cursor:pointer;color:var(--text-dim);display:flex;align-items:center;justify-content:center;">✕</button>
       </div>
     </div>
   `).join('');

@@ -116,49 +116,21 @@ export function renderProjects(containerEl, state, handlers) {
           e.preventDefault();
           e.stopPropagation();
           
-          const isSubtask = btn.getAttribute('data-is-subtask') === 'true';
-          // Only use projectId from attribute, never derive from taskId
-          const projectIdAttr = btn.getAttribute('data-project-id');
-          const projectId = projectIdAttr && projectIdAttr !== '' && projectIdAttr !== 'null' ? projectIdAttr : null;
-          const parentTaskId = btn.getAttribute('data-parent-task-id') || null;
-          
-          console.log('🧨 project delete action:', { taskId, isSubtask, projectId, parentTaskId });
-          
-          // Use the taskOperations wrapper (like edit does)
-          if (window.Petal?.features?.taskOperations?.deleteTask) {
-            window.Petal.features.taskOperations.deleteTask(taskId, isSubtask, projectId, parentTaskId);
-          } else if (window.Petal?.features?.deleteHandlers?.confirmDeleteTask) {
-            // Fallback: build context from store
-            const store = window.Petal?.store;
-            const state = store?.getState?.() || {};
-            const ctx = {
-              store,
-              state,
-              tasks: Array.isArray(state.tasks) ? state.tasks : [],
-              projects: Array.isArray(state.projects) ? state.projects : [],
-              save: window.Petal?.handlers?.save || window.save,
-              render: window.Petal?.handlers?.render || window.render,
-            };
-            console.log('🧨 calling confirmDeleteTask with ctx:', ctx);
-            window.Petal.features.deleteHandlers.confirmDeleteTask(ctx, taskId, isSubtask, projectId, parentTaskId);
+          // Use the helper function that properly builds context
+          if (window.handleDeleteTaskAction) {
+            window.handleDeleteTaskAction(e, btn);
           } else {
-            console.error('❌ No delete handler available');
-            alert('Delete functionality not available. Please check console for details.');
+            console.error('❌ handleDeleteTaskAction not available');
           }
         } else if (action === 'edit-task') {
           e.preventDefault();
           e.stopPropagation();
           
-          // Get taskId from button attribute (more reliable)
-          const editTaskId = btn.getAttribute('data-task-id') || btn.getAttribute('data-id') || taskId;
-          console.log('🧨 project edit action:', { editTaskId, taskId, action });
-          
-          if (editTaskId && window.Petal?.features?.taskOperations?.editTask) {
-            window.Petal.features.taskOperations.editTask(editTaskId);
-          } else if (editTaskId && window.Petal?.handlers?.editTask) {
-            window.Petal.handlers.editTask(editTaskId);
+          // Use the helper function that properly builds context
+          if (window.handleEditTaskAction) {
+            window.handleEditTaskAction(e, btn);
           } else {
-            console.error('❌ No edit handler available or taskId missing', { editTaskId });
+            console.error('❌ handleEditTaskAction not available');
           }
         }
       }, true); // Use capture phase
@@ -409,7 +381,6 @@ function renderProjectCard(project, state, openSet) {
       <div class="project-title-row">
         <h3 class="project-name" data-action="open-project" data-project-id="${project.id}" style="cursor:pointer;">${esc(project.name || 'Untitled Project')}</h3>
         <div class="project-actions">
-          <button data-action="select-project-matrix" data-project-id="${project.id}" class="btn-icon" title="Open workflow">📊</button>
           <button data-action="toggle-project" data-project-id="${project.id}" class="btn-icon" title="${isOpen ? 'Collapse' : 'Expand'}">${isOpen ? '▼' : '▶'}</button>
         </div>
       </div>
@@ -486,9 +457,9 @@ function renderProjectCard(project, state, openSet) {
               </div>
               
               <div class="task-actions" style="display:flex;gap:4px;align-items:center;">
-                <button class="btn-del" data-action="open-drawer" data-task-id="${t.id}" title="Open drawer (Notes, Files, Subtasks)" style="font-size:13px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);">📝</button>
-                <button class="btn-del btn-edit" data-action="edit-task" data-task-id="${String(t.id)}" title="Edit" style="font-size:13px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);">✎</button>
-                <button class="btn-del btn-delete" data-action="delete" data-id="${String(t.id)}" data-task-id="${String(t.id)}" data-is-subtask="false" data-project-id="${t.projectId || ''}" title="Delete" style="font-size:16px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:bold;opacity:1;">×</button>
+                <button class="btn-del" data-action="task:open-drawer" data-task-id="${t.id}" data-project-id="${t.projectId || project.id || ''}" title="Open drawer (Notes, Files, Subtasks)" style="font-size:13px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);">📝</button>
+                <button class="btn-del btn-edit" data-action="edit-task" data-task-id="${String(t.id)}" data-project-id="${t.projectId || project.id || ''}" title="Edit" style="font-size:13px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);">✎</button>
+                <button class="btn-del btn-delete" data-action="delete" data-id="${String(t.id)}" data-task-id="${String(t.id)}" data-is-subtask="false" data-project-id="${t.projectId || project.id || ''}" title="Delete" style="font-size:16px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:bold;opacity:1;">×</button>
               </div>
             </div>
           </div>`;

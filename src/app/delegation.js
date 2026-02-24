@@ -71,7 +71,7 @@ export function setupEventDelegation() {
     
     // Delete task - use helper function
     if (action === 'delete-task' || action === 'delete') {
-      handleDeleteTaskAction(e);
+      handleDeleteTaskAction(e, actionBtn);
       return;
     }
     
@@ -91,6 +91,18 @@ export function setupEventDelegation() {
     if (action === 'add-milestone') {
       e.stopPropagation();
       e.preventDefault();
+      // Get projectId from button or fallback to window.selectedProjectId
+      const projectId = actionBtn.getAttribute('data-project-id') || window.selectedProjectId;
+      if (!projectId) {
+        alert('Please select a project first');
+        return;
+      }
+      
+      // Set window.selectedProjectId if we got it from the button
+      if (projectId && typeof window.selectedProjectId !== 'undefined') {
+        window.selectedProjectId = projectId;
+      }
+      
       if (window.addMilestone) {
         window.addMilestone();
       }
@@ -112,8 +124,35 @@ export function setupEventDelegation() {
     if (action === 'add-file-to-project') {
       e.stopPropagation();
       e.preventDefault();
-      if (window.selectedProjectId && window.openProjectAddFileModal) {
-        window.openProjectAddFileModal(window.selectedProjectId);
+      // Get projectId from button's data attribute first, then fallback to window.selectedProjectId
+      const projectId = actionBtn.getAttribute('data-project-id') || window.selectedProjectId;
+      if (!projectId) {
+        alert('Please select a project first');
+        return;
+      }
+      
+      // Build context and call function with both ctx and projId
+      const state = window.Petal?.store?.getState() || {};
+      const ctx = {
+        tasks: state.tasks || [],
+        projects: state.projects || [],
+        save: window.Petal?.handlers?.save || (() => Promise.resolve()),
+        render: window.Petal?.handlers?.render || (() => {})
+      };
+      
+      if (window.Petal?.features?.modalOperations?.openProjectAddFileModal) {
+        window.Petal.features.modalOperations.openProjectAddFileModal(ctx, projectId);
+      } else if (window.openProjectAddFileModal) {
+        // Try calling with context if function accepts it
+        if (window.openProjectAddFileModal.length === 2) {
+          window.openProjectAddFileModal(ctx, projectId);
+        } else {
+          // Fallback: set window.selectedProjectId and call with just projectId
+          if (typeof window.selectedProjectId !== 'undefined') {
+            window.selectedProjectId = projectId;
+          }
+          window.openProjectAddFileModal(projectId);
+        }
       }
       return;
     }
@@ -374,6 +413,26 @@ export function setupEventDelegation() {
     }
     
     // Task drawer actions
+    if (action === 'task:open-drawer' || action === 'task:drawer' || action === 'open-drawer') {
+      e.stopPropagation();
+      const taskId = actionBtn.getAttribute('data-task-id');
+      if (taskId) {
+        if (window.Petal?.features?.taskDrawer?.openTaskDrawer) {
+          window.Petal.features.taskDrawer.openTaskDrawer(taskId);
+        } else if (window.openTaskDrawer) {
+          window.openTaskDrawer(taskId);
+        }
+      }
+      return;
+    }
+    if (action === 'task:toggle-subtasks') {
+      e.stopPropagation();
+      const taskId = actionBtn.getAttribute('data-task-id');
+      if (taskId && window.toggleTaskSubtaskSection) {
+        window.toggleTaskSubtaskSection(taskId);
+      }
+      return;
+    }
     if (action === 'task-drawer:close') {
       e.stopPropagation();
       if (window.closeTaskDrawer) window.closeTaskDrawer();
@@ -560,6 +619,126 @@ export function setupEventDelegation() {
     if (action === 'cell-log:add-media-type') {
       e.stopPropagation();
       if (window.Petal?.pages?.cellLog?.addMediaType) window.Petal.pages.cellLog.addMediaType();
+      return;
+    }
+    
+    // Color picker actions
+    if (action === 'color:select') {
+      e.stopPropagation();
+      const colorNum = parseInt(actionBtn.getAttribute('data-color'), 10);
+      if (colorNum && window.Petal?.features?.projectOperations?.selectColor) {
+        const ctx = window.Petal?.handlers?.createPageContext?.() || window.createPageContext?.() || {};
+        window.Petal.features.projectOperations.selectColor(ctx, colorNum, actionBtn);
+      } else if (colorNum && window.selectColor) {
+        window.selectColor(colorNum, actionBtn);
+      }
+      return;
+    }
+    
+    // Add project task
+    if (action === 'add-project-task') {
+      e.stopPropagation();
+      e.preventDefault();
+      // Get projectId from button's data attribute first, then fallback to window.selectedProjectId
+      const projectId = actionBtn.getAttribute('data-project-id') || window.selectedProjectId;
+      if (!projectId) {
+        alert('Please select a project first');
+        return;
+      }
+      
+      // Build context and call function with both ctx and projId
+      const state = window.Petal?.store?.getState() || {};
+      const ctx = {
+        tasks: state.tasks || [],
+        projects: state.projects || [],
+        save: window.Petal?.handlers?.save || (() => Promise.resolve()),
+        render: window.Petal?.handlers?.render || (() => {})
+      };
+      
+      if (window.Petal?.features?.modalOperations?.openProjectAddTaskModal) {
+        window.Petal.features.modalOperations.openProjectAddTaskModal(ctx, projectId);
+      } else if (window.openProjectAddTaskModal) {
+        // Try calling with context if function accepts it
+        if (window.openProjectAddTaskModal.length === 2) {
+          window.openProjectAddTaskModal(ctx, projectId);
+        } else {
+          // Fallback: set window.selectedProjectId and call with just projectId
+          if (typeof window.selectedProjectId !== 'undefined') {
+            window.selectedProjectId = projectId;
+          }
+          window.openProjectAddTaskModal(projectId);
+        }
+      }
+      return;
+    }
+    
+    // Project actions
+    if (action === 'project:add') {
+      e.stopPropagation();
+      if (window.Petal?.features?.projectOperations?.addProject) {
+        const ctx = window.Petal?.handlers?.createPageContext?.() || window.createPageContext?.() || {};
+        window.Petal.features.projectOperations.addProject(ctx);
+      } else if (window.addProject) {
+        window.addProject();
+      }
+      return;
+    }
+    if (action === 'project:filter') {
+      e.stopPropagation();
+      const filter = actionBtn.getAttribute('data-filter');
+      if (filter && window.Petal?.handlers?.setProjFilter) {
+        window.Petal.handlers.setProjFilter(filter, actionBtn);
+      } else if (filter && window.setProjFilter) {
+        window.setProjFilter(filter, actionBtn);
+      }
+      return;
+    }
+    if (action === 'project:matrix-back') {
+      e.stopPropagation();
+      if (window.Petal?.features?.projectOperations?.selectProjectForMatrix) {
+        const ctx = window.Petal?.handlers?.createPageContext?.() || window.createPageContext?.() || {};
+        window.Petal.features.projectOperations.selectProjectForMatrix(ctx, null);
+      } else if (window.selectProjectForMatrix) {
+        window.selectProjectForMatrix(null);
+      }
+      return;
+    }
+    
+    // Review actions
+    if (action === 'review:weekly') {
+      e.stopPropagation();
+      if (window.Petal?.features?.reviewOperations?.startWeeklyReview) {
+        const ctx = window.Petal?.handlers?.createPageContext?.() || window.createPageContext?.() || {};
+        window.Petal.features.reviewOperations.startWeeklyReview(ctx);
+      } else if (window.startWeeklyReview) {
+        window.startWeeklyReview();
+      }
+      return;
+    }
+    
+    // Task actions
+    if (action === 'task:add-matrix') {
+      e.stopPropagation();
+      if (window.Petal?.features?.modalOperations?.openMatrixAddTaskModal) {
+        const ctx = window.Petal?.handlers?.createPageContext?.() || window.createPageContext?.() || {};
+        window.Petal.features.modalOperations.openMatrixAddTaskModal(ctx);
+      } else if (window.openMatrixAddTaskModal) {
+        window.openMatrixAddTaskModal();
+      }
+      return;
+    }
+    
+    // Log actions
+    if (action === 'log:add-cell') {
+      e.stopPropagation();
+      const ctx = window.Petal?.handlers?.createPageContext?.() || window.createPageContext?.() || {};
+      if (window.Petal?.features?.projectOperations?.openAddCellLogEntry) {
+        window.Petal.features.projectOperations.openAddCellLogEntry(ctx);
+      } else if (window.openAddCellLogEntry) {
+        window.openAddCellLogEntry();
+      } else {
+        console.warn('⚠️ log:add-cell: No handler available');
+      }
       return;
     }
   };
