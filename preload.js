@@ -70,6 +70,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return ipcRenderer.invoke('file:open', filePath);
   },
   chooseFile: () => ipcRenderer.invoke('file:chooseFile'),
+  pickFile: (options) => ipcRenderer.invoke('file:pickFile', options),
   resolveFilePath: (fileLink) => ipcRenderer.invoke('file:resolvePath', fileLink),
   getFileMetadata: (fileLink) => ipcRenderer.invoke('file:getMetadata', fileLink),
   

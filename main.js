@@ -1702,6 +1702,64 @@ ipcMain.handle('file:chooseFile', async () => {
   }
 });
 
+// Pick file for relocating missing files
+ipcMain.handle('file:pickFile', async (event, options = {}) => {
+  try {
+    // Ensure mainWindow exists and is focused
+    if (!mainWindow) {
+      safeError('mainWindow is not available');
+      return { success: false, error: 'Window not available' };
+    }
+    
+    // Focus the window to ensure dialog appears on top
+    if (mainWindow.isMinimized()) {
+      mainWindow.restore();
+    }
+    mainWindow.focus();
+    
+    const title = options.title || 'Locate File';
+    const defaultPath = options.defaultPath || getOneDriveRoot() || os.homedir();
+    
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openFile'],
+      title: title,
+      defaultPath: defaultPath,
+      filters: [
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    });
+    
+    if (result.canceled || result.filePaths.length === 0) {
+      return { success: false, canceled: true };
+    }
+    
+    const filePath = result.filePaths[0];
+    const normalizedPath = path.normalize(filePath);
+    
+    // Try to create OneDrive-relative path if applicable
+    const oneDriveRoot = getOneDriveRoot();
+    let onedrive_rel = null;
+    if (oneDriveRoot) {
+      const oneDriveNormalized = path.normalize(oneDriveRoot);
+      if (normalizedPath.toLowerCase().startsWith(oneDriveNormalized.toLowerCase())) {
+        const relative = path.relative(oneDriveNormalized, normalizedPath);
+        onedrive_rel = relative.replace(/\\/g, '/');
+      }
+    }
+    
+    return {
+      success: true,
+      path: normalizedPath,
+      onedrive_rel: onedrive_rel,
+      label: path.basename(filePath),
+      type: path.extname(filePath).toLowerCase().substring(1) || null
+    };
+  } catch (error) {
+    safeError('Error in file:pickFile:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 // Get file metadata (last modified, size, etc.)
 ipcMain.handle('file:getMetadata', async (event, fileLink) => {
   try {

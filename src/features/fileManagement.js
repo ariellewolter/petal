@@ -381,9 +381,12 @@ export function checkRegistryConsistency(ctx) {
 }
 
 /**
- * Track file open
+ * Track file open - validates existence and updates tracking
  */
 export async function trackFileOpen(fileLink, ctx) {
+  // First validate file existence (updates last known locations)
+  await validateFileExistence(fileLink, ctx);
+  
   // Defensive defaults: ensure fileRegistry and fileHistory are always objects
   // Try to get from store first (store-as-source-of-truth), then from ctx, then fallback
   let fileRegistry = {};
@@ -419,18 +422,27 @@ export async function trackFileOpen(fileLink, ctx) {
     fileHistory[key] = {};
   }
   fileHistory[key].lastOpened = Date.now();
+  fileHistory[key].lastAccessed = Date.now();
   
   // Update file registry
   if (fileRegistry[key]) {
     fileRegistry[key].lastOpened = Date.now();
+    fileRegistry[key].lastAccessed = Date.now();
   }
   
   // Update store if available (store-as-source-of-truth)
   if (typeof window !== 'undefined' && window.Petal?.store) {
-    window.Petal.store.setState({
-      fileHistory,
-      fileRegistry
-    });
+    if (window.Petal.store.setEphemeralState) {
+      window.Petal.store.setEphemeralState({
+        fileHistory,
+        fileRegistry
+      });
+    } else {
+      window.Petal.store.setState({
+        fileHistory,
+        fileRegistry
+      });
+    }
   }
   
   // Call save if provided (for backward compatibility)
@@ -440,34 +452,151 @@ export async function trackFileOpen(fileLink, ctx) {
 }
 
 /**
- * Get file metadata from OS
+ * Validate file existence and update status
+ * Returns { exists: boolean, metadata: object|null, lastKnownPath: string|null }
  */
-export async function refreshFileMetadata(fileLink, ctx) {
+export async function validateFileExistence(fileLink, ctx) {
   if (!window.electronAPI || !window.electronAPI.getFileMetadata) {
-    return null;
+    // Browser context - can't validate, assume exists if share_url present
+    return {
+      exists: !!fileLink.share_url,
+      metadata: null,
+      lastKnownPath: fileLink.share_url || fileLink.abs_path || fileLink.onedrive_rel || null
+    };
   }
   
   // Ensure ctx and fileHistory are defined
   if (!ctx) {
     ctx = {};
   }
-  const fileHistory = ctx.fileHistory || window.fileHistory || {};
+  let fileRegistry = {};
+  let fileHistory = ctx.fileHistory || {};
+  
+  if (typeof window !== 'undefined' && window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    fileRegistry = state.fileRegistry || {};
+    fileHistory = state.fileHistory || fileHistory;
+  }
+  if (ctx?.fileRegistry) {
+    fileRegistry = ctx.fileRegistry;
+  }
+  if (ctx?.fileHistory) {
+    fileHistory = ctx.fileHistory;
+  }
+  
+  const key = getFileKey(fileLink);
+  const file = fileRegistry[key] || fileLink;
   
   try {
     const metadata = await window.electronAPI.getFileMetadata(fileLink);
-    if (metadata.success) {
-      const key = getFileKey(fileLink);
+    if (metadata.success && metadata.exists) {
+      // File exists - update last known location and clear missing status
       if (!fileHistory[key]) {
         fileHistory[key] = {};
       }
+      
+      // Store last known good paths
+      const resolvedPath = metadata.path || fileLink.abs_path || fileLink.onedrive_rel;
+      if (resolvedPath) {
+        fileHistory[key].lastResolvedPath = resolvedPath;
+        fileHistory[key].lastSeenAt = Date.now();
+        
+        // Store last known paths for each type
+        if (fileLink.abs_path) {
+          fileHistory[key].abs_path_last_known = fileLink.abs_path;
+        }
+        if (fileLink.onedrive_rel) {
+          fileHistory[key].onedrive_rel_last_known = fileLink.onedrive_rel;
+        }
+      }
+      
       fileHistory[key].lastModified = metadata.lastModified;
       fileHistory[key].size = metadata.size;
-      return metadata;
+      fileHistory[key].exists = true;
+      fileHistory[key].missingSince = null;
+      
+      // Update file registry
+      if (fileRegistry[key]) {
+        fileRegistry[key].exists = true;
+        fileRegistry[key].isMissing = false;
+        fileRegistry[key].lastSeenAt = Date.now();
+      }
+      
+      // Update store
+      if (typeof window !== 'undefined' && window.Petal?.store) {
+        if (window.Petal.store.setEphemeralState) {
+          window.Petal.store.setEphemeralState({ fileHistory, fileRegistry });
+        } else {
+          window.Petal.store.setState({ fileHistory, fileRegistry });
+        }
+      }
+      
+      return {
+        exists: true,
+        metadata: metadata,
+        lastKnownPath: resolvedPath
+      };
+    } else {
+      // File doesn't exist - mark as missing but preserve last known location
+      if (!fileHistory[key]) {
+        fileHistory[key] = {};
+      }
+      
+      // Preserve last known paths if not already set
+      if (!fileHistory[key].abs_path_last_known && fileLink.abs_path) {
+        fileHistory[key].abs_path_last_known = fileLink.abs_path;
+      }
+      if (!fileHistory[key].onedrive_rel_last_known && fileLink.onedrive_rel) {
+        fileHistory[key].onedrive_rel_last_known = fileLink.onedrive_rel;
+      }
+      if (!fileHistory[key].lastResolvedPath) {
+        fileHistory[key].lastResolvedPath = fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url;
+      }
+      
+      // Mark as missing
+      fileHistory[key].exists = false;
+      if (!fileHistory[key].missingSince) {
+        fileHistory[key].missingSince = Date.now();
+      }
+      
+      // Update file registry
+      if (fileRegistry[key]) {
+        fileRegistry[key].exists = false;
+        fileRegistry[key].isMissing = true;
+      }
+      
+      // Update store
+      if (typeof window !== 'undefined' && window.Petal?.store) {
+        if (window.Petal.store.setEphemeralState) {
+          window.Petal.store.setEphemeralState({ fileHistory, fileRegistry });
+        } else {
+          window.Petal.store.setState({ fileHistory, fileRegistry });
+        }
+      }
+      
+      return {
+        exists: false,
+        metadata: null,
+        lastKnownPath: fileHistory[key].lastResolvedPath || fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url
+      };
     }
   } catch (e) {
-    console.error('Error refreshing file metadata:', e);
+    console.error('Error validating file existence:', e);
+    // On error, assume missing but preserve last known location
+    return {
+      exists: false,
+      metadata: null,
+      lastKnownPath: fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url || null
+    };
   }
-  return null;
+}
+
+/**
+ * Get file metadata from OS (legacy - now uses validateFileExistence)
+ */
+export async function refreshFileMetadata(fileLink, ctx) {
+  const result = await validateFileExistence(fileLink, ctx);
+  return result.exists ? result.metadata : null;
 }
 
 /**
@@ -1104,41 +1233,288 @@ export function editFileNote(ctx, fileKey) {
 
 /**
  * Show tasks linked to a file
+ * @param {Object|string} ctxOrFileKey - Context object or fileKey (for backward compatibility)
+ * @param {string|Object} fileKeyOrOptions - FileKey or options object
  */
-export function showFileLinkedTasks(ctx, fileKey) {
-  const { tasks, projects, openTaskDrawer } = ctx;
-  
-  // Find all tasks that reference this file
-  const linkedTasks = [];
-  
-  for (const task of tasks) {
-    if (!task.fileIds || !task.fileIds.length) continue;
-    
-    // Check if task's project has this file
-    if (!task.projectId) continue;
-    const project = projects.find(p => p.id === task.projectId);
-    if (!project || !project.files) continue;
-    
-    const file = project.files.find(f => {
-      if (!f || typeof f !== 'object') return false;
-      const key = f.onedrive_rel || f.abs_path || f.share_url || '';
-      return key === fileKey || f.id === fileKey;
-    });
-    
-    if (file && task.fileIds.includes(file.id)) {
-      linkedTasks.push(task);
-    }
+export function showFileLinkedTasks(ctxOrFileKey, fileKeyOrOptions) {
+  // Handle both old signature (ctx, fileKey) and new signature (fileKey, options)
+  let ctx, fileKey, options;
+  if (typeof ctxOrFileKey === 'string') {
+    // New signature: (fileKey, options)
+    fileKey = ctxOrFileKey;
+    options = fileKeyOrOptions || {};
+    ctx = {
+      tasks: window.Petal?.store?.getState()?.tasks || [],
+      projects: window.Petal?.store?.getState()?.projects || [],
+      openTaskDrawer: window.Petal?.features?.taskDrawer?.openTaskDrawer,
+      routerSwitchView: window.routerSwitchView || window.Petal?.router?.switchView
+    };
+  } else {
+    // Old signature: (ctx, fileKey)
+    ctx = ctxOrFileKey;
+    fileKey = fileKeyOrOptions;
+    options = {};
   }
+  
+  const { tasks, projects, openTaskDrawer, routerSwitchView } = ctx;
+  
+  // Get file registry to find file
+  let fileRegistry = {};
+  if (typeof window !== 'undefined' && window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    fileRegistry = state.fileRegistry || {};
+  }
+  if (ctx?.fileRegistry) {
+    fileRegistry = ctx.fileRegistry;
+  }
+  
+  const file = fileRegistry[fileKey];
+  if (!file) {
+    // Fallback: search tasks directly
+    const linkedTasks = [];
+    for (const task of tasks) {
+      if (task.files && task.files.some(f => getFileKey(f) === fileKey)) {
+        linkedTasks.push(task);
+      }
+    }
+    
+    if (linkedTasks.length === 0) {
+      alert('No tasks linked to this file');
+      return;
+    }
+    
+    if (options.navigate && routerSwitchView) {
+      // Navigate to tasks view with file filter
+      routerSwitchView('tasks', { force: true }).then(() => {
+        // TODO: Apply filter to highlight tasks
+        if (linkedTasks.length === 1 && openTaskDrawer) {
+          openTaskDrawer(linkedTasks[0].id);
+        }
+      });
+      return;
+    }
+    
+    const taskList = linkedTasks.map(t => `• ${t.title}`).join('\n');
+    const choice = confirm(`Tasks linked to this file:\n\n${taskList}\n\nOpen first task?`);
+    if (choice && linkedTasks[0] && openTaskDrawer) {
+      openTaskDrawer(linkedTasks[0].id);
+    }
+    return;
+  }
+  
+  // Use file registry
+  const linkedTasks = file.tasks || [];
   
   if (linkedTasks.length === 0) {
     alert('No tasks linked to this file');
     return;
   }
   
-  const taskList = linkedTasks.map(t => `• ${t.title}`).join('\n');
+  if (options.navigate && routerSwitchView) {
+    // Navigate to tasks view
+    routerSwitchView('tasks', { force: true }).then(() => {
+      // TODO: Apply filter to highlight tasks
+      if (linkedTasks.length === 1 && openTaskDrawer) {
+        const task = tasks.find(t => t.id === linkedTasks[0].id);
+        if (task) {
+          openTaskDrawer(task.id);
+        }
+      }
+    });
+    return;
+  }
+  
+  const taskList = linkedTasks.map(t => `• ${t.title || t.id}`).join('\n');
   const choice = confirm(`Tasks linked to this file:\n\n${taskList}\n\nOpen first task?`);
   if (choice && linkedTasks[0] && openTaskDrawer) {
-    openTaskDrawer(linkedTasks[0].id);
+    const task = tasks.find(t => t.id === linkedTasks[0].id);
+    if (task) {
+      openTaskDrawer(task.id);
+    }
+  }
+}
+
+/**
+ * Show projects linked to a file
+ * @param {string} fileKey - File key
+ * @param {Object} options - Options { navigate: boolean, view: string }
+ */
+export function showFileLinkedProjects(fileKey, options = {}) {
+  const ctx = {
+    projects: window.Petal?.store?.getState()?.projects || [],
+    routerSwitchView: window.routerSwitchView || window.Petal?.router?.switchView
+  };
+  
+  // Get file registry
+  let fileRegistry = {};
+  if (typeof window !== 'undefined' && window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    fileRegistry = state.fileRegistry || {};
+  }
+  
+  const file = fileRegistry[fileKey];
+  if (!file) {
+    alert('File not found in registry');
+    return;
+  }
+  
+  const linkedProjects = file.projects || [];
+  
+  if (linkedProjects.length === 0) {
+    alert('No projects linked to this file');
+    return;
+  }
+  
+  if (options.navigate && ctx.routerSwitchView) {
+    // Navigate to projects view
+    ctx.routerSwitchView('projects', { force: true }).then(() => {
+      // TODO: Apply filter to highlight projects
+      if (linkedProjects.length === 1) {
+        // Could scroll to or highlight the project
+      }
+    });
+    return;
+  }
+  
+  const projectList = linkedProjects.map(p => `• ${p.name || p.id}`).join('\n');
+  alert(`Projects linked to this file:\n\n${projectList}`);
+}
+
+/**
+ * Locate a missing file - opens file picker to relocate
+ * @param {string} fileKey - File key
+ * @param {Object} fileLink - Current file link object
+ */
+export async function locateFile(fileKey, fileLink) {
+  if (!window.electronAPI || !window.electronAPI.pickFile) {
+    alert('File picker not available in this context');
+    return;
+  }
+  
+  try {
+    // Open file picker
+    const result = await window.electronAPI.pickFile({
+      title: 'Locate missing file',
+      defaultPath: fileLink?.abs_path_last_known || fileLink?.abs_path || fileLink?.onedrive_rel_last_known || fileLink?.onedrive_rel
+    });
+    
+    if (!result || !result.success || !result.path) {
+      return; // User cancelled
+    }
+    
+    const newPath = result.path;
+    
+    // Get current state
+    const state = window.Petal?.store?.getState() || {};
+    const { tasks = [], projects = [], save } = window.Petal?.handlers || {};
+    
+    // Update file in all projects that reference it
+    let updated = false;
+    for (const project of projects) {
+      if (!project.files) continue;
+      
+      const fileIndex = project.files.findIndex(f => {
+        if (!f || typeof f !== 'object') return false;
+        const key = f.onedrive_rel || f.abs_path || f.share_url || '';
+        return key === fileKey || f.id === fileKey;
+      });
+      
+      if (fileIndex >= 0) {
+        const file = project.files[fileIndex];
+        // Update paths - preserve onedrive_rel if new path is in OneDrive
+        const updatedFile = { ...file };
+        
+        // Try to detect if new path is in OneDrive
+        if (window.electronAPI && window.electronAPI.getOneDriveRoot) {
+          try {
+            const oneDriveRoot = await window.electronAPI.getOneDriveRoot();
+            if (oneDriveRoot && newPath.startsWith(oneDriveRoot)) {
+              // Calculate relative path manually (renderer doesn't have path module)
+              const relativePath = newPath.slice(oneDriveRoot.length).replace(/^[\/\\]+/, '').replace(/\\/g, '/');
+              updatedFile.onedrive_rel = relativePath;
+            }
+          } catch (e) {
+            // Ignore
+          }
+        }
+        
+        updatedFile.abs_path = newPath;
+        updatedFile.exists = true;
+        updatedFile.isMissing = false;
+        
+        // Store previous paths
+        if (!updatedFile.previousPaths) {
+          updatedFile.previousPaths = [];
+        }
+        if (file.abs_path && file.abs_path !== newPath) {
+          updatedFile.previousPaths.push({
+            path: file.abs_path,
+            type: 'abs_path',
+            updatedAt: Date.now()
+          });
+        }
+        if (file.onedrive_rel && file.onedrive_rel !== updatedFile.onedrive_rel) {
+          updatedFile.previousPaths.push({
+            path: file.onedrive_rel,
+            type: 'onedrive_rel',
+            updatedAt: Date.now()
+          });
+        }
+        
+        project.files[fileIndex] = updatedFile;
+        updated = true;
+      }
+    }
+    
+    // Update file registry
+    const fileRegistry = state.fileRegistry || {};
+    if (fileRegistry[fileKey]) {
+      fileRegistry[fileKey].abs_path = newPath;
+      fileRegistry[fileKey].exists = true;
+      fileRegistry[fileKey].isMissing = false;
+      fileRegistry[fileKey].lastSeenAt = Date.now();
+    }
+    
+    // Update file history
+    const fileHistory = state.fileHistory || {};
+    if (fileHistory[fileKey]) {
+      fileHistory[fileKey].exists = true;
+      fileHistory[fileKey].missingSince = null;
+      fileHistory[fileKey].lastResolvedPath = newPath;
+      fileHistory[fileKey].lastSeenAt = Date.now();
+    }
+    
+    // Update store
+    if (window.Petal?.store) {
+      window.Petal.store.setState({
+        projects,
+        fileRegistry,
+        fileHistory
+      });
+    }
+    
+    if (updated && save) {
+      await save();
+    }
+    
+    // Re-validate file existence
+    if (window.Petal?.features?.fileManagement?.validateFileExistence) {
+      const updatedFileLink = { ...fileLink, abs_path: newPath };
+      await window.Petal.features.fileManagement.validateFileExistence(updatedFileLink, {
+        fileHistory,
+        fileRegistry
+      });
+    }
+    
+    // Refresh files view
+    if (window.routerSwitchView) {
+      await window.routerSwitchView('files', { force: true });
+    }
+    
+    alert(`File location updated successfully!\n\nNew path: ${newPath}`);
+  } catch (error) {
+    console.error('Error locating file:', error);
+    alert('Error locating file: ' + (error.message || 'Unknown error'));
   }
 }
 

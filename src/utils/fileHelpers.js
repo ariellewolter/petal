@@ -13,6 +13,19 @@ export async function openFile(fileLink) {
     fileLink = { abs_path: fileLink };
   }
   
+  // Validate file existence before opening (updates last known locations)
+  if (window.Petal?.features?.fileManagement?.validateFileExistence) {
+    try {
+      await window.Petal.features.fileManagement.validateFileExistence(fileLink, {
+        fileHistory: window.Petal?.store?.getState()?.fileHistory,
+        fileRegistry: window.Petal?.store?.getState()?.fileRegistry
+      });
+    } catch (e) {
+      console.error('Error validating file existence:', e);
+      // Continue with open attempt even if validation fails
+    }
+  }
+  
   if (window.electronAPI && window.electronAPI.resolveFilePath) {
     try {
       const resolved = await window.electronAPI.resolveFilePath(fileLink);

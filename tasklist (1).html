@@ -449,7 +449,7 @@
     <div class="quick-capture-box" style="max-width:520px;" onclick="event.stopPropagation()">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
         <h3 id="event-modal-title" style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;font-style:italic;color:var(--rose);margin:0;">Add Event</h3>
-        <button data-action="modal:close-event" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close" onclick="event.stopPropagation();if(window.closeEventModal){window.closeEventModal();}else{const m=document.getElementById('event-modal');if(m){m.style.display='none';m.classList.remove('active');}}">✕</button>
+        <button data-action="modal:close-event" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
       </div>
       
       <div class="field" style="margin-bottom:16px;">
@@ -577,8 +577,8 @@
           </button>
         </div>
         <div style="display:flex;gap:10px;">
-          <button data-action="modal:close-event" class="btn-secondary" onclick="if(window.closeEventModal){window.closeEventModal();}else{const m=document.getElementById('event-modal');if(m){m.style.display='none';m.classList.remove('active');}}">Cancel</button>
-          <button data-action="modal:submit-event" class="btn-submit" onclick="if(window.submitEventModal){window.submitEventModal();}else{console.warn('submitEventModal not found');}">Save Event</button>
+          <button data-action="modal:close-event" class="btn-secondary">Cancel</button>
+          <button data-action="modal:submit-event" class="btn-submit">Save Event</button>
         </div>
       </div>
     </div>
@@ -1291,7 +1291,7 @@
       </div>
       <div>
         <label style="font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-dim);display:block;margin-bottom:6px;">Actions</label>
-        <button class="btn-export" onclick="startWeeklyReview()" style="background:var(--sage-pale);color:var(--sage);border-color:var(--sage);padding:10px 16px;">📋 Weekly Review</button>
+        <button class="btn-export" data-action="review:weekly" style="background:var(--sage-pale);color:var(--sage);border-color:var(--sage);padding:10px 16px;">📋 Weekly Review</button>
       </div>
     </div>
 
@@ -1402,11 +1402,11 @@
       <div class="field">
         <label>Color</label>
         <div class="color-row" id="proj-color-row">
-          <div class="color-swatch selected" data-color="1" style="background:var(--proj-1);" onclick="selectColor(1,this)"></div>
-          <div class="color-swatch"          data-color="2" style="background:var(--proj-2);" onclick="selectColor(2,this)"></div>
-          <div class="color-swatch"          data-color="3" style="background:var(--proj-3);" onclick="selectColor(3,this)"></div>
-          <div class="color-swatch"          data-color="4" style="background:var(--proj-4);" onclick="selectColor(4,this)"></div>
-          <div class="color-swatch"          data-color="5" style="background:var(--proj-5);" onclick="selectColor(5,this)"></div>
+          <div class="color-swatch selected" data-color="1" data-action="color:select" style="background:var(--proj-1);cursor:pointer;"></div>
+          <div class="color-swatch"          data-color="2" data-action="color:select" style="background:var(--proj-2);cursor:pointer;"></div>
+          <div class="color-swatch"          data-color="3" data-action="color:select" style="background:var(--proj-3);cursor:pointer;"></div>
+          <div class="color-swatch"          data-color="4" data-action="color:select" style="background:var(--proj-4);cursor:pointer;"></div>
+          <div class="color-swatch"          data-color="5" data-action="color:select" style="background:var(--proj-5);cursor:pointer;"></div>
         </div>
       </div>
       <div class="files-section">
@@ -1415,7 +1415,7 @@
         <button class="btn-add-file" id="btn-add-file-project" data-action="file:add-row" data-container="proj-files-container" data-context="p">＋ Choose file</button>
         <div id="file-hint-project" style="font-size:9px;color:var(--text-light);margin-top:4px;display:none;">Files in OneDrive will work across all devices</div>
       </div>
-      <button class="btn-submit" onclick="addProject()">Create Project</button>
+      <button class="btn-submit" data-action="project:add">Create Project</button>
         </div>
       </div>
     </div>
@@ -1424,7 +1424,7 @@
     <div id="workflow-matrix-view" style="display:none;position:relative;">
       <!-- Back Button -->
       <div style="margin-bottom:16px;">
-        <button onclick="selectProjectForMatrix(null)" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text-dim);font-family:'Jost',sans-serif;font-size:12px;letter-spacing:.1em;text-transform:uppercase;padding:8px 16px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px;">
+        <button data-action="project:matrix-back" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text-dim);font-family:'Jost',sans-serif;font-size:12px;letter-spacing:.1em;text-transform:uppercase;padding:8px 16px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px;">
           ← Back to Projects
         </button>
       </div>
@@ -1434,16 +1434,16 @@
         <div style="flex:1;min-width:0;">
       
       <!-- Project Title -->
-      <div style="margin-bottom:16px;">
-        <h2 id="project-title-display" style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:400;color:var(--text);margin:0 0 4px 0;"></h2>
-        <p id="project-desc-display" style="font-size:13px;color:var(--text-dim);margin:0;"></p>
+      <div style="margin-top:24px;margin-bottom:16px;">
+        <h2 id="project-title-display" style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:400;color:var(--text);margin:0 0 4px 0;display:block;visibility:visible;"></h2>
+        <p id="project-desc-display" style="font-size:13px;color:var(--text-dim);margin:0;display:block;"></p>
           </div>
       
       <!-- Section 1: Today Timeline -->
       <div id="today-timeline-section" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
           <h3 style="font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin:0;font-weight:500;">📅 Today Timeline</h3>
-          <button onclick="openMatrixAddTaskModal()" style="padding:6px 12px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:11px;cursor:pointer;font-weight:500;">+ Task</button>
+          <button data-action="task:add-matrix" style="padding:6px 12px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:11px;cursor:pointer;font-weight:500;">+ Task</button>
             </div>
         <div id="today-timeline-content"></div>
       </div>
@@ -1460,7 +1460,7 @@
       <div id="cell-log-section" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
           <h3 style="font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin:0;font-weight:500;">🔬 Cell Log</h3>
-          <button onclick="openAddCellLogEntry()" style="padding:6px 12px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:11px;cursor:pointer;font-weight:500;">+ Entry</button>
+          <button data-action="log:add-cell" style="padding:6px 12px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:11px;cursor:pointer;font-weight:500;">+ Entry</button>
         </div>
         <div id="cell-log-content"></div>
       </div>
@@ -1490,7 +1490,7 @@
       <div id="project-tasks-section" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
           <h3 style="font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin:0;font-weight:500;">⚡ Tasks</h3>
-          <button onclick="openMatrixAddTaskModal()" style="padding:6px 12px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:11px;cursor:pointer;font-weight:500;">+ Task</button>
+          <button data-action="task:add-matrix" style="padding:6px 12px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:11px;cursor:pointer;font-weight:500;">+ Task</button>
         </div>
         <div id="project-tasks-content"></div>
       </div>
@@ -1516,9 +1516,9 @@
     <div id="project-list-view" style="display:block;">
     <div class="toolbar" style="justify-content:space-between;">
       <div class="filter-group">
-        <button class="filter-chip active" onclick="setProjFilter('all',this)">All</button>
-        <button class="filter-chip"        onclick="setProjFilter('active',this)">Active</button>
-        <button class="filter-chip"        onclick="setProjFilter('done',this)">Complete</button>
+        <button class="filter-chip active" data-action="project:filter" data-filter="all">All</button>
+        <button class="filter-chip"        data-action="project:filter" data-filter="active">Active</button>
+        <button class="filter-chip"        data-action="project:filter" data-filter="done">Complete</button>
       </div>
     </div>
     <div id="project-container"></div>

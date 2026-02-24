@@ -67,6 +67,7 @@ import * as ReviewOperations from '../features/reviewOperations.js';
 // Import render functions
 import { renderGlobalSidebar, render } from './viewManager.js';
 import { setupEventDelegation } from './delegation.js';
+import { auditHookups } from './auditHookups.js';
 import * as buttonHandlers from '../ui/buttonHandlers.js';
 
 /**

@@ -169,8 +169,36 @@ export async function renderFiles(containerEl, state, handlers) {
     return;
   }
   
-  // Render file cards
+  // Render file cards - validate existence for files that haven't been checked recently
   const fileHtmls = await Promise.all(files.map(async f => {
+    const fileLink = f.fileLink || f;
+    const fileKey = f.key || fileLink.onedrive_rel || fileLink.abs_path || fileLink.share_url || '';
+    const history = fileHistory?.[fileKey] || {};
+    
+    // Validate existence if:
+    // 1. Never checked before, OR
+    // 2. Last check was more than 5 minutes ago, OR
+    // 3. File is marked as missing (re-check periodically)
+    const lastCheck = history.lastChecked || 0;
+    const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+    const shouldValidate = !lastCheck || lastCheck < fiveMinutesAgo || history.exists === false;
+    
+    if (shouldValidate && window.Petal?.features?.fileManagement?.validateFileExistence) {
+      try {
+        await window.Petal.features.fileManagement.validateFileExistence(fileLink, {
+          fileHistory: fileHistory,
+          fileRegistry: registryToUse
+        });
+        // Update history timestamp
+        if (!fileHistory[fileKey]) {
+          fileHistory[fileKey] = {};
+        }
+        fileHistory[fileKey].lastChecked = Date.now();
+      } catch (e) {
+        console.error('Error validating file:', e);
+      }
+    }
+    
     return renderFileCard(f, fileHistory || {});
   }));
   
@@ -193,17 +221,26 @@ function renderFileCard(file, fileHistory) {
   // Phase 3 Fix: Handle both persisted file format and registry format
   const fileLink = file.fileLink || file; // Persisted files have fileLink, registry files are the link
   const filePath = file.path || fileLink.onedrive_rel || fileLink.abs_path || fileLink.share_url || '';
+  const fileKey = file.key || filePath;
   const icon = fileIcon(filePath);
   const label = file.name || fileLink.label || fileLink.name || 'File';
   
   // Get metadata
-  const history = fileHistory?.[file.key || filePath] || {};
+  const history = fileHistory?.[fileKey] || {};
   const lastMod = history.lastModified ? new Date(history.lastModified) : null;
   const lastOpened = file.lastOpened || fileLink.lastOpened ? new Date(file.lastOpened || fileLink.lastOpened) : null;
   const addedAt = file.addedAt ? new Date(file.addedAt) : null;
   
+  // Check if file is missing (broken link)
+  const isMissing = file.exists === false || file.isMissing === true || history.exists === false;
+  const missingSince = history.missingSince ? new Date(history.missingSince) : null;
+  const lastKnownPath = history.lastResolvedPath || history.abs_path_last_known || history.onedrive_rel_last_known || filePath;
+  
   // Check for warnings (only for registry files with task/project links)
   const warnings = [];
+  if (isMissing) {
+    warnings.push('File not found');
+  }
   if (file.tasks && Array.isArray(file.tasks)) {
     if (file.tasks.some(t => t.done && lastMod && lastMod > new Date(t.done))) {
       warnings.push('Modified after task completed');
@@ -219,30 +256,37 @@ function renderFileCard(file, fileHistory) {
   
   const tasksCount = (file.tasks || []).length;
   const projectsCount = (file.projects || []).length;
+  const fileId = file.id || fileKey;
   
-  return `<div class="file-card" data-file-id="${esc(file.id || file.key || filePath)}">
+  return `<div class="file-card ${isMissing ? 'file-missing' : ''}" data-file-id="${esc(fileId)}" data-file-key="${esc(fileKey)}">
     <div class="file-card-header">
       <div style="display:flex;align-items:center;gap:8px;flex:1;">
         <span style="font-size:18px;">${icon}</span>
         <div style="flex:1;min-width:0;">
-          <div style="font-weight:500;color:var(--text);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(label)}</div>
+          <div style="font-weight:500;color:var(--text);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;">
+            ${esc(label)}
+            ${isMissing ? '<span style="color:var(--overdue);font-size:12px;" title="File not found at last known location">⚠️</span>' : ''}
+          </div>
           ${addedAt ? `<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">Added: ${addedAt.toLocaleDateString()}</div>` : ''}
           ${lastMod ? `<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">Modified: ${lastMod.toLocaleDateString()}</div>` : ''}
+          ${isMissing && missingSince ? `<div style="font-size:11px;color:var(--overdue);margin-top:2px;">Missing since: ${missingSince.toLocaleDateString()}</div>` : ''}
+          ${isMissing && lastKnownPath ? `<div style="font-size:10px;color:var(--text-dim);margin-top:2px;font-style:italic;">Last known: ${esc(lastKnownPath.length > 50 ? '...' + lastKnownPath.slice(-47) : lastKnownPath)}</div>` : ''}
         </div>
       </div>
       ${warnings.length > 0 ? `<div style="color:var(--soon);font-size:12px;">⚠️ ${warnings.join(', ')}</div>` : ''}
       ${isOutsideVault ? `<div style="color:var(--text-dim);font-size:11px;">⚠️ Outside vault</div>` : ''}
     </div>
-    <div class="file-card-meta" style="display:flex;gap:12px;margin-top:12px;font-size:11px;color:var(--text-dim);">
-      ${tasksCount > 0 ? `<span>📋 ${tasksCount} task${tasksCount > 1 ? 's' : ''}</span>` : ''}
-      ${projectsCount > 0 ? `<span>📁 ${projectsCount} project${projectsCount > 1 ? 's' : ''}</span>` : ''}
+    <div class="file-card-meta" style="display:flex;gap:12px;margin-top:12px;font-size:11px;color:var(--text-dim);flex-wrap:wrap;">
+      ${tasksCount > 0 ? `<span data-action="file:show-tasks" data-file-key="${esc(fileKey)}" style="cursor:pointer;text-decoration:underline;color:var(--rose);" title="Click to view ${tasksCount} task${tasksCount > 1 ? 's' : ''}">📋 ${tasksCount} task${tasksCount > 1 ? 's' : ''}</span>` : ''}
+      ${projectsCount > 0 ? `<span data-action="file:show-projects" data-file-key="${esc(fileKey)}" style="cursor:pointer;text-decoration:underline;color:var(--rose);" title="Click to view ${projectsCount} project${projectsCount > 1 ? 's' : ''}">📁 ${projectsCount} project${projectsCount > 1 ? 's' : ''}</span>` : ''}
       ${file.status ? `<span>Status: ${file.status}</span>` : ''}
     </div>
     ${file.notes ? `<div style="margin-top:12px;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--text-dim);line-height:1.5;max-height:60px;overflow:hidden;text-overflow:ellipsis;white-space:pre-wrap;">${esc(file.notes.length > 100 ? file.notes.substring(0, 100) + '...' : file.notes)}</div>` : ''}
-    <div class="file-card-actions" style="margin-top:12px;display:flex;gap:8px;">
-      <button class="file-open-btn btn-secondary" data-action="file:open" data-path="${escAttr(JSON.stringify(fileLink))}" style="font-size:11px;padding:6px 12px;">Open</button>
+    <div class="file-card-actions" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+      ${isMissing ? `<button class="btn-secondary" data-action="file:locate" data-file-key="${esc(fileKey)}" data-path="${escAttr(JSON.stringify(fileLink))}" style="font-size:11px;padding:6px 12px;background:var(--rose);color:white;">🔍 Locate File...</button>` : ''}
+      <button class="file-open-btn btn-secondary" data-action="file:open" data-path="${escAttr(JSON.stringify(fileLink))}" style="font-size:11px;padding:6px 12px;${isMissing ? 'opacity:0.6;' : ''}">Open</button>
       ${file.key ? `<button data-action="file:show-relations" data-file-key="${esc(file.key)}" class="btn-secondary" style="font-size:11px;padding:6px 12px;">Relations</button>` : ''}
-      <button data-action="file:notes" data-file-id="${esc(file.id || file.key || filePath)}" class="btn-secondary" style="font-size:11px;padding:6px 12px;" title="Add or edit notes for this file">${file.notes ? '📝' : '📄'} Notes</button>
+      <button data-action="file:notes" data-file-id="${esc(fileId)}" class="btn-secondary" style="font-size:11px;padding:6px 12px;" title="Add or edit notes for this file">${file.notes ? '📝' : '📄'} Notes</button>
     </div>
   </div>`;
 }

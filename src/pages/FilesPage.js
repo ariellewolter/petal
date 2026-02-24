@@ -86,6 +86,46 @@ function bind(container, features) {
             }
             break;
             
+          case 'show-tasks':
+            const tasksFileKey = btn.dataset.fileKey;
+            if (tasksFileKey && features?.fileManagement?.showFileLinkedTasks) {
+              features.fileManagement.showFileLinkedTasks(tasksFileKey, {
+                navigate: true,
+                view: 'tasks'
+              });
+            } else if (tasksFileKey && window.Petal?.features?.fileManagement?.showFileLinkedTasks) {
+              window.Petal.features.fileManagement.showFileLinkedTasks(tasksFileKey, {
+                navigate: true,
+                view: 'tasks'
+              });
+            }
+            break;
+            
+          case 'show-projects':
+            const projectsFileKey = btn.dataset.fileKey;
+            if (projectsFileKey && features?.fileManagement?.showFileLinkedProjects) {
+              features.fileManagement.showFileLinkedProjects(projectsFileKey, {
+                navigate: true,
+                view: 'projects'
+              });
+            } else if (projectsFileKey && window.Petal?.features?.fileManagement?.showFileLinkedProjects) {
+              window.Petal.features.fileManagement.showFileLinkedProjects(projectsFileKey, {
+                navigate: true,
+                view: 'projects'
+              });
+            }
+            break;
+            
+          case 'locate':
+            const locateFileKey = btn.dataset.fileKey;
+            const locateFilePath = btn.dataset.path;
+            if (locateFileKey && features?.fileManagement?.locateFile) {
+              features.fileManagement.locateFile(locateFileKey, locateFilePath ? JSON.parse(locateFilePath) : null);
+            } else if (locateFileKey && window.Petal?.features?.fileManagement?.locateFile) {
+              window.Petal.features.fileManagement.locateFile(locateFileKey, locateFilePath ? JSON.parse(locateFilePath) : null);
+            }
+            break;
+            
           case 'notes':
           case 'open-notes':
             const fileId = btn.dataset.fileId;
