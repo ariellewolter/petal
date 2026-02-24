@@ -5,9 +5,6 @@ on:
     tags:
       - "v*"
 
-permissions:
-  contents: write
-
 jobs:
   build-mac:
     runs-on: macos-latest
@@ -25,8 +22,26 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build mac artifacts
-        run: npm run build:mac
+      # Recreate the .p12 file from the base64 secret
+      - name: Decode signing certificate
+        run: |
+          echo "$CSC_LINK" | base64 --decode > developerID.p12
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+
+      # Build + sign + notarize
+      # electron-builder will:
+      # - import cert (via CSC_LINK/CSC_KEY_PASSWORD)
+      # - sign
+      # - notarize (via APPLE_ID/APPLE_APP_SPECIFIC_PASSWORD/APPLE_TEAM_ID)
+      - name: Build mac artifacts (signed + notarized)
+        run: npm run build:mac -- --publish never
+        env:
+          CSC_LINK: developerID.p12
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
       - name: Verify dist contents
         run: ls -la dist
