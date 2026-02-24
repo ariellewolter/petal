@@ -35,7 +35,7 @@ jobs:
       # - sign
       # - notarize (via APPLE_ID/APPLE_APP_SPECIFIC_PASSWORD/APPLE_TEAM_ID)
       - name: Build mac artifacts (signed + notarized)
-        run: npm run build:mac -- --publish never
+        run: npm run build:mac
         env:
           CSC_LINK: developerID.p12
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
