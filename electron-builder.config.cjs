@@ -18,11 +18,9 @@ module.exports = {
     category: "public.app-category.productivity",
     icon: "build/icon.icns",
     target: ["dmg", "zip"],
-    // Minimal notarize config to initialize options object
-    // Credentials come from environment variables: APPLE_TEAM_ID, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD
-    notarize: {
-      appBundleId: "com.petal.tasktracker"
-    }
+    // Empty notarize object to initialize options - credentials from env vars
+    // APPLE_TEAM_ID, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD
+    notarize: {}
   },
 
   win: {
