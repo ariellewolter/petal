@@ -1,8 +1,18 @@
 node_modules/
+
+# App local state / caches (adjust to your real paths)
+storage/
+data/
+*.sqlite
+*.db
+*.json
+
+# Electron / build cruft
 dist/
+out/
+release/
+build/
+
+# OS/editor
 .DS_Store
 *.log
-
-# If your app writes local state files inside repo, ignore them too:
-# storage/*.json
-# data/*.json
