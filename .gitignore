@@ -1,6 +1,8 @@
 node_modules/
+dist/
 .DS_Store
 *.log
-.env
-dist/
-build/
+
+# If your app writes local state files inside repo, ignore them too:
+# storage/*.json
+# data/*.json
