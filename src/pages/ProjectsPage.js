@@ -218,7 +218,9 @@ function bind(container, features) {
     if (action === 'toggle-task' || btn.classList.contains('check-box')) {
       // Toggle task done state
       if (taskId && features?.taskOperations?.toggleTask) {
-        features.taskOperations.toggleTask(String(taskId));
+        // Get context for toggleTask (it expects ctx, id)
+        const ctx = window.Petal?.handlers?.createPageContext?.() || {};
+        features.taskOperations.toggleTask(ctx, String(taskId));
       } else if (taskId && window.Petal?.handlers?.toggleTask) {
         window.Petal.handlers.toggleTask(taskId);
       }
