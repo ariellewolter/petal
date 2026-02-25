@@ -485,22 +485,52 @@ export async function addCellLogEntry() {
     });
   }
 
-  // Clear form
-  document.getElementById('cell-log-edit-id').value = '';
-  document.getElementById('cell-log-task').value = '';
-  document.getElementById('cell-log-cell-type-select').value = '';
-  document.getElementById('cell-log-cell-type-custom').value = '';
-  document.getElementById('cell-log-passage').value = '';
-  document.getElementById('cell-log-media-type-select').value = '';
-  document.getElementById('cell-log-media-type-custom').value = '';
-  document.getElementById('cell-log-plate-type').value = '';
-  document.getElementById('cell-log-well-count').value = '';
-  document.getElementById('cell-log-confluence').value = '';
-  document.getElementById('cell-log-viability').value = '';
-  document.getElementById('cell-log-freeze').checked = false;
-  document.getElementById('cell-log-vials-count').value = '1';
-  toggleFreezeFields();
-  document.getElementById('cell-log-notes').value = '';
+  // Clear form (with null checks)
+  const editIdEl = document.getElementById('cell-log-edit-id');
+  if (editIdEl) editIdEl.value = '';
+  
+  const taskEl = document.getElementById('cell-log-task');
+  if (taskEl) taskEl.value = '';
+  
+  const cellTypeSelectEl = document.getElementById('cell-log-cell-type-select');
+  if (cellTypeSelectEl) cellTypeSelectEl.value = '';
+  
+  const cellTypeCustomEl = document.getElementById('cell-log-cell-type-custom');
+  if (cellTypeCustomEl) cellTypeCustomEl.value = '';
+  
+  const passageEl = document.getElementById('cell-log-passage');
+  if (passageEl) passageEl.value = '';
+  
+  const mediaTypeSelectEl = document.getElementById('cell-log-media-type-select');
+  if (mediaTypeSelectEl) mediaTypeSelectEl.value = '';
+  
+  const mediaTypeCustomEl = document.getElementById('cell-log-media-type-custom');
+  if (mediaTypeCustomEl) mediaTypeCustomEl.value = '';
+  
+  const plateTypeEl = document.getElementById('cell-log-plate-type');
+  if (plateTypeEl) plateTypeEl.value = '';
+  
+  const wellCountEl = document.getElementById('cell-log-well-count');
+  if (wellCountEl) wellCountEl.value = '';
+  
+  const confluenceEl = document.getElementById('cell-log-confluence');
+  if (confluenceEl) confluenceEl.value = '';
+  
+  const viabilityEl = document.getElementById('cell-log-viability');
+  if (viabilityEl) viabilityEl.value = '';
+  
+  const freezeEl = document.getElementById('cell-log-freeze');
+  if (freezeEl) freezeEl.checked = false;
+  
+  const vialsCountEl = document.getElementById('cell-log-vials-count');
+  if (vialsCountEl) vialsCountEl.value = '1';
+  
+  if (typeof toggleFreezeFields === 'function') {
+    toggleFreezeFields();
+  }
+  
+  const notesEl = document.getElementById('cell-log-notes');
+  if (notesEl) notesEl.value = '';
   
   // Update button text and hide cancel button
   const submitBtn = document.getElementById('cell-log-submit-btn');
