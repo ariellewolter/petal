@@ -962,7 +962,19 @@ export function setupEventDelegation() {
     // Cell log actions
     if (action === 'cell-log:add-entry') {
       e.stopPropagation();
-      if (window.Petal?.pages?.cellLog?.addEntry) window.Petal.pages.cellLog.addEntry();
+      console.log('🔘 cell-log:add-entry handler called');
+      if (window.Petal?.pages?.cellLog?.addCellLogEntry) {
+        console.log('✅ Calling addCellLogEntry');
+        window.Petal.pages.cellLog.addCellLogEntry();
+      } else if (window.Petal?.pages?.cellLog?.addEntry) {
+        console.log('✅ Calling addEntry (fallback)');
+        window.Petal.pages.cellLog.addEntry();
+      } else {
+        console.warn('⚠️ cell-log:add-entry: No handler available', {
+          hasCellLog: !!window.Petal?.pages?.cellLog,
+          cellLogKeys: window.Petal?.pages?.cellLog ? Object.keys(window.Petal.pages.cellLog) : []
+        });
+      }
       return;
     }
     if (action === 'cell-log:cancel-edit') {
