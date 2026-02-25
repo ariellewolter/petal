@@ -439,20 +439,47 @@ export async function addTaskFromModal(ctx, title, priority, due, lane) {
  * Add Task to Project from Modal
  */
 export async function addTaskToProjectFromModal(ctx, projId, title, priority, due, lane) {
-  const { projects, save, rerenderViewIfActive, normalizeProjectIdValue } = ctx;
+  const { save, rerenderViewIfActive, normalizeProjectIdValue } = ctx || {};
   
   console.log('🔘 addTaskToProjectFromModal called:', {
     projId,
     title,
-    hasStore: !!window.Petal?.store
+    hasStore: !!window.Petal?.store,
+    hasCtx: !!ctx,
+    ctxProjectsCount: ctx?.projects?.length || 0
+  });
+  
+  // Get projects from store (more reliable than context)
+  const state = window.Petal?.store?.getState();
+  const projects = state?.projects || ctx?.projects || [];
+  
+  console.log('🔘 addTaskToProjectFromModal: Project lookup:', {
+    projId,
+    projIdType: typeof projId,
+    projectsCount: projects.length,
+    projectIds: projects.map(p => ({ id: p.id, type: typeof p.id })).slice(0, 3)
   });
   
   const normalizedProjId = normalizeProjectIdValue ? normalizeProjectIdValue(projId) : projId;
-  const p = projects.find(p => p.id === normalizedProjId);
+  
+  // Try multiple comparison methods to handle type mismatches
+  const p = projects.find(p => {
+    const projectId = p.id;
+    return projectId === normalizedProjId || 
+           String(projectId) === String(normalizedProjId) ||
+           Number(projectId) === Number(normalizedProjId);
+  });
+  
   if (!p) {
-    console.warn('⚠️ addTaskToProjectFromModal: Project not found:', normalizedProjId);
+    console.warn('⚠️ addTaskToProjectFromModal: Project not found:', {
+      normalizedProjId,
+      normalizedProjIdType: typeof normalizedProjId,
+      availableProjectIds: projects.map(p => ({ id: p.id, type: typeof p.id, name: p.name }))
+    });
     return;
   }
+  
+  console.log('✅ addTaskToProjectFromModal: Project found:', p.name);
   
   const newTask = {
     id: Date.now(),
@@ -500,13 +527,14 @@ export async function addTaskToProjectFromModal(ctx, projId, title, priority, du
  * Add Task to Matrix from Modal
  */
 export async function addTaskToMatrixFromModal(ctx, title, priority, due, lane) {
-  const { projects, save, renderWorkflowMatrix, normalizeProjectIdValue } = ctx;
+  const { save, renderWorkflowMatrix, normalizeProjectIdValue } = ctx || {};
   const selectedProjectId = typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null;
   
   console.log('🔘 addTaskToMatrixFromModal called:', {
     selectedProjectId,
     title,
-    hasStore: !!window.Petal?.store
+    hasStore: !!window.Petal?.store,
+    hasCtx: !!ctx
   });
   
   if (!selectedProjectId) {
@@ -514,12 +542,37 @@ export async function addTaskToMatrixFromModal(ctx, title, priority, due, lane) 
     return;
   }
   
+  // Get projects from store to verify project exists
+  const state = window.Petal?.store?.getState();
+  const projects = state?.projects || ctx?.projects || [];
+  
   const normalizedProjId = normalizeProjectIdValue ? normalizeProjectIdValue(selectedProjectId) : selectedProjectId;
+  
+  // Verify project exists
+  const p = projects.find(p => {
+    const projectId = p.id;
+    return projectId === normalizedProjId || 
+           String(projectId) === String(normalizedProjId) ||
+           Number(projectId) === Number(normalizedProjId);
+  });
+  
+  if (!p) {
+    console.warn('⚠️ addTaskToMatrixFromModal: Project not found:', {
+      normalizedProjId,
+      availableProjectIds: projects.map(p => ({ id: p.id, type: typeof p.id, name: p.name }))
+    });
+    return;
+  }
+  
+  // Convert priority string to number if needed
+  const priorityMap = { low: 1, medium: 2, high: 3 };
+  const priorityNum = typeof priority === 'string' ? (priorityMap[priority] || 2) : (priority || 2);
+  
   const newTask = {
     id: Date.now(),
     title: title,
-    priority: priority,
-    due: due,
+    priority: priorityNum,
+    due: due || '',
     lane: lane || null,
     done: false,
     projectId: normalizedProjId,
