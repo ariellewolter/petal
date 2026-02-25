@@ -1080,6 +1080,21 @@ export function setupEventDelegation() {
     }
     
     // Task actions
+    if (action === 'task:add') {
+      e.stopPropagation();
+      e.preventDefault();
+      // Call the global addTask function which handles the form submission
+      if (typeof window.addTask === 'function') {
+        window.addTask();
+      } else if (window.Petal?.features?.taskOperations?.addTask) {
+        const ctx = window.Petal?.handlers?.createPageContext?.() || window.createPageContext?.() || {};
+        window.Petal.features.taskOperations.addTask(ctx);
+      } else {
+        console.warn('⚠️ task:add: No handler available');
+      }
+      return;
+    }
+    
     if (action === 'task:add-matrix') {
       e.stopPropagation();
       e.preventDefault();

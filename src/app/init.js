@@ -155,6 +155,10 @@ export async function initApp() {
   Object.assign(window.Petal.ui, RenderWorkflowMatrix);
   Object.assign(window.Petal.ui, RenderLanes);
   
+  // Set up window.Petal.pages namespace
+  window.Petal.pages = window.Petal.pages || {};
+  window.Petal.pages.cellLog = CellLogPage;
+  
   // Set up window.Petal.features namespace
   window.Petal.features = window.Petal.features || {};
   window.Petal.features.fileManagement = FileManagement;
