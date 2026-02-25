@@ -481,11 +481,15 @@ export async function addTaskToProjectFromModal(ctx, projId, title, priority, du
   
   console.log('✅ addTaskToProjectFromModal: Project found:', p.name);
   
+  // Convert priority string to number if needed
+  const priorityMap = { low: 1, medium: 2, high: 3 };
+  const priorityNum = typeof priority === 'string' ? (priorityMap[priority] || 2) : (priority || 2);
+  
   const newTask = {
     id: Date.now(),
     title: title,
-    priority: priority,
-    due: due,
+    priority: priorityNum,
+    due: due || '',
     lane: lane || null,
     done: false,
     projectId: normalizedProjId,
