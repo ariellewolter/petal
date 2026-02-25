@@ -1,19 +1,9 @@
 module.exports = function (context) {
-  // Build notarize config dynamically from environment variables
-  // This bypasses schema validation by building the object at runtime
-  const notarizeConfig = {};
-  
-  if (process.env.APPLE_TEAM_ID) {
-    notarizeConfig.teamId = process.env.APPLE_TEAM_ID;
-  }
-  if (process.env.APPLE_ID) {
-    notarizeConfig.appleId = process.env.APPLE_ID;
-  }
-  if (process.env.APPLE_APP_SPECIFIC_PASSWORD) {
-    notarizeConfig.appleIdPassword = process.env.APPLE_APP_SPECIFIC_PASSWORD;
-  }
-  // Always set appBundleId to initialize the options object
-  notarizeConfig.appBundleId = "com.petal.tasktracker";
+  // Build notarize config - only teamId is allowed by schema
+  // Other credentials (APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD) are read from env vars automatically
+  const notarizeConfig = process.env.APPLE_TEAM_ID ? {
+    teamId: process.env.APPLE_TEAM_ID
+  } : undefined;
 
   return {
     appId: "com.petal.tasktracker",
@@ -35,8 +25,8 @@ module.exports = function (context) {
       category: "public.app-category.productivity",
       icon: "build/icon.icns",
       target: ["dmg", "zip"],
-      // Build notarize config from environment variables at runtime
-      notarize: Object.keys(notarizeConfig).length > 0 ? notarizeConfig : undefined
+      // Only teamId is allowed by schema - other credentials from env vars
+      notarize: notarizeConfig
     },
 
     win: {
