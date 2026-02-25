@@ -384,9 +384,18 @@ export async function addTaskFromModal(ctx, title, priority, due, lane) {
 export async function addTaskToProjectFromModal(ctx, projId, title, priority, due, lane) {
   const { projects, save, rerenderViewIfActive, normalizeProjectIdValue } = ctx;
   
+  console.log('🔘 addTaskToProjectFromModal called:', {
+    projId,
+    title,
+    hasStore: !!window.Petal?.store
+  });
+  
   const normalizedProjId = normalizeProjectIdValue ? normalizeProjectIdValue(projId) : projId;
   const p = projects.find(p => p.id === normalizedProjId);
-  if (!p) return;
+  if (!p) {
+    console.warn('⚠️ addTaskToProjectFromModal: Project not found:', normalizedProjId);
+    return;
+  }
   
   const newTask = {
     id: Date.now(),
@@ -403,8 +412,21 @@ export async function addTaskToProjectFromModal(ctx, projId, title, priority, du
   // Use store (always available after initialization)
   if (window.Petal?.store) {
     const state = window.Petal.store.getState();
+    const currentTasksCount = state.tasks?.length || 0;
+    console.log('🔘 addTaskToProjectFromModal: Updating store:', {
+      taskId: newTask.id,
+      currentTasksCount
+    });
+    
     updateStoreSafely({
       tasks: [...(state.tasks || []), newTask]
+    });
+    
+    // Verify the task was added
+    const updatedState = window.Petal.store.getState();
+    const taskWasAdded = updatedState.tasks?.some(t => t.id === newTask.id);
+    console.log('✅ addTaskToProjectFromModal: Store updated, task added:', taskWasAdded, {
+      tasksInStore: updatedState.tasks?.length || 0
     });
   } else {
     // Fallback: store not initialized yet, log warning
@@ -424,7 +446,16 @@ export async function addTaskToMatrixFromModal(ctx, title, priority, due, lane) 
   const { projects, save, renderWorkflowMatrix, normalizeProjectIdValue } = ctx;
   const selectedProjectId = typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null;
   
-  if (!selectedProjectId) return;
+  console.log('🔘 addTaskToMatrixFromModal called:', {
+    selectedProjectId,
+    title,
+    hasStore: !!window.Petal?.store
+  });
+  
+  if (!selectedProjectId) {
+    console.warn('⚠️ addTaskToMatrixFromModal: No selectedProjectId');
+    return;
+  }
   
   const normalizedProjId = normalizeProjectIdValue ? normalizeProjectIdValue(selectedProjectId) : selectedProjectId;
   const newTask = {
@@ -442,8 +473,21 @@ export async function addTaskToMatrixFromModal(ctx, title, priority, due, lane) 
   // Use store (always available after initialization)
   if (window.Petal?.store) {
     const state = window.Petal.store.getState();
+    const currentTasksCount = state.tasks?.length || 0;
+    console.log('🔘 addTaskToMatrixFromModal: Updating store:', {
+      taskId: newTask.id,
+      currentTasksCount
+    });
+    
     updateStoreSafely({
       tasks: [...(state.tasks || []), newTask]
+    });
+    
+    // Verify the task was added
+    const updatedState = window.Petal.store.getState();
+    const taskWasAdded = updatedState.tasks?.some(t => t.id === newTask.id);
+    console.log('✅ addTaskToMatrixFromModal: Store updated, task added:', taskWasAdded, {
+      tasksInStore: updatedState.tasks?.length || 0
     });
   } else {
     // Fallback: store not initialized yet, log warning
