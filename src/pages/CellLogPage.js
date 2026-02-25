@@ -611,6 +611,13 @@ export function editCellLogEntry(entryId) {
 }
 
 /**
+ * Alias for editCellLogEntry (for HTML onclick compatibility)
+ */
+export function editEntry(entryId) {
+  return editCellLogEntry(entryId);
+}
+
+/**
  * Cancel editing a cell log entry
  */
 export function cancelEditCellLogEntry() {

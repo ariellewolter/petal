@@ -249,6 +249,7 @@ export async function initStateInternal() {
       settings: loadedData.settings || {},
       events: loadedData.events || [],
       recurringRules: loadedData.recurringRules || [],
+      prints3d: loadedData.prints3d || [], // 3D print queue
       currentView,
       currentSort,
       currentFilter,
