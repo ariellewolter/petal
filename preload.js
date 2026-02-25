@@ -34,6 +34,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   vaultEnsureResolved: () => ipcRenderer.invoke('vault:ensureResolved'),
   vaultOpenFolder: (vaultPath) => ipcRenderer.invoke('vault:openFolder', vaultPath),
   
+  // Vault improvements
+  vaultGetHealth: () => ipcRenderer.invoke('vault:getHealth'),
+  vaultValidateIntegrity: () => ipcRenderer.invoke('vault:validateIntegrity'),
+  vaultOptimize: () => ipcRenderer.invoke('vault:optimize'),
+  vaultCleanupConflicts: (maxAgeDays) => ipcRenderer.invoke('vault:cleanupConflicts', maxAgeDays),
+  
   // Vault events
   onVaultResolved: (callback) => {
     ipcRenderer.on('vault:resolved', (event, data) => callback(data));

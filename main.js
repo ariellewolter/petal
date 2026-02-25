@@ -808,11 +808,38 @@ async function writeDataFile(data) {
     // 1. Create backup of existing file if it exists
     // Release-Safe: Always create backup before write (standard .bak file)
     if (fs.existsSync(paths.dataFile)) {
+      // Create timestamped backup (keeps history)
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      const timestampedBackup = path.join(paths.vaultPath, `petal.backup.${timestamp}.json`);
+      await fsPromises.copyFile(paths.dataFile, timestampedBackup);
+      
+      // Also update standard .bak file (for quick recovery)
       await fsPromises.copyFile(paths.dataFile, paths.backupFile);
-      // Sync backup to disk
+      
+      // Sync both backups to disk
       const backupFd = await fsPromises.open(paths.backupFile, 'r+');
       await backupFd.sync();
       await backupFd.close();
+      
+      const timestampedFd = await fsPromises.open(timestampedBackup, 'r+');
+      await timestampedFd.sync();
+      await timestampedFd.close();
+      
+      // Rotate old backups (keep last 5)
+      try {
+        const vaultImprovements = require('./src/utils/vaultImprovements');
+        await vaultImprovements.rotateBackups(paths.vaultPath, 5);
+      } catch (e) {
+        // Ignore rotation errors - not critical
+      }
+      
+      // Clean up old conflicts (older than 30 days)
+      try {
+        const vaultImprovements = require('./src/utils/vaultImprovements');
+        await vaultImprovements.cleanupOldConflicts(paths.vaultPath, 30);
+      } catch (e) {
+        // Ignore cleanup errors - not critical
+      }
     }
     
     // 2. Write to temp file first (atomic write)
@@ -2169,6 +2196,74 @@ ipcMain.handle('vault:ensureResolved', async () => {
 });
 
 // Open vault folder in file manager
+// Vault improvements handlers
+ipcMain.handle('vault:getHealth', async () => {
+  try {
+    const paths = getVaultPaths();
+    if (!paths.vaultPath) {
+      return { success: false, error: 'Vault not resolved' };
+    }
+    const vaultImprovements = require('./src/utils/vaultImprovements');
+    const health = await vaultImprovements.getVaultHealth(paths.vaultPath);
+    return { success: true, health };
+  } catch (error) {
+    safeError('Error getting vault health:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('vault:validateIntegrity', async () => {
+  try {
+    const paths = getVaultPaths();
+    if (!paths.vaultPath) {
+      return { success: false, error: 'Vault not resolved' };
+    }
+    const vaultImprovements = require('./src/utils/vaultImprovements');
+    const validation = await vaultImprovements.validateVaultIntegrity(paths.vaultPath);
+    return { success: true, validation };
+  } catch (error) {
+    safeError('Error validating vault integrity:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('vault:optimize', async () => {
+  try {
+    const paths = getVaultPaths();
+    if (!paths.vaultPath) {
+      return { success: false, error: 'Vault not resolved' };
+    }
+    const vaultImprovements = require('./src/utils/vaultImprovements');
+    const result = await vaultImprovements.optimizeVault(paths.vaultPath);
+    if (result.success) {
+      // Reload data after optimization
+      const newData = await readDataFile();
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('storage:stateChanged', newData.data);
+      }
+    }
+    return result;
+  } catch (error) {
+    safeError('Error optimizing vault:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('vault:cleanupConflicts', async (event, maxAgeDays = 30) => {
+  try {
+    const paths = getVaultPaths();
+    if (!paths.vaultPath) {
+      return { success: false, error: 'Vault not resolved' };
+    }
+    const vaultImprovements = require('./src/utils/vaultImprovements');
+    const result = await vaultImprovements.cleanupOldConflicts(paths.vaultPath, maxAgeDays);
+    return result;
+  } catch (error) {
+    safeError('Error cleaning up conflicts:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 ipcMain.handle('vault:openFolder', async (event, vaultPath) => {
   if (!vaultManager) {
     return { success: false, error: 'VaultManager not initialized' };
