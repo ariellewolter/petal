@@ -13,6 +13,7 @@ module.exports = function (context) {
     files: [
       "main.js",
       "preload.js",
+      "vault-manager.js",
       "tasklist.html",
       "storage.js",
       "manifest.json",
@@ -27,6 +28,7 @@ module.exports = function (context) {
       target: ["dmg", "zip"],
       hardenedRuntime: true,
       gatekeeperAssess: false,
+      entitlements: "build/entitlements.mac.plist",
       // Only teamId is allowed by schema - other credentials from env vars
       notarize: notarizeConfig
     },
