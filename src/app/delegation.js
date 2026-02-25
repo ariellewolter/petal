@@ -359,10 +359,12 @@ export function setupEventDelegation() {
         }
       },
       'modal:submit-add-task': () => {
+        console.log('🔘 modal:submit-add-task handler called');
         if (window.submitAddTaskModal) {
+          console.log('✅ Calling window.submitAddTaskModal');
           window.submitAddTaskModal();
         } else {
-          console.warn('submitAddTaskModal not found');
+          console.warn('⚠️ submitAddTaskModal not found');
         }
       },
       'modal:submit-add-file': () => {

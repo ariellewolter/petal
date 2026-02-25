@@ -270,10 +270,33 @@ export function closeAddTaskModal() {
  * Submit Add Task Modal
  */
 export async function submitAddTaskModal(ctx) {
-  const { addTaskToProjectFromModal, addTaskToMatrixFromModal, addTaskFromModal } = ctx;
+  console.log('🔘 submitAddTaskModal called:', {
+    hasCtx: !!ctx,
+    ctxKeys: ctx ? Object.keys(ctx) : [],
+    currentModalContext: typeof window.currentModalContext !== 'undefined' ? window.currentModalContext : null,
+    currentModalProjectId: typeof window.currentModalProjectId !== 'undefined' ? window.currentModalProjectId : null
+  });
+  
+  // Get functions from features namespace (more reliable than context)
+  const addTaskToProjectFromModal = window.Petal?.features?.modalOperations?.addTaskToProjectFromModal;
+  const addTaskToMatrixFromModal = window.Petal?.features?.modalOperations?.addTaskToMatrixFromModal;
+  const addTaskFromModal = window.Petal?.features?.modalOperations?.addTaskFromModal;
+  
+  // Also try from context as fallback
+  const ctxAddTaskToProjectFromModal = ctx?.addTaskToProjectFromModal;
+  const ctxAddTaskToMatrixFromModal = ctx?.addTaskToMatrixFromModal;
+  const ctxAddTaskFromModal = ctx?.addTaskFromModal;
+  
+  // Use context version if available, otherwise use features namespace
+  const finalAddTaskToProjectFromModal = ctxAddTaskToProjectFromModal || addTaskToProjectFromModal;
+  const finalAddTaskToMatrixFromModal = ctxAddTaskToMatrixFromModal || addTaskToMatrixFromModal;
+  const finalAddTaskFromModal = ctxAddTaskFromModal || addTaskFromModal;
   
   const titleInput = document.getElementById('modal-task-title');
-  if (!titleInput) return;
+  if (!titleInput) {
+    console.warn('⚠️ submitAddTaskModal: titleInput not found');
+    return;
+  }
   
   const title = titleInput.value.trim();
   if (!title) {
@@ -292,19 +315,53 @@ export async function submitAddTaskModal(ctx) {
   const currentModalContext = typeof window.currentModalContext !== 'undefined' ? window.currentModalContext : null;
   const currentModalProjectId = typeof window.currentModalProjectId !== 'undefined' ? window.currentModalProjectId : null;
   
+  console.log('🔘 submitAddTaskModal: Routing to handler:', {
+    currentModalContext,
+    currentModalProjectId,
+    hasAddTaskToProjectFromModal: !!finalAddTaskToProjectFromModal,
+    hasAddTaskToMatrixFromModal: !!finalAddTaskToMatrixFromModal,
+    hasAddTaskFromModal: !!finalAddTaskFromModal,
+    fromFeatures: {
+      addTaskToProjectFromModal: !!addTaskToProjectFromModal,
+      addTaskToMatrixFromModal: !!addTaskToMatrixFromModal,
+      addTaskFromModal: !!addTaskFromModal
+    },
+    fromContext: {
+      addTaskToProjectFromModal: !!ctxAddTaskToProjectFromModal,
+      addTaskToMatrixFromModal: !!ctxAddTaskToMatrixFromModal,
+      addTaskFromModal: !!ctxAddTaskFromModal
+    }
+  });
+  
+  // Ensure we have a context for the functions that need it
+  const finalCtx = ctx || window.Petal?.handlers?.createPageContext?.() || {};
+  
   if (currentModalContext === 'project' && currentModalProjectId) {
-    if (addTaskToProjectFromModal) {
-      await addTaskToProjectFromModal(currentModalProjectId, title, priority, due, lane);
+    if (finalAddTaskToProjectFromModal) {
+      console.log('✅ Calling addTaskToProjectFromModal');
+      await finalAddTaskToProjectFromModal(finalCtx, currentModalProjectId, title, priority, due, lane);
+    } else {
+      console.warn('⚠️ addTaskToProjectFromModal not available');
     }
   } else if (currentModalContext === 'matrix' && currentModalProjectId) {
-    if (addTaskToMatrixFromModal) {
-      await addTaskToMatrixFromModal(title, priority, due, lane);
+    if (finalAddTaskToMatrixFromModal) {
+      console.log('✅ Calling addTaskToMatrixFromModal');
+      await finalAddTaskToMatrixFromModal(finalCtx, title, priority, due, lane);
+    } else {
+      console.warn('⚠️ addTaskToMatrixFromModal not available');
     }
   } else if (currentModalContext === 'general') {
-    if (addTaskFromModal) {
-      await addTaskFromModal(title, priority, due, lane);
+    if (finalAddTaskFromModal) {
+      console.log('✅ Calling addTaskFromModal');
+      await finalAddTaskFromModal(finalCtx, title, priority, due, lane);
+    } else {
+      console.warn('⚠️ addTaskFromModal not available');
     }
   } else {
+    console.warn('⚠️ submitAddTaskModal: No context specified', {
+      currentModalContext,
+      currentModalProjectId
+    });
     alert('Unable to add task - no context specified');
     return;
   }
