@@ -659,3 +659,21 @@ export async function deleteCellLogEntry(entryId) {
     await renderCellLogPage(containerEl, window.Petal.store.getState(), window.Petal.handlers);
   }
 }
+
+/**
+ * Alias for deleteCellLogEntry (for HTML onclick compatibility)
+ */
+export async function deleteEntry(entryId) {
+  return deleteCellLogEntry(entryId);
+  
+  // Update store
+  if (window.Petal?.store) {
+    window.Petal.store.setState({ settings });
+  }
+  
+  // Re-render
+  const containerEl = document.getElementById('view-cell-log');
+  if (containerEl) {
+    await renderCellLogPage(containerEl, window.Petal.store.getState(), window.Petal.handlers);
+  }
+}
