@@ -707,6 +707,14 @@ export async function saveEditModal(ctx) {
     const estimatedMinutesInput = document.getElementById('edit-estimated-minutes');
     const timeBlockSelect = document.getElementById('edit-time-block');
     const artifactTagInput = document.getElementById('edit-artifact-tag');
+    const parentTaskSelect = document.getElementById('edit-parent-task');
+    
+    // Get parent task ID (convert to number if it's a valid selection)
+    let parentTaskId = null;
+    if (parentTaskSelect && parentTaskSelect.value) {
+      const parentIdValue = parentTaskSelect.value;
+      parentTaskId = parentIdValue ? (parseInt(parentIdValue) || parentIdValue) : null;
+    }
     
     const updatedTask = {
       ...t,
@@ -718,6 +726,7 @@ export async function saveEditModal(ctx) {
       timeBlock: timeBlockSelect ? (timeBlockSelect.value || null) : null,
       artifactTag: artifactTagInput ? (artifactTagInput.value.trim() || null) : null,
       due: normalizedDue || '',
+      parentTaskId: parentTaskId, // Set parent task to make this a subtask
       updatedAt: Date.now()
     };
     
@@ -1079,6 +1088,35 @@ export function editTask(ctx, id) {
       if (typeof toggleProtocolFields === 'function') {
         toggleProtocolFields();
       }
+    }
+    
+    // Populate parent task select
+    const parentTaskSelect = document.getElementById('edit-parent-task');
+    if (parentTaskSelect) {
+      // Get all tasks excluding the current task and its subtasks (to prevent circular references)
+      const state = window.Petal?.store?.getState();
+      const allTasks = state?.tasks || tasks || [];
+      const availableTasks = allTasks.filter(task => {
+        // Exclude deleted tasks, current task, and tasks that are already subtasks of current task
+        return task && 
+               !task.deletedAt && 
+               task.id !== t.id && 
+               task.parentTaskId !== t.id;
+      });
+      
+      // Clear existing options
+      parentTaskSelect.innerHTML = '<option value="">None (standalone task)</option>';
+      
+      // Add available tasks
+      availableTasks.forEach(task => {
+        const option = document.createElement('option');
+        option.value = task.id;
+        option.textContent = task.title || `Task ${task.id}`;
+        if (task.id === t.parentTaskId) {
+          option.selected = true;
+        }
+        parentTaskSelect.appendChild(option);
+      });
     }
     
     // Populate project files select
