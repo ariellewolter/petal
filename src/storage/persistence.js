@@ -263,8 +263,15 @@ async function performSave() {
 function saveState(state) {
   // Don't queue during initial load/migration
   if (isLoading) {
+    console.log('⏸️ SAVE skipped: isLoading is true');
     return;
   }
+  
+  console.log('💾 SAVE triggered:', {
+    tasksCount: state?.tasks?.length || 0,
+    projectsCount: state?.projects?.length || 0,
+    timestamp: new Date().toISOString()
+  });
   
   // Queue latest state (latest-wins) - create immutable snapshot
   queuedState = createImmutableSnapshot(appStore.exportState());

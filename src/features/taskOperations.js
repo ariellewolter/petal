@@ -11,14 +11,20 @@ function updateStoreSafely(updates, fallbackFn) {
   if (window.Petal?.store) {
     const state = window.Petal.store.getState();
     // Merge updates with current state to preserve all fields
-    window.Petal.store.setState({
+    // Phase 3 Fix: openProjects is Array in store, not Set
+    const mergedUpdates = {
       ...state,
-      ...updates,
-      // Ensure Sets are properly cloned
-      openProjects: updates.openProjects instanceof Set 
-        ? new Set(updates.openProjects) 
-        : (state.openProjects || new Set())
-    });
+      ...updates
+    };
+    // Normalize openProjects if it's being updated
+    if ('openProjects' in updates) {
+      if (updates.openProjects instanceof Set) {
+        mergedUpdates.openProjects = Array.from(updates.openProjects);
+      } else if (!Array.isArray(updates.openProjects)) {
+        mergedUpdates.openProjects = state.openProjects || [];
+      }
+    }
+    window.Petal.store.setState(mergedUpdates);
     // Store auto-saves and auto-renders via subscriptions
   } else if (fallbackFn) {
     // Fallback: old pattern
@@ -212,15 +218,32 @@ export async function addTask(ctx, titleOverride = null, statusOverride = null) 
   };
   
   // Step 2e: Use store instead of direct save/render
+  console.log('🔘 addTask: About to update store with new task:', {
+    taskId: newTask.id,
+    title: newTask.title,
+    hasStore: !!window.Petal?.store,
+    currentTasksCount: tasks?.length || 0
+  });
+  
   updateStoreSafely(
     { tasks: [newTask, ...(tasks || [])] },
     async () => {
       // Fallback: old pattern for backward compatibility
+      console.log('⚠️ addTask: Using fallback save (store not available)');
       tasks.unshift(newTask);
       await save();
       if (render) render();
     }
   );
+  
+  // Verify the task was added to store
+  if (window.Petal?.store) {
+    const updatedState = window.Petal.store.getState();
+    const taskWasAdded = updatedState.tasks?.some(t => t.id === newTask.id);
+    console.log('✅ addTask: Store updated, task added:', taskWasAdded, {
+      tasksInStore: updatedState.tasks?.length || 0
+    });
+  }
   
   // Clear form if not using override
   if (!titleOverride) {
