@@ -25,6 +25,8 @@ module.exports = function (context) {
       category: "public.app-category.productivity",
       icon: "build/icon.icns",
       target: ["dmg", "zip"],
+      hardenedRuntime: true,
+      gatekeeperAssess: false,
       // Only teamId is allowed by schema - other credentials from env vars
       notarize: notarizeConfig
     },
