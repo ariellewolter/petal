@@ -25,6 +25,9 @@ class AppStore {
       routines: [],
       routineCheckins: {},
       
+      // 3D Printing
+      prints3d: [],
+      
       // UI state
       currentView: 'today',
       currentSort: 'all',
@@ -500,6 +503,7 @@ class AppStore {
       habitCheckins: this._state.habitCheckins && typeof this._state.habitCheckins === 'object' ? this._state.habitCheckins : {},
       routines: Array.isArray(this._state.routines) ? this._state.routines : [],
       routineCheckins: this._state.routineCheckins && typeof this._state.routineCheckins === 'object' ? this._state.routineCheckins : {},
+      prints3d: Array.isArray(this._state.prints3d) ? this._state.prints3d : [],
       files: Array.isArray(this._state.files) ? this._state.files : [],
       workflow: this._state.workflow || getDefaultWorkflow()
       // Phase 3 Fix: fileRegistry and fileHistory are derived data, recomputed on load

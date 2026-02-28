@@ -44,6 +44,7 @@ class StorageAdapter {
             habitCheckins: result.data.habitCheckins || {},
             routines: result.data.routines || [],
             routineCheckins: result.data.routineCheckins || {},
+            prints3d: result.data.prints3d || [],
             workflow: result.data.workflow || {}
           };
           // Debug: Log what we're passing through
@@ -87,7 +88,12 @@ class StorageAdapter {
             fileHistory: {},
             fileRegistry: {},
             events: [],
-            recurringRules: []
+            recurringRules: [],
+            habits: [],
+            habitCheckins: {},
+            routines: [],
+            routineCheckins: {},
+            prints3d: []
           },
           hasConflicts: false,
           conflicts: [],
@@ -106,7 +112,12 @@ class StorageAdapter {
           fileHistory: JSON.parse(localStorage.getItem('petal-file-history') || '{}'),
           fileRegistry: JSON.parse(localStorage.getItem('petal-file-registry') || '{}'),
           events: JSON.parse(localStorage.getItem('petal-events') || '[]'),
-          recurringRules: JSON.parse(localStorage.getItem('petal-recurring-rules') || '[]')
+          recurringRules: JSON.parse(localStorage.getItem('petal-recurring-rules') || '[]'),
+          habits: JSON.parse(localStorage.getItem('petal-habits') || '[]'),
+          habitCheckins: JSON.parse(localStorage.getItem('petal-habit-checkins') || '{}'),
+          routines: JSON.parse(localStorage.getItem('petal-routines') || '[]'),
+          routineCheckins: JSON.parse(localStorage.getItem('petal-routine-checkins') || '{}'),
+          prints3d: JSON.parse(localStorage.getItem('petal-prints3d') || '[]')
         };
       } catch (e) {
         console.error('Error loading state:', e);
@@ -119,7 +130,12 @@ class StorageAdapter {
           fileHistory: {},
           fileRegistry: {},
           events: [],
-          recurringRules: []
+          recurringRules: [],
+          habits: [],
+          habitCheckins: {},
+          routines: [],
+          routineCheckins: {},
+          prints3d: []
         };
       }
     }
@@ -153,6 +169,7 @@ class StorageAdapter {
           habitCheckins: state.habitCheckins || {},
           routines: state.routines || [],
           routineCheckins: state.routineCheckins || {},
+          prints3d: state.prints3d || [],
           files: state.files || [], // ✅ Persisted files list
           workflow: state.workflow || {},
           // Note: fileHistory and fileRegistry are derived data, but including for backward compatibility
@@ -191,6 +208,11 @@ class StorageAdapter {
         localStorage.setItem('petal-settings', JSON.stringify(state.settings || {}));
         localStorage.setItem('petal-events', JSON.stringify(state.events || []));
         localStorage.setItem('petal-recurring-rules', JSON.stringify(state.recurringRules || []));
+        localStorage.setItem('petal-habits', JSON.stringify(state.habits || []));
+        localStorage.setItem('petal-habit-checkins', JSON.stringify(state.habitCheckins || {}));
+        localStorage.setItem('petal-routines', JSON.stringify(state.routines || []));
+        localStorage.setItem('petal-routine-checkins', JSON.stringify(state.routineCheckins || {}));
+        localStorage.setItem('petal-prints3d', JSON.stringify(state.prints3d || []));
         localStorage.setItem('petal-files', JSON.stringify(state.files || [])); // ✅ Persisted files list
         localStorage.setItem('petal-file-history', JSON.stringify(state.fileHistory || {}));
         localStorage.setItem('petal-file-registry', JSON.stringify(state.fileRegistry || {}));

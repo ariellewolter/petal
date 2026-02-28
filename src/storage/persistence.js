@@ -330,6 +330,7 @@ function createImmutableSnapshot(state) {
     habitCheckins: state.habitCheckins ? { ...state.habitCheckins } : {},
     routines: state.routines ? state.routines.map(r => ({ ...r })) : [],
     routineCheckins: state.routineCheckins ? { ...state.routineCheckins } : {},
+    prints3d: state.prints3d ? state.prints3d.map(p => ({ ...p })) : [],
     files: state.files ? state.files.map(f => ({ ...f })) : [], // ✅ Persisted files list
     workflow: state.workflow ? {
       laneOrder: Array.isArray(state.workflow.laneOrder) ? [...state.workflow.laneOrder] : [],
