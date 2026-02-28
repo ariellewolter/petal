@@ -11,6 +11,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Petal">
 <link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="152x152" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="120x120" href="icon-192.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet" onerror="console.warn('Google Fonts failed to load, using system fonts');">
 <link rel="stylesheet" href="src/styles/main.css">
 <script>
@@ -37,6 +41,12 @@
 </head>
 <body>
 <div class="app" style="display: grid !important; visibility: visible !important; opacity: 1 !important;">
+  <!-- MOBILE MENU TOGGLE -->
+  <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle menu" type="button">☰</button>
+  
+  <!-- SIDEBAR OVERLAY (for mobile) -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  
   <!-- GLOBAL SIDEBAR -->
   <aside id="global-sidebar" class="global-sidebar" style="display: flex !important; visibility: visible !important; opacity: 1 !important;">
     <div class="global-sidebar-header">
@@ -88,7 +98,7 @@
         </div>
         <div class="field" style="flex:1.2">
           <label>Est. Minutes</label>
-          <input type="number" id="in-estimated-minutes" placeholder="60" min="0" step="5" style="width:100%;">
+          <input type="number" id="in-estimated-minutes" placeholder="60" min="0" step="5" inputmode="numeric" style="width:100%;">
         </div>
         <div class="field" style="flex:1.2">
           <label>Status</label>
@@ -248,7 +258,7 @@
         </div>
         <div class="field" style="flex:1.2;">
           <label>Est. Minutes</label>
-          <input type="number" id="edit-estimated-minutes" placeholder="60" min="0" step="5" style="width:100%;">
+          <input type="number" id="edit-estimated-minutes" placeholder="60" min="0" step="5" inputmode="numeric" style="width:100%;">
         </div>
         <div class="field" style="flex:1.2;">
           <label>🏷️ Artifact Tag</label>
@@ -306,7 +316,7 @@
           </div>
           <div class="field" style="margin-bottom:0;">
             <label style="font-size:11px;color:var(--text-dim);">Day Index (optional)</label>
-            <input type="number" id="edit-protocol-day-index" placeholder="Auto-calculated" min="1" style="width:100%;">
+            <input type="number" id="edit-protocol-day-index" placeholder="Auto-calculated" min="1" inputmode="numeric" style="width:100%;">
           </div>
         </div>
       </div>
@@ -1282,6 +1292,9 @@
   <!-- ═══════════════════════════════════ 3D PRINTING VIEW ═══ -->
   <!-- Rendered by src/pages/ThreeDPrintPage.js -->
   <div id="view-3d-print" style="display:none;"></div>
+
+  <!-- ═══════════════════════════════════ HABITS VIEW ═══ -->
+  <div id="view-habits" style="display:none;"></div>
 
   <!-- ═══════════════════════════════════ SETTINGS VIEW ═══ -->
   <div id="view-settings" style="display:none;width:100%;max-width:100%;box-sizing:border-box;">
@@ -4771,13 +4784,27 @@ async function addFileToRegistry() {
   }
 }
 
-// Override openFile to track history
+// Override openFile to track history and handle iOS
 const originalOpenFile = window.openFile;
+
+// iOS detection helper
+function isIOSDevice() {
+  const ua = navigator.userAgent || navigator.vendor || window.opera;
+  const isIOSDevice = /iPad|iPhone|iPod/.test(ua);
+  const isIPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+  return isIOSDevice || isIPadOS;
+}
+
 window.openFile = async function(fileLink) {
   await trackFileOpen(fileLink);
+  
+  // iOS: Can't open file:// links, prefer share_url
+  const iosDevice = isIOSDevice();
+  
   if (originalOpenFile) {
     return originalOpenFile(fileLink);
   } else if (window.electronAPI && window.electronAPI.openFile) {
+    // Electron: use native file opening
     try {
       const resolved = await window.electronAPI.resolveFilePath(fileLink);
       if (resolved && resolved.success) {
@@ -4803,9 +4830,27 @@ window.openFile = async function(fileLink) {
       }
     }
   } else {
-    // No electronAPI - browser fallback
-    if (fileLink.share_url) {
-      window.open(fileLink.share_url, '_blank');
+    // Browser mode (not Electron)
+    if (iosDevice) {
+      // iOS: Must use share_url
+      if (fileLink.share_url) {
+        window.open(fileLink.share_url, '_blank');
+      } else {
+        const fileName = fileLink.label || fileLink.onedrive_rel || fileLink.abs_path || 'Unknown';
+        alert(`iOS devices can't open local files directly.\n\n` +
+          `File: ${fileName}\n\n` +
+          `Please add a share URL (OneDrive, iCloud, etc.) to open this file on iOS.`);
+      }
+    } else {
+      // Non-iOS browser: try share_url first
+      if (fileLink.share_url) {
+        window.open(fileLink.share_url, '_blank');
+      } else if (fileLink.abs_path && !fileLink.abs_path.startsWith('file://')) {
+        // Only try non-file:// URLs
+        window.open(fileLink.abs_path, '_blank');
+      } else {
+        console.warn('Cannot open file in browser:', fileLink);
+      }
     }
   }
 };
@@ -7054,6 +7099,62 @@ document.addEventListener('keydown', (e) => {
     }
   }
 });
+
+// ═══════════════════════ MOBILE MENU TOGGLE ═══════════════════════
+(function() {
+  const menuToggle = document.getElementById('mobile-menu-toggle');
+  const sidebar = document.getElementById('global-sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  
+  function toggleSidebar() {
+    if (sidebar && overlay) {
+      sidebar.classList.toggle('open');
+      overlay.classList.toggle('active');
+      // Prevent body scroll when sidebar is open
+      if (sidebar.classList.contains('open')) {
+        document.body.style.overflow = 'hidden';
+      } else {
+        document.body.style.overflow = '';
+      }
+    }
+  }
+  
+  function closeSidebar() {
+    if (sidebar && overlay) {
+      sidebar.classList.remove('open');
+      overlay.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+  }
+  
+  if (menuToggle) {
+    menuToggle.addEventListener('click', function(e) {
+      e.stopPropagation();
+      toggleSidebar();
+    });
+  }
+  
+  if (overlay) {
+    overlay.addEventListener('click', closeSidebar);
+  }
+  
+  // Close sidebar when clicking a nav item on mobile
+  if (sidebar) {
+    sidebar.addEventListener('click', function(e) {
+      if (e.target.closest('.global-sidebar-nav-item')) {
+        // Small delay to allow navigation to happen first
+        setTimeout(closeSidebar, 100);
+      }
+    });
+  }
+  
+  // Close sidebar on escape key
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && sidebar && sidebar.classList.contains('open')) {
+      closeSidebar();
+    }
+  });
+})();
 
 // ═══════════════════════ PWA REGISTRATION (browser only) ═══════════════════════
 if (typeof window !== 'undefined' && !window.electronAPI && 'serviceWorker' in navigator) {

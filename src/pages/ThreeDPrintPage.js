@@ -125,6 +125,11 @@ function injectStyles() {
     #view-3d-print .print3d-dp-file-name{font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
     #view-3d-print .print3d-dp-file-meta{font-size:10px;color:var(--text-dim);margin-top:2px;}
     #view-3d-print .print3d-dp-notes{font-size:12px;color:var(--text-dim);line-height:1.7;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;white-space:pre-wrap;}
+    #view-3d-print .print3d-dp-section .print3d-form-select,#view-3d-print .print3d-dp-section .print3d-form-input{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-family:'Jost',sans-serif;font-size:13px;color:var(--text);outline:none;transition:border-color .15s;width:100%;}
+    #view-3d-print .print3d-dp-section .print3d-form-select:focus,#view-3d-print .print3d-dp-section .print3d-form-input:focus{border-color:var(--rose-soft);box-shadow:0 0 0 3px rgba(201,139,139,.08);}
+    #view-3d-print .print3d-dp-save-btn{background:linear-gradient(135deg,#d4a0a0 0%,#c98b8b 100%);border:none;border-radius:8px;color:white;font-family:'Jost',sans-serif;font-size:12px;font-weight:400;letter-spacing:.1em;text-transform:uppercase;padding:8px 18px;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(201,139,139,.2);margin-top:8px;}
+    #view-3d-print .print3d-dp-save-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(201,139,139,.3);}
+    #view-3d-print .print3d-dp-save-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none;}
 
     #view-3d-print .print3d-modal-backdrop{position:fixed;inset:0;background:rgba(90,79,74,.6);backdrop-filter:blur(4px);z-index:500;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
     #view-3d-print .print3d-modal-backdrop.open{opacity:1;pointer-events:all;}
@@ -543,10 +548,30 @@ function openPrintDetail(id) {
   bodyEl.innerHTML = `
     <div class="print3d-dp-section">
       <div class="print3d-dp-sec-title">Status</div>
+      <select id="print3d-dp-status" class="print3d-form-select" style="max-width:200px;margin-bottom:12px;">
+        <option value="queued" ${print.status === 'queued' ? 'selected' : ''}>Queued</option>
+        <option value="printing" ${print.status === 'printing' ? 'selected' : ''}>Printing</option>
+        <option value="done" ${print.status === 'done' ? 'selected' : ''}>Done</option>
+        <option value="failed" ${print.status === 'failed' ? 'selected' : ''}>Failed</option>
+      </select>
       <div style="display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:20px;background:var(--bg2);border:1px solid var(--border);font-size:11px;color:${statusColors[print.status] || 'var(--text-dim)'}">
         ${print.status === 'printing' ? '●' : print.status === 'done' ? '✓' : print.status === 'failed' ? '✕' : '○'} ${statusLabels[print.status] || 'Unknown'}
       </div>
     </div>
+    ${print.status === 'done' || print.status === 'failed' ? `
+    <div class="print3d-dp-section">
+      <div class="print3d-dp-sec-title">How It Turned Out</div>
+      <select id="print3d-dp-result" class="print3d-form-select" style="margin-bottom:8px;">
+        <option value="">Select result...</option>
+        <option value="excellent" ${print.result === 'excellent' ? 'selected' : ''}>Excellent - Perfect print</option>
+        <option value="good" ${print.result === 'good' ? 'selected' : ''}>Good - Minor issues</option>
+        <option value="acceptable" ${print.result === 'acceptable' ? 'selected' : ''}>Acceptable - Some flaws</option>
+        <option value="needs-improvement" ${print.result === 'needs-improvement' ? 'selected' : ''}>Needs Improvement</option>
+        <option value="failed" ${print.result === 'failed' ? 'selected' : ''}>Failed - Needs reprint</option>
+      </select>
+      <textarea id="print3d-dp-result-notes" class="print3d-form-input" placeholder="Notes about the result (optional)" style="min-height:60px;resize:vertical;font-size:12px;">${escapeHtml(print.resultNotes || '')}</textarea>
+    </div>
+    ` : ''}
     <div class="print3d-dp-section">
       <div class="print3d-dp-sec-title">Print Specs</div>
       <div class="print3d-dp-spec-grid">
@@ -587,10 +612,78 @@ function openPrintDetail(id) {
       <div class="print3d-dp-sec-title">Notes</div>
       <div class="print3d-dp-notes">${escapeHtml(print.notes || '—')}</div>
     </div>
+    <div class="print3d-dp-section" style="border-bottom:none;">
+      <button class="print3d-dp-save-btn" data-action="save-print-detail" data-print-id="${print.id}">Save Changes</button>
+    </div>
   `;
   
   const panel = document.getElementById('print3d-detail-panel');
   if (panel) panel.classList.add('open');
+  
+  // Add change listener to status to show/hide result section dynamically
+  const statusSelect = document.getElementById('print3d-dp-status');
+  if (statusSelect) {
+    statusSelect.addEventListener('change', () => {
+      const newStatus = statusSelect.value;
+      const bodyEl = document.getElementById('print3d-dp-body');
+      if (!bodyEl) return;
+      
+      const statusSection = bodyEl.querySelector('.print3d-dp-section:first-child');
+      if (!statusSection) return;
+      
+      // Find result section (should be second section if it exists)
+      let resultSection = bodyEl.querySelector('.print3d-dp-section:nth-child(2)');
+      const hasResultSection = resultSection && resultSection.querySelector('#print3d-dp-result');
+      
+      if (newStatus === 'done' || newStatus === 'failed') {
+        // Show result section if it doesn't exist
+        if (!hasResultSection) {
+          const currentResult = print.result || '';
+          const currentResultNotes = print.resultNotes || '';
+          const resultHtml = `
+            <div class="print3d-dp-section">
+              <div class="print3d-dp-sec-title">How It Turned Out</div>
+              <select id="print3d-dp-result" class="print3d-form-select" style="margin-bottom:8px;">
+                <option value="">Select result...</option>
+                <option value="excellent" ${currentResult === 'excellent' ? 'selected' : ''}>Excellent - Perfect print</option>
+                <option value="good" ${currentResult === 'good' ? 'selected' : ''}>Good - Minor issues</option>
+                <option value="acceptable" ${currentResult === 'acceptable' ? 'selected' : ''}>Acceptable - Some flaws</option>
+                <option value="needs-improvement" ${currentResult === 'needs-improvement' ? 'selected' : ''}>Needs Improvement</option>
+                <option value="failed" ${currentResult === 'failed' ? 'selected' : ''}>Failed - Needs reprint</option>
+              </select>
+              <textarea id="print3d-dp-result-notes" class="print3d-form-input" placeholder="Notes about the result (optional)" style="min-height:60px;resize:vertical;font-size:12px;">${escapeHtml(currentResultNotes)}</textarea>
+            </div>
+          `;
+          statusSection.insertAdjacentHTML('afterend', resultHtml);
+        }
+      } else {
+        // Hide result section
+        if (hasResultSection) {
+          resultSection.remove();
+        }
+      }
+      
+      // Update status badge
+      const statusBadge = statusSection.querySelector('div[style*="display:inline-flex"]');
+      if (statusBadge) {
+        const newStatusLabels = {
+          printing: 'Printing now',
+          queued: 'Queued',
+          done: 'Printed',
+          failed: 'Failed'
+        };
+        const newStatusColors = {
+          printing: 'var(--rose)',
+          queued: 'var(--mauve)',
+          done: 'var(--sage)',
+          failed: 'var(--rose)'
+        };
+        const icon = newStatus === 'printing' ? '●' : newStatus === 'done' ? '✓' : newStatus === 'failed' ? '✕' : '○';
+        statusBadge.textContent = `${icon} ${newStatusLabels[newStatus] || 'Unknown'}`;
+        statusBadge.style.color = newStatusColors[newStatus] || 'var(--text-dim)';
+      }
+    });
+  }
 }
 
 /**
@@ -601,6 +694,58 @@ function closePrintDetail() {
   if (panel) panel.classList.remove('open');
   selectedPrintId = null;
   document.querySelectorAll('#view-3d-print .print3d-card').forEach(c => c.classList.remove('selected'));
+}
+
+/**
+ * Save print detail changes
+ */
+async function savePrintDetail(printId) {
+  const print = prints3d.find(p => p.id === printId);
+  if (!print) return;
+  
+  const statusSelect = document.getElementById('print3d-dp-status');
+  const resultSelect = document.getElementById('print3d-dp-result');
+  const resultNotesTextarea = document.getElementById('print3d-dp-result-notes');
+  
+  if (!statusSelect) return;
+  
+  const newStatus = statusSelect.value;
+  const newResult = resultSelect ? resultSelect.value : null;
+  const newResultNotes = resultNotesTextarea ? resultNotesTextarea.value.trim() : null;
+  
+  // Update print
+  print.status = newStatus;
+  if (newResult !== null) {
+    print.result = newResult || null;
+  }
+  if (newResultNotes !== null) {
+    print.resultNotes = newResultNotes || null;
+  }
+  
+  // Update in array
+  const index = prints3d.findIndex(p => p.id === printId);
+  if (index !== -1) {
+    prints3d[index] = print;
+  }
+  
+  // Save to store
+  if (window.Petal?.store) {
+    window.Petal.store.setState({ prints3d });
+    if (window.Petal?.persistence?.flush) {
+      await window.Petal.persistence.flush();
+    }
+  }
+  
+  // Re-render to reflect changes
+  render3DPrints();
+  
+  // Re-open detail panel with updated data
+  openPrintDetail(printId);
+  
+  // Update sidebar if function exists
+  if (window.renderGlobalSidebar && window.Petal?.store) {
+    window.renderGlobalSidebar(window.Petal.store.getState());
+  }
 }
 
 /**
@@ -799,6 +944,11 @@ function bind(container) {
         if (containerId && prefix && window.addFileRow) {
           window.addFileRow(containerId, prefix);
         }
+        break;
+        
+      case 'save-print-detail':
+        const detailPrintId = parseInt(btn.dataset.printId);
+        if (detailPrintId) savePrintDetail(detailPrintId);
         break;
     }
   });

@@ -135,6 +135,41 @@ function bind(container, features) {
               window.openFileNotesModal(fileId);
             }
             break;
+            
+          case 'hook':
+            const hookFileKey = btn.dataset.fileKey;
+            const hookFilePath = btn.dataset.path;
+            if (hookFileKey && hookFilePath) {
+              try {
+                const fileLink = JSON.parse(hookFilePath);
+                // Get context for the hook function
+                const ctx = features?.handlers?.createPageContext?.() || 
+                           window.Petal?.handlers?.createPageContext?.() || 
+                           {};
+                
+                if (features?.fileManagement?.hookFileToTaskOrProject) {
+                  features.fileManagement.hookFileToTaskOrProject(hookFileKey, fileLink, ctx);
+                } else if (window.Petal?.features?.fileManagement?.hookFileToTaskOrProject) {
+                  window.Petal.features.fileManagement.hookFileToTaskOrProject(hookFileKey, fileLink, ctx);
+                } else {
+                  // Fallback: import and use directly
+                  import('../features/fileManagement.js').then(module => {
+                    if (module.hookFileToTaskOrProject) {
+                      module.hookFileToTaskOrProject(hookFileKey, fileLink, ctx);
+                    } else {
+                      alert('Hook function not available');
+                    }
+                  }).catch(err => {
+                    console.error('Failed to import fileManagement:', err);
+                    alert('Could not hook file: ' + (err.message || 'Unknown error'));
+                  });
+                }
+              } catch (e) {
+                console.error('Error parsing file path:', e);
+                alert('Error hooking file: ' + (e.message || 'Invalid file data'));
+              }
+            }
+            break;
         }
         break;
         

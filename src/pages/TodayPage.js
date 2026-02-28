@@ -3,59 +3,14 @@
 // Takes state and handlers as parameters - no store peeking
 
 import { esc } from '../utils/strings.js';
-import { today, parseDate } from '../utils/dates.js';
+import { today, parseDate, parseTime, formatTime } from '../utils/dates.js';
 import { getAllTasks } from '../domain/models.js';
 import { setupEventDelegation } from '../app/delegation.js';
+import { getEventsForDate } from '../utils/eventHelpers.js';
 
-// Helper functions for planner format (matching planner daily view)
-function parseTime(timeStr) {
-  const [hours, minutes] = timeStr.split(':').map(Number);
-  return hours * 60 + minutes;
-}
-
-function formatTime(minutes) {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
-}
-
-// Get all events for a specific date (one-off + expanded recurring)
-function getEventsForDate(date, events, recurringRules) {
-  const dateStr = date.toISOString().split('T')[0];
-  
-  // Get one-off events
-  const oneOff = events.filter(e => e.date === dateStr);
-  
-  // Expand recurring rules for this date
-  const expanded = [];
-  const dayOfWeek = date.getDay();
-  recurringRules.forEach(rule => {
-    if (!rule.enabled) return;
-    if (rule.daysOfWeek && rule.daysOfWeek.includes(dayOfWeek)) {
-      expanded.push({
-        id: `evt_${rule.id}_${dateStr}`,
-        title: rule.title,
-        date: dateStr,
-        startTime: rule.startTime,
-        durationMin: rule.durationMin,
-        category: rule.category,
-        location: rule.location || null,
-        bufferBeforeMin: rule.bufferBeforeMin || 0,
-        bufferAfterMin: rule.bufferAfterMin || 0,
-        recurrenceId: rule.id,
-        notes: rule.notes || '',
-        linkedProjectId: rule.linkedProjectId || null,
-        linkedTaskId: rule.linkedTaskId || null
-      });
-    }
-  });
-  
-  return [...oneOff, ...expanded].sort((a, b) => {
-    const aTime = parseTime(a.startTime || a.time || '00:00');
-    const bTime = parseTime(b.startTime || b.time || '00:00');
-    return aTime - bTime;
-  });
-}
+// Event calculation functions moved to shared utility: src/utils/eventHelpers.js
+// Imported above to ensure consistency with Planner page
+// parseTime and formatTime imported from dates.js (shared utility)
 
 /**
  * Render Today page
@@ -449,8 +404,19 @@ function getCultureAttentionLine(cellLogEntries) {
   return "—";
 }
 
+/**
+ * Render schedule card for Today page
+ * Uses the SAME event calculation logic as Planner page via shared getEventsForDate utility
+ * This ensures both pages show identical events and sync automatically when events change
+ * 
+ * @param {Object} state - App state (contains events, recurringRules, projects, tasks)
+ * @param {Date} now - Current date/time
+ * @param {Array} events - One-off events from state
+ * @param {Array} recurringRules - Recurring rules from state
+ * @returns {string} HTML for schedule card
+ */
 function renderScheduleCard(state, now, events, recurringRules) {
-  // Get today's events using the same logic as planner
+  // Get today's events using the SAME logic as planner (shared utility ensures consistency)
   const todayDate = new Date(now);
   todayDate.setHours(0, 0, 0, 0);
   const dayEvents = getEventsForDate(todayDate, events, recurringRules);
@@ -496,8 +462,9 @@ function renderScheduleCard(state, now, events, recurringRules) {
   });
   
   // Position events absolutely (exact same format as planner daily view)
+  // Event structure: { startTime, durationMin, category, title, location, linkedProjectId, linkedTaskId }
   const eventBlocks = dayEvents.map(e => {
-    // Handle both event formats: startTime/durationMin (planner) or time/duration (legacy)
+    // Use standard format (startTime/durationMin) - same as planner
     const startTime = e.startTime || e.time || '00:00';
     const durationMin = e.durationMin || e.duration || 60;
     const startMins = parseTime(startTime);

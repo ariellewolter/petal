@@ -2,11 +2,12 @@
   "name": "Petal — My Tasks",
   "short_name": "Petal",
   "description": "A beautiful task and project tracker",
-  "start_url": "./tasklist (1).html",
+  "start_url": "./tasklist.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#faf8f5",
   "theme_color": "#c98b8b",
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "icons": [
     {
       "src": "icon-192.png",

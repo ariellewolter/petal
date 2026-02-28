@@ -5,6 +5,7 @@ import { renderPlannerHabits } from '../ui/renderPlannerHabits.js';
 import { renderPlannerRoutines } from '../ui/renderPlannerRoutines.js';
 import { parseTime, formatTime } from '../utils/dates.js';
 import { esc } from '../utils/strings.js';
+import { expandRecurringRules, getEventsForDate } from '../utils/eventHelpers.js';
 
 /**
  * Get planner state from store state
@@ -20,68 +21,8 @@ function getPlannerState(state) {
   };
 }
 
-/**
- * Expand recurring rules into events for a date range
- * @param {Date} startDate - Start date
- * @param {Date} endDate - End date
- * @param {Array} recurringRules - Recurring rules from state
- * @returns {Array} Expanded events
- */
-function expandRecurringRules(startDate, endDate, recurringRules) {
-  const expanded = [];
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  
-  recurringRules.forEach(rule => {
-    if (!rule.enabled) return;
-    
-    const current = new Date(start);
-    while (current <= end) {
-      const dayOfWeek = current.getDay(); // 0 = Sunday, 6 = Saturday
-      if (rule.daysOfWeek && rule.daysOfWeek.includes(dayOfWeek)) {
-        const eventDate = current.toISOString().split('T')[0];
-        expanded.push({
-          id: `evt_${rule.id}_${eventDate}`,
-          title: rule.title,
-          date: eventDate,
-          startTime: rule.startTime,
-          durationMin: rule.durationMin,
-          category: rule.category,
-          location: rule.location || null,
-          bufferBeforeMin: rule.bufferBeforeMin || 0,
-          bufferAfterMin: rule.bufferAfterMin || 0,
-          recurrenceId: rule.id,
-          notes: rule.notes || '',
-          linkedProjectId: rule.linkedProjectId || null,
-          linkedTaskId: rule.linkedTaskId || null
-        });
-      }
-      current.setDate(current.getDate() + 1);
-    }
-  });
-  
-  return expanded;
-}
-
-/**
- * Get all events for a specific date (one-off + expanded recurring)
- * @param {Date} date - Date to get events for
- * @param {Array} events - One-off events from state
- * @param {Array} recurringRules - Recurring rules from state
- * @returns {Array} Sorted events for the date
- */
-function getEventsForDate(date, events, recurringRules) {
-  const dateStr = date.toISOString().split('T')[0];
-  const oneOff = events.filter(e => e.date === dateStr);
-  const expanded = expandRecurringRules(date, date, recurringRules);
-  const expandedForDate = expanded.filter(e => e.date === dateStr);
-  
-  return [...oneOff, ...expandedForDate].sort((a, b) => {
-    const aTime = parseTime(a.startTime);
-    const bTime = parseTime(b.startTime);
-    return aTime - bTime;
-  });
-}
+// Event calculation functions moved to shared utility: src/utils/eventHelpers.js
+// Imported above to ensure consistency with Today page
 
 /**
  * Calculate available time blocks for a day

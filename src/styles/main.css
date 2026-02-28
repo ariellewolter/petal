@@ -73,7 +73,8 @@ body::before{content:'';position:fixed;inset:0;background:
 #view-planner,
 #view-cell-log,
 #view-settings,
-#view-3d-print{
+#view-3d-print,
+#view-habits{
   grid-column:2 !important;
   grid-row:1 !important;
   width:100% !important;
@@ -100,7 +101,8 @@ body::before{content:'';position:fixed;inset:0;background:
 #view-planner > *:first-child,
 #view-cell-log > *:first-child,
 #view-settings > *:first-child,
-#view-3d-print > *:first-child{
+#view-3d-print > *:first-child,
+#view-habits > *:first-child{
   margin-top:0 !important;
   padding-top:0 !important;
 }
@@ -195,13 +197,14 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 .btn-remove:hover{border-color:var(--rose-soft);color:var(--rose);}
 .btn-add-file{background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text-dim);font-family:'Jost',sans-serif;font-size:11px;letter-spacing:.15em;text-transform:uppercase;padding:8px 16px;cursor:pointer;width:100%;transition:all .15s;margin-top:4px;}
 .btn-add-file:hover{border-color:var(--rose-soft);color:var(--rose);background:var(--rose-pale);}
-.btn-submit{background:linear-gradient(135deg,#d4a0a0 0%,#c98b8b 100%);border:none;border-radius:8px;color:white;font-family:'Jost',sans-serif;font-size:13px;font-weight:400;letter-spacing:.1em;text-transform:uppercase;padding:10px 20px;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(201,139,139,.2);}
-.btn-submit:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(201,139,139,.3);}
-.btn-secondary{background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Jost',sans-serif;font-size:13px;font-weight:400;padding:10px 20px;cursor:pointer;transition:all .15s;}
-.btn-secondary:hover{background:var(--bg);border-color:var(--border2);}
+/* ── STANDARD BUTTONS ── */
+.btn-primary,.btn-submit{background:linear-gradient(135deg,#d4a0a0 0%,#c98b8b 100%);border:none;border-radius:9px;color:white;font-family:'Jost',sans-serif;font-size:12px;font-weight:400;letter-spacing:.1em;text-transform:uppercase;padding:9px 20px;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(201,139,139,.25);}
+.btn-primary:hover,.btn-submit:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(201,139,139,.35);}
+.btn-secondary{background:var(--surface);border:1px solid var(--border);border-radius:9px;color:var(--text);font-family:'Jost',sans-serif;font-size:12px;font-weight:400;letter-spacing:.1em;text-transform:uppercase;padding:9px 18px;cursor:pointer;transition:all .2s;}
+.btn-secondary:hover{border-color:var(--rose-soft);color:var(--rose);background:var(--rose-pale);}
+.btn-icon{width:32px;height:32px;border-radius:8px;background:var(--surface);border:1px solid var(--border);color:var(--text-dim);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .15s;line-height:1;padding:0;}
+.btn-icon:hover{border-color:var(--rose-soft);color:var(--rose);background:var(--rose-pale);}
 .btn-add-task-toggle:hover{background:var(--rose-pale);border-color:var(--rose-soft);color:var(--rose);}
-.btn-icon{background:none;border:none;color:var(--text-dim);font-size:14px;cursor:pointer;padding:4px 8px;border-radius:6px;transition:all .15s;display:inline-flex;align-items:center;justify-content:center;line-height:1;}
-.btn-icon:hover{background:var(--rose-pale);color:var(--rose);}
 
 /* ── TOOLBAR ── */
 .toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap;}
@@ -1144,3 +1147,343 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 
 /* 3D Printing page styles injected by src/pages/ThreeDPrintPage.js */
 
+/* ═══════════════════════ iOS / MOBILE RESPONSIVE STYLES ═══════════════════════ */
+
+/* iOS Safe Areas Support */
+@supports (padding: max(0px)) {
+  .app {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+  }
+  
+  body {
+    padding-top: max(0px, env(safe-area-inset-top));
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+}
+
+/* Mobile Menu Toggle Button */
+.mobile-menu-toggle {
+  display: none;
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 1001;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 20px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s;
+}
+
+.mobile-menu-toggle:hover,
+.mobile-menu-toggle:active {
+  background: var(--rose-pale);
+  border-color: var(--rose-soft);
+  color: var(--rose);
+}
+
+.mobile-menu-toggle:active {
+  transform: scale(0.95);
+}
+
+/* Sidebar Overlay (for mobile) */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 999;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.sidebar-overlay.active {
+  opacity: 1;
+}
+
+/* Mobile Breakpoint: Tablets and below (768px) */
+@media (max-width: 768px) {
+  /* App layout - single column on mobile */
+  .app {
+    grid-template-columns: 1fr !important;
+    padding-top: max(0px, env(safe-area-inset-top));
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+  
+  /* Show mobile menu button */
+  .mobile-menu-toggle {
+    display: flex;
+  }
+  
+  /* Sidebar as drawer - hidden by default */
+  .global-sidebar {
+    position: fixed !important;
+    left: -220px;
+    top: 0;
+    bottom: 0;
+    width: 220px;
+    max-width: 80vw;
+    transition: left 0.3s ease;
+    z-index: 1000 !important;
+    box-shadow: 2px 0 12px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Sidebar open state */
+  .global-sidebar.open {
+    left: 0;
+  }
+  
+  /* Show overlay when sidebar is open */
+  .sidebar-overlay {
+    display: block;
+  }
+  
+  .sidebar-overlay.active {
+    display: block;
+  }
+  
+  /* Main content - full width on mobile */
+  .app > [id^="view-"] {
+    grid-column: 1 !important;
+    width: 100% !important;
+    padding-left: max(16px, env(safe-area-inset-left)) !important;
+    padding-right: max(16px, env(safe-area-inset-right)) !important;
+  }
+  
+  /* Adjust view padding for mobile */
+  #view-tasks,
+  #view-projects,
+  #view-planner,
+  #view-cell-log,
+  #view-settings,
+  #view-3d-print,
+  #view-habits,
+  #view-today,
+  #view-workflow,
+  #view-files {
+    padding: 60px 16px 80px !important;
+    padding-top: max(60px, calc(60px + env(safe-area-inset-top))) !important;
+    padding-bottom: max(80px, calc(80px + env(safe-area-inset-bottom))) !important;
+  }
+  
+  /* Touch-friendly button sizes (iOS HIG: min 44x44px) */
+  button,
+  .btn,
+  .btn-submit,
+  .btn-secondary,
+  .btn-add-file,
+  .btn-icon,
+  .tab,
+  .sort-btn,
+  .filter-chip,
+  .task-mode-btn,
+  .global-sidebar-nav-item,
+  .settings-btn {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 10px 16px;
+  }
+  
+  /* Touch-friendly form inputs */
+  input[type="text"],
+  input[type="url"],
+  input[type="date"],
+  input[type="number"],
+  input[type="email"],
+  select,
+  textarea {
+    min-height: 44px;
+    font-size: 16px; /* Prevents iOS zoom on focus */
+    padding: 12px 16px;
+  }
+  
+  /* Touch-friendly checkboxes and radio buttons */
+  input[type="checkbox"],
+  input[type="radio"] {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+  
+  /* Touch-friendly links */
+  a,
+  .task-card,
+  .project-card {
+    min-height: 44px;
+  }
+  
+  /* Adjust form card padding */
+  .form-card {
+    padding: 20px 16px;
+    margin-bottom: 20px;
+  }
+  
+  /* Stack field rows on mobile */
+  .field-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  /* Adjust toolbar */
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  
+  /* Full width buttons on mobile */
+  .btn-export,
+  .btn-import,
+  .btn-submit,
+  .btn-secondary {
+    width: 100%;
+  }
+  
+  /* Adjust kanban board for mobile */
+  .kanban-board {
+    grid-template-columns: 1fr;
+  }
+  
+  /* Adjust wordmark size */
+  .wordmark-title {
+    font-size: 32px;
+  }
+  
+  /* Adjust sidebar header */
+  .global-sidebar-header {
+    padding: 20px 16px;
+  }
+  
+  /* Adjust sidebar nav */
+  .global-sidebar-nav {
+    padding: 16px 8px;
+  }
+  
+  /* Task cards - better spacing */
+  .task-card {
+    margin-bottom: 12px;
+  }
+  
+  /* Color swatches - larger for touch */
+  .color-swatch {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+  }
+  
+  /* Remove file icon hover effects on mobile */
+  .file-icon,
+  .today-file-icon {
+    pointer-events: auto;
+  }
+}
+
+/* Small Mobile Breakpoint: Phones (480px and below) */
+@media (max-width: 480px) {
+  /* Even more compact padding */
+  #view-tasks,
+  #view-projects,
+  #view-planner,
+  #view-cell-log,
+  #view-settings,
+  #view-3d-print,
+  #view-habits,
+  #view-today,
+  #view-workflow,
+  #view-files {
+    padding: 56px 12px 72px !important;
+    padding-top: max(56px, calc(56px + env(safe-area-inset-top))) !important;
+    padding-bottom: max(72px, calc(72px + env(safe-area-inset-bottom))) !important;
+  }
+  
+  /* Smaller font sizes for very small screens */
+  .wordmark-title {
+    font-size: 28px;
+  }
+  
+  .form-title {
+    font-size: 18px;
+  }
+  
+  /* Compact form cards */
+  .form-card {
+    padding: 16px 12px;
+    border-radius: 12px;
+  }
+  
+  /* Adjust sidebar width on very small screens */
+  .global-sidebar {
+    width: 85vw;
+    max-width: 280px;
+  }
+  
+  /* Mobile menu button position adjustment */
+  .mobile-menu-toggle {
+    top: max(12px, calc(12px + env(safe-area-inset-top)));
+    left: max(12px, calc(12px + env(safe-area-inset-left)));
+  }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  /* Remove hover effects on touch devices */
+  .global-sidebar-nav-item:hover,
+  .btn:hover,
+  .tab:hover {
+    /* Keep transitions but don't change appearance on hover */
+  }
+  
+  /* Add active states for touch feedback */
+  .global-sidebar-nav-item:active,
+  .btn:active,
+  .tab:active {
+    background: var(--rose-pale);
+    transform: scale(0.98);
+  }
+  
+  /* Ensure all interactive elements are easily tappable */
+  .task-card,
+  .project-card {
+    cursor: pointer;
+    -webkit-tap-highlight-color: rgba(201, 139, 139, 0.1);
+  }
+}
+
+/* Landscape orientation adjustments for mobile */
+@media (max-width: 768px) and (orientation: landscape) {
+  /* Reduce vertical padding in landscape */
+  #view-tasks,
+  #view-projects,
+  #view-planner,
+  #view-cell-log,
+  #view-settings,
+  #view-3d-print,
+  #view-habits,
+  #view-today,
+  #view-workflow,
+  #view-files {
+    padding-top: max(48px, calc(48px + env(safe-area-inset-top))) !important;
+    padding-bottom: max(48px, calc(48px + env(safe-area-inset-bottom))) !important;
+  }
+  
+  /* Smaller sidebar header in landscape */
+  .global-sidebar-header {
+    padding: 16px 12px;
+  }
+  
+  .global-sidebar-header .wordmark-title {
+    font-size: 24px;
+  }
+}

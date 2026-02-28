@@ -294,6 +294,28 @@ export function setupEventDelegation() {
       return;
     }
     
+    // Add file to matrix (workflow matrix view)
+    if (action === 'add-file-to-matrix') {
+      e.stopPropagation();
+      e.preventDefault();
+      const state = window.Petal?.store?.getState() || {};
+      const ctx = {
+        tasks: state.tasks || [],
+        projects: state.projects || [],
+        save: window.Petal?.handlers?.save || (() => Promise.resolve()),
+        render: window.Petal?.handlers?.render || (() => {})
+      };
+      
+      if (window.Petal?.features?.modalOperations?.openMatrixAddFileModal) {
+        window.Petal.features.modalOperations.openMatrixAddFileModal(ctx);
+      } else if (window.openMatrixAddFileModal) {
+        window.openMatrixAddFileModal();
+      } else {
+        console.warn('⚠️ openMatrixAddFileModal not available');
+      }
+      return;
+    }
+    
     // Specific modal handlers (check these FIRST before generic handler)
     const modalHandlers = {
       'modal:close-edit': () => {

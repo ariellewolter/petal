@@ -1,14 +1,15 @@
 // ═══════════════════════ SERVICE WORKER ═══════════════════════
 // Handles offline caching for PWA
 
-const CACHE_NAME = 'petal-cache-v1';
+const CACHE_NAME = 'petal-cache-v2';
 const ASSETS = [
   './',
-  './tasklist (1).html',
+  './tasklist.html',
   './storage.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
+  './src/styles/main.css',
   'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap'
 ];
 
@@ -77,7 +78,7 @@ self.addEventListener('fetch', (event) => {
           .catch(() => {
             // If fetch fails and it's a navigation request, return a fallback
             if (event.request.mode === 'navigate') {
-              return caches.match('./tasklist (1).html');
+              return caches.match('./tasklist.html');
             }
           });
       })

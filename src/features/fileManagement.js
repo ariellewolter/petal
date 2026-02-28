@@ -1519,6 +1519,298 @@ export async function locateFile(fileKey, fileLink) {
 }
 
 /**
+ * Hook a file to a task or project
+ * Opens a modal to select a task or project and links the file
+ * @param {string} fileKey - File key
+ * @param {Object} fileLink - File link object
+ * @param {Object} ctx - Context with tasks, projects, save, etc.
+ */
+export async function hookFileToTaskOrProject(fileKey, fileLink, ctx) {
+  const { tasks = [], projects = [], save, rerenderViewIfActive } = ctx || {};
+  
+  if (!fileLink) {
+    alert('File information not available');
+    return;
+  }
+  
+  // Get file ID - try to find existing file in projects or create one
+  let fileId = fileLink.id;
+  let targetProjectId = null;
+  
+  // Try to find the file in existing projects to get its ID
+  for (const project of projects) {
+    if (project.files && Array.isArray(project.files)) {
+      const existingFile = project.files.find(f => {
+        if (!f) return false;
+        const fPath = typeof f === 'object' ? (f.abs_path || f.onedrive_rel || f.share_url) : f;
+        const filePath = fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url || '';
+        return fPath === filePath;
+      });
+      if (existingFile) {
+        fileId = typeof existingFile === 'object' ? existingFile.id : null;
+        targetProjectId = project.id;
+        break;
+      }
+    }
+  }
+  
+  // Create modal
+  const modal = document.createElement('div');
+  modal.className = 'quick-capture-modal';
+  modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:10000;';
+  modal.onclick = (e) => {
+    if (e.target === modal) {
+      document.body.removeChild(modal);
+    }
+  };
+  
+  const fileName = fileLink.label || fileLink.name || fileKey || 'File';
+  const activeProjects = (projects || []).filter(p => !p.done);
+  const activeTasks = (tasks || []).filter(t => !t.done);
+  
+  modal.innerHTML = `
+    <div style="background:var(--bg);border-radius:12px;padding:24px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+      <h2 style="margin:0 0 16px 0;font-size:18px;color:var(--text);">Hook File to Task or Project</h2>
+      <p style="margin:0 0 20px 0;font-size:13px;color:var(--text-dim);">File: <strong>${esc(fileName)}</strong></p>
+      
+      <div style="margin-bottom:20px;">
+        <label style="display:block;margin-bottom:8px;font-size:13px;color:var(--text);font-weight:500;">Select Type:</label>
+        <select id="hook-type-select" style="width:100%;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;">
+          <option value="task">Task</option>
+          <option value="project">Project</option>
+        </select>
+      </div>
+      
+      <div id="hook-task-container" style="margin-bottom:20px;">
+        <label style="display:block;margin-bottom:8px;font-size:13px;color:var(--text);font-weight:500;">Select Task:</label>
+        <select id="hook-task-select" style="width:100%;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;">
+          <option value="">-- Select a task --</option>
+          ${activeTasks.map(t => {
+            const projectName = activeProjects.find(p => p.id === t.projectId)?.name || 'No project';
+            return `<option value="${t.id}">${esc(t.title || 'Untitled')} (${esc(projectName)})</option>`;
+          }).join('')}
+        </select>
+      </div>
+      
+      <div id="hook-project-container" style="margin-bottom:20px;display:none;">
+        <label style="display:block;margin-bottom:8px;font-size:13px;color:var(--text);font-weight:500;">Select Project:</label>
+        <select id="hook-project-select" style="width:100%;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;">
+          <option value="">-- Select a project --</option>
+          ${activeProjects.map(p => `<option value="${p.id}">${esc(p.name || 'Untitled')}</option>`).join('')}
+        </select>
+      </div>
+      
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:24px;">
+        <button id="hook-cancel-btn" style="padding:8px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;cursor:pointer;">Cancel</button>
+        <button id="hook-submit-btn" style="padding:8px 16px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:500;">Hook File</button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  // Handle type selection
+  const typeSelect = modal.querySelector('#hook-type-select');
+  const taskContainer = modal.querySelector('#hook-task-container');
+  const projectContainer = modal.querySelector('#hook-project-container');
+  const taskSelect = modal.querySelector('#hook-task-select');
+  const projectSelect = modal.querySelector('#hook-project-select');
+  
+  typeSelect.addEventListener('change', (e) => {
+    if (e.target.value === 'task') {
+      taskContainer.style.display = 'block';
+      projectContainer.style.display = 'none';
+    } else {
+      taskContainer.style.display = 'none';
+      projectContainer.style.display = 'block';
+    }
+  });
+  
+  // Handle cancel
+  const cancelBtn = modal.querySelector('#hook-cancel-btn');
+  cancelBtn.addEventListener('click', () => {
+    document.body.removeChild(modal);
+  });
+  
+  // Handle submit
+  const submitBtn = modal.querySelector('#hook-submit-btn');
+  submitBtn.addEventListener('click', async () => {
+    const hookType = typeSelect.value;
+    
+    if (hookType === 'task') {
+      const taskId = taskSelect.value;
+      if (!taskId) {
+        alert('Please select a task');
+        return;
+      }
+      
+      const task = activeTasks.find(t => String(t.id) === String(taskId));
+      if (!task) {
+        alert('Task not found');
+        return;
+      }
+      
+      // Ensure task has projectId (required for file linking)
+      if (!task.projectId) {
+        alert('Task must be in a project to link files');
+        document.body.removeChild(modal);
+        return;
+      }
+      
+      // Find or create the file in the project
+      const project = activeProjects.find(p => p.id === task.projectId);
+      if (!project) {
+        alert('Project not found for this task');
+        document.body.removeChild(modal);
+        return;
+      }
+      
+      if (!project.files) project.files = [];
+      
+      // Check if file already exists in project
+      let fileIdToUse = fileId;
+      const existingFile = project.files.find(f => {
+        if (!f) return false;
+        const fPath = typeof f === 'object' ? (f.abs_path || f.onedrive_rel || f.share_url) : f;
+        const filePath = fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url || '';
+        return fPath === filePath;
+      });
+      
+      if (existingFile) {
+        fileIdToUse = typeof existingFile === 'object' ? existingFile.id : null;
+        if (!fileIdToUse) {
+          // Create ID for existing file
+          fileIdToUse = `file_${project.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          if (typeof existingFile === 'object') {
+            existingFile.id = fileIdToUse;
+          } else {
+            // Convert string to object
+            const fileIndex = project.files.indexOf(existingFile);
+            project.files[fileIndex] = {
+              id: fileIdToUse,
+              label: fileLink.label || fileLink.name || 'File',
+              abs_path: fileLink.abs_path || '',
+              onedrive_rel: fileLink.onedrive_rel || '',
+              share_url: fileLink.share_url || ''
+            };
+          }
+        }
+      } else {
+        // Create new file entry in project
+        fileIdToUse = fileId || `file_${project.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const newFile = {
+          id: fileIdToUse,
+          label: fileLink.label || fileLink.name || 'File',
+          abs_path: fileLink.abs_path || '',
+          onedrive_rel: fileLink.onedrive_rel || '',
+          share_url: fileLink.share_url || '',
+          fileLink: fileLink,
+          isCurrent: true,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        };
+        project.files.push(newFile);
+      }
+      
+      // Add to task's fileIds
+      if (!task.fileIds) task.fileIds = [];
+      if (!task.fileIds.includes(fileIdToUse)) {
+        task.fileIds.push(fileIdToUse);
+      }
+      
+      // Save changes
+      if (window.Petal?.store) {
+        const state = window.Petal.store.getState();
+        const updatedTasks = (state.tasks || []).map(t => {
+          if (String(t.id) === String(taskId)) {
+            return { ...t, fileIds: task.fileIds };
+          }
+          return t;
+        });
+        const updatedProjects = (state.projects || []).map(p => {
+          if (p.id === task.projectId) {
+            return { ...p, files: project.files };
+          }
+          return p;
+        });
+        window.Petal.store.setState({ tasks: updatedTasks, projects: updatedProjects });
+      } else if (save) {
+        await save();
+      }
+      
+      alert(`File hooked to task: ${task.title || 'Untitled'}`);
+      
+    } else if (hookType === 'project') {
+      const projectId = projectSelect.value;
+      if (!projectId) {
+        alert('Please select a project');
+        return;
+      }
+      
+      const project = activeProjects.find(p => String(p.id) === String(projectId));
+      if (!project) {
+        alert('Project not found');
+        return;
+      }
+      
+      if (!project.files) project.files = [];
+      
+      // Check if file already exists in project
+      const existingFile = project.files.find(f => {
+        if (!f) return false;
+        const fPath = typeof f === 'object' ? (f.abs_path || f.onedrive_rel || f.share_url) : f;
+        const filePath = fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url || '';
+        return fPath === filePath;
+      });
+      
+      if (!existingFile) {
+        // Create new file entry
+        const newFileId = fileId || `file_${project.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const newFile = {
+          id: newFileId,
+          label: fileLink.label || fileLink.name || 'File',
+          abs_path: fileLink.abs_path || '',
+          onedrive_rel: fileLink.onedrive_rel || '',
+          share_url: fileLink.share_url || '',
+          fileLink: fileLink,
+          isCurrent: true,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        };
+        project.files.push(newFile);
+        
+        // Save changes
+        if (window.Petal?.store) {
+          const state = window.Petal.store.getState();
+          const updatedProjects = (state.projects || []).map(p => {
+            if (String(p.id) === String(projectId)) {
+              return { ...p, files: project.files };
+            }
+            return p;
+          });
+          window.Petal.store.setState({ projects: updatedProjects });
+        } else if (save) {
+          await save();
+        }
+        
+        alert(`File hooked to project: ${project.name || 'Untitled'}`);
+      } else {
+        alert('File is already in this project');
+      }
+    }
+    
+    document.body.removeChild(modal);
+    
+    // Refresh files view
+    if (rerenderViewIfActive) {
+      rerenderViewIfActive('files');
+    } else if (window.routerSwitchView) {
+      await window.routerSwitchView('files', { force: true });
+    }
+  });
+}
+
+/**
  * Open file (re-exported from fileHelpers for convenience)
  * @param {Object|string} fileLink - File link object or string path
  */

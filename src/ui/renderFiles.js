@@ -285,6 +285,7 @@ function renderFileCard(file, fileHistory) {
     <div class="file-card-actions" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
       ${isMissing ? `<button class="btn-secondary" data-action="file:locate" data-file-key="${esc(fileKey)}" data-path="${escAttr(JSON.stringify(fileLink))}" style="font-size:11px;padding:6px 12px;background:var(--rose);color:white;">🔍 Locate File...</button>` : ''}
       <button class="file-open-btn btn-secondary" data-action="file:open" data-path="${escAttr(JSON.stringify(fileLink))}" style="font-size:11px;padding:6px 12px;${isMissing ? 'opacity:0.6;' : ''}">Open</button>
+      <button data-action="file:hook" data-file-id="${esc(fileId)}" data-file-key="${esc(fileKey)}" data-path="${escAttr(JSON.stringify(fileLink))}" class="btn-secondary" style="font-size:11px;padding:6px 12px;" title="Hook this file to a task or project">🔗 Hook</button>
       ${file.key ? `<button data-action="file:show-relations" data-file-key="${esc(file.key)}" class="btn-secondary" style="font-size:11px;padding:6px 12px;">Relations</button>` : ''}
       <button data-action="file:notes" data-file-id="${esc(fileId)}" class="btn-secondary" style="font-size:11px;padding:6px 12px;" title="Add or edit notes for this file">${file.notes ? '📝' : '📄'} Notes</button>
     </div>

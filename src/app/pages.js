@@ -11,6 +11,7 @@ import { renderProjectsPage } from '../pages/ProjectsPage.js';
 import { renderThreeDPrintPage } from '../pages/ThreeDPrintPage.js';
 import { renderFilesPage } from '../pages/FilesPage.js';
 import { renderPlannerPage } from '../pages/PlannerPage.js';
+import { renderHabitsPage } from '../pages/HabitsPage.js';
 
 // 3D Print page is now a proper module - imported above
 
@@ -30,6 +31,7 @@ export const PAGES = {
   'cell-log': renderCellLogPage,
   settings: renderSettingsPage,
   '3d-print': renderThreeDPrintPage,
+  habits: renderHabitsPage,
 };
 
 /**

@@ -97,6 +97,15 @@ export function renderGlobalSidebar(state) {
         return queueCount > 0 ? `<span class="global-sidebar-nav-badge">${queueCount}</span>` : '';
       })()}
     </a>
+    <a class="global-sidebar-nav-item ${currentView === 'habits' ? 'active' : ''}" href="#" data-nav="habits">
+      <span class="global-sidebar-nav-icon">🌿</span> Habits &amp; Routines
+      ${(() => {
+        const habits = state.habits || [];
+        const today = new Date().toISOString().slice(0, 10);
+        const doneToday = habits.filter(h => (state.habitCompletions?.[h.id] || {})[today]).length;
+        return doneToday > 0 && doneToday < habits.length ? `<span class="global-sidebar-nav-badge">${doneToday}/${habits.length}</span>` : '';
+      })()}
+    </a>
   `;
   
   console.log('✅ renderGlobalSidebar: Navigation rendered', { navItemCount: navEl.children.length });
