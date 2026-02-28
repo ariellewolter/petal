@@ -7154,6 +7154,34 @@ document.addEventListener('keydown', (e) => {
       closeSidebar();
     }
   });
+  
+  // Add swipe gesture to close sidebar (swipe left on sidebar)
+  if (sidebar && window.addSwipeListener) {
+    window.addSwipeListener(sidebar, {
+      onSwipeLeft: () => {
+        if (sidebar.classList.contains('open')) {
+          closeSidebar();
+        }
+      }
+    });
+  }
+  
+  // Add swipe gesture to open sidebar (swipe right from left edge)
+  if (window.addSwipeListener) {
+    let swipeStartX = 0;
+    document.addEventListener('touchstart', function(e) {
+      swipeStartX = e.touches[0].clientX;
+    }, { passive: true });
+    
+    document.addEventListener('touchend', function(e) {
+      if (swipeStartX < 20 && e.changedTouches[0].clientX > 100) {
+        // Swiped right from left edge
+        if (sidebar && !sidebar.classList.contains('open')) {
+          toggleSidebar();
+        }
+      }
+    }, { passive: true });
+  }
 })();
 
 // ═══════════════════════ PWA REGISTRATION (browser only) ═══════════════════════
