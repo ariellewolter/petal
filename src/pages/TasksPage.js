@@ -5,6 +5,7 @@
 import { renderTasks } from '../ui/renderTasks.js';
 import { asIdString, normalizeProjectId } from '../utils/ids.js';
 import { getAllTasks } from '../domain/models.js';
+import { PageHeader } from '../ui/components.js';
 
 /**
  * Bind event handlers to the tasks container
