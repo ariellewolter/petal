@@ -3,6 +3,7 @@
 // Replaces inline onclick handlers with delegated events
 
 import { renderProjects } from '../ui/renderProjects.js';
+import { PageHeader } from '../ui/components.js';
 
 let bound = false;
 
@@ -296,31 +297,27 @@ export function renderProjectsPage(container, state, features) {
     projectContainer = container;
   }
   
-  // Create or find header - must be before setting padding styles
-  let projectsHeader = container.querySelector('.projects-header');
-  if (!projectsHeader) {
-    projectsHeader = document.createElement('header');
-    projectsHeader.className = 'projects-header';
-    // Insert at the very beginning, before any other content
-    container.insertBefore(projectsHeader, container.firstChild);
-  }
-  
   // Calculate project stats
   const projects = Array.isArray(state.projects) ? state.projects : [];
   const activeProjects = projects.filter(p => p && !p.done);
   const doneProjects = projects.filter(p => p && p.done);
   
-  // Render header
-  projectsHeader.innerHTML = `
-    <div class="projects-header-title">
-      <span class="projects-header-name">Projects</span>
-    </div>
-    <div class="projects-header-right">
-      <div style="display:flex;align-items:center;gap:6px">
-        <span class="projects-header-status">${activeProjects.length} active${activeProjects.length !== 1 ? '' : ''} · ${doneProjects.length} completed</span>
-      </div>
-    </div>
-  `;
+  // Create or find header - must be before setting padding styles
+  let projectsHeader = container.querySelector('.page-header');
+  if (!projectsHeader) {
+    projectsHeader = document.createElement('header');
+    projectsHeader.className = 'page-header';
+    // Insert at the very beginning, before any other content
+    container.insertBefore(projectsHeader, container.firstChild);
+  }
+  
+  // Render header using standard component
+  projectsHeader.innerHTML = PageHeader({
+    title: 'Projects',
+    icon: '◈',
+    status: `${activeProjects.length} active · ${doneProjects.length} completed`,
+    actions: []
+  });
   
   // If still not found, create it INSIDE the view container
   if (!projectContainer) {
@@ -367,6 +364,43 @@ export function renderProjectsPage(container, state, features) {
   container.style.setProperty('height', '100vh', 'important');
   container.style.setProperty('overflow-y', 'auto', 'important');
   container.style.setProperty('overflow-x', 'hidden', 'important');
+  
+  // Ensure project-list-view is visible (if no project is selected)
+  const listView = document.getElementById('project-list-view');
+  const matrixView = document.getElementById('workflow-matrix-view');
+  const selectedProjectId = typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null;
+  
+  if (!selectedProjectId) {
+    // No project selected - show list view, hide matrix view
+    if (listView) {
+      listView.style.display = 'block';
+      listView.style.visibility = 'visible';
+      listView.style.opacity = '1';
+    }
+    if (matrixView) {
+      matrixView.style.display = 'none';
+      matrixView.style.visibility = 'hidden';
+      matrixView.style.opacity = '0';
+    }
+  } else {
+    // Project selected - show matrix view, hide list view
+    if (listView) {
+      listView.style.display = 'none';
+      listView.style.visibility = 'hidden';
+    }
+    if (matrixView) {
+      matrixView.style.display = 'block';
+      matrixView.style.visibility = 'visible';
+      matrixView.style.opacity = '1';
+    }
+  }
+  
+  // Always ensure project-container is visible when list view is shown
+  if (projectContainer && !selectedProjectId) {
+    projectContainer.style.display = 'block';
+    projectContainer.style.visibility = 'visible';
+    projectContainer.style.opacity = '1';
+  }
   
   // Verify it's actually visible
   const computedStyle = window.getComputedStyle(container);

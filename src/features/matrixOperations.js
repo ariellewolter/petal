@@ -199,19 +199,43 @@ export async function selectProjectForMatrix(ctx, projectId) {
       }
     }
   } else {
+    // Clear selected project ID
+    if (typeof window.selectedProjectId !== 'undefined') {
+      window.selectedProjectId = null;
+    }
+    
     const matrixView = document.getElementById('workflow-matrix-view');
     const listView = document.getElementById('project-list-view');
+    const projectContainer = document.getElementById('project-container');
+    
     if (matrixView) {
       matrixView.style.display = 'none';
+      matrixView.style.visibility = 'hidden';
+      matrixView.style.opacity = '0';
     }
     if (listView) {
       listView.style.display = 'block';
+      listView.style.visibility = 'visible';
+      listView.style.opacity = '1';
     }
+    // Ensure project container is visible
+    if (projectContainer) {
+      projectContainer.style.display = 'block';
+      projectContainer.style.visibility = 'visible';
+      projectContainer.style.opacity = '1';
+    }
+    
     // Show project creation form when back to project list
     if (createFormSection) createFormSection.style.display = '';
-    // Re-render projects view
-    if (window.rerenderViewIfActive) {
-      window.rerenderViewIfActive('projects');
+    
+    // Ensure we're on the projects view and re-render
+    if (window.routerSwitchView) {
+      // Use router to properly switch to projects view
+      await window.routerSwitchView('projects', { force: true });
+    } else if (window.rerenderViewIfActive) {
+      await window.rerenderViewIfActive('projects');
+    } else if (window.switchView) {
+      await window.switchView('projects');
     }
   }
 }
