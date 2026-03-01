@@ -6,6 +6,7 @@ import { renderPlannerRoutines } from '../ui/renderPlannerRoutines.js';
 import { parseTime, formatTime } from '../utils/dates.js';
 import { esc } from '../utils/strings.js';
 import { expandRecurringRules, getEventsForDate } from '../utils/eventHelpers.js';
+import { PageHeader } from '../ui/components.js';
 
 /**
  * Get planner state from store state
@@ -134,11 +135,17 @@ export async function renderPlannerPage(containerEl, state, handlers) {
     return;
   }
 
+  // Calculate planner stats
+  const events = Array.isArray(state.events) ? state.events : [];
+  const recurringRules = Array.isArray(state.recurringRules) ? state.recurringRules : [];
+  const activeRecurring = recurringRules.filter(r => r && r.enabled);
+  const totalEvents = events.length + activeRecurring.length;
+  
   // Create or find header - must be first element
-  let plannerHeader = containerEl.querySelector('.planner-header');
+  let plannerHeader = containerEl.querySelector('.page-header');
   if (!plannerHeader) {
     plannerHeader = document.createElement('header');
-    plannerHeader.className = 'planner-header';
+    plannerHeader.className = 'page-header';
     // Insert at the very beginning of the container, before any existing content
     const firstChild = containerEl.firstChild;
     if (firstChild && firstChild.nodeType === 1) { // Element node
@@ -148,23 +155,13 @@ export async function renderPlannerPage(containerEl, state, handlers) {
     }
   }
   
-  // Calculate planner stats
-  const events = Array.isArray(state.events) ? state.events : [];
-  const recurringRules = Array.isArray(state.recurringRules) ? state.recurringRules : [];
-  const activeRecurring = recurringRules.filter(r => r && r.enabled);
-  const totalEvents = events.length + activeRecurring.length;
-  
-  // Render header
-  plannerHeader.innerHTML = `
-    <div class="planner-header-title">
-      <span class="planner-header-name">Planner</span>
-    </div>
-    <div class="planner-header-right">
-      <div style="display:flex;align-items:center;gap:6px">
-        <span class="planner-header-status">${events.length} event${events.length !== 1 ? 's' : ''} · ${activeRecurring.length} recurring</span>
-      </div>
-    </div>
-  `;
+  // Render header using standard component
+  plannerHeader.innerHTML = PageHeader({
+    title: 'Planner',
+    icon: '📅',
+    status: `${events.length} event${events.length !== 1 ? 's' : ''} · ${activeRecurring.length} recurring`,
+    actions: []
+  });
 
   // Get planner state from store (single source of truth)
   const plannerState = getPlannerState(state);
@@ -534,10 +531,17 @@ async function renderDailyPlanner(containerEl, state, handlers) {
       // This will be moved to handlers in a future refactor
       if (typeof window.openAddEventModal === 'function') {
         window.openAddEventModal(dateStr);
-        const startInput = document.getElementById('event-start-time');
-        if (startInput) startInput.value = formatTime(h * 60);
-        const endInput = document.getElementById('event-duration');
-        if (endInput) endInput.value = '60';
+        // Use setTimeout to ensure modal is fully rendered before setting values
+        setTimeout(() => {
+          const startInput = document.getElementById('event-start-time');
+          if (startInput) startInput.value = formatTime(h * 60);
+          const durationInput = document.getElementById('event-duration');
+          if (durationInput) durationInput.value = '60';
+          // Update end time after setting start time and duration
+          if (typeof window.updateEventEndTimeFromDuration === 'function') {
+            window.updateEventEndTimeFromDuration();
+          }
+        }, 0);
       }
     };
     slot.appendChild(ghost);

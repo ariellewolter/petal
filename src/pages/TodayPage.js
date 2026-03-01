@@ -3,10 +3,12 @@
 // Takes state and handlers as parameters - no store peeking
 
 import { esc } from '../utils/strings.js';
+import { escapeHtml } from '../utils/strings.js';
 import { today, parseDate, parseTime, formatTime } from '../utils/dates.js';
 import { getAllTasks } from '../domain/models.js';
 import { setupEventDelegation } from '../app/delegation.js';
 import { getEventsForDate } from '../utils/eventHelpers.js';
+import { PageHeader } from '../ui/components.js';
 
 // Event calculation functions moved to shared utility: src/utils/eventHelpers.js
 // Imported above to ensure consistency with Planner page
@@ -298,10 +300,17 @@ export async function renderTodayPage(containerEl, state, handlers) {
           e.stopPropagation();
           if (typeof window.openAddEventModal === 'function') {
             window.openAddEventModal(todayDateStr);
-            const startInput = document.getElementById('event-start-time');
-            if (startInput) startInput.value = formatTime(index * 60);
-            const durationInput = document.getElementById('event-duration');
-            if (durationInput) durationInput.value = '60';
+            // Use setTimeout to ensure modal is fully rendered before setting values
+            setTimeout(() => {
+              const startInput = document.getElementById('event-start-time');
+              if (startInput) startInput.value = formatTime(index * 60);
+              const durationInput = document.getElementById('event-duration');
+              if (durationInput) durationInput.value = '60';
+              // Update end time after setting start time and duration
+              if (typeof window.updateEventEndTimeFromDuration === 'function') {
+                window.updateEventEndTimeFromDuration();
+              }
+            }, 0);
           }
         };
         slot.appendChild(ghost);
@@ -311,15 +320,6 @@ export async function renderTodayPage(containerEl, state, handlers) {
 }
 
 // --- helpers ---
-function escapeHtml(s) {
-  return String(s ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
 function getStatusLine(state, cellLogEntries) {
   // Count unique active cell lines (not total entries)
   // A cell line is active if it has at least one non-frozen entry
