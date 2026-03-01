@@ -4,6 +4,7 @@
 
 import { esc, escAttr } from '../utils/strings.js';
 import { fileIcon } from '../utils/strings.js';
+import { EmptyState } from '../ui/components.js';
 
 /**
  * Render files view
@@ -31,15 +32,29 @@ export async function renderFiles(containerEl, state, handlers) {
   // Update project filter dropdown - MUST be scoped to containerEl
   const projectFilterEl = containerEl.querySelector('#file-project-filter') || containerEl.querySelector('[data-file-project-filter]');
   if (projectFilterEl) {
-    const currentValue = projectFilterEl.value || currentFileProjectFilter || 'all';
+    // Get current value from state (preferred) or from element
+    const currentValue = currentFileProjectFilter || projectFilterEl.value || 'all';
+    
+    // Clear and rebuild options
     projectFilterEl.innerHTML = '<option value="all">All Projects</option>';
     (projects || []).filter(p => !p.done).forEach(p => {
       const opt = document.createElement('option');
-      opt.value = p.id;
+      opt.value = String(p.id); // Ensure string for comparison
       opt.textContent = p.name;
       projectFilterEl.appendChild(opt);
     });
-    projectFilterEl.value = currentValue;
+    
+    // Set the value from state
+    projectFilterEl.value = String(currentValue);
+    
+    if (window.__DEBUG__) {
+      console.log('🔍 Project filter updated:', {
+        currentValue,
+        stateValue: currentFileProjectFilter,
+        elementValue: projectFilterEl.value,
+        availableProjects: (projects || []).filter(p => !p.done).length
+      });
+    }
   }
   
   if (window.__DEBUG__) {
@@ -132,6 +147,13 @@ export async function renderFiles(containerEl, state, handlers) {
       return lastMod < thirtyDaysAgo && 
              (f.tasks || []).some(t => !t.done && t.status === 'Doing');
     });
+  } else if (currentFileView === 'missing') {
+    // Filter to missing files
+    files = files.filter(f => {
+      const fileKey = f.key || f.fileLink?.abs_path || f.fileLink?.onedrive_rel || f.fileLink?.share_url;
+      const history = fileHistory?.[fileKey] || {};
+      return f.exists === false || f.isMissing === true || history.exists === false;
+    });
   } else if (currentFileView === 'submissions') {
     files = files.filter(f => f.submissionMeta || 
                                f.status === 'submitted' || 
@@ -141,31 +163,159 @@ export async function renderFiles(containerEl, state, handlers) {
   // Filter by project if a project is selected
   if (currentFileProjectFilter && currentFileProjectFilter !== 'all') {
     const projectIdNum = parseInt(currentFileProjectFilter);
+    const projectIdStr = String(currentFileProjectFilter);
+    
+    if (window.__DEBUG__) {
+      console.log('🔍 Filtering files by project:', {
+        projectIdNum,
+        projectIdStr,
+        currentFileProjectFilter,
+        totalFilesBefore: files.length
+      });
+    }
+    
     files = files.filter(f => {
-      // Check if file is linked to the selected project
-      const fileProjects = f.projects || [];
-      if (fileProjects.length === 0) return false;
+      // Check if file is linked to the selected project in two ways:
+      // 1. Directly linked to project (in f.projects)
+      // 2. Linked via tasks that belong to the project (in f.tasks[].projectId)
       
-      return fileProjects.some(p => {
-        // Handle both object format {id: ...} and direct ID format
+      // Check direct project links
+      const fileProjects = f.projects || [];
+      const hasDirectProjectLink = fileProjects.some(p => {
         const pId = typeof p === 'object' && p !== null ? (p.id || p.projectId) : p;
         if (pId == null) return false;
         const pIdNum = typeof pId === 'number' ? pId : parseInt(pId);
-        return pIdNum === projectIdNum;
+        const pIdStr = String(pId);
+        return pIdNum === projectIdNum || pIdStr === projectIdStr;
       });
+      
+      if (hasDirectProjectLink) {
+        if (window.__DEBUG__) {
+          console.log('  File matches project (direct):', f.name || f.key);
+        }
+        return true;
+      }
+      
+      // Check indirect links via tasks
+      const fileTasks = f.tasks || [];
+      const hasTaskLink = fileTasks.some(t => {
+        // Task can have projectId as a property or nested in task object
+        const taskProjectId = t.projectId || (typeof t === 'object' && t !== null ? t.projectId : null);
+        if (taskProjectId == null) return false;
+        
+        const taskPIdNum = typeof taskProjectId === 'number' ? taskProjectId : parseInt(taskProjectId);
+        const taskPIdStr = String(taskProjectId);
+        
+        const match = taskPIdNum === projectIdNum || taskPIdStr === projectIdStr;
+        
+        if (window.__DEBUG__ && match) {
+          console.log('  File matches project (via task):', {
+            fileName: f.name || f.key,
+            taskId: t.id || t.title,
+            taskProjectId: taskProjectId,
+            filterProjectId: projectIdNum
+          });
+        }
+        
+        return match;
+      });
+      
+      if (hasTaskLink) {
+        if (window.__DEBUG__) {
+          console.log('  File matches project (via task):', f.name || f.key);
+        }
+        return true;
+      }
+      
+      // No match found
+      if (window.__DEBUG__) {
+        console.log('  File does not match project:', {
+          fileName: f.name || f.key,
+          hasProjects: fileProjects.length > 0,
+          hasTasks: fileTasks.length > 0,
+          projectIds: fileProjects.map(p => typeof p === 'object' ? (p.id || p.projectId) : p),
+          taskProjectIds: fileTasks.map(t => t.projectId).filter(Boolean)
+        });
+      }
+      
+      return false;
     });
     
     if (window.__DEBUG__) {
-      console.log('🔍 Filtered by project:', projectIdNum, 'result:', files.length, 'files');
+      console.log('🔍 Filtered by project result:', {
+        projectId: projectIdNum,
+        filesAfter: files.length,
+        fileNames: files.map(f => f.name || f.key).slice(0, 5)
+      });
     }
   }
   
   if (files.length === 0) {
-    c.innerHTML = `<div class="empty-state" style="text-align:center;padding:60px 20px;">
-      <div style="font-size:20px;margin-bottom:12px;color:var(--text);">No files yet</div>
-      <small style="display:block;margin-bottom:24px;color:var(--text-dim);">Link files to tasks or projects, or add files directly</small>
-      <button data-action="file:add" style="background:linear-gradient(135deg,#d4a0a0 0%,#c98b8b 100%) !important;border:none !important;border-radius:10px !important;color:white !important;font-size:14px !important;padding:12px 24px !important;cursor:pointer !important;display:block !important;margin:0 auto !important;box-shadow:0 4px 14px rgba(201,139,139,.25) !important;">+ Add Your First File</button>
-    </div>`;
+    // Context-aware empty states
+    let emptyStateConfig = {
+      icon: '📁',
+      message: 'No files yet',
+      subtitle: 'Link files to tasks or projects, or add files directly',
+      action: {
+        text: '+ Add Your First File',
+        action: 'file:add'
+      }
+    };
+    
+    if (currentFileView === 'active') {
+      emptyStateConfig = {
+        icon: '⚡',
+        message: 'No active files right now',
+        subtitle: 'Files linked to active tasks or projects will appear here',
+        action: {
+          text: 'View All Files',
+          action: 'view:all'
+        }
+      };
+    } else if (currentFileView === 'stale') {
+      emptyStateConfig = {
+        icon: '⏰',
+        message: 'No stale files',
+        subtitle: 'All your active files are up to date!',
+        action: {
+          text: 'View All Files',
+          action: 'view:all'
+        }
+      };
+    } else if (currentFileView === 'missing') {
+      emptyStateConfig = {
+        icon: '✅',
+        message: 'No missing files',
+        subtitle: 'All your files are accessible!',
+        action: {
+          text: 'View All Files',
+          action: 'view:all'
+        }
+      };
+    } else if (currentFileView === 'submissions') {
+      emptyStateConfig = {
+        icon: '📤',
+        message: 'No submission files',
+        subtitle: 'Files marked as submissions will appear here',
+        action: {
+          text: 'View All Files',
+          action: 'view:all'
+        }
+      };
+    } else if (currentFileProjectFilter && currentFileProjectFilter !== 'all') {
+      const project = (projects || []).find(p => p.id == currentFileProjectFilter);
+      emptyStateConfig = {
+        icon: '📁',
+        message: `No files for ${project?.name || 'this project'}`,
+        subtitle: 'Link files to this project to see them here',
+        action: {
+          text: 'View All Files',
+          action: 'view:all'
+        }
+      };
+    }
+    
+    c.innerHTML = EmptyState(emptyStateConfig);
     return;
   }
   
@@ -258,36 +408,82 @@ function renderFileCard(file, fileHistory) {
   const projectsCount = (file.projects || []).length;
   const fileId = file.id || fileKey;
   
-  return `<div class="file-card ${isMissing ? 'file-missing' : ''}" data-file-id="${esc(fileId)}" data-file-key="${esc(fileKey)}">
-    <div class="file-card-header">
-      <div style="display:flex;align-items:center;gap:8px;flex:1;">
-        <span style="font-size:18px;">${icon}</span>
+  // Get linked tasks from state (need to pass tasks in state)
+  const linkedTasks = (file.tasks || []).filter(t => t && typeof t === 'object');
+  
+  // Determine status badge
+  let statusBadge = '';
+  const isStale = lastMod && (Date.now() - lastMod.getTime()) > (30 * 24 * 60 * 60 * 1000) && 
+                  (file.tasks || []).some(t => !t.done && t.status === 'Doing');
+  const isActive = (file.tasks || []).some(t => !t.done && t.status === 'Doing') ||
+                   (file.projects || []).some(p => !p.done);
+  
+  if (isMissing) {
+    statusBadge = '<span class="file-status-badge file-status-missing" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:var(--overdue);color:white;border-radius:12px;font-size:10px;font-weight:500;text-transform:uppercase;">⚠️ Missing</span>';
+  } else if (isStale) {
+    statusBadge = '<span class="file-status-badge file-status-stale" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:var(--soon);color:white;border-radius:12px;font-size:10px;font-weight:500;text-transform:uppercase;">⏰ Stale</span>';
+  } else if (isActive) {
+    statusBadge = '<span class="file-status-badge file-status-active" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#4ade80;color:white;border-radius:12px;font-size:10px;font-weight:500;text-transform:uppercase;">⚡ Active</span>';
+  }
+  
+  // Render task badges (showing status and priority)
+  const taskBadges = linkedTasks.slice(0, 3).map(t => {
+    const taskStatus = t.status || 'Todo';
+    const taskPriority = t.priority === 3 ? 'high' : t.priority === 1 ? 'low' : 'medium';
+    const taskDone = t.done || false;
+    const priorityColor = taskPriority === 'high' ? 'var(--overdue)' : taskPriority === 'low' ? 'var(--text-dim)' : 'var(--soon)';
+    const statusColor = taskDone ? 'var(--text-dim)' : taskStatus === 'Doing' ? '#4ade80' : taskStatus === 'Done' ? 'var(--text-dim)' : 'var(--blush)';
+    
+    return `<span class="file-task-badge" data-task-id="${esc(t.id || '')}" style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;background:${statusColor}20;border:1px solid ${statusColor};border-left:3px solid ${priorityColor};border-radius:6px;font-size:10px;color:${taskDone ? 'var(--text-dim)' : 'var(--text)'};font-weight:500;cursor:pointer;transition:all 0.15s;" onmouseover="this.style.background='${statusColor}40';this.style.transform='scale(1.05)'" onmouseout="this.style.background='${statusColor}20';this.style.transform='scale(1)'" title="${esc(t.title || 'Task')} - ${taskStatus} (${taskPriority} priority)" data-action="file:open-task" data-task-id="${esc(t.id || '')}">${taskDone ? '✓' : '○'} ${esc(taskStatus)}</span>`;
+  }).join('');
+  
+  const moreTasksCount = linkedTasks.length > 3 ? linkedTasks.length - 3 : 0;
+  
+  return `<div class="file-card ${isMissing ? 'file-missing' : ''}" data-file-id="${esc(fileId)}" data-file-key="${esc(fileKey)}" draggable="true" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;transition:all 0.2s;cursor:grab;" ondragstart="window.Petal?.features?.fileTaskOperations?.handleFileDragStart?.(event, ${esc(JSON.stringify(fileLink))}, '${esc(fileKey)}')">
+    <div class="file-card-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px;">
+      <div style="display:flex;align-items:flex-start;gap:12px;flex:1;min-width:0;">
+        <span style="font-size:24px;flex-shrink:0;">${icon}</span>
         <div style="flex:1;min-width:0;">
-          <div style="font-weight:500;color:var(--text);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;">
-            ${esc(label)}
-            ${isMissing ? '<span style="color:var(--overdue);font-size:12px;" title="File not found at last known location">⚠️</span>' : ''}
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
+            <div style="font-weight:600;color:var(--text);font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;">${esc(label)}</div>
+            ${statusBadge}
           </div>
-          ${addedAt ? `<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">Added: ${addedAt.toLocaleDateString()}</div>` : ''}
-          ${lastMod ? `<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">Modified: ${lastMod.toLocaleDateString()}</div>` : ''}
-          ${isMissing && missingSince ? `<div style="font-size:11px;color:var(--overdue);margin-top:2px;">Missing since: ${missingSince.toLocaleDateString()}</div>` : ''}
-          ${isMissing && lastKnownPath ? `<div style="font-size:10px;color:var(--text-dim);margin-top:2px;font-style:italic;">Last known: ${esc(lastKnownPath.length > 50 ? '...' + lastKnownPath.slice(-47) : lastKnownPath)}</div>` : ''}
+          <div style="display:flex;flex-wrap:wrap;gap:12px;font-size:11px;color:var(--text-dim);margin-top:6px;">
+            ${addedAt ? `<span>Added: ${addedAt.toLocaleDateString()}</span>` : ''}
+            ${lastMod ? `<span>Modified: ${lastMod.toLocaleDateString()}</span>` : ''}
+            ${isMissing && missingSince ? `<span style="color:var(--overdue);">Missing since: ${missingSince.toLocaleDateString()}</span>` : ''}
+          </div>
+          ${isMissing && lastKnownPath ? `<div style="font-size:10px;color:var(--text-dim);margin-top:4px;font-style:italic;overflow:hidden;text-overflow:ellipsis;">Last known: ${esc(lastKnownPath.length > 60 ? '...' + lastKnownPath.slice(-57) : lastKnownPath)}</div>` : ''}
         </div>
       </div>
-      ${warnings.length > 0 ? `<div style="color:var(--soon);font-size:12px;">⚠️ ${warnings.join(', ')}</div>` : ''}
-      ${isOutsideVault ? `<div style="color:var(--text-dim);font-size:11px;">⚠️ Outside vault</div>` : ''}
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        <button class="file-open-btn btn-secondary" data-action="file:open" data-path="${escAttr(JSON.stringify(fileLink))}" style="font-size:11px;padding:6px 12px;white-space:nowrap;" title="Open file">Open</button>
+        <button data-action="file:hook" data-file-id="${esc(fileId)}" data-file-key="${esc(fileKey)}" data-path="${escAttr(JSON.stringify(fileLink))}" class="btn-secondary" style="font-size:11px;padding:6px 12px;" title="Hook this file to a task or project">🔗</button>
+      </div>
     </div>
-    <div class="file-card-meta" style="display:flex;gap:12px;margin-top:12px;font-size:11px;color:var(--text-dim);flex-wrap:wrap;">
-      ${tasksCount > 0 ? `<span data-action="file:show-tasks" data-file-key="${esc(fileKey)}" style="cursor:pointer;text-decoration:underline;color:var(--rose);" title="Click to view ${tasksCount} task${tasksCount > 1 ? 's' : ''}">📋 ${tasksCount} task${tasksCount > 1 ? 's' : ''}</span>` : ''}
-      ${projectsCount > 0 ? `<span data-action="file:show-projects" data-file-key="${esc(fileKey)}" style="cursor:pointer;text-decoration:underline;color:var(--rose);" title="Click to view ${projectsCount} project${projectsCount > 1 ? 's' : ''}">📁 ${projectsCount} project${projectsCount > 1 ? 's' : ''}</span>` : ''}
-      ${file.status ? `<span>Status: ${file.status}</span>` : ''}
+    
+    ${warnings.length > 0 ? `<div style="padding:8px 12px;background:var(--bg2);border-left:3px solid var(--soon);border-radius:4px;margin-bottom:12px;font-size:11px;color:var(--soon);">⚠️ ${warnings.join(', ')}</div>` : ''}
+    ${isOutsideVault ? `<div style="padding:8px 12px;background:var(--bg2);border-left:3px solid var(--text-dim);border-radius:4px;margin-bottom:12px;font-size:11px;color:var(--text-dim);">⚠️ Outside vault</div>` : ''}
+    
+    <div class="file-card-meta" style="display:flex;gap:16px;margin-bottom:12px;font-size:12px;flex-wrap:wrap;">
+      ${tasksCount > 0 ? `<span data-action="file:show-tasks" data-file-key="${esc(fileKey)}" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all 0.15s;color:var(--rose);font-weight:500;" onmouseover="this.style.background='var(--bg3)';this.style.borderColor='var(--rose)'" onmouseout="this.style.background='var(--bg2)';this.style.borderColor='var(--border)'" title="Click to view ${tasksCount} task${tasksCount > 1 ? 's' : ''}">📋 ${tasksCount} task${tasksCount > 1 ? 's' : ''}</span>` : ''}
+      ${projectsCount > 0 ? `<span data-action="file:show-projects" data-file-key="${esc(fileKey)}" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all 0.15s;color:var(--rose);font-weight:500;" onmouseover="this.style.background='var(--bg3)';this.style.borderColor='var(--rose)'" onmouseout="this.style.background='var(--bg2)';this.style.borderColor='var(--border)'" title="Click to view ${projectsCount} project${projectsCount > 1 ? 's' : ''}">📁 ${projectsCount} project${projectsCount > 1 ? 's' : ''}</span>` : ''}
+      ${file.status ? `<span style="padding:4px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text-dim);">Status: ${esc(file.status)}</span>` : ''}
     </div>
-    ${file.notes ? `<div style="margin-top:12px;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--text-dim);line-height:1.5;max-height:60px;overflow:hidden;text-overflow:ellipsis;white-space:pre-wrap;">${esc(file.notes.length > 100 ? file.notes.substring(0, 100) + '...' : file.notes)}</div>` : ''}
-    <div class="file-card-actions" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
-      ${isMissing ? `<button class="btn-secondary" data-action="file:locate" data-file-key="${esc(fileKey)}" data-path="${escAttr(JSON.stringify(fileLink))}" style="font-size:11px;padding:6px 12px;background:var(--rose);color:white;">🔍 Locate File...</button>` : ''}
-      <button class="file-open-btn btn-secondary" data-action="file:open" data-path="${escAttr(JSON.stringify(fileLink))}" style="font-size:11px;padding:6px 12px;${isMissing ? 'opacity:0.6;' : ''}">Open</button>
-      <button data-action="file:hook" data-file-id="${esc(fileId)}" data-file-key="${esc(fileKey)}" data-path="${escAttr(JSON.stringify(fileLink))}" class="btn-secondary" style="font-size:11px;padding:6px 12px;" title="Hook this file to a task or project">🔗 Hook</button>
+    
+    ${taskBadges ? `<div class="file-task-badges" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;">
+      ${taskBadges}
+      ${moreTasksCount > 0 ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;font-size:10px;color:var(--text-dim);">+${moreTasksCount} more</span>` : ''}
+    </div>` : ''}
+    
+    ${file.notes ? `<div style="margin-bottom:12px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--text-dim);line-height:1.5;max-height:80px;overflow:hidden;text-overflow:ellipsis;white-space:pre-wrap;">${esc(file.notes.length > 150 ? file.notes.substring(0, 150) + '...' : file.notes)}</div>` : ''}
+    
+    <div class="file-card-actions" style="display:flex;gap:8px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--border);">
+      ${isMissing ? `<button class="btn-secondary" data-action="file:locate" data-file-key="${esc(fileKey)}" data-path="${escAttr(JSON.stringify(fileLink))}" style="font-size:11px;padding:6px 12px;background:var(--rose);color:white;">🔍 Locate File</button>` : ''}
+      ${tasksCount > 0 ? `<button class="btn-secondary" data-action="file:view-tasks" data-file-key="${esc(fileKey)}" style="font-size:11px;padding:6px 12px;background:var(--rose);color:white;" title="View linked tasks">📋 View Tasks</button>` : ''}
+      <button class="btn-secondary" data-action="file:create-task" data-file-key="${esc(fileKey)}" data-path="${escAttr(JSON.stringify(fileLink))}" style="font-size:11px;padding:6px 12px;background:var(--sage);color:white;" title="Create task from this file">➕ Create Task</button>
       ${file.key ? `<button data-action="file:show-relations" data-file-key="${esc(file.key)}" class="btn-secondary" style="font-size:11px;padding:6px 12px;">Relations</button>` : ''}
-      <button data-action="file:notes" data-file-id="${esc(fileId)}" class="btn-secondary" style="font-size:11px;padding:6px 12px;" title="Add or edit notes for this file">${file.notes ? '📝' : '📄'} Notes</button>
+      <button data-action="file:notes" data-file-id="${esc(fileId)}" class="btn-secondary" style="font-size:11px;padding:6px 12px;" title="Add or edit notes for this file">${file.notes ? '📝 Edit Notes' : '📄 Add Notes'}</button>
     </div>
   </div>`;
 }

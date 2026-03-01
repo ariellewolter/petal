@@ -3,8 +3,60 @@
 // Replaces inline onclick handlers with delegated events
 
 import { renderFiles } from '../ui/renderFiles.js';
+import { PageHeader, Buttons, StatCard, Tabs, EmptyState } from '../ui/components.js';
 
 let bound = false;
+
+/**
+ * Calculate file statistics
+ * @param {Array} files - Array of file objects
+ * @param {Object} fileHistory - File history object
+ * @param {Array} tasks - Array of tasks
+ * @param {Array} projects - Array of projects
+ * @returns {Object} Stats object with total, active, missing, stale counts
+ */
+function calculateFileStats(files, fileHistory = {}, tasks = [], projects = []) {
+  const total = files.length;
+  let active = 0;
+  let missing = 0;
+  let stale = 0;
+  
+  const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+  
+  files.forEach(file => {
+    const fileLink = file.fileLink || file;
+    const fileKey = file.key || fileLink.onedrive_rel || fileLink.abs_path || fileLink.share_url || '';
+    const history = fileHistory[fileKey] || {};
+    
+    // Check if missing
+    const isMissing = file.exists === false || file.isMissing === true || history.exists === false;
+    if (isMissing) {
+      missing++;
+    }
+    
+    // Check if active (linked to active tasks/projects)
+    const hasActiveTasks = (file.tasks || []).some(t => {
+      const task = tasks.find(tt => (tt.id || tt.title) === (t.id || t.title || t));
+      return task && !task.done && (t.status === 'Doing' || task.status === 'Doing');
+    });
+    const hasActiveProjects = (file.projects || []).some(p => {
+      const project = projects.find(pp => (pp.id || pp.name) === (p.id || p.name || p));
+      return project && !project.done;
+    });
+    
+    if (hasActiveTasks || hasActiveProjects) {
+      active++;
+      
+      // Check if stale (not modified in 30+ days but linked to active work)
+      const lastMod = history.lastModified;
+      if (lastMod && lastMod < thirtyDaysAgo) {
+        stale++;
+      }
+    }
+  });
+  
+  return { total, active, missing, stale };
+}
 
 /**
  * Bind event handlers to the files container
@@ -175,10 +227,46 @@ function bind(container, features) {
         
       case 'view':
         // File view tabs: data-action="view:all", "view:active", etc.
-        if (features?.handlers?.setFileView) {
+        // Update state and re-render
+        if (window.Petal?.store) {
+          window.Petal.store.setState({ currentFileView: actionName });
+          const state = window.Petal.store.getState();
+          const container = document.getElementById('view-files');
+          if (container) {
+            renderFilesPage(container, state, features);
+          }
+        } else if (features?.handlers?.setFileView) {
           features.handlers.setFileView(actionName, btn);
         } else if (window.setFileView) {
           window.setFileView(actionName, btn);
+        }
+        break;
+        
+      case 'stat':
+        // Stat card click - filter to that view
+        if (window.Petal?.store) {
+          let viewToSet = 'all';
+          if (actionName === 'total') {
+            viewToSet = 'all';
+          } else if (actionName === 'active') {
+            viewToSet = 'active';
+          } else if (actionName === 'missing') {
+            viewToSet = 'missing'; // Custom filter
+          } else if (actionName === 'stale') {
+            viewToSet = 'stale';
+          }
+          
+          window.Petal.store.setState({ currentFileView: viewToSet });
+          const state = window.Petal.store.getState();
+          const container = document.getElementById('view-files');
+          if (container) {
+            renderFilesPage(container, state, features);
+          }
+        } else if (features?.handlers?.setFileView) {
+          // Fallback to handler if store not available
+          if (actionName === 'total' || actionName === 'active' || actionName === 'stale') {
+            features.handlers.setFileView(actionName === 'total' ? 'all' : actionName, btn);
+          }
         }
         break;
         
@@ -199,11 +287,37 @@ function bind(container, features) {
   const projectFilter = container.querySelector('#file-project-filter') || container.querySelector('[data-file-project-filter]');
   if (projectFilter && !projectFilter.dataset.bound) {
     projectFilter.dataset.bound = 'true';
-    projectFilter.addEventListener('change', (e) => {
-      if (features?.handlers?.setFileProjectFilter) {
-        features.handlers.setFileProjectFilter(e.target.value);
+    projectFilter.addEventListener('change', async (e) => {
+      const selectedProjectId = e.target.value;
+      
+      // Update state
+      if (window.Petal?.store) {
+        window.Petal.store.setState({ currentFileProjectFilter: selectedProjectId });
+        
+        // Re-render using router (proper way)
+        const switchViewFn = window.routerSwitchView || window.switchView;
+        if (switchViewFn) {
+          try {
+            await switchViewFn('files', { force: true });
+          } catch (err) {
+            console.error('Error re-rendering files view:', err);
+            // Fallback: direct re-render
+            const state = window.Petal.store.getState();
+            renderFilesPage(container, state, features);
+          }
+        } else {
+          // Fallback: direct re-render
+          const state = window.Petal.store.getState();
+          renderFilesPage(container, state, features);
+        }
       } else if (window.setFileProjectFilter) {
-        window.setFileProjectFilter(e.target.value);
+        // Use existing handler if available
+        await window.setFileProjectFilter(selectedProjectId);
+      } else if (features?.handlers?.setFileProjectFilter) {
+        features.handlers.setFileProjectFilter(selectedProjectId);
+        // Re-render if handler doesn't do it automatically
+        const state = window.Petal?.store?.getState() || {};
+        renderFilesPage(container, state, features);
       }
     });
   }
@@ -221,42 +335,152 @@ export async function renderFilesPage(container, state, features) {
     return;
   }
   
-  // Create or find header - must be first element
-  let filesHeader = container.querySelector('.files-header');
-  if (!filesHeader) {
-    filesHeader = document.createElement('header');
-    filesHeader.className = 'files-header';
-    // Insert at the very beginning of the container, before any existing content
-    const firstChild = container.firstChild;
-    if (firstChild && firstChild.nodeType === 1) { // Element node
-      container.insertBefore(filesHeader, firstChild);
-    } else {
-      container.insertBefore(filesHeader, container.firstChild);
-    }
+  // Get all files for stats calculation
+  const persistedFiles = Array.isArray(state.files) ? state.files : [];
+  const fileRegistry = state.fileRegistry || {};
+  const tasks = Array.isArray(state.tasks) ? state.tasks : [];
+  const projects = Array.isArray(state.projects) ? state.projects : [];
+  const fileHistory = state.fileHistory || {};
+  
+  // Build complete file list for stats
+  let allFiles = [...persistedFiles];
+  if (allFiles.length === 0 && fileRegistry && Object.keys(fileRegistry).length > 0) {
+    allFiles = Object.values(fileRegistry).map(f => {
+      const fileLink = f.fileLink || f;
+      return {
+        ...f,
+        fileLink: fileLink,
+        key: f.key || fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url,
+        name: f.name || fileLink.label || fileLink.name || 'File',
+        tasks: f.tasks || [],
+        projects: f.projects || []
+      };
+    });
+  } else if (allFiles.length > 0) {
+    // Enrich persisted files with registry data
+    allFiles = allFiles.map(f => {
+      const fileKey = f.key || f.fileLink?.abs_path || f.fileLink?.onedrive_rel || f.fileLink?.share_url;
+      const registryFile = fileRegistry[fileKey];
+      if (registryFile) {
+        return {
+          ...f,
+          tasks: registryFile.tasks || f.tasks || [],
+          projects: registryFile.projects || f.projects || []
+        };
+      }
+      return f;
+    });
   }
   
-  // Calculate files stats
-  const files = Array.isArray(state.files) ? state.files : [];
-  const fileRegistry = state.fileRegistry || {};
-  const totalFiles = files.length || Object.keys(fileRegistry).length;
+  // Calculate stats
+  const stats = calculateFileStats(allFiles, fileHistory, tasks, projects);
+  const currentView = state.currentFileView || 'all';
   
-  // Render header
-  filesHeader.innerHTML = `
-    <div class="files-header-title">
-      <span class="files-header-name">Files</span>
-    </div>
-    <div class="files-header-right">
-      <div style="display:flex;align-items:center;gap:6px">
-        <span class="files-header-status">${totalFiles} file${totalFiles !== 1 ? 's' : ''}</span>
-      </div>
+  // Clear container and build structure
+  container.innerHTML = '';
+  
+  // Create header
+  const header = document.createElement('header');
+  header.className = 'page-header';
+  header.innerHTML = PageHeader({
+    title: 'Files',
+    icon: '⊟',
+    status: `${stats.total} total · ${stats.active} active · ${stats.missing} missing · ${stats.stale} stale`,
+    actions: [
+      {
+        type: 'primary',
+        text: '+ Add File',
+        action: 'file:add'
+      }
+    ]
+  });
+  container.appendChild(header);
+  
+  // Create tabs container
+  const tabsContainer = document.createElement('div');
+  tabsContainer.className = 'files-tabs-container';
+  tabsContainer.style.cssText = 'padding: 16px 28px 0; background: var(--surface); border-bottom: 1px solid var(--border);';
+  // Create tabs manually with correct action format
+  tabsContainer.innerHTML = `
+    <div class="tabs" id="files-view-tabs">
+      <button class="tab ${currentView === 'all' ? 'active' : ''}" data-action="view:all">All Files</button>
+      <button class="tab ${currentView === 'active' ? 'active' : ''}" data-action="view:active">Active</button>
+      <button class="tab ${currentView === 'stale' ? 'active' : ''}" data-action="view:stale">Stale</button>
+      <button class="tab ${currentView === 'submissions' ? 'active' : ''}" data-action="view:submissions">Submissions</button>
     </div>
   `;
+  container.appendChild(tabsContainer);
+  
+  // Create stats cards container
+  const statsContainer = document.createElement('div');
+  statsContainer.className = 'files-stats-container';
+  statsContainer.style.cssText = 'display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 20px 28px; background: var(--surface);';
+  statsContainer.innerHTML = `
+    ${StatCard({ 
+      label: 'Total', 
+      value: String(stats.total), 
+      subtitle: 'files',
+      variant: 1 
+    })}
+    ${StatCard({ 
+      label: 'Active', 
+      value: String(stats.active), 
+      subtitle: 'files',
+      variant: 2 
+    })}
+    ${StatCard({ 
+      label: 'Missing', 
+      value: String(stats.missing), 
+      subtitle: 'files',
+      variant: 3 
+    })}
+    ${StatCard({ 
+      label: 'Stale', 
+      value: String(stats.stale), 
+      subtitle: 'files',
+      variant: 4 
+    })}
+  `;
+  container.appendChild(statsContainer);
+  
+  // Make stat cards clickable - they'll be handled by the bind function
+  statsContainer.querySelectorAll('.stat-card').forEach((card, index) => {
+    const actions = ['total', 'active', 'missing', 'stale'];
+    card.style.cursor = 'pointer';
+    card.style.transition = 'transform 0.15s, box-shadow 0.15s';
+    card.setAttribute('data-action', `stat:${actions[index]}`);
+    card.addEventListener('mouseenter', () => {
+      card.style.transform = 'translateY(-2px)';
+      card.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+    });
+    card.addEventListener('mouseleave', () => {
+      card.style.transform = 'translateY(0)';
+      card.style.boxShadow = '';
+    });
+  });
+  
+  // Create filters container
+  const filtersContainer = document.createElement('div');
+  filtersContainer.className = 'files-filters-container';
+  filtersContainer.style.cssText = 'padding: 12px 28px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; gap: 12px; align-items: center;';
+  filtersContainer.innerHTML = `
+    <label style="font-size: 12px; color: var(--text-dim);">Filter by:</label>
+    <select id="file-project-filter" data-file-project-filter style="padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg2); color: var(--text); font-size: 12px;">
+      <option value="all">All Projects</option>
+    </select>
+  `;
+  container.appendChild(filtersContainer);
+  
+  // Create files view container
+  const filesViewContainer = document.createElement('div');
+  filesViewContainer.id = 'files-view-container';
+  filesViewContainer.style.cssText = 'padding: 20px 28px;';
+  container.appendChild(filesViewContainer);
   
   // Bind event handlers (only once)
   bind(container, features);
   
-  // Render using existing renderFiles function
-  // renderFiles now uses container-scoped selectors
+  // Render files using existing renderFiles function
   await renderFiles(container, state, features);
 }
 
