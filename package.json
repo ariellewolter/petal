@@ -6,6 +6,7 @@
   "scripts": {
     "start": "electron .",
     "audit": "node scripts/audit.js",
+    "validate-docs": "node scripts/validate-docs.js",
     "build": "electron-builder --publish never --config electron-builder.config.cjs",
     "build:mac": "electron-builder --mac --publish never --config electron-builder.config.cjs",
     "build:win": "electron-builder --win --publish never --config electron-builder.config.cjs",

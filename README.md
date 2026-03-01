@@ -145,6 +145,14 @@ The storage layer is abstracted, making it easy to add cloud sync later:
 2. Add authentication (Firebase, Supabase, etc.)
 3. Implement real-time sync subscriptions
 
+## Documentation
+
+- **[Project Summary](docs/PROJECT_SUMMARY.md)** - Overview of the codebase and refactoring status
+- **[Refactoring Status](docs/REFACTORING_STATUS.md)** - Current refactoring progress and architecture improvements
+- **[Integration Plans](docs/INTEGRATION_PLANS.md)** - Planned and completed feature integrations
+- **[Architecture](docs/architecture/)** - System architecture and design patterns
+- **[Guides](docs/guides/)** - Development guides and best practices
+
 ## Files
 
 - `tasklist (1).html` - Main app (single-file HTML)
