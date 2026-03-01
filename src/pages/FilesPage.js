@@ -222,6 +222,54 @@ function bind(container, features) {
               }
             }
             break;
+            
+          case 'view-tasks':
+            const viewTasksFileKey = btn.dataset.fileKey;
+            if (viewTasksFileKey && features?.fileTaskOperations?.viewFileTasks) {
+              const ctx = features?.handlers?.createPageContext?.() || 
+                         window.Petal?.handlers?.createPageContext?.() || 
+                         {};
+              features.fileTaskOperations.viewFileTasks(viewTasksFileKey, ctx);
+            } else if (viewTasksFileKey && window.Petal?.features?.fileTaskOperations?.viewFileTasks) {
+              const ctx = window.Petal?.handlers?.createPageContext?.() || {};
+              window.Petal.features.fileTaskOperations.viewFileTasks(viewTasksFileKey, ctx);
+            }
+            break;
+            
+          case 'create-task':
+            const createTaskFileKey = btn.dataset.fileKey;
+            const createTaskFilePath = btn.dataset.path;
+            if (createTaskFileKey && createTaskFilePath) {
+              try {
+                const fileLink = JSON.parse(createTaskFilePath);
+                const ctx = features?.handlers?.createPageContext?.() || 
+                           window.Petal?.handlers?.createPageContext?.() || 
+                           {};
+                
+                if (features?.fileTaskOperations?.createTaskFromFile) {
+                  features.fileTaskOperations.createTaskFromFile(fileLink, createTaskFileKey, ctx);
+                } else if (window.Petal?.features?.fileTaskOperations?.createTaskFromFile) {
+                  window.Petal.features.fileTaskOperations.createTaskFromFile(fileLink, createTaskFileKey, ctx);
+                }
+              } catch (e) {
+                console.error('Error parsing file path:', e);
+                alert('Error creating task: ' + (e.message || 'Invalid file data'));
+              }
+            }
+            break;
+            
+          case 'open-task':
+            const taskId = btn.dataset.taskId;
+            if (taskId && features?.fileTaskOperations?.openTaskFromFile) {
+              const ctx = features?.handlers?.createPageContext?.() || 
+                         window.Petal?.handlers?.createPageContext?.() || 
+                         {};
+              features.fileTaskOperations.openTaskFromFile(parseInt(taskId), ctx);
+            } else if (taskId && window.Petal?.features?.fileTaskOperations?.openTaskFromFile) {
+              const ctx = window.Petal?.handlers?.createPageContext?.() || {};
+              window.Petal.features.fileTaskOperations.openTaskFromFile(parseInt(taskId), ctx);
+            }
+            break;
         }
         break;
         

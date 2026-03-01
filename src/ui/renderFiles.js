@@ -349,7 +349,7 @@ export async function renderFiles(containerEl, state, handlers) {
       }
     }
     
-    return renderFileCard(f, fileHistory || {});
+    return renderFileCard(f, fileHistory || {}, tasks || []);
   }));
   
   // Update container (preserve buttons and filters)
@@ -366,8 +366,9 @@ export async function renderFiles(containerEl, state, handlers) {
  * Render a single file card
  * @param {Object} file - File object from registry
  * @param {Object} fileHistory - File history object
+ * @param {Array} allTasks - All tasks from state (for resolving task details)
  */
-function renderFileCard(file, fileHistory) {
+function renderFileCard(file, fileHistory, allTasks = []) {
   // Phase 3 Fix: Handle both persisted file format and registry format
   const fileLink = file.fileLink || file; // Persisted files have fileLink, registry files are the link
   const filePath = file.path || fileLink.onedrive_rel || fileLink.abs_path || fileLink.share_url || '';
@@ -408,8 +409,26 @@ function renderFileCard(file, fileHistory) {
   const projectsCount = (file.projects || []).length;
   const fileId = file.id || fileKey;
   
-  // Get linked tasks from state (need to pass tasks in state)
-  const linkedTasks = (file.tasks || []).filter(t => t && typeof t === 'object');
+  // Get linked tasks - resolve task IDs/objects to full task objects
+  const linkedTasks = [];
+  (file.tasks || []).forEach(t => {
+    if (!t) return;
+    
+    // If t is already a full task object, use it
+    if (typeof t === 'object' && t.id && t.title) {
+      linkedTasks.push(t);
+      return;
+    }
+    
+    // If t is a task ID, find the task in allTasks
+    const taskId = typeof t === 'object' ? (t.id || t.taskId) : t;
+    if (taskId) {
+      const fullTask = allTasks.find(tt => String(tt.id) === String(taskId));
+      if (fullTask) {
+        linkedTasks.push(fullTask);
+      }
+    }
+  });
   
   // Determine status badge
   let statusBadge = '';
