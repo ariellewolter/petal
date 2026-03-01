@@ -404,6 +404,23 @@
         </select>
       </div>
       
+      <div class="files-section" style="margin-bottom:16px;">
+        <label style="font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-dim);">Linked Files</label>
+        
+        <!-- Select from existing project files -->
+        <div id="modal-task-project-files-select-container" style="margin-top:8px;display:none;">
+          <label style="font-size:9px;color:var(--text-dim);margin-bottom:4px;display:block;">Link existing project file:</label>
+          <select id="modal-task-project-files-select" multiple style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px;min-height:80px;" onchange="updateModalTaskSelectedFiles()">
+            <option value="" disabled>Select project files to link...</option>
+          </select>
+          <div style="font-size:9px;color:var(--text-light);margin-top:4px;">Hold Ctrl/Cmd to select multiple files</div>
+        </div>
+        
+        <div id="modal-task-files-container" style="margin-top:8px;"></div>
+        <button class="btn-add-file" id="btn-add-file-modal-task" data-action="ui:add-file" data-container="modal-task-files-container" data-prefix="mt" style="margin-top:8px;">＋ Choose new file</button>
+        <div id="modal-file-hint-task" style="font-size:9px;color:var(--text-light);margin-top:4px;display:none;">Files in OneDrive will work across all devices</div>
+      </div>
+      
       <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:8px;border-top:1px solid var(--border);">
         <button data-action="modal:close-add-task" class="btn-secondary">Cancel</button>
         <button data-action="modal:submit-add-task" class="btn-submit">Add Task</button>
@@ -6713,6 +6730,11 @@ async function submitEventModal() {
     
     // Update store with all events (this will auto-save via persistence)
     window.Petal.store.setState({ events: updatedEvents });
+    
+    // Sync event changes to linked task (if it's a task block)
+    if (event.linkedTaskId && event.isTaskBlock && window.Petal?.features?.plannerOperations?.syncEventToTask) {
+      window.Petal.features.plannerOperations.syncEventToTask(event);
+    }
   } else {
     // Fallback: use local variable if store not available (shouldn't happen)
     if (editingEventId) {

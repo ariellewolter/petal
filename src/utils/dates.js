@@ -32,13 +32,29 @@ export function inRange(task, currentSort) {
   const due = parseDate(task.due);
   if (!due) return false;
   const t = today();
-  if (currentSort === 'day') return due.toDateString() === t.toDateString();
-  if (currentSort === 'week') {
-    const e = new Date(t);
-    e.setDate(t.getDate() + 7);
-    return due >= t && due <= e;
+  
+  // Normalize dates to midnight for accurate comparison
+  const dueDate = new Date(due.getFullYear(), due.getMonth(), due.getDate());
+  const todayDate = new Date(t.getFullYear(), t.getMonth(), t.getDate());
+  
+  if (currentSort === 'day') {
+    return dueDate.getTime() === todayDate.getTime();
   }
-  if (currentSort === 'month') return due.getMonth() === t.getMonth() && due.getFullYear() === t.getFullYear();
+  
+  if (currentSort === 'week') {
+    // Check if due date is within the next 7 days (including today)
+    const weekEnd = new Date(todayDate);
+    weekEnd.setDate(todayDate.getDate() + 7);
+    weekEnd.setHours(23, 59, 59, 999);
+    
+    return dueDate.getTime() >= todayDate.getTime() && dueDate.getTime() <= weekEnd.getTime();
+  }
+  
+  if (currentSort === 'month') {
+    return dueDate.getMonth() === todayDate.getMonth() && 
+           dueDate.getFullYear() === todayDate.getFullYear();
+  }
+  
   return true;
 }
 

@@ -4,8 +4,9 @@
 console.log("✅ renderTasks.js LOADED — EDITBTN TEST 2026-02-21");
 
 import { esc } from '../utils/strings.js';
-import { today, parseDate, dueLabel } from '../utils/dates.js';
+import { today, parseDate, dueLabel, inRange } from '../utils/dates.js';
 import { getAllTasks } from '../domain/models.js';
+import { EmptyState } from '../ui/components.js';
 
 /**
  * Render tasks view
@@ -33,6 +34,34 @@ export async function renderTasks(containerEl, state, handlers) {
   if (taskContainer) taskContainer.style.display = taskMode === 'list' ? '' : 'none';
   const kanbanContainer = document.getElementById('kanban-container');
   if (kanbanContainer) kanbanContainer.style.display = taskMode === 'kanban' ? '' : 'none';
+  
+  // Update filter button active states based on currentFilter
+  const filterButtons = document.querySelectorAll('#view-tasks .filter-chip');
+  filterButtons.forEach(btn => {
+    const action = btn.getAttribute('data-action');
+    if (action) {
+      const filterValue = action.replace('filter:', '');
+      if (filterValue === (currentFilter || 'all')) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    }
+  });
+  
+  // Update sort button active states based on currentSort
+  const sortButtons = document.querySelectorAll('#view-tasks .sort-btn');
+  sortButtons.forEach(btn => {
+    const action = btn.getAttribute('data-action');
+    if (action) {
+      const sortValue = action.replace('sort:', '');
+      if (sortValue === (currentSort || 'all')) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    }
+  });
   
   // Populate task project filter dropdown (visible in list mode)
   const taskProjectFilterEl = document.getElementById('task-project-filter');
@@ -167,8 +196,17 @@ async function renderTaskList(containerEl, state, handlers) {
     // Exclude subtasks (tasks with parentTaskId) from main task list
     // Subtasks should only appear in their parent task's subtask section
     if (t.parentTaskId) return false;
-    if (currentFilter === 'active' && t.done) return false;
-    if (currentFilter === 'done' && !t.done) return false;
+    
+    // Status filter (active/done/all)
+    const filter = currentFilter || 'all';
+    if (filter === 'active' && t.done) return false;
+    if (filter === 'done' && !t.done) return false;
+    // If filter is 'all', no status filtering is applied
+    
+    // Date range filter (when currentSort is "day", "week", or "month")
+    if (currentSort && (currentSort === 'day' || currentSort === 'week' || currentSort === 'month')) {
+      if (!inRange(t, currentSort)) return false;
+    }
     
     // Project filter
     if (boardProjectFilter && boardProjectFilter !== 'all') {
@@ -210,7 +248,11 @@ async function renderTaskList(containerEl, state, handlers) {
   console.log('🔍 DEBUG: Filtered list count:', list.length);
   if (!list.length) {
     console.warn('⚠️ WARNING: No tasks to render after filtering');
-    c.innerHTML = '<div class="empty-state">No tasks yet<small>Add a task above to get started</small></div>';
+    c.innerHTML = EmptyState({
+      icon: '📝',
+      message: 'No tasks yet',
+      subtitle: 'Add a task above to get started'
+    });
     return;
   }
   
@@ -221,6 +263,26 @@ async function renderTaskList(containerEl, state, handlers) {
   if (window.lucide?.createIcons) {
     window.lucide.createIcons();
   }
+  
+  // Add drag handlers for planner integration
+  const taskCards = c.querySelectorAll('.task-card[data-id]');
+  taskCards.forEach(card => {
+    const taskId = card.getAttribute('data-id');
+    const task = list.find(t => String(t.id) === String(taskId));
+    if (task) {
+      card.setAttribute('draggable', 'true');
+      card.addEventListener('dragstart', (e) => {
+        if (window.Petal?.features?.plannerOperations?.handleTaskDragStart) {
+          window.Petal.features.plannerOperations.handleTaskDragStart(e, task);
+        }
+      });
+      card.addEventListener('dragend', (e) => {
+        if (window.Petal?.features?.plannerOperations?.handleTaskDragEnd) {
+          window.Petal.features.plannerOperations.handleTaskDragEnd(e);
+        }
+      });
+    }
+  });
   
   // NOTE: Event delegation is handled by TasksPage.js, not here.
   // This keeps authority in one place and prevents duplicate handlers.
@@ -248,7 +310,7 @@ function renderTaskItem(task, state) {
   const dueClass = dl?.class || '';
   const dueText = dl?.label || '';
   
-  return `<div class="task-card ${task.done ? 'done' : ''}" data-id="${task.id}" data-priority="${priorityClass}">
+  return `<div class="task-card ${task.done ? 'done' : ''}" data-id="${task.id}" data-task-id="${task.id}" data-priority="${priorityClass}" draggable="true" style="cursor:grab;">
     <div class="task-top">
       <div class="task-content">
         <button type="button" class="check-box ${task.done ? 'checked' : ''}"

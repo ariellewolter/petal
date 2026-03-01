@@ -90,11 +90,18 @@ function resetTaskForm() {
   const priorityInput = getElement('modal-task-priority');
   const dueInput = getElement('modal-task-due');
   const laneSelect = getElement('modal-task-lane');
+  const filesContainer = getElement('modal-task-files-container');
+  const projectFilesSelect = getElement('modal-task-project-files-select');
   
   if (titleInput) titleInput.value = '';
   if (priorityInput) priorityInput.value = 'medium';
   if (dueInput) dueInput.value = '';
   if (laneSelect) laneSelect.value = '';
+  if (filesContainer) filesContainer.innerHTML = '';
+  if (projectFilesSelect) {
+    projectFilesSelect.innerHTML = '<option value="" disabled>Select project files to link...</option>';
+    projectFilesSelect.selectedIndex = 0;
+  }
 }
 
 /**
@@ -302,6 +309,13 @@ export async function submitAddTaskModal(ctx) {
     const due = dueInput?.value || null;
     const lane = laneInput?.value || '';
     
+    // Get file links from modal
+    const getFileLinks = window.Petal?.features?.fileOperations?.getFileLinks;
+    const getFileLinksNormalized = window.Petal?.features?.fileOperations?.getFileLinksNormalized;
+    const fileLinks = window.electronAPI && getFileLinksNormalized
+      ? await getFileLinksNormalized('modal-task-files-container', 'mt')
+      : (getFileLinks ? getFileLinks('modal-task-files-container', 'mt') : []);
+    
     // Get modal context
     const currentModalContext = typeof window.currentModalContext !== 'undefined' ? window.currentModalContext : null;
     const currentModalProjectId = typeof window.currentModalProjectId !== 'undefined' ? window.currentModalProjectId : null;
@@ -323,7 +337,7 @@ export async function submitAddTaskModal(ctx) {
     if (currentModalContext === 'project' && currentModalProjectId) {
       if (addTaskToProjectFromModal) {
         console.log('✅ Calling addTaskToProjectFromModal');
-        await addTaskToProjectFromModal(finalCtx, currentModalProjectId, title, priority, due, lane);
+        await addTaskToProjectFromModal(finalCtx, currentModalProjectId, title, priority, due, lane, fileLinks);
         success = true;
       } else {
         console.warn('⚠️ addTaskToProjectFromModal not available');
@@ -331,7 +345,7 @@ export async function submitAddTaskModal(ctx) {
     } else if (currentModalContext === 'matrix' && currentModalProjectId) {
       if (addTaskToMatrixFromModal) {
         console.log('✅ Calling addTaskToMatrixFromModal');
-        await addTaskToMatrixFromModal(finalCtx, title, priority, due, lane);
+        await addTaskToMatrixFromModal(finalCtx, title, priority, due, lane, fileLinks);
         success = true;
       } else {
         console.warn('⚠️ addTaskToMatrixFromModal not available');
@@ -339,7 +353,7 @@ export async function submitAddTaskModal(ctx) {
     } else if (currentModalContext === 'general') {
       if (addTaskFromModal) {
         console.log('✅ Calling addTaskFromModal');
-        await addTaskFromModal(finalCtx, title, priority, due, lane);
+        await addTaskFromModal(finalCtx, title, priority, due, lane, fileLinks);
         success = true;
       } else {
         console.warn('⚠️ addTaskFromModal not available');
@@ -447,7 +461,7 @@ export async function addTaskFromModal(ctx, title, priority, due, lane) {
 /**
  * Add Task to Project from Modal
  */
-export async function addTaskToProjectFromModal(ctx, projId, title, priority, due, lane) {
+export async function addTaskToProjectFromModal(ctx, projId, title, priority, due, lane, fileLinks = []) {
   try {
     if (!title || !title.trim()) {
       console.warn('⚠️ addTaskToProjectFromModal: Invalid title');
@@ -463,7 +477,8 @@ export async function addTaskToProjectFromModal(ctx, projId, title, priority, du
       projId,
       title,
       hasStore: !!window.Petal?.store,
-      hasCtx: !!ctx
+      hasCtx: !!ctx,
+      fileLinksCount: fileLinks?.length || 0
     });
     
     // Get projects from store (more reliable than context)
@@ -482,6 +497,20 @@ export async function addTaskToProjectFromModal(ctx, projId, title, priority, du
     console.log('✅ addTaskToProjectFromModal: Project found:', project.name);
     
     const normalizedProjId = normalizeProjectIdValue(projId);
+    
+    // Convert file links to canonical registry and get fileIds
+    const fileIds = [];
+    const findOrCreateCanonicalFile = window.Petal?.features?.fileManagement?.findOrCreateCanonicalFile;
+    
+    if (normalizedProjId && fileLinks && fileLinks.length > 0 && findOrCreateCanonicalFile) {
+      fileLinks.forEach(fileLink => {
+        const fileId = findOrCreateCanonicalFile(normalizedProjId, fileLink);
+        if (fileId && !fileIds.includes(fileId)) {
+          fileIds.push(fileId);
+        }
+      });
+    }
+    
     const newTask = {
       id: Date.now(),
       title: title.trim(),
@@ -490,8 +519,8 @@ export async function addTaskToProjectFromModal(ctx, projId, title, priority, du
       lane: lane || null,
       done: false,
       projectId: normalizedProjId,
-      fileIds: [],
-      files: []
+      fileIds: fileIds,
+      files: fileLinks || []
     };
     
     // Update store
@@ -519,7 +548,7 @@ export async function addTaskToProjectFromModal(ctx, projId, title, priority, du
 /**
  * Add Task to Matrix from Modal
  */
-export async function addTaskToMatrixFromModal(ctx, title, priority, due, lane) {
+export async function addTaskToMatrixFromModal(ctx, title, priority, due, lane, fileLinks = []) {
   try {
     if (!title || !title.trim()) {
       console.warn('⚠️ addTaskToMatrixFromModal: Invalid title');
@@ -541,7 +570,8 @@ export async function addTaskToMatrixFromModal(ctx, title, priority, due, lane) 
     console.log('🔘 addTaskToMatrixFromModal called:', {
       selectedProjectId,
       title,
-      hasStore: !!window.Petal?.store
+      hasStore: !!window.Petal?.store,
+      fileLinksCount: fileLinks?.length || 0
     });
     
     // Get projects from store to verify project exists
@@ -558,6 +588,20 @@ export async function addTaskToMatrixFromModal(ctx, title, priority, due, lane) 
     }
     
     const normalizedProjId = normalizeProjectIdValue(selectedProjectId);
+    
+    // Convert file links to canonical registry and get fileIds
+    const fileIds = [];
+    const findOrCreateCanonicalFile = window.Petal?.features?.fileManagement?.findOrCreateCanonicalFile;
+    
+    if (normalizedProjId && fileLinks && fileLinks.length > 0 && findOrCreateCanonicalFile) {
+      fileLinks.forEach(fileLink => {
+        const fileId = findOrCreateCanonicalFile(normalizedProjId, fileLink);
+        if (fileId && !fileIds.includes(fileId)) {
+          fileIds.push(fileId);
+        }
+      });
+    }
+    
     const newTask = {
       id: Date.now(),
       title: title.trim(),
@@ -566,8 +610,8 @@ export async function addTaskToMatrixFromModal(ctx, title, priority, due, lane) 
       lane: lane || null,
       done: false,
       projectId: normalizedProjId,
-      fileIds: [],
-      files: []
+      fileIds: fileIds,
+      files: fileLinks || []
     };
     
     // Update store
