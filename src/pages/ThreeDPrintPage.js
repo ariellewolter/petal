@@ -770,8 +770,39 @@ function openPrintFile(fileJson) {
  * Open print modal
  */
 function openPrintModal() {
-  const backdrop = document.getElementById('print3d-modal-backdrop');
-  if (backdrop) backdrop.classList.add('open');
+  console.log('🔍 openPrintModal called');
+  let backdrop = document.getElementById('print3d-modal-backdrop');
+  
+  // If modal doesn't exist, create it
+  if (!backdrop) {
+    console.log('🔍 Modal not found, creating it...');
+    const container = document.getElementById('view-3d-print');
+    if (container) {
+      const modalHTML = getModalTemplate();
+      container.insertAdjacentHTML('beforeend', modalHTML);
+      backdrop = document.getElementById('print3d-modal-backdrop');
+      
+      // Update file hint if needed
+      const printFileHint = document.getElementById('print3d-file-hint');
+      const printFileBtn = document.querySelector('#print3d-files-container')?.nextElementSibling;
+      if (printFileHint && window.electronAPI && window.electronAPI.chooseFile) {
+        printFileHint.style.display = 'block';
+      }
+      if (printFileBtn && window.electronAPI && window.electronAPI.chooseFile) {
+        printFileBtn.textContent = '＋ Choose file';
+      } else if (printFileBtn) {
+        printFileBtn.textContent = '＋ Attach a file link';
+      }
+    }
+  }
+  
+  console.log('🔍 Modal backdrop found:', !!backdrop);
+  if (backdrop) {
+    backdrop.classList.add('open');
+    console.log('🔍 Modal opened, classes:', backdrop.className);
+  } else {
+    console.error('❌ Modal backdrop not found and could not be created!');
+  }
   
   // Clear form
   const nameInput = document.getElementById('print-name');
@@ -894,14 +925,18 @@ async function addPrint() {
  * Bind event handlers using event delegation
  */
 function bind(container) {
-  if (bound) return;
+  // Remove old listener if exists (by checking if bound and removing)
+  if (bound && container._print3dClickHandler) {
+    container.removeEventListener('click', container._print3dClickHandler);
+  }
   
   // Click delegation for all actions
-  container.addEventListener('click', (e) => {
+  const clickHandler = (e) => {
     const btn = e.target.closest('[data-action]');
     if (!btn) return;
     
     const action = btn.dataset.action;
+    console.log('🔍 3D Print page click:', { action, btnText: btn.textContent?.trim(), hasModal: !!document.getElementById('print3d-modal-backdrop') });
     e.stopPropagation();
     
     switch (action) {
@@ -911,6 +946,7 @@ function bind(container) {
         break;
         
       case 'open-modal':
+        console.log('🔍 Opening print modal...');
         openPrintModal();
         break;
         
@@ -951,8 +987,10 @@ function bind(container) {
         if (detailPrintId) savePrintDetail(detailPrintId);
         break;
     }
-  });
+  };
   
+  container.addEventListener('click', clickHandler);
+  container._print3dClickHandler = clickHandler; // Store reference for removal
   bound = true;
 }
 
@@ -1029,11 +1067,16 @@ export async function renderThreeDPrintPage(container, state, features) {
   }
   
   // Bind event handlers (only once)
+  console.log('🔍 Binding event handlers to container:', container, container?.id);
   bind(container);
   
   // Initialize and render
   init3DPrints();
   render3DPrints();
+  
+  // Verify button exists after render
+  const addBtn = container.querySelector('[data-action="open-modal"]');
+  console.log('🔍 Add print button found after render:', !!addBtn, addBtn);
 }
 
 /**

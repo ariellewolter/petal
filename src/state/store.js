@@ -276,12 +276,14 @@ class AppStore {
     const incomingProjects = Array.isArray(state.projects) ? state.projects : [];
     const incomingTasks = Array.isArray(state.tasks) ? state.tasks : [];
     const incomingFiles = Array.isArray(state.files) ? state.files : [];
+    const incomingPrints3d = Array.isArray(state.prints3d) ? state.prints3d : [];
     
     if (this._isInitialLoad) {
       console.log('🔍 INITIAL LOAD - Incoming data:', {
         tasks: incomingTasks.length,
         projects: incomingProjects.length,
         files: incomingFiles.length,
+        prints3d: incomingPrints3d.length,
         hasSettings: !!state.settings,
         hasCellLog: !!(state.settings?.cellLog),
         cellLogEntries: state.settings?.cellLog?.entries?.length || 0
@@ -322,6 +324,13 @@ class AppStore {
     if (incomingFiles.length === 0 && currentFiles.length > 0) {
       console.warn('⚠️ BLOCKED empty files overwrite - preserving existing files');
       state.files = currentFiles;
+    }
+    
+    // Guard prints3d
+    const currentPrints3d = this._state.prints3d || [];
+    if (incomingPrints3d.length === 0 && currentPrints3d.length > 0) {
+      console.warn('⚠️ BLOCKED empty prints3d overwrite - preserving existing prints3d');
+      state.prints3d = currentPrints3d;
     }
     
     // Guard cellLog entries
@@ -416,6 +425,7 @@ class AppStore {
       habitCheckins: state.habitCheckins && typeof state.habitCheckins === 'object' ? state.habitCheckins : {},
       routines: Array.isArray(state.routines) ? state.routines : [],
       routineCheckins: state.routineCheckins && typeof state.routineCheckins === 'object' ? state.routineCheckins : {},
+      prints3d: Array.isArray(state.prints3d) ? state.prints3d : [],
       currentView: state.currentView || 'today',
       currentSort: state.currentSort || 'all',
       currentFilter: state.currentFilter || 'all',
@@ -452,7 +462,8 @@ class AppStore {
           console.log('✓ Initial load complete. Store now has:', {
             tasks: this._state.tasks.length,
             projects: this._state.projects.length,
-            files: this._state.files.length
+            files: this._state.files.length,
+            prints3d: this._state.prints3d.length
           });
         }
         
