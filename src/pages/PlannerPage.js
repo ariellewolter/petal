@@ -454,7 +454,25 @@ async function renderDailyPlanner(containerEl, state, handlers) {
   const tasks = state.tasks || [];
   const projects = state.projects || [];
   
-  const dayEvents = getEventsForDate(date, events, recurringRules);
+  // Get tasks with scheduling info for this date
+  const { getTasksForPlannerDate, taskToEvent } = await import('../utils/taskEventConverter.js');
+  const tasksForToday = getTasksForPlannerDate(tasks, dateStr);
+  
+  // Convert tasks to events for display (only tasks without existing linked events)
+  const taskEvents = tasksForToday
+    .filter(t => {
+      // Only include tasks that don't already have a linked event in dayEvents
+      if (t.plannerEventId) {
+        // Check if the linked event is already in dayEvents
+        return !events.some(e => String(e.id) === String(t.plannerEventId) && e.date === dateStr);
+      }
+      // Include tasks with scheduledDate matching today
+      return t.scheduledDate === dateStr;
+    })
+    .map(t => taskToEvent(t, dateStr, projects));
+  
+  // Combine regular events with task-derived events
+  const dayEvents = [...getEventsForDate(date, events, recurringRules), ...taskEvents];
   const blocks = calculateAvailableBlocks(dayEvents);
   const conflicts = detectConflicts(dayEvents);
   
@@ -577,9 +595,33 @@ async function renderDailyPlanner(containerEl, state, handlers) {
     if (startHour < 0 || startHour >= 24) return;
     
     const blk = document.createElement('div');
-    const categoryColors = {personal: 'yellow', lab: 'red', equipment: 'green', travel: 'muted', writing: 'blue', comp: 'green'};
-    const color = categoryColors[e.category] || 'muted';
-    blk.className = `t-block ${color}`;
+    const isTaskBlock = e.isTaskBlock || false;
+    
+    // Visual distinction for task blocks
+    if (isTaskBlock) {
+      blk.className = 't-block task-block';
+      // Use priority-based color for task blocks
+      const priority = e.taskPriority || 2;
+      const priorityColors = {
+        1: 'var(--blush)', // low priority
+        2: 'var(--sage)',  // medium priority
+        3: 'var(--rose)'   // high priority
+      };
+      const priorityColor = priorityColors[priority] || priorityColors[2];
+      blk.style.borderLeft = `3px solid ${priorityColor}`;
+      blk.style.background = 'var(--bg2)';
+      
+      // Add task icon
+      const taskIcon = e.taskDone ? '✓' : '📋';
+      blk.setAttribute('data-task-id', e.linkedTaskId);
+      blk.setAttribute('data-is-task-block', 'true');
+    } else {
+      // Regular event styling
+      const categoryColors = {personal: 'yellow', lab: 'red', equipment: 'green', travel: 'muted', writing: 'blue', comp: 'green'};
+      const color = categoryColors[e.category] || 'muted';
+      blk.className = `t-block ${color}`;
+    }
+    
     blk.style.position = 'absolute';
     // Position at exact start time (S_HOUR is 0, so just use startMins)
     blk.style.top = (startMins * PIXELS_PER_MINUTE) + 'px';
@@ -599,16 +641,58 @@ async function renderDailyPlanner(containerEl, state, handlers) {
         linkedInfo += `<span style="font-size:8px;color:var(--text-dim);">📁 ${esc(project.name)}</span>`;
       }
     }
-    if (e.linkedTaskId) {
+    
+    // For task blocks, show task-specific info
+    if (isTaskBlock && e.linkedTaskId) {
+      const task = tasks.find(t => String(t.id) === String(e.linkedTaskId));
+      if (task) {
+        const taskIcon = task.done ? '✓' : '📋';
+        const statusBadge = task.status ? `<span style="font-size:8px;padding:2px 4px;background:var(--bg);border-radius:3px;color:var(--text-dim);">${esc(task.status)}</span>` : '';
+        linkedInfo += `<span style="font-size:8px;color:var(--text-dim);margin-left:6px;">${taskIcon} ${esc(task.title)}</span>`;
+        if (statusBadge) {
+          linkedInfo += `<span style="margin-left:4px;">${statusBadge}</span>`;
+        }
+        
+        // Show workflow lane if available
+        const lane = e.taskLane || task.lane;
+        if (lane) {
+          const laneLabels = {
+            'lab': '🧪 Lab',
+            'comp': '💻 Comp',
+            'writing': '📝 Writing',
+            'presentation': '📊 Presentation',
+            'personal': '👤 Personal',
+            'product': '🚀 Product'
+          };
+          const laneLabel = laneLabels[lane] || lane;
+          const laneColors = {
+            'lab': 'var(--rose)',
+            'comp': 'var(--sage)',
+            'writing': 'var(--mauve)',
+            'presentation': 'var(--soon)',
+            'personal': 'var(--blush)',
+            'product': 'var(--sage)'
+          };
+          const laneColor = laneColors[lane] || 'var(--text-dim)';
+          linkedInfo += `<span style="font-size:8px;padding:2px 4px;background:${laneColor}20;border:1px solid ${laneColor};border-radius:3px;color:${laneColor};margin-left:4px;">${esc(laneLabel)}</span>`;
+        }
+      }
+    } else if (e.linkedTaskId) {
+      // Regular event with linked task
       const task = tasks.find(t => String(t.id) === String(e.linkedTaskId));
       if (task) {
         linkedInfo += `<span style="font-size:8px;color:var(--text-dim);margin-left:6px;">✓ ${esc(task.title)}</span>`;
       }
     }
     
+    // Task block title styling
+    const titleContent = isTaskBlock 
+      ? `<span style="font-size:10px;margin-right:4px;">${e.taskDone ? '✓' : '📋'}</span><span>${esc(e.title)}</span>`
+      : `<span>${esc(e.title)}</span>`;
+    
     blk.innerHTML = `
-      <div class="t-block-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-        <span>${esc(e.title)}</span>
+      <div class="t-block-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;${isTaskBlock && e.taskDone ? 'text-decoration:line-through;opacity:0.7;' : ''}">
+        ${titleContent}
         <span style="font-size:9px;color:var(--text-dim);font-weight:400;white-space:nowrap;">${timeStr}</span>
       </div>
       ${linkedInfo ? `<div class="t-block-meta" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:2px;">${linkedInfo}</div>` : ''}
@@ -616,14 +700,25 @@ async function renderDailyPlanner(containerEl, state, handlers) {
       <div class="t-block-footer">
         <span class="t-block-dur">${Math.round(e.durationMin / 60 * 10) / 10}h</span>
       </div>`;
+    
+    // Different click handler for task blocks
     blk.onclick = (evt) => {
       evt.stopPropagation();
-      // Note: editEvent is still a global function during migration
-      // This will be moved to handlers in a future refactor
-      if (typeof window.editEvent === 'function') {
-        window.editEvent(e.id);
+      if (isTaskBlock && e.linkedTaskId) {
+        // Open task drawer for task blocks
+        if (window.Petal?.handlers?.openTaskDrawer) {
+          window.Petal.handlers.openTaskDrawer(e.linkedTaskId);
+        } else if (typeof window.openTaskDrawer === 'function') {
+          window.openTaskDrawer(e.linkedTaskId);
+        }
+      } else {
+        // Regular event - open event modal
+        if (typeof window.editEvent === 'function') {
+          window.editEvent(e.id);
+        }
       }
     };
+    
     timeline.appendChild(blk);
   });
   
@@ -637,6 +732,16 @@ async function renderDailyPlanner(containerEl, state, handlers) {
     nm.style.top = (nowH * 60 * PIXELS_PER_MINUTE) + 'px';
     nm.style.zIndex = '10';
     timeline.appendChild(nm);
+  }
+
+  // When viewing today, scroll the day view to current time so the "now" line is in view
+  if (isToday) {
+    const scrollParent = timeline.parentElement; // .day-scroll
+    if (scrollParent && scrollParent.scrollHeight > scrollParent.clientHeight) {
+      const nowMins = now.getHours() * 60 + now.getMinutes();
+      const scrollTo = Math.max(0, Math.min(scrollParent.scrollHeight - scrollParent.clientHeight, nowMins - 150));
+      scrollParent.scrollTop = scrollTo;
+    }
   }
 }
 

@@ -92,6 +92,18 @@ export async function renderTodayPage(containerEl, state, handlers) {
     .slice(0, 5);
   const events = Array.isArray(state.events) ? state.events : [];
   const recurringRules = Array.isArray(state.recurringRules) ? state.recurringRules : [];
+  
+  // Goals with milestones due this month
+  const goals = Array.isArray(state.goals) ? state.goals : [];
+  const nowDate = new Date();
+  const monthStart = `${nowDate.getFullYear()}-${String(nowDate.getMonth() + 1).padStart(2, '0')}-01`;
+  const monthEnd = `${nowDate.getFullYear()}-${String(nowDate.getMonth() + 1).padStart(2, '0')}-${String(new Date(nowDate.getFullYear(), nowDate.getMonth() + 1, 0).getDate()).padStart(2, '0')}`;
+  
+  const goalsThisMonth = goals.filter(g => {
+    if (g.progress >= 100) return false; // Skip completed goals
+    const milestones = g.milestones || [];
+    return milestones.some(ms => !ms.done && ms.date && ms.date >= monthStart && ms.date <= monthEnd);
+  });
 
   // Build HTML with full layout (sidebar is now global, so we don't include it here)
   containerEl.innerHTML = `
@@ -167,6 +179,22 @@ export async function renderTodayPage(containerEl, state, handlers) {
             ${renderCellLogEntries(cellLogEntries)}
           </div>
         </div>
+
+        <!-- GOALS -->
+        ${goalsThisMonth.length > 0 ? `
+        <div class="today-card today-goals-card">
+          <div class="today-card-header">
+            <div class="today-card-title">
+              <span class="today-dot" style="background:var(--rose)"></span>
+              Goals This Month
+            </div>
+            <span class="today-card-action" data-nav="goals">All goals →</span>
+          </div>
+          <div class="today-goal-list">
+            ${renderGoalsCard(goalsThisMonth, monthStart, monthEnd)}
+          </div>
+        </div>
+        ` : ''}
 
         <!-- PROJECTS -->
         <div class="today-card today-projects-card">
@@ -267,6 +295,22 @@ export async function renderTodayPage(containerEl, state, handlers) {
     const cellEntry = e.target.closest(".today-cell-entry[data-cell-id]");
     if (cellEntry) {
       handlers?.switchView?.('cell-log');
+      return;
+    }
+
+    const goalRow = e.target.closest(".today-goal-item[data-goal-id]");
+    if (goalRow) {
+      const goalId = goalRow.getAttribute("data-goal-id");
+      // Navigate to Goals page and open the goal drawer
+      handlers?.switchView?.('goals');
+      // The Goals page will handle opening the drawer if needed
+      setTimeout(() => {
+        const goalEl = document.querySelector(`[data-gid="${goalId}"]`);
+        if (goalEl) {
+          goalEl.click();
+        }
+      }, 300);
+      return;
     }
   };
 
@@ -315,6 +359,11 @@ export async function renderTodayPage(containerEl, state, handlers) {
         };
         slot.appendChild(ghost);
       });
+
+      // Scroll to current time so the "now" line is in view (~150px from top)
+      const nowMins = now.getHours() * 60 + now.getMinutes();
+      const scrollTo = Math.max(0, Math.min(scheduleContainer.scrollHeight - scheduleContainer.clientHeight, nowMins - 150));
+      scheduleContainer.scrollTop = scrollTo;
     }
   }, 0);
 }
@@ -730,6 +779,93 @@ function renderProjectsCard(activeProjects, state) {
           </div>
         </div>
         <div class="today-project-pct">${progress}%</div>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderGoalsCard(goalsThisMonth, monthStart, monthEnd) {
+  if (goalsThisMonth.length === 0) {
+    return `
+      <div class="today-goal-item" style="cursor:default">
+        <div><div class="today-goal-name" style="color:var(--text-dim)">No milestones this month</div></div>
+      </div>
+    `;
+  }
+  
+  // Flatten goals with their milestones due this month
+  const items = goalsThisMonth.flatMap(g => {
+    const milestones = (g.milestones || []).filter(ms => !ms.done && ms.date && ms.date >= monthStart && ms.date <= monthEnd);
+    return milestones.map(ms => ({ goal: g, milestone: ms }));
+  });
+  
+  if (items.length === 0) {
+    return `
+      <div class="today-goal-item" style="cursor:default">
+        <div><div class="today-goal-name" style="color:var(--text-dim)">No milestones this month</div></div>
+      </div>
+    `;
+  }
+  
+  // Sort by milestone date (earliest first)
+  items.sort((a, b) => {
+    if (!a.milestone.date) return 1;
+    if (!b.milestone.date) return -1;
+    return a.milestone.date.localeCompare(b.milestone.date);
+  });
+  
+  // Format date helper
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      const date = new Date(dateStr + 'T00:00:00');
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const milestoneDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const diffDays = Math.round((milestoneDate - today) / (1000 * 60 * 60 * 24));
+      
+      if (diffDays === 0) return 'Today';
+      if (diffDays === 1) return 'Tomorrow';
+      if (diffDays === -1) return 'Yesterday';
+      if (diffDays > 0 && diffDays <= 7) return `In ${diffDays}d`;
+      if (diffDays < 0 && diffDays >= -7) return `${Math.abs(diffDays)}d ago`;
+      
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } catch (e) {
+      return dateStr;
+    }
+  };
+  
+  return items.slice(0, 4).map(({ goal, milestone }) => {
+    const pct = goal.progress || 0;
+    const catColors = {
+      career: 'var(--rose)',
+      health: 'var(--sage)',
+      mind: 'var(--mauve)',
+      finance: 'var(--soon)',
+      personal: '#7a9cbf',
+      phd: '#8b7aa8',
+      lab: '#7aa8a8'
+    };
+    const color = catColors[goal.cat] || 'var(--rose)';
+    const dateText = formatDate(milestone.date);
+    
+    return `
+      <div class="today-goal-item" data-goal-id="${goal.id}" data-milestone="${escapeHtml(milestone.title)}">
+        <div>
+          <div class="today-goal-name">
+            <span style="font-size:14px;margin-right:6px;">${goal.emoji || '◎'}</span>
+            ${escapeHtml(milestone.title)}
+          </div>
+          <div class="today-goal-meta">
+            <span style="color:${color}">${escapeHtml(goal.name)}</span>
+            ${dateText ? `<span style="font-size:10px;color:var(--text-dim);margin-right:8px;">${escapeHtml(dateText)}</span>` : ''}
+            <span style="margin-left:auto;font-size:10px;color:var(--text-dim)">${pct}%</span>
+          </div>
+          <div class="today-goal-progress-bar">
+            <div class="today-goal-progress-fill" style="width:${pct}%;background:${color}"></div>
+          </div>
+        </div>
       </div>
     `;
   }).join("");
