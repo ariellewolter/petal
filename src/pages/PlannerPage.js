@@ -1,6 +1,7 @@
 // ═══════════════════════ PLANNER PAGE ═══════════════════════
 // Planner view renderer - extracted from tasklist.html
 
+import { renderPlannerGoals } from '../ui/renderPlannerGoals.js';
 import { renderPlannerHabits } from '../ui/renderPlannerHabits.js';
 import { renderPlannerRoutines } from '../ui/renderPlannerRoutines.js';
 import { parseTime, formatTime } from '../utils/dates.js';
@@ -234,12 +235,16 @@ export async function renderPlannerPage(containerEl, state, handlers) {
     }
   }, 0);
 
-  // Ensure habits/routines render - scoped to container
+  // Ensure goals, habits, and routines render - scoped to container (same integration pattern as Today page)
   setTimeout(() => {
+    const goalsContainer = containerEl.querySelector('#planner-goals-card') || containerEl.querySelector('[data-planner-goals]');
     const habitsContainer = containerEl.querySelector('#planner-habits-card') || containerEl.querySelector('[data-planner-habits]');
     const routinesContainer = containerEl.querySelector('#planner-routines-card') || containerEl.querySelector('[data-planner-routines]');
     
     const viewDate = plannerState.plannerViewDate || new Date();
+    if (goalsContainer && renderPlannerGoals) {
+      renderPlannerGoals(goalsContainer, state, viewDate);
+    }
     if (habitsContainer && renderPlannerHabits) {
       renderPlannerHabits(habitsContainer, state, viewDate);
     }
@@ -494,6 +499,7 @@ async function renderDailyPlanner(containerEl, state, handlers) {
   // Calculate total height needed (24 hours = 1440 minutes)
   const totalMinutes = 24 * 60;
   timeline.style.minHeight = (totalMinutes * PIXELS_PER_MINUTE) + 'px';
+  timeline.dataset.viewDate = dateStr;
   
   // Create hour rows as visual guides
   HOURS.forEach(h => {
@@ -540,10 +546,29 @@ async function renderDailyPlanner(containerEl, state, handlers) {
       }
     };
     
-    // Add ghost button for this hour
+    // Add ghost button for this hour (must also be a drop target so drops on "+ Add block" work)
     const ghost = document.createElement('button');
     ghost.className = 't-ghost';
+    ghost.type = 'button';
     ghost.textContent = '+ Add block';
+    ghost.ondragover = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      slot.classList.add('drag-over');
+    };
+    ghost.ondragleave = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      slot.classList.remove('drag-over');
+    };
+    ghost.ondrop = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      slot.classList.remove('drag-over');
+      if (typeof window.handleTimelineDrop === 'function') {
+        window.handleTimelineDrop(e, h, dateStr);
+      }
+    };
     ghost.onclick = () => {
       // Note: openAddEventModal is still a global function during migration
       // This will be moved to handlers in a future refactor
@@ -583,6 +608,25 @@ async function renderDailyPlanner(containerEl, state, handlers) {
       timeline.appendChild(marker);
     }
   });
+  
+  // Fallback drop handler for when drop lands on an event block (z-index above slots) or empty timeline area
+  timeline.ondragover = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  };
+  timeline.ondrop = (e) => {
+    if (e.target.closest('.t-slot')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = timeline.getBoundingClientRect();
+    const scrollTop = timeline.scrollTop || 0;
+    const dropY = e.clientY - rect.top + scrollTop;
+    const hour = Math.max(0, Math.min(23, Math.floor(dropY / (60 * PIXELS_PER_MINUTE))));
+    const viewDate = timeline.dataset.viewDate || dateStr;
+    if (typeof window.handleTimelineDrop === 'function') {
+      window.handleTimelineDrop(e, hour, viewDate);
+    }
+  };
   
   // Position events absolutely based on their exact start time and duration
   dayEvents.forEach(e => {
@@ -630,6 +674,21 @@ async function renderDailyPlanner(containerEl, state, handlers) {
     blk.style.zIndex = '2';
     // Height based on exact duration in minutes (2 hours = 120px)
     blk.style.height = (e.durationMin * PIXELS_PER_MINUTE) + 'px';
+    
+    // Draggable so user can move event to a different time slot
+    blk.draggable = true;
+    blk.setAttribute('data-event-id', e.id);
+    blk.ondragstart = (ev) => {
+      ev.stopPropagation();
+      ev.dataTransfer.setData('application/x-planner-move-event', JSON.stringify({
+        eventId: e.id,
+        isTaskBlock: !!isTaskBlock,
+        linkedTaskId: e.linkedTaskId || null
+      }));
+      ev.dataTransfer.effectAllowed = 'move';
+      blk.classList.add('t-block-dragging');
+    };
+    blk.ondragend = () => blk.classList.remove('t-block-dragging');
     
     const timeStr = `${formatTime(parseTime(e.startTime))} – ${formatTime(parseTime(e.startTime) + e.durationMin)}`;
     
