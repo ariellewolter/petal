@@ -426,7 +426,7 @@ All interactive elements meet iOS Human Interface Guidelines:
 
 ## Version History
 
-- **v1.0.0** (Current)
+- **v1.2.2** (Current)
   - Initial iOS support
   - Touch gestures
   - Mobile-optimized UI
@@ -471,4 +471,4 @@ Before deploying to production, test:
 ---
 
 *Last Updated: 2024*
-*Version: 1.0.0*
+*Version: 1.2.2*
