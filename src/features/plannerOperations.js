@@ -352,16 +352,21 @@ export function submitHabitModal() {
 
 // ═══════════════════════ ROUTINE MODAL OPERATIONS ═══════════════════════
 
+let editingRoutineId = null;
+
 /**
  * Open add routine modal
  */
 export function openAddRoutineModal() {
+  editingRoutineId = null;
   const modal = document.getElementById('routine-modal');
   const titleEl = document.getElementById('routine-modal-title');
   const gridContainer = document.getElementById('routine-emoji-grid-container');
   if (!modal || !titleEl) return;
   
   titleEl.textContent = 'Add Routine';
+  const submitBtn = modal.querySelector('.btn-submit');
+  if (submitBtn) submitBtn.textContent = 'Add Routine';
   document.getElementById('routine-name').value = '';
   document.getElementById('routine-cadence').value = 'daily';
   document.getElementById('routine-time').value = '';
@@ -387,9 +392,59 @@ export function openAddRoutineModal() {
 }
 
 /**
+ * Open routine modal for editing an existing routine
+ * @param {string} routineId - Routine ID to edit
+ */
+export function openEditRoutineModal(routineId) {
+  const state = window.Petal?.store?.getState();
+  const routines = state?.routines || [];
+  const routine = routines.find(r => r.id === routineId && !r.archived);
+  if (!routine) return;
+
+  editingRoutineId = routineId;
+  const modal = document.getElementById('routine-modal');
+  const titleEl = document.getElementById('routine-modal-title');
+  const gridContainer = document.getElementById('routine-emoji-grid-container');
+  if (!modal || !titleEl) return;
+
+  titleEl.textContent = 'Edit Routine';
+  const submitBtn = modal.querySelector('.btn-submit');
+  if (submitBtn) submitBtn.textContent = 'Save';
+  document.getElementById('routine-name').value = routine.name || '';
+  document.getElementById('routine-cadence').value = routine.cadence === 'weekly' ? 'weekly' : 'daily';
+  document.getElementById('routine-time').value = routine.timeOfDay || '';
+  document.getElementById('routine-duration').value = routine.durationMin != null ? String(routine.durationMin) : '';
+  document.querySelectorAll('.routine-day').forEach(cb => {
+    cb.checked = Array.isArray(routine.daysOfWeek) && routine.daysOfWeek.includes(parseInt(cb.value, 10));
+  });
+  const cadenceField = document.getElementById('routine-days-of-week-field');
+  if (cadenceField) cadenceField.style.display = routine.cadence === 'weekly' ? 'block' : 'none';
+
+  const currentIcon = (routine.icon && routine.icon.trim()) ? routine.icon.trim() : ROUTINE_EMOJIS[0];
+  const iconIndex = ROUTINE_EMOJIS.indexOf(currentIcon);
+  const selectedIndex = iconIndex >= 0 ? iconIndex : 0;
+
+  if (gridContainer) {
+    gridContainer.innerHTML = ROUTINE_EMOJIS.map((e, i) =>
+      `<button type="button" class="routine-epick ${i === selectedIndex ? 'on' : ''}" data-e="${esc(e)}">${esc(e)}</button>`
+    ).join('');
+    gridContainer.querySelectorAll('.routine-epick').forEach(btn => {
+      btn.addEventListener('click', () => {
+        gridContainer.querySelectorAll('.routine-epick').forEach(b => b.classList.remove('on'));
+        btn.classList.add('on');
+      });
+    });
+  }
+
+  modal.style.display = 'flex';
+  document.getElementById('routine-name').focus();
+}
+
+/**
  * Close routine modal
  */
 export function closeRoutineModal() {
+  editingRoutineId = null;
   const modal = document.getElementById('routine-modal');
   if (modal) modal.style.display = 'none';
 }
@@ -431,8 +486,17 @@ export function submitRoutineModal() {
   
   const selectedEmojiBtn = document.querySelector('#routine-modal .routine-epick.on');
   const icon = selectedEmojiBtn?.getAttribute('data-e') || ROUTINE_EMOJIS[0] || '📋';
-  
-  if (window.Petal?.features?.routines?.addRoutine) {
+
+  if (editingRoutineId) {
+    if (window.Petal?.features?.routines?.updateRoutine) {
+      window.Petal.features.routines.updateRoutine(editingRoutineId, { name, cadence, icon, timeOfDay, durationMin, daysOfWeek });
+      editingRoutineId = null;
+      closeRoutineModal();
+      if (typeof window.buildPlannerSidebar === 'function') {
+        window.buildPlannerSidebar();
+      }
+    }
+  } else if (window.Petal?.features?.routines?.addRoutine) {
     window.Petal.features.routines.addRoutine({ name, cadence, icon, timeOfDay, durationMin, daysOfWeek });
     closeRoutineModal();
     if (typeof window.buildPlannerSidebar === 'function') {

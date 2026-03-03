@@ -4,6 +4,50 @@
 import { handleEditTaskAction, handleDeleteTaskAction } from '../ui/buttonHandlers.js';
 
 /**
+ * Show quick-add menu (Task / Habit / Goal / Routine) anchored to a button
+ * @param {HTMLElement} anchorEl - Button that was clicked (for positioning)
+ */
+function showQuickAddMenu(anchorEl) {
+  const existing = document.getElementById('quick-add-menu');
+  if (existing) {
+    existing.remove();
+    return;
+  }
+  const rect = anchorEl ? anchorEl.getBoundingClientRect() : { bottom: 80, right: 24, left: 0 };
+  const menu = document.createElement('div');
+  menu.id = 'quick-add-menu';
+  menu.className = 'quick-add-menu';
+  const menuWidth = 168;
+  const left = Math.max(8, Math.min(rect.left, document.documentElement.clientWidth - menuWidth - 8));
+  const bottom = document.documentElement.clientHeight - rect.top + 8;
+  menu.style.cssText = `
+    position:fixed;z-index:9999;background:var(--surface);border:1px solid var(--border);
+    border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.15);padding:8px 0;min-width:${menuWidth}px;
+    left:${left}px;bottom:${bottom}px;
+  `;
+  const options = [
+    { label: 'Task', open: () => { if (window.Petal?.features?.modalOperations?.openAddTaskModal) window.Petal.features.modalOperations.openAddTaskModal(); else if (window.openAddTaskModal) window.openAddTaskModal(); } },
+    { label: 'Habit', open: () => { if (window.Petal?.features?.plannerOperations?.openAddHabitModal) window.Petal.features.plannerOperations.openAddHabitModal(); else if (typeof window.openAddHabitModal === 'function') window.openAddHabitModal(); } },
+    { label: 'Routine', open: () => { if (window.Petal?.features?.plannerOperations?.openAddRoutineModal) window.Petal.features.plannerOperations.openAddRoutineModal(); else if (typeof window.openAddRoutineModal === 'function') window.openAddRoutineModal(); } },
+    { label: 'Goal', open: () => { if (window.routerSwitchView) window.routerSwitchView('goals').then(() => { setTimeout(() => document.getElementById('open-modal-btn')?.click(), 80); }); else if (window.switchView) { window.switchView('goals'); setTimeout(() => document.getElementById('open-modal-btn')?.click(), 80); } } }
+  ];
+  options.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'quick-add-menu-item';
+    btn.textContent = opt.label;
+    btn.addEventListener('click', (e) => { e.stopPropagation(); menu.remove(); opt.open(); });
+    menu.appendChild(btn);
+  });
+  const close = () => { menu.remove(); document.removeEventListener('click', close); document.removeEventListener('keydown', onKey); };
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  document.body.appendChild(menu);
+  document.addEventListener('click', close, true);
+  document.addEventListener('keydown', onKey);
+  setTimeout(() => document.addEventListener('click', close), 0);
+}
+
+/**
  * Set up event delegation for app-wide click handling
  */
 export function setupEventDelegation() {
@@ -64,10 +108,10 @@ export function setupEventDelegation() {
 
     // Goals page: handle when click is in Goals view or in the portaled add-goal modal (#modal-bg on body)
     if (action.startsWith('goal:') && (actionBtn.closest('#view-goals') || actionBtn.closest('#modal-bg'))) {
-      e.preventDefault();
-      e.stopPropagation();
       const handler = window._goalsHandleAction || document.getElementById('view-goals')?._goalsHandleAction;
       if (typeof handler === 'function') {
+        e.preventDefault();
+        e.stopPropagation();
         handler(action, actionBtn);
       }
       return;
@@ -562,16 +606,14 @@ export function setupEventDelegation() {
       return;
     }
     
-    // Event actions
+    // Event actions: single confirm here, then deleteEvent (no confirm inside)
     if (action === 'event:delete') {
       e.stopPropagation();
-      if (window.confirm && confirm('Delete this event?')) {
-        const eventId = actionBtn.getAttribute('data-event-id') || window.editingEventId;
-        if (eventId && window.deleteEvent) {
-          window.deleteEvent(eventId);
-          if (window.closeEventModal) window.closeEventModal();
-        }
-      }
+      e.preventDefault();
+      const eventId = actionBtn.getAttribute('data-event-id') || window.editingEventId;
+      if (!eventId || !window.deleteEvent) return;
+      if (!window.confirm || !confirm('Delete this event?')) return;
+      window.deleteEvent(eventId);
       return;
     }
     
@@ -977,17 +1019,66 @@ export function setupEventDelegation() {
       return;
     }
     
-    // Quick add action (for Today page and other quick add buttons)
+    // Quick add action: show menu (Task / Habit / Routine / Goal)
     if (action === 'quick-add') {
       e.stopPropagation();
-      if (window.Petal?.handlers?.quickAdd) {
-        window.Petal.handlers.quickAdd();
-      } else if (window.openAddTaskModal) {
-        window.openAddTaskModal();
-      } else if (window.Petal?.features?.modalOperations?.openAddTaskModal) {
-        window.Petal.features.modalOperations.openAddTaskModal();
-      } else {
-        console.warn('quickAdd handler not available');
+      showQuickAddMenu(actionBtn);
+      return;
+    }
+
+    // Today page: habit check-off (store update triggers re-render)
+    if (action === 'habit-toggle') {
+      e.stopPropagation();
+      const habitId = actionBtn.getAttribute('data-habit-id');
+      if (habitId && window.Petal?.features?.habits?.toggleHabit) {
+        window.Petal.features.habits.toggleHabit(habitId);
+      }
+      return;
+    }
+    // Today page or Planner sidebar: routine check-off (store update triggers re-render)
+    if (action === 'routine-toggle') {
+      e.stopPropagation();
+      const routineId = actionBtn.getAttribute('data-routine-id');
+      const viewDateStr = actionBtn.getAttribute('data-view-date') || actionBtn.closest?.('[data-view-date]')?.getAttribute('data-view-date');
+      const date = viewDateStr ? new Date(viewDateStr) : new Date();
+      if (routineId && window.Petal?.features?.routines?.toggleRoutine) {
+        window.Petal.features.routines.toggleRoutine(routineId, date);
+        if (typeof window.buildPlannerSidebar === 'function') window.buildPlannerSidebar();
+      }
+      return;
+    }
+    // Planner sidebar: archive (delete) habit
+    if (action === 'habit-archive') {
+      e.stopPropagation();
+      const habitId = actionBtn.getAttribute('data-habit-id');
+      if (habitId && window.Petal?.features?.habits?.archiveHabit && confirm('Delete this habit?')) {
+        window.Petal.features.habits.archiveHabit(habitId);
+        if (typeof window.buildPlannerSidebar === 'function') window.buildPlannerSidebar();
+      }
+      return;
+    }
+    // Planner sidebar: archive (delete) routine
+    if (action === 'routine-archive') {
+      e.stopPropagation();
+      const routineId = actionBtn.getAttribute('data-routine-id');
+      if (routineId && window.Petal?.features?.routines?.archiveRoutine && confirm('Delete this routine?')) {
+        window.Petal.features.routines.archiveRoutine(routineId);
+        if (typeof window.buildPlannerSidebar === 'function') window.buildPlannerSidebar();
+      }
+      return;
+    }
+
+    // Goal "Add to today": create a task due today with milestone title
+    if (action === 'goal-add-to-today') {
+      e.stopPropagation();
+      const goalId = actionBtn.getAttribute('data-goal-id');
+      const milestoneTitle = actionBtn.getAttribute('data-milestone-title');
+      if (!milestoneTitle || !milestoneTitle.trim()) return;
+      const todayDate = new Date();
+      const todayKey = todayDate.getFullYear() + '-' + String(todayDate.getMonth() + 1).padStart(2, '0') + '-' + String(todayDate.getDate()).padStart(2, '0');
+      const ModalOps = window.Petal?.features?.modalOperations;
+      if (ModalOps && typeof ModalOps.addTaskFromModal === 'function') {
+        ModalOps.addTaskFromModal({}, milestoneTitle.trim(), 'medium', todayKey, null).catch(err => console.error('goal-add-to-today:', err));
       }
       return;
     }

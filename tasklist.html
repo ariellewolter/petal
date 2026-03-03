@@ -6260,7 +6260,7 @@ function buildPlannerSidebar() {
   try {
     if (window.Petal?.ui?.renderPlannerHabits && window.Petal?.store) {
       const state = window.Petal.store.getState();
-      const viewDate = plannerViewDate || new Date();
+      const viewDate = (state.plannerViewDate ? new Date(state.plannerViewDate) : new Date());
       window.Petal.ui.renderPlannerHabits(null, state, viewDate);
     } else {
       console.warn('Habits render not available:', {
@@ -6271,7 +6271,7 @@ function buildPlannerSidebar() {
     
     if (window.Petal?.ui?.renderPlannerRoutines && window.Petal?.store) {
       const state = window.Petal.store.getState();
-      const viewDate = plannerViewDate || new Date();
+      const viewDate = (state.plannerViewDate ? new Date(state.plannerViewDate) : new Date());
       window.Petal.ui.renderPlannerRoutines(null, state, viewDate);
     } else {
       console.warn('Routines render not available:', {

@@ -15,9 +15,10 @@ import { getPeriodKey } from '../utils/periodKeys.js';
  * @param {string} [params.timeOfDay] - Optional time in HH:MM format
  * @param {number} [params.durationMin] - Optional duration in minutes
  * @param {number[]} [params.daysOfWeek] - Optional array of day numbers (0-6, 0=Sunday)
+ * @param {string} [params.goalId] - Optional goal ID to link this routine to
  * @returns {string} New routine ID
  */
-export function addRoutine({ name, cadence, icon, timeOfDay, durationMin, daysOfWeek }) {
+export function addRoutine({ name, cadence, icon, timeOfDay, durationMin, daysOfWeek, goalId }) {
   const state = appStore.getState();
   const routines = state.routines || [];
   
@@ -29,6 +30,7 @@ export function addRoutine({ name, cadence, icon, timeOfDay, durationMin, daysOf
     timeOfDay: timeOfDay && /^\d{2}:\d{2}$/.test(timeOfDay) ? timeOfDay : undefined,
     durationMin: typeof durationMin === 'number' && durationMin > 0 ? durationMin : undefined,
     daysOfWeek: Array.isArray(daysOfWeek) && daysOfWeek.length > 0 ? daysOfWeek : undefined,
+    goalId: goalId && String(goalId).trim() ? String(goalId).trim() : undefined,
     createdAt: new Date().toISOString(),
     archived: false
   };
@@ -89,6 +91,35 @@ export function isRoutineChecked(routineId, date = new Date()) {
 }
 
 /**
+ * Update an existing routine
+ * @param {string} routineId - Routine ID
+ * @param {Object} params - Fields to update (name, cadence, icon, timeOfDay, durationMin, daysOfWeek)
+ * @returns {boolean} True if updated
+ */
+export function updateRoutine(routineId, { name, cadence, icon, timeOfDay, durationMin, daysOfWeek }) {
+  const state = appStore.getState();
+  const routines = state.routines || [];
+  const idx = routines.findIndex(r => r.id === routineId);
+  if (idx === -1) return false;
+
+  const existing = routines[idx];
+  const updated = {
+    ...existing,
+    name: name != null ? name.trim() : existing.name,
+    cadence: cadence === 'weekly' ? 'weekly' : (cadence === 'daily' ? 'daily' : existing.cadence),
+    icon: (icon !== undefined && icon !== null && String(icon).trim()) ? String(icon).trim() : existing.icon,
+    timeOfDay: timeOfDay && /^\d{2}:\d{2}$/.test(timeOfDay) ? timeOfDay : (timeOfDay === '' || timeOfDay == null ? undefined : existing.timeOfDay),
+    durationMin: typeof durationMin === 'number' && durationMin > 0 ? durationMin : (durationMin == null || durationMin === '' ? undefined : existing.durationMin),
+    daysOfWeek: Array.isArray(daysOfWeek) && daysOfWeek.length > 0 ? daysOfWeek : (daysOfWeek == null ? existing.daysOfWeek : undefined)
+  };
+
+  const next = routines.slice();
+  next[idx] = updated;
+  appStore.setState({ routines: next });
+  return true;
+}
+
+/**
  * Archive a routine (soft delete)
  * @param {string} routineId - Routine ID
  */
@@ -98,6 +129,19 @@ export function archiveRoutine(routineId) {
     r.id === routineId ? { ...r, archived: true } : r
   );
   
+  appStore.setState({ routines });
+}
+
+/**
+ * Set or clear the goal linked to a routine
+ * @param {string} routineId - Routine ID
+ * @param {string|null|undefined} goalId - Goal ID to link, or null/undefined to unlink
+ */
+export function setRoutineGoalId(routineId, goalId) {
+  const state = appStore.getState();
+  const routines = (state.routines || []).map(r =>
+    r.id === routineId ? { ...r, goalId: goalId && String(goalId).trim() ? String(goalId).trim() : undefined } : r
+  );
   appStore.setState({ routines });
 }
 

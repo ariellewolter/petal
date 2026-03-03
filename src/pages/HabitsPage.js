@@ -1352,12 +1352,17 @@ function renderYearly() {
       </div>`;
     }).join('');
 
+    const habitIdEsc = escapeHtml(String(habit.id));
     return `<div class="habits-yearly-habit-block" style="animation-delay:${idx * .07}s">
       <div class="habits-yearly-habit-header">
         <div class="habits-habit-dot" style="background:${habit.color || COLORS[0]};width:12px;height:12px;"></div>
         <div class="habits-yearly-habit-name">${escapeHtml(habit.icon || '📝')} ${escapeHtml(habit.name)}${habit.timeOfDay ? ` · ${escapeHtml(habit.timeOfDay)}` : ''}${(habit.durationMin != null && habit.durationMin > 0) ? ` · ${habit.durationMin} min` : ''}</div>
         ${streak > 0 ? `<div class="habits-habit-list-streak">🔥 ${streak} day streak</div>` : ''}
         <div class="habits-yearly-rate">${rate}% this year</div>
+        <div class="habits-cal-habit-actions">
+          <button type="button" data-action="edit-habit" data-hid="${habitIdEsc}" title="Edit habit">Edit</button>
+          <button type="button" data-action="delete-habit" data-hid="${habitIdEsc}" class="habits-btn-delete" title="Delete habit">Delete</button>
+        </div>
       </div>
       <div class="habits-yearly-panel">
         <div class="habits-yearly-month-row">${monthCols}</div>
@@ -1575,6 +1580,7 @@ function openModal(mode, habitId) {
  * Close modal
  */
 function closeModal() {
+  editingHabitId = null;
   const modalBackdrop = document.getElementById('habits-modal-backdrop');
   if (modalBackdrop) modalBackdrop.classList.remove('open');
 }

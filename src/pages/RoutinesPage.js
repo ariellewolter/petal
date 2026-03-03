@@ -97,6 +97,21 @@ function injectStyles() {
       margin-top: 6px;
       color: var(--text-dim);
     }
+    #view-routines .routine-edit {
+      flex-shrink: 0;
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      transition: color 0.13s, background 0.13s;
+    }
+    #view-routines .routine-edit:hover {
+      color: var(--text);
+      background: var(--bg2);
+    }
     #view-routines .routine-delete {
       flex-shrink: 0;
       background: none;
@@ -203,6 +218,7 @@ function renderContent(container) {
           ${meta ? `<div class="routine-meta">${escapeHtml(meta)}</div>` : ''}
           <span class="routine-cadence">${r.cadence === 'weekly' ? 'Weekly' : 'Daily'}</span>
         </div>
+        <button type="button" class="routine-edit" data-action="routines:edit" data-routine-id="${idEsc}" title="Edit routine">Edit</button>
         <button type="button" class="routine-delete" data-action="routines:archive" data-routine-id="${idEsc}" title="Remove routine">×</button>
       </div>
     `;
@@ -301,6 +317,7 @@ export function renderRoutinesPage(containerEl, state, _options = {}) {
                   ${meta ? `<div class="routine-meta">${escapeHtml(meta)}</div>` : ''}
                   <span class="routine-cadence">${r.cadence === 'weekly' ? 'Weekly' : 'Daily'}</span>
                 </div>
+                <button type="button" class="routine-edit" data-action="routines:edit" data-routine-id="${idEsc}" title="Edit routine">Edit</button>
                 <button type="button" class="routine-delete" data-action="routines:archive" data-routine-id="${idEsc}" title="Remove routine">×</button>
               </div>
             `;
@@ -344,6 +361,11 @@ function bind(container) {
           window.Petal.features.plannerOperations.openAddRoutineModal();
         } else if (typeof window.openAddRoutineModal === 'function') {
           window.openAddRoutineModal();
+        }
+        break;
+      case 'routines:edit':
+        if (routineId && window.Petal?.features?.plannerOperations?.openEditRoutineModal) {
+          window.Petal.features.plannerOperations.openEditRoutineModal(routineId);
         }
         break;
       case 'routines:open-planner':

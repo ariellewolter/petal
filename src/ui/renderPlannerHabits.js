@@ -44,6 +44,7 @@ export function renderPlannerHabits(containerEl, state, viewDate = new Date()) {
       </div>
     `;
   } else {
+    const viewDateIso = today.toISOString();
     visibleHabits.forEach(habit => {
       const checked = isHabitChecked(habit.id, today);
       const habitIdEsc = esc(habit.id);
@@ -57,24 +58,26 @@ export function renderPlannerHabits(containerEl, state, viewDate = new Date()) {
              data-habit-name="${habitNameEsc}"
              data-habit-duration="${durationEsc}"
              data-habit-time="${esc(timeOfDayEsc)}"
-             style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:4px;transition:background 0.13s;cursor:grab;" 
-             onclick="if(!event.target.closest('input') && !event.target.closest('button')){if(window.Petal?.features?.habits?.toggleHabit){window.Petal.features.habits.toggleHabit('${habitIdEsc}');if(typeof buildPlannerSidebar==='function'){buildPlannerSidebar();}}}"
+             data-view-date="${escAttr(viewDateIso)}"
+             style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:4px;transition:background 0.13s;cursor:grab;"
              ondragstart="handleHabitDragStart(event)"
              ondragend="handleHabitDragEnd(event)">
-          <input type="checkbox" ${checked ? 'checked' : ''} 
-                 style="cursor:pointer;width:16px;height:16px;accent-color:var(--rose);pointer-events:auto;"
-                 onclick="event.stopPropagation();if(window.Petal?.features?.habits?.toggleHabit){window.Petal.features.habits.toggleHabit('${habitIdEsc}');if(typeof buildPlannerSidebar==='function'){buildPlannerSidebar();}}"
-                 ondragstart="event.stopPropagation();return false;"
-                 draggable="false">
+          <label class="habit-check-wrap" style="display:flex;align-items:center;cursor:pointer;flex-shrink:0;position:relative;z-index:2;padding:4px;margin:-4px 4px -4px 0;" data-habit-id="${habitIdEsc}" data-view-date="${escAttr(viewDateIso)}">
+            <input type="checkbox" ${checked ? 'checked' : ''}
+                   style="cursor:pointer;width:18px;height:18px;accent-color:var(--rose);pointer-events:auto;flex-shrink:0;margin:0;"
+                   tabindex="0"
+                   data-habit-id="${habitIdEsc}"
+                   data-view-date="${escAttr(viewDateIso)}"
+                   ondragstart="event.stopPropagation();return false;"
+                   draggable="false">
+          </label>
           <span style="font-size:12px;color:var(--text);flex:1;${checked ? 'text-decoration:line-through;opacity:0.6;' : ''}">${esc(habit.name)}</span>
           ${habit.cadence === 'weekly' ? '<span style="font-size:9px;color:var(--text-dim);">(weekly)</span>' : ''}
           ${timeOfDayEsc ? `<span style="font-size:9px;color:var(--text-dim);">${esc(timeOfDayEsc)}</span>` : ''}
           ${(habit.durationMin != null && habit.durationMin > 0) ? `<span style="font-size:9px;color:var(--text-dim);">${habit.durationMin} min</span>` : ''}
           <span style="font-size:8px;color:var(--text-dim);opacity:0.7;">(drag to schedule)</span>
-          <button onclick="event.stopPropagation();if(confirm('Delete this habit?')){if(window.Petal?.features?.habits?.archiveHabit){window.Petal.features.habits.archiveHabit('${habitIdEsc}');if(typeof buildPlannerSidebar==='function'){buildPlannerSidebar();}}}" 
+          <button type="button" class="planner-habit-del" data-action="habit-archive" data-habit-id="${habitIdEsc}"
                   style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;padding:2px 4px;opacity:0.6;transition:opacity 0.13s;flex-shrink:0;" 
-                  onmouseover="this.style.opacity='1';this.style.color='var(--overdue)'" 
-                  onmouseout="this.style.opacity='0.6';this.style.color='var(--text-dim)'"
                   ondragstart="event.stopPropagation();return false;"
                   draggable="false"
                   title="Delete habit">×</button>
@@ -89,4 +92,33 @@ export function renderPlannerHabits(containerEl, state, viewDate = new Date()) {
   `;
   
   c.innerHTML = html;
+
+  // Event delegation: bind once per container, re-use stored handlers so we can remove before re-adding when DOM is replaced.
+  const onMouseDown = (e) => {
+    if (e.target.closest('.habit-item input[type=checkbox]') || e.target.closest('.habit-item label.habit-check-wrap')) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+  const onClick = (e) => {
+    const row = e.target.closest('.habit-item');
+    if (!row) return;
+    if (e.target.closest('button')) return; // delete button has its own handler
+    const habitId = row.getAttribute('data-habit-id');
+    const viewDateStr = row.getAttribute('data-view-date');
+    const date = viewDateStr ? new Date(viewDateStr) : new Date();
+    if (e.target.closest('input[type=checkbox]') || e.target.closest('label.habit-check-wrap')) e.preventDefault();
+    if (habitId && window.Petal?.features?.habits?.toggleHabit) {
+      window.Petal.features.habits.toggleHabit(habitId, date);
+      if (typeof window.buildPlannerSidebar === 'function') window.buildPlannerSidebar();
+    }
+  };
+  if (c._habitMouseDown) {
+    c.removeEventListener('mousedown', c._habitMouseDown, true);
+    c.removeEventListener('click', c._habitClick);
+  }
+  c._habitMouseDown = onMouseDown;
+  c._habitClick = onClick;
+  c.addEventListener('mousedown', onMouseDown, true);
+  c.addEventListener('click', onClick);
 }

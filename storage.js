@@ -44,6 +44,7 @@ class StorageAdapter {
             habitCheckins: result.data.habitCheckins || {},
             routines: result.data.routines || [],
             routineCheckins: result.data.routineCheckins || {},
+            goals: result.data.goals || [],
             prints3d: result.data.prints3d || [],
             workflow: result.data.workflow || {}
           };
@@ -69,7 +70,14 @@ class StorageAdapter {
               fileHistory: result.fileHistory || {},
               fileRegistry: result.fileRegistry || {},
               events: result.events || [],
-              recurringRules: result.recurringRules || []
+              recurringRules: result.recurringRules || [],
+              habits: result.habits || [],
+              habitCheckins: result.habitCheckins || {},
+              routines: result.routines || [],
+              routineCheckins: result.routineCheckins || {},
+              goals: result.goals || [],
+              prints3d: result.prints3d || [],
+              workflow: result.workflow || {}
             },
             hasConflicts: false,
             conflicts: [],

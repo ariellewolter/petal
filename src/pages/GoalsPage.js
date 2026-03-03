@@ -5,6 +5,7 @@
 import { escapeHtml } from '../utils/strings.js';
 import { parseDate, today } from '../utils/dates.js';
 import { showNotification } from '../ui/components.js';
+import { getAllTasks } from '../domain/models.js';
 
 // Constants
 const CATS = ['career', 'health', 'mind', 'finance', 'personal', 'phd', 'lab'];
@@ -27,6 +28,9 @@ let selId = null;
 let tlHorizon = 'year';
 let showDone = false;
 let planYear = new Date().getFullYear();
+let linkProjectGoalId = null;
+let linkTasksGoalId = null;
+let addMilestoneGoalId = null;
 
 // Utility functions
 const pad = (n) => String(n).padStart(2, '0');
@@ -86,6 +90,10 @@ function loadGoals(state) {
   goals.forEach(g => {
     if (!g.milestones) g.milestones = [];
     if (g.progress === undefined) autoProgress(g);
+    if (!Array.isArray(g.projectIds)) {
+      g.projectIds = g.projectId != null ? [g.projectId] : [];
+    }
+    if (!Array.isArray(g.taskIds)) g.taskIds = [];
   });
 }
 
@@ -95,10 +103,28 @@ function loadGoals(state) {
  * @param {Object} state - Current app state
  * @param {Object} handlers - Event handlers
  */
+const GOALS_OVERLAY_IDS = ['drawer-bg', 'modal-bg', 'goal-project-modal-bg', 'goal-tasks-modal-bg', 'goal-milestone-modal-bg'];
+
 export async function renderGoalsPage(containerEl, state, handlers) {
   if (!containerEl) return;
 
   loadGoals(state);
+
+  // Remove any previous goals overlays from body (from a prior render) so we don't duplicate when re-rendering.
+  // Also remove any empty .goals-page wrappers left when the add modal was moved back to the view.
+  document.querySelectorAll('body > .goals-page').forEach(w => {
+    if (w.parentNode === document.body) {
+      const hasOverlay = GOALS_OVERLAY_IDS.some(id => w.querySelector('#' + id));
+      if (!hasOverlay || w.children.length === 0) w.remove();
+    }
+  });
+  GOALS_OVERLAY_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      const root = el.parentNode === document.body ? el : (el.closest && el.closest('body > .goals-page'));
+      if (root && root.parentNode === document.body) root.remove();
+    }
+  });
 
   const now = new Date();
   const dayName = now.toLocaleDateString(undefined, { weekday: "long" });
@@ -174,12 +200,12 @@ export async function renderGoalsPage(containerEl, state, handlers) {
             </div>
           </div>
 
-          <!-- CARD 4: UPCOMING MILESTONES -->
+          <!-- CARD 4: SUB-GOALS (MILESTONES) -->
           <div class="card" style="animation-delay:.12s">
             <div class="card-head">
               <div class="card-head-left">
                 <div class="card-dot" style="background:var(--sage)"></div>
-                <div class="card-title">Milestones</div>
+                <div class="card-title">Sub-goals (milestones)</div>
               </div>
               <div class="card-action" id="ms-show-done-toggle" data-action="goal:toggle-done">Show done →</div>
             </div>
@@ -277,6 +303,66 @@ export async function renderGoalsPage(containerEl, state, handlers) {
         </div>
       </div>
     </div>
+
+    <!-- LINK PROJECTS MODAL -->
+    <div class="modal-bg" id="goal-project-modal-bg" style="display:none;">
+      <div class="modal goal-link-modal">
+        <div class="modal-head">
+          <div class="mh-title">Projects for this goal</div>
+          <button class="modal-x" id="goal-project-modal-close" data-action="goal:close-project-modal">✕</button>
+        </div>
+        <div class="modal-body">
+          <div id="goal-projects-linked-list" class="goal-tasks-linked"></div>
+          <label class="goal-link-lbl">Add project</label>
+          <select id="goal-projects-add-select" class="goal-link-select">
+            <option value="">— Choose project —</option>
+          </select>
+        </div>
+        <div class="modal-foot">
+          <button class="mf-btn mf-save" data-action="goal:close-project-modal">Done</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- LINK TASKS MODAL -->
+    <div class="modal-bg" id="goal-tasks-modal-bg" style="display:none;">
+      <div class="modal goal-link-modal">
+        <div class="modal-head">
+          <div class="mh-title">Tasks for this goal</div>
+          <button class="modal-x" id="goal-tasks-modal-close" data-action="goal:close-tasks-modal">✕</button>
+        </div>
+        <div class="modal-body">
+          <div id="goal-tasks-linked-list" class="goal-tasks-linked"></div>
+          <label class="goal-link-lbl">Add task</label>
+          <select id="goal-tasks-add-select" class="goal-link-select">
+            <option value="">— Choose task —</option>
+          </select>
+        </div>
+        <div class="modal-foot">
+          <button class="mf-btn mf-save" data-action="goal:close-tasks-modal">Done</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADD SUB-GOAL MODAL (opened from a specific goal) -->
+    <div class="modal-bg" id="goal-milestone-modal-bg" style="display:none;">
+      <div class="modal goal-link-modal">
+        <div class="modal-head">
+          <div class="mh-title" id="goal-milestone-modal-title">Add sub-goal</div>
+          <button class="modal-x" data-action="goal:close-milestone-modal">✕</button>
+        </div>
+        <div class="modal-body">
+          <label class="goal-link-lbl">Sub-goal / milestone</label>
+          <input type="text" id="goal-milestone-title" class="goal-link-select" placeholder="Title">
+          <label class="goal-link-lbl">Due date (optional)</label>
+          <input type="date" id="goal-milestone-date" class="goal-link-select">
+        </div>
+        <div class="modal-foot">
+          <button class="mf-btn mf-cancel" data-action="goal:close-milestone-modal">Cancel</button>
+          <button class="mf-btn mf-save" data-action="goal:add-milestone-from-modal">Add</button>
+        </div>
+      </div>
+    </div>
   `;
 
   // Render all sections
@@ -284,6 +370,18 @@ export async function renderGoalsPage(containerEl, state, handlers) {
 
   // Set up event delegation
   setupEventDelegation(containerEl, state, handlers);
+
+  // Portal drawer and modals to body so position:fixed is viewport-relative (like Habits/other pages).
+  // Wrap in .goals-page so existing .goals-page .drawer-bg / .modal-bg CSS still applies.
+  GOALS_OVERLAY_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.parentNode !== document.body) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'goals-page';
+      wrapper.appendChild(el);
+      document.body.appendChild(wrapper);
+    }
+  });
 }
 
 /**
@@ -291,7 +389,7 @@ export async function renderGoalsPage(containerEl, state, handlers) {
  */
 function renderAll(state, handlers) {
   renderStats();
-  renderGoalList();
+  renderGoalList(state);
   renderCategories();
   renderFocus();
   renderMilestonesCard();
@@ -341,8 +439,9 @@ function renderStats() {
 
 /**
  * Render goal list
+ * @param {Object} [state] - App state (for resolving project names)
  */
-function renderGoalList() {
+function renderGoalList(state) {
   const el = document.getElementById('goal-list');
   if (!el) return;
 
@@ -376,6 +475,13 @@ function renderGoalList() {
     else if (dl !== null && dl <= 7) dueChip = `<span class="g-chip gc-due">${dl === 0 ? 'Today' : dl === 1 ? 'Tomorrow' : dl + 'd left'}</span>`;
     else if (dl !== null) dueChip = `<span class="g-chip gc-due">⏱ ${fs(g.deadline)}</span>`;
 
+    const projectIds = g.projectIds || [];
+    const taskIds = g.taskIds || [];
+    const taskCount = taskIds.length;
+    const projectCount = projectIds.length;
+    const projects = state?.projects || [];
+    const projectLabels = projectIds.map(pid => projects.find(p => String(p.id) === String(pid))?.name).filter(Boolean);
+    const projectLabel = projectCount === 0 ? '' : projectCount === 1 ? projectLabels[0] : `${projectCount} projects`;
     return `<div class="goal-row ${selId === g.id ? 'active-row' : ''}" data-cat="${g.cat || ''}" data-gid="${g.id}" data-action="goal:open" style="animation-delay:${i * .03}s">
       <div class="g-ring">
         <svg class="ring-svg" width="40" height="40" viewBox="0 0 40 40">
@@ -394,6 +500,12 @@ function renderGoalList() {
         </div>
       </div>
       ${msTotal > 0 ? `<div class="g-ms-count">☰ ${msDone}/${msTotal}</div>` : ''}
+      <div class="g-card-actions">
+        <button type="button" class="btn-del btn-edit" data-action="goal:open" data-gid="${g.id}" title="Edit" style="font-size:13px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);">✎</button>
+        <button type="button" class="g-link-btn" data-action="goal:open-milestone-modal" data-gid="${g.id}" title="Add sub-goal / milestone">Sub-goals${msTotal ? ` (${msTotal})` : ''}</button>
+        <button type="button" class="g-link-btn" data-action="goal:link-project" data-gid="${g.id}" title="${projectLabel ? escapeHtml(projectLabel) : 'Link projects'}">Project${projectCount ? ` (${projectCount})` : ''}</button>
+        <button type="button" class="g-link-btn" data-action="goal:link-tasks" data-gid="${g.id}" title="Add tasks to this goal">Tasks${taskCount ? ` (${taskCount})` : ''}</button>
+      </div>
     </div>`;
   }).join('');
 }
@@ -497,7 +609,7 @@ function renderMilestonesCard() {
   const end = ad(today, tlHorizon === 'week' ? 6 : tlHorizon === 'month' ? 29 : 364);
 
   // Collect all milestones with goal info
-  const allMs = goals.flatMap(g => (g.milestones || []).map(ms => ({ ...ms, gid: g.id, gname: g.name, gcat: g.cat, gcol: CAT_COLS[g.cat] })));
+  const allMs = goals.flatMap(g => (g.milestones || []).map(ms => ({ ...ms, gid: g.id, gname: g.name, gcat: g.cat, gcol: CAT_COLS[g.cat], gemoji: g.emoji })));
 
   let items = allMs;
   if (!showDone) items = items.filter(ms => !ms.done);
@@ -520,9 +632,10 @@ function renderMilestonesCard() {
       ${list.map(ms => `
         <div class="ms-item">
           <div class="ms-ck ${ms.done ? 'on' : ''}" data-gid="${ms.gid}" data-mst="${encodeURIComponent(ms.title)}" data-action="goal:toggle-ms">${ms.done ? '✓' : ''}</div>
-          <div class="ms-goal-dot" style="background:${ms.gcol || 'var(--rose)'}"></div>
-          <span class="ms-title ${ms.done ? 'done' : ''}">${escapeHtml(ms.title)}</span>
-          <span class="ms-goal-name">${escapeHtml(ms.gname)}</span>
+          <div class="ms-item-goal-relation">
+            <span class="ms-title ${ms.done ? 'done' : ''}">${escapeHtml(ms.title)}</span>
+            <span class="ms-under-goal" style="color:${ms.gcol || 'var(--rose)'}">← ${escapeHtml((ms.gemoji || '') + (ms.gemoji ? ' ' : '') + (ms.gname || 'Goal'))}</span>
+          </div>
           ${ms.date ? `<span class="ms-date ${ms.date < today && !ms.done ? 'late' : ''}">${fs(ms.date)}</span>` : ''}
         </div>`).join('<div class="ms-divider"></div>')}
     </div>`;
@@ -536,7 +649,7 @@ function renderMilestonesCard() {
     renderGroup('Completed', 'var(--sage)', done),
   ].filter(Boolean).join('');
 
-  el.innerHTML = html || `<div class="card-empty">No milestones${!showDone ? ' — all done!' : ' yet.'}.</div>`;
+  el.innerHTML = html || `<div class="card-empty">No sub-goals yet. Click <em>Sub-goals</em> on a goal to add one.</div>`;
 }
 
 /**
@@ -880,6 +993,15 @@ function fillDrawerDetails(g) {
   const el = document.getElementById('dpanel-details');
   if (!el) return;
 
+  const state = window.Petal?.store?.getState() || {};
+  const habits = (state.habits || []).filter(h => !h.archived);
+  const routines = (state.routines || []).filter(r => !r.archived);
+  const gidStr = String(g.id);
+  const linkedHabits = habits.filter(h => String(h.goalId || '') === gidStr);
+  const linkedRoutines = routines.filter(r => String(r.goalId || '') === gidStr);
+  const unlinkedHabits = habits.filter(h => String(h.goalId || '') !== gidStr);
+  const unlinkedRoutines = routines.filter(r => String(r.goalId || '') !== gidStr);
+
   el.innerHTML = `
     <div>
       <div class="d-flbl">Category</div>
@@ -905,6 +1027,16 @@ function fillDrawerDetails(g) {
         <option value="year" ${g.horizon === 'year' ? 'selected' : ''}>Yearly goal</option>
       </select>
     </div>
+    <div class="d-related">
+      <div class="d-flbl">Related habits</div>
+      ${linkedHabits.length ? `<ul class="d-related-list">${linkedHabits.map(h => `<li class="d-related-item"><span>${escapeHtml(h.name)}</span> <button type="button" class="d-related-unlink" data-action="goal:unlink-habit" data-habit-id="${escapeHtml(h.id)}" data-gid="${escapeHtml(g.id)}" title="Unlink">×</button></li>`).join('')}</ul>` : '<span class="d-related-empty">None linked</span>'}
+      ${unlinkedHabits.length ? `<select class="d-sel d-related-add" id="d-link-habit" data-gid="${escapeHtml(g.id)}" data-action="goal:link-habit"><option value="">+ Link habit</option>${unlinkedHabits.map(h => `<option value="${escapeHtml(h.id)}">${escapeHtml(h.name)}</option>`).join('')}</select>` : ''}
+    </div>
+    <div class="d-related">
+      <div class="d-flbl">Related routines</div>
+      ${linkedRoutines.length ? `<ul class="d-related-list">${linkedRoutines.map(r => `<li class="d-related-item"><span>${escapeHtml((r.icon || '') + ' ' + (r.name || ''))}</span> <button type="button" class="d-related-unlink" data-action="goal:unlink-routine" data-routine-id="${escapeHtml(r.id)}" data-gid="${escapeHtml(g.id)}" title="Unlink">×</button></li>`).join('')}</ul>` : '<span class="d-related-empty">None linked</span>'}
+      ${unlinkedRoutines.length ? `<select class="d-sel d-related-add" id="d-link-routine" data-gid="${escapeHtml(g.id)}" data-action="goal:link-routine"><option value="">+ Link routine</option>${unlinkedRoutines.map(r => `<option value="${escapeHtml(r.id)}">${escapeHtml((r.icon || '') + ' ' + (r.name || ''))}</option>`).join('')}</select>` : ''}
+    </div>
   `;
 
   const progEl = document.getElementById('d-prog');
@@ -915,6 +1047,33 @@ function fillDrawerDetails(g) {
       const barEl = document.getElementById('d-prog-bar');
       if (valEl) valEl.textContent = v + '%';
       if (barEl) barEl.style.width = v + '%';
+    });
+  }
+
+  const linkHabitSel = document.getElementById('d-link-habit');
+  if (linkHabitSel && linkHabitSel.dataset.gid) {
+    linkHabitSel.addEventListener('change', function() {
+      const habitId = this.value;
+      const goalId = this.dataset.gid;
+      if (!habitId) return;
+      if (window.Petal?.features?.habits?.setHabitGoalId) {
+        window.Petal.features.habits.setHabitGoalId(habitId, goalId);
+        fillDrawerDetails(goals.find(x => x.id === selId));
+      }
+      this.value = '';
+    });
+  }
+  const linkRoutineSel = document.getElementById('d-link-routine');
+  if (linkRoutineSel && linkRoutineSel.dataset.gid) {
+    linkRoutineSel.addEventListener('change', function() {
+      const routineId = this.value;
+      const goalId = this.dataset.gid;
+      if (!routineId) return;
+      if (window.Petal?.features?.routines?.setRoutineGoalId) {
+        window.Petal.features.routines.setRoutineGoalId(routineId, goalId);
+        fillDrawerDetails(goals.find(x => x.id === selId));
+      }
+      this.value = '';
     });
   }
 }
@@ -1086,6 +1245,134 @@ function closeModal() {
   }
 }
 
+function openProjectLinkModal(gid, state, handlers) {
+  linkProjectGoalId = gid;
+  const g = goals.find(x => x.id === gid);
+  const listEl = document.getElementById('goal-projects-linked-list');
+  const addSel = document.getElementById('goal-projects-add-select');
+  const bg = document.getElementById('goal-project-modal-bg');
+  if (!listEl || !addSel || !bg) return;
+  const projects = (state?.projects || []).filter(p => p && !p.done);
+  const projectIds = g?.projectIds || [];
+  const linked = projectIds.map(pid => projects.find(p => String(p.id) === String(pid))).filter(Boolean);
+  listEl.innerHTML = linked.length
+    ? linked.map(p => `<div class="goal-task-item"><span>${escapeHtml(p.name || 'Project')}</span> <button type="button" class="goal-task-remove" data-action="goal:unlink-project" data-project-id="${escapeHtml(String(p.id))}">×</button></div>`).join('')
+    : '<div class="goal-tasks-empty">No projects linked yet.</div>';
+  const usedSet = new Set(projectIds.map(String));
+  const available = projects.filter(p => !usedSet.has(String(p.id)));
+  addSel.innerHTML = '<option value="">— Choose project —</option>' + available
+    .map(p => `<option value="${escapeHtml(String(p.id))}">${escapeHtml((p.name || 'Project').slice(0, 50))}</option>`)
+    .join('');
+  addSel.value = '';
+  addSel.onchange = () => {
+    const val = addSel.value;
+    if (!val) return;
+    const goal = goals.find(x => x.id === linkProjectGoalId);
+    if (!goal) return;
+    if (!goal.projectIds) goal.projectIds = [];
+    if (!goal.projectIds.some(id => String(id) === val)) {
+      goal.projectIds.push(val);
+      saveGoals(state, handlers);
+      openProjectLinkModal(linkProjectGoalId, state, handlers);
+    }
+    addSel.value = '';
+  };
+  bg.style.display = 'flex';
+  bg.style.visibility = 'visible';
+  bg.style.opacity = '1';
+  bg.style.zIndex = '1000';
+}
+
+function closeProjectLinkModal() {
+  linkProjectGoalId = null;
+  const bg = document.getElementById('goal-project-modal-bg');
+  if (bg) {
+    bg.style.display = 'none';
+    bg.style.visibility = 'hidden';
+    bg.style.opacity = '0';
+    bg.style.zIndex = '';
+  }
+}
+
+function openTasksLinkModal(gid, state, handlers) {
+  linkTasksGoalId = gid;
+  const g = goals.find(x => x.id === gid);
+  const listEl = document.getElementById('goal-tasks-linked-list');
+  const addSel = document.getElementById('goal-tasks-add-select');
+  const bg = document.getElementById('goal-tasks-modal-bg');
+  if (!listEl || !addSel || !bg) return;
+  const allTasks = getAllTasks(state?.tasks || [], state?.projects || []);
+  const taskIds = g?.taskIds || [];
+  const linked = taskIds.map(tid => allTasks.find(t => String(t.id) === String(tid))).filter(Boolean);
+  listEl.innerHTML = linked.length
+    ? linked.map(t => `<div class="goal-task-item"><span>${escapeHtml(t.title || t.name || 'Task')}</span> <button type="button" class="goal-task-remove" data-action="goal:unlink-task" data-task-id="${escapeHtml(String(t.id))}">×</button></div>`).join('')
+    : '<div class="goal-tasks-empty">No tasks linked yet.</div>';
+  const usedSet = new Set(taskIds.map(String));
+  const available = allTasks.filter(t => t && !t.deletedAt && !usedSet.has(String(t.id)));
+  addSel.innerHTML = '<option value="">— Choose task —</option>' + available
+    .map(t => `<option value="${escapeHtml(String(t.id))}">${escapeHtml((t.title || t.name || 'Task').slice(0, 50))}</option>`)
+    .join('');
+  addSel.value = '';
+  addSel.onchange = () => {
+    const val = addSel.value;
+    if (!val) return;
+    const goal = goals.find(x => x.id === linkTasksGoalId);
+    if (!goal) return;
+    if (!goal.taskIds) goal.taskIds = [];
+    if (!goal.taskIds.includes(val) && !goal.taskIds.some(id => String(id) === val)) {
+      goal.taskIds.push(val);
+      saveGoals(state, handlers);
+      openTasksLinkModal(linkTasksGoalId, state, handlers);
+    }
+    addSel.value = '';
+  };
+  bg.style.display = 'flex';
+  bg.style.visibility = 'visible';
+  bg.style.opacity = '1';
+  bg.style.zIndex = '1000';
+}
+
+function closeTasksLinkModal() {
+  linkTasksGoalId = null;
+  const bg = document.getElementById('goal-tasks-modal-bg');
+  if (bg) {
+    bg.style.display = 'none';
+    bg.style.visibility = 'hidden';
+    bg.style.opacity = '0';
+    bg.style.zIndex = '';
+  }
+}
+
+function openMilestoneModal(gid, state, handlers) {
+  const g = goals.find(x => x.id === gid);
+  if (!g) return;
+  addMilestoneGoalId = gid;
+  const titleEl = document.getElementById('goal-milestone-modal-title');
+  const titleInp = document.getElementById('goal-milestone-title');
+  const dateInp = document.getElementById('goal-milestone-date');
+  const bg = document.getElementById('goal-milestone-modal-bg');
+  if (titleEl) titleEl.textContent = `Add sub-goal — ${g.emoji || '◎'} ${g.name || 'Goal'}`;
+  if (titleInp) titleInp.value = '';
+  if (dateInp) dateInp.value = '';
+  if (bg) {
+    bg.style.display = 'flex';
+    bg.style.visibility = 'visible';
+    bg.style.opacity = '1';
+    bg.style.zIndex = '1000';
+  }
+}
+
+function closeMilestoneModal() {
+  addMilestoneGoalId = null;
+  const bg = document.getElementById('goal-milestone-modal-bg');
+  if (bg) {
+    bg.style.display = 'none';
+    bg.style.visibility = 'hidden';
+    bg.style.opacity = '0';
+    bg.style.zIndex = '';
+  }
+}
+
 /**
  * Run a single goal action (used by both local click handler and global delegation callback)
  */
@@ -1116,13 +1403,75 @@ function runGoalAction(action, actionEl, state, handlers) {
         milestones: [],
         notes: document.getElementById('m-notes')?.value || '',
         strategy: '',
-        createdAt: ts()
+        createdAt: ts(),
+        projectIds: [],
+        taskIds: []
       };
       goals.push(g);
       saveGoals(state, handlers);
       closeModal();
       renderAll();
       setTimeout(() => openDrawer(g.id, state, handlers), 300);
+    } else if (action === 'goal:open-milestone-modal') {
+      const gid = actionEl.getAttribute('data-gid');
+      if (gid) openMilestoneModal(parseInt(gid, 10), state, handlers);
+    } else if (action === 'goal:link-project') {
+      const gid = actionEl.getAttribute('data-gid');
+      if (gid) openProjectLinkModal(parseInt(gid, 10), state, handlers);
+    } else if (action === 'goal:link-tasks') {
+      const gid = actionEl.getAttribute('data-gid');
+      if (gid) openTasksLinkModal(parseInt(gid, 10), state, handlers);
+    } else if (action === 'goal:close-milestone-modal') {
+      closeMilestoneModal();
+    } else if (action === 'goal:add-milestone-from-modal') {
+      const titleInp = document.getElementById('goal-milestone-title');
+      const dateInp = document.getElementById('goal-milestone-date');
+      const title = titleInp?.value?.trim();
+      const g = goals.find(x => x.id === addMilestoneGoalId);
+      if (!g || !title) return;
+      if (!g.milestones) g.milestones = [];
+      g.milestones.push({ title, date: dateInp?.value || '', done: false });
+      if (titleInp) titleInp.value = '';
+      if (dateInp) dateInp.value = '';
+      saveGoals(state, handlers);
+      closeMilestoneModal();
+      renderAll(state, handlers);
+    } else if (action === 'goal:close-project-modal') {
+      closeProjectLinkModal();
+      renderAll(state, handlers);
+    } else if (action === 'goal:unlink-project') {
+      const projectId = actionEl.getAttribute('data-project-id');
+      const g = goals.find(x => x.id === linkProjectGoalId);
+      if (g && projectId && Array.isArray(g.projectIds)) {
+        g.projectIds = g.projectIds.filter(id => String(id) !== String(projectId));
+        saveGoals(state, handlers);
+        openProjectLinkModal(linkProjectGoalId, state, handlers);
+      }
+    } else if (action === 'goal:close-tasks-modal') {
+      closeTasksLinkModal();
+      renderAll(state, handlers);
+    } else if (action === 'goal:unlink-task') {
+      const taskId = actionEl.getAttribute('data-task-id');
+      const g = goals.find(x => x.id === linkTasksGoalId);
+      if (g && taskId && Array.isArray(g.taskIds)) {
+        g.taskIds = g.taskIds.filter(id => String(id) !== String(taskId));
+        saveGoals(state, handlers);
+        openTasksLinkModal(linkTasksGoalId, state, handlers);
+      }
+    } else if (action === 'goal:unlink-habit') {
+      const habitId = actionEl.getAttribute('data-habit-id');
+      if (habitId && window.Petal?.features?.habits?.setHabitGoalId) {
+        window.Petal.features.habits.setHabitGoalId(habitId, null);
+        const g = goals.find(x => x.id === selId);
+        if (g) fillDrawerDetails(g);
+      }
+    } else if (action === 'goal:unlink-routine') {
+      const routineId = actionEl.getAttribute('data-routine-id');
+      if (routineId && window.Petal?.features?.routines?.setRoutineGoalId) {
+        window.Petal.features.routines.setRoutineGoalId(routineId, null);
+        const g = goals.find(x => x.id === selId);
+        if (g) fillDrawerDetails(g);
+      }
     } else if (action === 'goal:open') {
       const gid = actionEl.getAttribute('data-gid') || actionEl.closest('[data-gid]')?.getAttribute('data-gid');
       if (gid) openDrawer(parseInt(gid), state, handlers);
@@ -1315,6 +1664,7 @@ function setupEventDelegation(containerEl, state, handlers) {
     if (e.key === 'Escape') {
       closeModal();
       closeDrawer();
+      closeMilestoneModal();
     }
   });
 
@@ -1329,6 +1679,24 @@ function setupEventDelegation(containerEl, state, handlers) {
   if (drawerBg) {
     drawerBg.addEventListener('click', (e) => {
       if (e.target === drawerBg) closeDrawer();
+    });
+  }
+  const projectModalBg = document.getElementById('goal-project-modal-bg');
+  if (projectModalBg) {
+    projectModalBg.addEventListener('click', (e) => {
+      if (e.target === projectModalBg) closeProjectLinkModal();
+    });
+  }
+  const tasksModalBg = document.getElementById('goal-tasks-modal-bg');
+  if (tasksModalBg) {
+    tasksModalBg.addEventListener('click', (e) => {
+      if (e.target === tasksModalBg) closeTasksLinkModal();
+    });
+  }
+  const milestoneModalBg = document.getElementById('goal-milestone-modal-bg');
+  if (milestoneModalBg) {
+    milestoneModalBg.addEventListener('click', (e) => {
+      if (e.target === milestoneModalBg) closeMilestoneModal();
     });
   }
 }

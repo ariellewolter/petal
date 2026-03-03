@@ -44,6 +44,7 @@ export function renderPlannerRoutines(containerEl, state, viewDate = new Date())
       </div>
     `;
   } else {
+    const viewDateIso = today.toISOString();
     visibleRoutines.forEach(routine => {
       const checked = isRoutineChecked(routine.id, today);
       
@@ -63,13 +64,14 @@ export function renderPlannerRoutines(containerEl, state, viewDate = new Date())
              data-routine-name="${routineNameEsc}"
              data-routine-time="${routine.timeOfDay || ''}"
              data-routine-duration="${routine.durationMin || ''}"
+             data-view-date="${escAttr(viewDateIso)}"
              style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:4px;transition:background 0.13s;cursor:grab;" 
-             onclick="if(!event.target.closest('input') && !event.target.closest('button')){if(window.Petal?.features?.routines?.toggleRoutine){window.Petal.features.routines.toggleRoutine('${routineIdEsc}');if(typeof buildPlannerSidebar==='function'){buildPlannerSidebar();}}}"
+             data-action="routine-toggle" data-routine-id="${routineIdEsc}" data-view-date="${escAttr(viewDateIso)}"
              ondragstart="handleRoutineDragStart(event)"
              ondragend="handleRoutineDragEnd(event)">
           <input type="checkbox" ${checked ? 'checked' : ''} 
                  style="cursor:pointer;width:16px;height:16px;accent-color:var(--rose);pointer-events:auto;"
-                 onclick="event.stopPropagation();if(window.Petal?.features?.routines?.toggleRoutine){window.Petal.features.routines.toggleRoutine('${routineIdEsc}');if(typeof buildPlannerSidebar==='function'){buildPlannerSidebar();}}"
+                 data-view-date="${escAttr(viewDateIso)}"
                  ondragstart="event.stopPropagation();return false;"
                  draggable="false">
           <div style="flex:1;min-width:0;">
@@ -78,10 +80,8 @@ export function renderPlannerRoutines(containerEl, state, viewDate = new Date())
             ${routine.cadence === 'weekly' ? '<span style="font-size:9px;color:var(--text-dim);">(weekly)</span>' : ''}
             <span style="font-size:8px;color:var(--text-dim);opacity:0.7;">(drag to schedule)</span>
           </div>
-          <button onclick="event.stopPropagation();if(confirm('Delete this routine?')){if(window.Petal?.features?.routines?.archiveRoutine){window.Petal.features.routines.archiveRoutine('${routineIdEsc}');if(typeof buildPlannerSidebar==='function'){buildPlannerSidebar();}}}" 
+          <button type="button" class="planner-routine-del" data-action="routine-archive" data-routine-id="${routineIdEsc}"
                   style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;padding:2px 4px;opacity:0.6;transition:opacity 0.13s;flex-shrink:0;" 
-                  onmouseover="this.style.opacity='1';this.style.color='var(--overdue)'" 
-                  onmouseout="this.style.opacity='0.6';this.style.color='var(--text-dim)'"
                   ondragstart="event.stopPropagation();return false;"
                   draggable="false"
                   title="Delete routine">×</button>

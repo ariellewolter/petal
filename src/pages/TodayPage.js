@@ -9,6 +9,8 @@ import { getAllTasks } from '../domain/models.js';
 import { setupEventDelegation } from '../app/delegation.js';
 import { getEventsForDate } from '../utils/eventHelpers.js';
 import { PageHeader } from '../ui/components.js';
+import { getActiveHabits, isHabitChecked, shouldShowHabit } from '../features/habits.js';
+import { getActiveRoutines, isRoutineChecked, shouldShowRoutine } from '../features/routines.js';
 
 // Event calculation functions moved to shared utility: src/utils/eventHelpers.js
 // Imported above to ensure consistency with Planner page
@@ -105,6 +107,12 @@ export async function renderTodayPage(containerEl, state, handlers) {
     return milestones.some(ms => !ms.done && ms.date && ms.date >= monthStart && ms.date <= monthEnd);
   });
 
+  // Habits and routines due today (same logic as Planner sidebar)
+  const allHabits = getActiveHabits();
+  const visibleHabits = allHabits.filter(h => shouldShowHabit(h, now));
+  const allRoutines = getActiveRoutines();
+  const visibleRoutines = allRoutines.filter(r => shouldShowRoutine(r, now));
+
   // Build HTML with full layout (sidebar is now global, so we don't include it here)
   containerEl.innerHTML = `
     <div class="today-layout">
@@ -192,6 +200,38 @@ export async function renderTodayPage(containerEl, state, handlers) {
           </div>
           <div class="today-goal-list">
             ${renderGoalsCard(goalsThisMonth, monthStart, monthEnd)}
+          </div>
+        </div>
+        ` : ''}
+
+        <!-- HABITS TODAY -->
+        ${visibleHabits.length > 0 ? `
+        <div class="today-card today-habits-card">
+          <div class="today-card-header">
+            <div class="today-card-title">
+              <span class="today-dot" style="background:var(--mauve)"></span>
+              Habits Today
+            </div>
+            <span class="today-card-action" data-nav="habits">All habits →</span>
+          </div>
+          <div class="today-habits-list">
+            ${renderHabitsCard(visibleHabits, now)}
+          </div>
+        </div>
+        ` : ''}
+
+        <!-- ROUTINES TODAY -->
+        ${visibleRoutines.length > 0 ? `
+        <div class="today-card today-routines-card">
+          <div class="today-card-header">
+            <div class="today-card-title">
+              <span class="today-dot" style="background:var(--soon)"></span>
+              Routines Today
+            </div>
+            <span class="today-card-action" data-nav="routines">All routines →</span>
+          </div>
+          <div class="today-routines-list">
+            ${renderRoutinesCard(visibleRoutines, now)}
           </div>
         </div>
         ` : ''}
@@ -784,6 +824,35 @@ function renderProjectsCard(activeProjects, state) {
   }).join("");
 }
 
+function renderHabitsCard(visibleHabits, date) {
+  return visibleHabits.slice(0, 6).map(habit => {
+    const checked = isHabitChecked(habit.id, date);
+    return `
+      <div class="today-habit-item" data-action="habit-toggle" data-habit-id="${escapeHtml(habit.id)}" role="button" tabindex="0"
+           style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:4px;cursor:pointer;transition:background 0.13s;">
+        <input type="checkbox" ${checked ? 'checked' : ''} style="cursor:pointer;width:16px;height:16px;accent-color:var(--mauve);pointer-events:none;">
+        <span style="font-size:13px;color:var(--text);${checked ? 'text-decoration:line-through;opacity:0.6;' : ''}">${escapeHtml(habit.name)}</span>
+        ${habit.cadence === 'weekly' ? '<span style="font-size:10px;color:var(--text-dim);">(weekly)</span>' : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+function renderRoutinesCard(visibleRoutines, date) {
+  return visibleRoutines.slice(0, 6).map(routine => {
+    const checked = isRoutineChecked(routine.id, date);
+    const meta = [routine.timeOfDay, routine.durationMin ? `${routine.durationMin}m` : ''].filter(Boolean).join(' · ');
+    return `
+      <div class="today-routine-item" data-action="routine-toggle" data-routine-id="${escapeHtml(routine.id)}" role="button" tabindex="0"
+           style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:4px;cursor:pointer;transition:background 0.13s;">
+        <input type="checkbox" ${checked ? 'checked' : ''} style="cursor:pointer;width:16px;height:16px;accent-color:var(--soon);pointer-events:none;">
+        <span style="font-size:13px;color:var(--text);${checked ? 'text-decoration:line-through;opacity:0.6;' : ''}">${routine.icon || '📋'} ${escapeHtml(routine.name)}</span>
+        ${meta ? `<span style="font-size:10px;color:var(--text-dim);">${escapeHtml(meta)}</span>` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
 function renderGoalsCard(goalsThisMonth, monthStart, monthEnd) {
   if (goalsThisMonth.length === 0) {
     return `
@@ -850,9 +919,10 @@ function renderGoalsCard(goalsThisMonth, monthStart, monthEnd) {
     const color = catColors[goal.cat] || 'var(--rose)';
     const dateText = formatDate(milestone.date);
     
+    const milestoneTitleEsc = escapeHtml(milestone.title).replace(/"/g, '&quot;');
     return `
       <div class="today-goal-item" data-goal-id="${goal.id}" data-milestone="${escapeHtml(milestone.title)}">
-        <div>
+        <div style="flex:1;min-width:0;">
           <div class="today-goal-name">
             <span style="font-size:14px;margin-right:6px;">${goal.emoji || '◎'}</span>
             ${escapeHtml(milestone.title)}
@@ -866,6 +936,7 @@ function renderGoalsCard(goalsThisMonth, monthStart, monthEnd) {
             <div class="today-goal-progress-fill" style="width:${pct}%;background:${color}"></div>
           </div>
         </div>
+        <button type="button" class="today-goal-add-btn" data-action="goal-add-to-today" data-goal-id="${escapeHtml(goal.id)}" data-milestone-title="${milestoneTitleEsc}" title="Add task due today">+ Today</button>
       </div>
     `;
   }).join("");

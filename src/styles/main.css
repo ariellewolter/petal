@@ -860,6 +860,7 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 .ev-time{font-size:8px;color:var(--text-muted);letter-spacing:0.04em;}
 .ev-day-badge{font-size:7px;letter-spacing:0.08em;padding:2px 6px;border-radius:4px;background:var(--bg2);color:var(--text-muted);white-space:nowrap;align-self:flex-start;margin-top:1px;}
 .sidebar-add:hover{color:var(--rose);}
+.planner-habit-del:hover,.planner-routine-del:hover{opacity:1 !important;color:var(--overdue) !important;}
 
 /* Timeline */
 .t-row{display:grid;grid-template-columns:42px 1fr;gap:0;position:relative;min-height:60px;margin-bottom:8px;}
@@ -1155,6 +1156,8 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 .today-goal-item{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;}
 .today-goal-item:last-child{border-bottom:none;}
 .today-goal-item:hover{background:var(--bg2);}
+.today-goal-add-btn{flex-shrink:0;padding:4px 8px;font-size:10px;font-weight:600;letter-spacing:.05em;color:var(--rose);background:var(--rose-pale);border:1px solid var(--rose-soft);border-radius:6px;cursor:pointer;transition:all .15s;}
+.today-goal-add-btn:hover{background:var(--rose);color:#fff;border-color:var(--rose);}
 .today-habit-item:last-child,.today-routine-item:last-child{border-bottom:none;}
 .today-habit-item:hover,.today-routine-item:hover{background:var(--bg2);}
 .today-goal-name{font-size:12px;color:var(--text);margin-bottom:4px;display:flex;align-items:center;}
@@ -1180,6 +1183,11 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 /* QUICK ADD BUTTON */
 .today-quick-add{position:fixed;bottom:28px;right:28px;width:48px;height:48px;border-radius:50%;background:var(--rose);border:none;color:var(--surface);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(201,139,139,.3);transition:all .2s;z-index:100;}
 .today-quick-add:hover{transform:scale(1.1);box-shadow:0 4px 28px rgba(201,139,139,.5);}
+
+/* Quick-add menu (Task / Habit / Routine / Goal) */
+.quick-add-menu{font-family:'Jost',sans-serif;}
+.quick-add-menu-item{display:block;width:100%;padding:10px 16px;text-align:left;background:none;border:none;font-size:13px;color:var(--text);cursor:pointer;transition:background .12s;}
+.quick-add-menu-item:hover{background:var(--bg2);}
 
 /* SETTINGS PAGE */
 .settings-page{max-width:800px;margin:0 auto;}
@@ -2398,6 +2406,15 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 .goals-page .add-ms-date{background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:6px 7px;font-family:'Jost',sans-serif;font-size:10.5px;font-weight:300;color:var(--text-dim);outline:none;width:110px;}
 .goals-page .add-ms-btn{width:30px;height:30px;background:var(--rose-pale);border:1px solid var(--rose-soft);border-radius:7px;color:var(--rose);cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center;transition:all .12s;}
 .goals-page .add-ms-btn:hover{background:var(--rose);color:#fff;}
+
+.goals-page .d-related{margin-top:6px;padding-top:10px;border-top:1px solid var(--border);}
+.goals-page .d-related-list{list-style:none;margin:0 0 6px;padding:0;}
+.goals-page .d-related-item{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:11.5px;color:var(--text);}
+.goals-page .d-related-item span{flex:1;min-width:0;}
+.goals-page .d-related-unlink{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;padding:0 4px;transition:color .12s;}
+.goals-page .d-related-unlink:hover{color:var(--overdue);}
+.goals-page .d-related-empty{font-size:11px;color:var(--text-light);font-style:italic;}
+.goals-page .d-related-add{margin-top:4px;}
 
 .goals-page .d-foot{padding:11px 18px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:var(--bg2);}
 .goals-page .df-btns{display:flex;gap:7px;}
