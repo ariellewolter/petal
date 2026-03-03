@@ -713,11 +713,11 @@ async function readDataFile() {
           } catch (backupError) {
             safeError('❌ Backup file also corrupted:', backupError);
             // Fall back to empty state
-            mainData = { tasks: [], projects: [], openProjects: [], settings: {}, files: [], events: [], recurringRules: [], habits: [], habitCheckins: {}, routines: [], routineCheckins: {}, prints3d: [] };
+            mainData = { tasks: [], projects: [], openProjects: [], settings: {}, files: [], events: [], recurringRules: [], habits: [], habitCheckins: {}, routines: [], routineCheckins: {}, goals: [], prints3d: [] };
           }
         } else {
           safeWarn('⚠️ No backup file found - using empty state');
-          mainData = { tasks: [], projects: [], openProjects: [], settings: {}, files: [], events: [], recurringRules: [], habits: [], routines: [] };
+          mainData = { tasks: [], projects: [], openProjects: [], settings: {}, files: [], events: [], recurringRules: [], habits: [], habitCheckins: {}, routines: [], routineCheckins: {}, goals: [], prints3d: [] };
         }
       }
     } else {
@@ -743,6 +743,7 @@ async function readDataFile() {
       habitCheckins: {},
       routines: [],
       routineCheckins: {},
+      goals: [],
       prints3d: [],
       workflow: {}
     };
@@ -788,7 +789,7 @@ async function readDataFile() {
   } catch (error) {
     if (error.code === 'ENOENT') {
       return {
-        data: { tasks: [], projects: [], openProjects: [], settings: {}, files: [], events: [], recurringRules: [], habits: [], habitCheckins: {}, routines: [], routineCheckins: {}, prints3d: [] },
+        data: { tasks: [], projects: [], openProjects: [], settings: {}, files: [], events: [], recurringRules: [], habits: [], habitCheckins: {}, routines: [], routineCheckins: {}, goals: [], prints3d: [] },
         hasConflicts: false,
         conflicts: [],
         newerConflicts: [],

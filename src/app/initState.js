@@ -217,7 +217,8 @@ export async function initStateInternal() {
     cellLogCellTypes: loadedData.settings?.cellLog?.cellTypes?.length || 0,
     cellLogMediaTypes: loadedData.settings?.cellLog?.mediaTypes?.length || 0,
     habitsCount: loadedData.habits?.length || 0,
-    routinesCount: loadedData.routines?.length || 0
+    routinesCount: loadedData.routines?.length || 0,
+    goalsCount: loadedData.goals?.length || 0
   });
   
   // Load data into store (Step 2: Wire store)
@@ -249,6 +250,11 @@ export async function initStateInternal() {
       settings: loadedData.settings || {},
       events: loadedData.events || [],
       recurringRules: loadedData.recurringRules || [],
+      habits: loadedData.habits || [],
+      habitCheckins: loadedData.habitCheckins || {},
+      routines: loadedData.routines || [],
+      routineCheckins: loadedData.routineCheckins || {},
+      goals: loadedData.goals || [],
       prints3d: loadedData.prints3d || [], // 3D print queue
       currentView,
       currentSort,
