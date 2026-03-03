@@ -70,7 +70,7 @@ export function renderPlannerRoutines(containerEl, state, viewDate = new Date())
                  ondragstart="event.stopPropagation();return false;"
                  draggable="false">
           <div style="flex:1;min-width:0;">
-            <span style="font-size:12px;color:var(--text);display:block;${checked ? 'text-decoration:line-through;opacity:0.6;' : ''}">${esc(routine.name)}</span>
+            <span style="font-size:12px;color:var(--text);display:block;${checked ? 'text-decoration:line-through;opacity:0.6;' : ''}">${esc(routine.icon || '📋')} ${esc(routine.name)}</span>
             ${metaStr ? `<span style="font-size:9px;color:var(--text-dim);">${esc(metaStr)}</span>` : ''}
             ${routine.cadence === 'weekly' ? '<span style="font-size:9px;color:var(--text-dim);">(weekly)</span>' : ''}
             <span style="font-size:8px;color:var(--text-dim);opacity:0.7;">(drag to schedule)</span>

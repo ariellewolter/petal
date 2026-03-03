@@ -28,8 +28,11 @@ export function renderPlannerHabits(containerEl, state, viewDate = new Date()) {
   let html = `
     <div class="planner-card" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <div style="font-family:'Jost',sans-serif;font-size:8px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);">Habits (Today)</div>
-        <button class="sidebar-add" onclick="openAddHabitModal()" style="font-size:16px;color:var(--text-muted);cursor:pointer;transition:color 0.13s;background:none;border:none;line-height:1;">+</button>
+        <div style="font-family:'Jost',sans-serif;font-size:8px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);">Habits</div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span class="today-card-action" data-action="nav:habits" role="button" tabindex="0" style="font-size:8px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);cursor:pointer;transition:color 0.13s;">All habits →</span>
+          <button class="sidebar-add" onclick="openAddHabitModal()" style="font-size:16px;color:var(--text-muted);cursor:pointer;transition:color 0.13s;background:none;border:none;line-height:1;">+</button>
+        </div>
       </div>
       <div class="habits-list" style="display:flex;flex-direction:column;gap:6px;">
   `;
@@ -46,10 +49,12 @@ export function renderPlannerHabits(containerEl, state, viewDate = new Date()) {
       const habitIdEsc = esc(habit.id);
       const habitNameEsc = esc(habit.name);
       
+      const durationEsc = (habit.durationMin != null && habit.durationMin > 0) ? String(habit.durationMin) : '';
       html += `
         <div class="habit-item habit-draggable" draggable="true"
              data-habit-id="${habitIdEsc}"
              data-habit-name="${habitNameEsc}"
+             data-habit-duration="${durationEsc}"
              style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:4px;transition:background 0.13s;cursor:grab;" 
              onclick="if(!event.target.closest('input') && !event.target.closest('button')){if(window.Petal?.features?.habits?.toggleHabit){window.Petal.features.habits.toggleHabit('${habitIdEsc}');if(typeof buildPlannerSidebar==='function'){buildPlannerSidebar();}}}"
              ondragstart="handleHabitDragStart(event)"
@@ -61,6 +66,7 @@ export function renderPlannerHabits(containerEl, state, viewDate = new Date()) {
                  draggable="false">
           <span style="font-size:12px;color:var(--text);flex:1;${checked ? 'text-decoration:line-through;opacity:0.6;' : ''}">${esc(habit.name)}</span>
           ${habit.cadence === 'weekly' ? '<span style="font-size:9px;color:var(--text-dim);">(weekly)</span>' : ''}
+          ${(habit.durationMin != null && habit.durationMin > 0) ? `<span style="font-size:9px;color:var(--text-dim);">${habit.durationMin} min</span>` : ''}
           <span style="font-size:8px;color:var(--text-dim);opacity:0.7;">(drag to schedule)</span>
           <button onclick="event.stopPropagation();if(confirm('Delete this habit?')){if(window.Petal?.features?.habits?.archiveHabit){window.Petal.features.habits.archiveHabit('${habitIdEsc}');if(typeof buildPlannerSidebar==='function'){buildPlannerSidebar();}}}" 
                   style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;padding:2px 4px;opacity:0.6;transition:opacity 0.13s;flex-shrink:0;" 

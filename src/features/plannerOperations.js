@@ -4,6 +4,22 @@
 import { parseTime, formatTime } from '../utils/dates.js';
 import { esc } from '../utils/strings.js';
 
+// Emojis for routine icons (same set as habits for consistency)
+const ROUTINE_EMOJIS = [
+  '📝', '🌿', '💪', '🏃', '🧘', '😴', '💧', '🥗', '📚', '🎯',
+  '✨', '🔥', '🌟', '💡', '🎨', '🎵', '📖', '☀️', '🌙', '🌅',
+  '🧠', '💆', '🚴', '🏋️', '⛹️', '🧘‍♀️', '💊', '🍎', '🥑', '☕',
+  '🛏️', '🧹', '📱', '💻', '✍️', '🎓', '🔬', '🏠', '🌱', '🌸',
+  '🐕', '🐈', '🕯️', '📿', '🧴', '🪥', '🧺', '🛒', '💰', '❤️',
+  '🧩', '🎮', '🖼️', '📷', '🌍', '⏰', '✅', '◎', '✦', '◆'
+];
+
+/** Snap minutes (0–59) to quarter-hour: 0, 15, 30, or 45. Users can edit the block for other times. */
+function snapToQuarterHour(minutes) {
+  const m = Math.max(0, Math.min(59, Math.round(minutes)));
+  return Math.min(45, Math.round(m / 15) * 15);
+}
+
 /**
  * Edit recurring rule
  */
@@ -326,6 +342,7 @@ export function submitHabitModal() {
 export function openAddRoutineModal() {
   const modal = document.getElementById('routine-modal');
   const titleEl = document.getElementById('routine-modal-title');
+  const gridContainer = document.getElementById('routine-emoji-grid-container');
   if (!modal || !titleEl) return;
   
   titleEl.textContent = 'Add Routine';
@@ -335,6 +352,19 @@ export function openAddRoutineModal() {
   document.getElementById('routine-duration').value = '';
   document.querySelectorAll('.routine-day').forEach(cb => cb.checked = false);
   document.getElementById('routine-days-of-week-field').style.display = 'none';
+  
+  // Populate emoji grid and bind (re-run each open so selection resets)
+  if (gridContainer) {
+    gridContainer.innerHTML = ROUTINE_EMOJIS.map((e, i) =>
+      `<button type="button" class="routine-epick ${i === 0 ? 'on' : ''}" data-e="${esc(e)}">${esc(e)}</button>`
+    ).join('');
+    gridContainer.querySelectorAll('.routine-epick').forEach(btn => {
+      btn.addEventListener('click', () => {
+        gridContainer.querySelectorAll('.routine-epick').forEach(b => b.classList.remove('on'));
+        btn.classList.add('on');
+      });
+    });
+  }
   
   modal.style.display = 'flex';
   document.getElementById('routine-name').focus();
@@ -383,8 +413,11 @@ export function submitRoutineModal() {
   const durationValue = document.getElementById('routine-duration').value;
   const durationMin = durationValue && !isNaN(parseInt(durationValue)) && parseInt(durationValue) > 0 ? parseInt(durationValue) : undefined;
   
+  const selectedEmojiBtn = document.querySelector('#routine-modal .routine-epick.on');
+  const icon = selectedEmojiBtn?.getAttribute('data-e') || ROUTINE_EMOJIS[0] || '📋';
+  
   if (window.Petal?.features?.routines?.addRoutine) {
-    window.Petal.features.routines.addRoutine({ name, cadence, timeOfDay, durationMin, daysOfWeek });
+    window.Petal.features.routines.addRoutine({ name, cadence, icon, timeOfDay, durationMin, daysOfWeek });
     closeRoutineModal();
     if (typeof window.buildPlannerSidebar === 'function') {
       window.buildPlannerSidebar();
@@ -457,9 +490,12 @@ export function handleHabitDragStart(event) {
     return false;
   }
   
+  const durationStr = habitItem.dataset.habitDuration;
+  const durationMin = durationStr ? Math.max(1, Math.min(480, parseInt(durationStr, 10) || 0)) : null;
   draggedHabit = {
     id: habitItem.dataset.habitId,
-    name: habitItem.dataset.habitName
+    name: habitItem.dataset.habitName,
+    durationMin
   };
   
   event.dataTransfer.effectAllowed = 'copy';
@@ -539,9 +575,9 @@ export function handleTaskDragEnd(event) {
 }
 
 /**
- * Handle timeline drop (create event from routine/habit/task)
+ * Handle timeline drop (move existing event, or create from routine/habit/task)
  */
-export function handleTimelineDrop(ctx, event, hour, dateStr) {
+export async function handleTimelineDrop(ctx, event, hour, dateStr) {
   const { events: eventsValue, formatTime: formatTimeFn, save: saveFn, tasks: tasksValue, projects: projectsValue } = ctx;
   
   const formatTimeFunction = formatTimeFn || (typeof window.Petal?.formatTime === 'function' ? window.Petal.formatTime : null);
@@ -549,10 +585,52 @@ export function handleTimelineDrop(ctx, event, hour, dateStr) {
     console.error('formatTime function not available');
     return;
   }
-  
+
+  // Move existing event: dragged from calendar to new slot
+  const movePayload = event.dataTransfer?.getData?.('application/x-planner-move-event');
+  if (movePayload) {
+    try {
+      const { eventId, isTaskBlock, linkedTaskId } = JSON.parse(movePayload);
+      const state = window.Petal?.store?.getState();
+      const events = state?.events || [];
+      const ev = events.find(e => String(e.id) === String(eventId));
+      if (!ev) return;
+
+      const slot = event.currentTarget;
+      const slotRect = slot.getBoundingClientRect();
+      const dropY = event.clientY - slotRect.top;
+      const PIXELS_PER_MINUTE = 1;
+      const rawMinutes = Math.max(0, Math.min(59, Math.round(dropY / PIXELS_PER_MINUTE)));
+      const minutesIntoHour = snapToQuarterHour(rawMinutes);
+      const newStartMins = hour * 60 + minutesIntoHour;
+      const newStartTime = formatTimeFunction(newStartMins);
+
+      const movedEvent = { ...ev, date: dateStr, startTime: newStartTime };
+      const updatedEvents = events.map(e => (String(e.id) === String(eventId) ? movedEvent : e));
+
+      let nextState = { events: updatedEvents };
+      if (isTaskBlock && linkedTaskId && state?.tasks) {
+        const { updateTaskFromEvent } = await import('../utils/taskEventConverter.js');
+        const tasks = state.tasks.map(t =>
+          String(t.id) === String(linkedTaskId) ? updateTaskFromEvent(t, movedEvent) : t
+        );
+        nextState = { events: updatedEvents, tasks };
+      }
+      if (window.Petal?.store) {
+        window.Petal.store.setState(nextState);
+      }
+      if (window.routerSwitchView) window.routerSwitchView('planner');
+      if (typeof window.buildPlannerSidebar === 'function') window.buildPlannerSidebar();
+      if (typeof window.buildPlannerCalendar === 'function') window.buildPlannerCalendar();
+    } catch (err) {
+      console.warn('Planner move event failed', err);
+    }
+    return;
+  }
+
   console.log('Timeline drop:', { draggedRoutine, draggedHabit, draggedTask, hour, dateStr });
   
-  // Handle task drop first (highest priority)
+  // Handle task drop (create from task card)
   if (draggedTask) {
     handleTaskTimelineDrop(ctx, event, hour, dateStr, formatTimeFunction);
     return;
@@ -563,12 +641,13 @@ export function handleTimelineDrop(ctx, event, hour, dateStr) {
     return;
   }
   
-  // Calculate exact time based on drop position within the hour slot
+  // Calculate time from drop position, snapped to :00, :15, :30, :45
   const slot = event.currentTarget;
   const slotRect = slot.getBoundingClientRect();
   const dropY = event.clientY - slotRect.top;
   const PIXELS_PER_MINUTE = 1;
-  const minutesIntoHour = Math.max(0, Math.min(59, Math.round(dropY / PIXELS_PER_MINUTE)));
+  const rawMinutes = Math.max(0, Math.min(59, Math.round(dropY / PIXELS_PER_MINUTE)));
+  const minutesIntoHour = snapToQuarterHour(rawMinutes);
   
   const startTime = formatTimeFunction(hour * 60 + minutesIntoHour);
   let duration = 60; // Default 1 hour
@@ -581,7 +660,7 @@ export function handleTimelineDrop(ctx, event, hour, dateStr) {
     category = 'personal'; // Routines default to personal category
   } else if (draggedHabit) {
     title = draggedHabit.name;
-    duration = 30; // Habits default to 30 minutes
+    duration = (draggedHabit.durationMin != null && draggedHabit.durationMin > 0) ? draggedHabit.durationMin : 30;
     category = 'personal';
   }
   
@@ -655,12 +734,13 @@ export function handleTimelineDrop(ctx, event, hour, dateStr) {
 async function handleTaskTimelineDrop(ctx, event, hour, dateStr, formatTimeFunction) {
   const { tasks: tasksValue, projects: projectsValue } = ctx;
   
-  // Calculate exact time based on drop position within the hour slot
+  // Calculate time from drop position, snapped to :00, :15, :30, :45
   const slot = event.currentTarget;
   const slotRect = slot.getBoundingClientRect();
   const dropY = event.clientY - slotRect.top;
   const PIXELS_PER_MINUTE = 1;
-  const minutesIntoHour = Math.max(0, Math.min(59, Math.round(dropY / PIXELS_PER_MINUTE)));
+  const rawMinutes = Math.max(0, Math.min(59, Math.round(dropY / PIXELS_PER_MINUTE)));
+  const minutesIntoHour = snapToQuarterHour(rawMinutes);
   
   const startTime = formatTimeFunction(hour * 60 + minutesIntoHour);
   const duration = draggedTask.scheduledDurationMin || draggedTask.estimatedMinutes || 60;

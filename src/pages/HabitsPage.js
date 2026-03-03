@@ -6,6 +6,15 @@ import { EmptyState, Buttons, PageHeader, StatCard } from '../ui/components.js';
 
 // Constants
 const COLORS = ['#c98b8b', '#b8a0c9', '#8ab4c9', '#8ac9a0', '#c9b88a', '#c98ab4', '#a0b8c9', '#c9a08a'];
+// Emojis for habit icons (pick from grid when adding/editing a habit)
+const HABIT_EMOJIS = [
+  '📝', '🌿', '💪', '🏃', '🧘', '😴', '💧', '🥗', '📚', '🎯',
+  '✨', '🔥', '🌟', '💡', '🎨', '🎵', '📖', '☀️', '🌙', '🌅',
+  '🧠', '💆', '🚴', '🏋️', '⛹️', '🧘‍♀️', '💊', '🍎', '🥑', '☕',
+  '🛏️', '🧹', '📱', '💻', '✍️', '🎓', '🔬', '🏠', '🌱', '🌸',
+  '🐕', '🐈', '🕯️', '📿', '🧴', '🪥', '🧺', '🛒', '💰', '❤️',
+  '🧩', '🎮', '🖼️', '📷', '🌍', '⏰', '✅', '◎', '✦', '◆'
+];
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const MONTHS_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -825,6 +834,12 @@ function injectStyles() {
     #view-habits .habits-form-input::placeholder {
       color: var(--text-light);
     }
+    #view-habits .habits-form-hint {
+      display: block;
+      font-size: 10px;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
     #view-habits .habits-mfbtn {
       padding: 9px 20px;
       border-radius: 9px;
@@ -869,6 +884,42 @@ function injectStyles() {
     #view-habits .habits-cswatch.sel {
       border-color: var(--text);
       transform: scale(1.15);
+    }
+    #view-habits .habits-emoji-grid {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      max-height: 140px;
+      overflow-y: auto;
+      padding: 10px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    #view-habits .habits-emoji-grid::-webkit-scrollbar { width: 4px; }
+    #view-habits .habits-emoji-grid::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    #view-habits .habits-epick {
+      font-size: 20px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 1.5px solid transparent;
+      transition: all .11s;
+      background: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 36px;
+      min-height: 36px;
+      flex-shrink: 0;
+    }
+    #view-habits .habits-epick:hover {
+      background: var(--surface);
+      border-color: var(--border);
+    }
+    #view-habits .habits-epick.on {
+      border-color: var(--rose-soft);
+      background: var(--rose-pale);
     }
     #view-habits .habits-freq-row {
       display: flex;
@@ -1143,7 +1194,7 @@ function renderMonthly() {
     const s = getStreak(h.id);
     return `<div class="habits-habit-list-item ${h.id === selId ? 'active' : ''}" data-action="select-habit" data-hid="${h.id}">
       <div class="habits-habit-dot" style="background:${h.color || COLORS[0]}"></div>
-      <div class="habits-habit-list-name">${escapeHtml(h.icon || '📝')} ${escapeHtml(h.name)}</div>
+      <div class="habits-habit-list-name">${escapeHtml(h.icon || '📝')} ${escapeHtml(h.name)}${(h.durationMin != null && h.durationMin > 0) ? ` · ${h.durationMin} min` : ''}</div>
       ${s > 0 ? `<div class="habits-habit-list-streak">🔥 ${s}</div>` : ''}
     </div>`;
   }).join('');
@@ -1166,7 +1217,7 @@ function renderMonthly() {
           <div class="habits-calendar-body">
             <div class="habits-cal-habit-info">
               <div class="habits-habit-dot" style="background:${habit.color || COLORS[0]};width:12px;height:12px;"></div>
-              <div class="habits-cal-habit-name">${escapeHtml(habit.icon || '📝')} ${escapeHtml(habit.name)}</div>
+              <div class="habits-cal-habit-name">${escapeHtml(habit.icon || '📝')} ${escapeHtml(habit.name)}${(habit.durationMin != null && habit.durationMin > 0) ? ` · ${habit.durationMin} min` : ''}</div>
               ${habit.freq ? `<div style="font-size:10px;color:var(--text-dim);margin-left:8px;background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:2px 9px;">${escapeHtml(habit.freq)}</div>` : ''}
             </div>
             <div class="habits-cal-dow-row">${DAYS_OF_WEEK.map(d => `<div class="habits-cal-dow">${d}</div>`).join('')}</div>
@@ -1244,7 +1295,7 @@ function renderYearly() {
     return `<div class="habits-yearly-habit-block" style="animation-delay:${idx * .07}s">
       <div class="habits-yearly-habit-header">
         <div class="habits-habit-dot" style="background:${habit.color || COLORS[0]};width:12px;height:12px;"></div>
-        <div class="habits-yearly-habit-name">${escapeHtml(habit.icon || '📝')} ${escapeHtml(habit.name)}</div>
+        <div class="habits-yearly-habit-name">${escapeHtml(habit.icon || '📝')} ${escapeHtml(habit.name)}${(habit.durationMin != null && habit.durationMin > 0) ? ` · ${habit.durationMin} min` : ''}</div>
         ${streak > 0 ? `<div class="habits-habit-list-streak">🔥 ${streak} day streak</div>` : ''}
         <div class="habits-yearly-rate">${rate}% this year</div>
       </div>
@@ -1302,9 +1353,11 @@ function getModalTemplate(mode) {
       </div>
     </div>
     <div class="habits-form-row">
-      <div class="habits-form-group">
+      <div class="habits-form-group full">
         <label class="habits-form-label">Emoji Icon</label>
-        <input class="habits-form-input" id="habits-m-icon" placeholder="🌿" maxlength="4" style="font-size:18px;">
+        <div class="habits-emoji-grid" id="habits-emoji-grid">
+          ${HABIT_EMOJIS.map((e, i) => `<button type="button" class="habits-epick ${i === 0 ? 'on' : ''}" data-e="${escapeHtml(e)}">${escapeHtml(e)}</button>`).join('')}
+        </div>
       </div>
       <div class="habits-form-group">
         <label class="habits-form-label">Color</label>
@@ -1322,6 +1375,13 @@ function getModalTemplate(mode) {
           <div class="habits-fpill" data-f="weekends">Weekends</div>
           <div class="habits-fpill" data-f="3× / week">3× / week</div>
         </div>
+      </div>
+    </div>
+    <div class="habits-form-row">
+      <div class="habits-form-group">
+        <label class="habits-form-label">Time to complete</label>
+        <input class="habits-form-input" id="habits-m-duration" type="number" min="1" max="480" placeholder="e.g. 15" title="Minutes (used when you drag this habit onto the calendar)">
+        <span class="habits-form-hint">minutes — used when scheduling on calendar</span>
       </div>
     </div>
     <div class="habits-form-row">
@@ -1386,7 +1446,7 @@ function openModal(mode) {
     if (inp) inp.focus();
   }, 120);
   
-  // Bind color + freq pickers for habits
+  // Bind color + freq + emoji pickers for habits
   if (mode === 'habit') {
     const colorRow = document.getElementById('habits-color-row');
     if (colorRow) {
@@ -1404,6 +1464,13 @@ function openModal(mode) {
         selectedFreq = p.dataset.f;
         modalBody.querySelectorAll('.habits-fpill').forEach(x => x.classList.remove('sel'));
         p.classList.add('sel');
+      });
+    });
+    
+    modalBody.querySelectorAll('.habits-epick').forEach(btn => {
+      btn.addEventListener('click', () => {
+        modalBody.querySelectorAll('.habits-epick').forEach(b => b.classList.remove('on'));
+        btn.classList.add('on');
       });
     });
   }
@@ -1430,8 +1497,12 @@ async function saveModal() {
     return;
   }
   
-  const iconInput = document.getElementById('habits-m-icon');
-  const icon = (iconInput?.value.trim() || '🌿');
+  const modalBody = document.getElementById('view-habits')?.querySelector('#habits-modal-body');
+  const selectedEmojiBtn = modalBody?.querySelector('.habits-epick.on');
+  const icon = selectedEmojiBtn?.getAttribute('data-e') || HABIT_EMOJIS[0] || '📝';
+  
+  const durationInput = document.getElementById('habits-m-duration');
+  const durationMin = durationInput?.value ? Math.max(1, Math.min(480, parseInt(durationInput.value, 10) || 0)) : null;
   
   const notesInput = document.getElementById('habits-m-notes');
   const notes = notesInput?.value || '';
@@ -1441,6 +1512,7 @@ async function saveModal() {
     icon,
     color: selectedColor,
     freq: selectedFreq,
+    durationMin: durationMin || undefined,
     notes
   });
   if (!selectedHabitId && habits.length > 0) {

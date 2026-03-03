@@ -199,7 +199,7 @@ function renderContent(container) {
         <input type="checkbox" class="routine-check" ${checked ? 'checked' : ''}
                data-action="routines:toggle" data-routine-id="${idEsc}" title="Toggle for today">
         <div class="routine-body">
-          <div class="routine-name">${nameEsc}</div>
+          <div class="routine-name">${escapeHtml(r.icon || '📋')} ${nameEsc}</div>
           ${meta ? `<div class="routine-meta">${escapeHtml(meta)}</div>` : ''}
           <span class="routine-cadence">${r.cadence === 'weekly' ? 'Weekly' : 'Daily'}</span>
         </div>
@@ -297,7 +297,7 @@ export function renderRoutinesPage(containerEl, state, _options = {}) {
                 <input type="checkbox" class="routine-check" ${checked ? 'checked' : ''}
                        data-action="routines:toggle" data-routine-id="${idEsc}" title="Toggle for today">
                 <div class="routine-body">
-                  <div class="routine-name">${nameEsc}</div>
+                  <div class="routine-name">${escapeHtml(r.icon || '📋')} ${nameEsc}</div>
                   ${meta ? `<div class="routine-meta">${escapeHtml(meta)}</div>` : ''}
                   <span class="routine-cadence">${r.cadence === 'weekly' ? 'Weekly' : 'Daily'}</span>
                 </div>

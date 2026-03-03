@@ -997,6 +997,9 @@
           <div class="cal-grid" id="planner-cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;"></div>
         </div>
 
+        <!-- Goals Card -->
+        <div id="planner-goals-card" style="flex-shrink:0;padding:8px 10px;border-bottom:1px solid var(--border);min-height:60px;"></div>
+
         <!-- Habits Card -->
         <div id="planner-habits-card" style="flex-shrink:0;padding:8px 10px;border-bottom:1px solid var(--border);min-height:60px;"></div>
 
@@ -1113,6 +1116,11 @@
       <div class="field" style="margin-bottom:16px;">
         <label>Routine Name</label>
         <input type="text" id="routine-name" placeholder="e.g., Email cleanup, Plan tomorrow" style="width:100%;">
+      </div>
+      
+      <div class="field" style="margin-bottom:16px;">
+        <label>Icon</label>
+        <div id="routine-emoji-grid-container" class="routine-emoji-grid"></div>
       </div>
       
       <div class="field" style="margin-bottom:16px;">
@@ -6062,10 +6070,10 @@ function buildPlannerCalendar() {
   const grid = document.getElementById('planner-cal-grid');
   if (!label || !grid) return;
   
-  // Read from store
+  // Read from store (use != null to fallback when undefined or null)
   const state = window.Petal?.store?.getState();
-  const plannerCalYear = state?.plannerCalYear !== null ? state.plannerCalYear : new Date().getFullYear();
-  const plannerCalMonth = state?.plannerCalMonth !== null ? state.plannerCalMonth : new Date().getMonth();
+  const plannerCalYear = state?.plannerCalYear != null ? state.plannerCalYear : new Date().getFullYear();
+  const plannerCalMonth = state?.plannerCalMonth != null ? state.plannerCalMonth : new Date().getMonth();
   const currentPlannerView = state?.currentPlannerView || 'daily';
   const plannerViewDate = state?.plannerViewDate || new Date();
   

@@ -11,12 +11,13 @@ import { getPeriodKey } from '../utils/periodKeys.js';
  * @param {Object} params - Routine parameters
  * @param {string} params.name - Routine name
  * @param {string} params.cadence - 'daily' or 'weekly'
+ * @param {string} [params.icon] - Optional emoji icon
  * @param {string} [params.timeOfDay] - Optional time in HH:MM format
  * @param {number} [params.durationMin] - Optional duration in minutes
  * @param {number[]} [params.daysOfWeek] - Optional array of day numbers (0-6, 0=Sunday)
  * @returns {string} New routine ID
  */
-export function addRoutine({ name, cadence, timeOfDay, durationMin, daysOfWeek }) {
+export function addRoutine({ name, cadence, icon, timeOfDay, durationMin, daysOfWeek }) {
   const state = appStore.getState();
   const routines = state.routines || [];
   
@@ -24,6 +25,7 @@ export function addRoutine({ name, cadence, timeOfDay, durationMin, daysOfWeek }
     id: `routine_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     name: name.trim(),
     cadence: cadence === 'weekly' ? 'weekly' : 'daily',
+    icon: (icon && typeof icon === 'string' && icon.trim()) ? icon.trim() : undefined,
     timeOfDay: timeOfDay && /^\d{2}:\d{2}$/.test(timeOfDay) ? timeOfDay : undefined,
     durationMin: typeof durationMin === 'number' && durationMin > 0 ? durationMin : undefined,
     daysOfWeek: Array.isArray(daysOfWeek) && daysOfWeek.length > 0 ? daysOfWeek : undefined,
