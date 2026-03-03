@@ -296,7 +296,28 @@ export async function submitAddTaskModal(ctx) {
     
     const title = titleInput.value.trim();
     if (!title) {
-      alert('Please enter a task title');
+      // Use notification instead of alert for better UX
+      if (typeof window.showNotification === 'function') {
+        window.showNotification({
+          message: 'Please enter a task title',
+          type: 'warning',
+          duration: 3000
+        });
+      } else {
+        // Fallback: try to import and use
+        import('../ui/components.js').then(module => {
+          if (module.showNotification) {
+            module.showNotification({
+              message: 'Please enter a task title',
+              type: 'warning',
+              duration: 3000
+            });
+          }
+        }).catch(() => {
+          // Fallback to alert if notification not available
+          alert('Please enter a task title');
+        });
+      }
       return;
     }
     
@@ -369,12 +390,51 @@ export async function submitAddTaskModal(ctx) {
     
     if (success) {
       closeAddTaskModal();
+      // Show success notification
+      if (typeof window.showNotification === 'function') {
+        window.showNotification({
+          message: `Task "${title}" created successfully`,
+          type: 'success',
+          duration: 3000
+        });
+      } else {
+        // Import and use if available
+        import('../ui/components.js').then(module => {
+          if (module.showNotification) {
+            module.showNotification({
+              message: `Task "${title}" created successfully`,
+              type: 'success',
+              duration: 3000
+            });
+          }
+        }).catch(() => {
+          // Notification system not available, skip
+        });
+      }
     } else {
-      alert('Failed to add task - handler function not available');
+      // Use notification instead of alert
+      if (typeof window.showNotification === 'function') {
+        window.showNotification({
+          message: 'Failed to add task - handler function not available',
+          type: 'error',
+          duration: 4000
+        });
+      } else {
+        alert('Failed to add task - handler function not available');
+      }
     }
   } catch (error) {
     console.error('❌ Error in submitAddTaskModal:', error);
-    alert('An error occurred while adding the task. Please try again.');
+    // Use notification instead of alert
+    if (typeof window.showNotification === 'function') {
+      window.showNotification({
+        message: 'An error occurred while adding the task. Please try again.',
+        type: 'error',
+        duration: 4000
+      });
+    } else {
+      alert('An error occurred while adding the task. Please try again.');
+    }
   }
 }
 

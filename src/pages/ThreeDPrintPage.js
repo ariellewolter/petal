@@ -3,6 +3,7 @@
 // Replaces fetch/inject pattern with proper module
 
 import { escapeHtml } from '../utils/strings.js';
+import { EmptyState, Buttons } from '../ui/components.js';
 
 // State
 let prints3d = [];
@@ -394,15 +395,23 @@ function render3DPrints() {
   
   if (filtered.length === 0) {
     const emptyMessage = currentPrintTab === 'queue' 
-      ? 'No prints in queue. Click "+ Add Print" to get started!'
+      ? 'No prints in queue'
       : currentPrintTab === 'printed'
-      ? 'No completed prints yet.'
-      : 'No prints found. Click "+ Add Print" to add your first print!';
-    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--text-dim);">
-      <div style="font-size:48px;margin-bottom:16px;opacity:0.3;">🖨</div>
-      <div style="font-size:14px;margin-bottom:8px;">${emptyMessage}</div>
-      ${currentPrintTab === 'queue' || currentPrintTab === 'all' ? '<button class="print3d-add-btn" data-action="open-modal" style="margin-top:16px;">+ Add Your First Print</button>' : ''}
-    </div>`;
+      ? 'No completed prints yet'
+      : 'No prints found';
+    const emptySubtitle = currentPrintTab === 'queue' || currentPrintTab === 'all'
+      ? 'Click "+ Add Print" to get started!'
+      : '';
+    const actionButton = (currentPrintTab === 'queue' || currentPrintTab === 'all')
+      ? { text: '+ Add Your First Print', action: 'open-modal' }
+      : null;
+    
+    grid.innerHTML = EmptyState({
+      icon: '🖨',
+      message: emptyMessage,
+      subtitle: emptySubtitle,
+      action: actionButton
+    });
     return;
   }
   

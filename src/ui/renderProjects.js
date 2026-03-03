@@ -5,6 +5,7 @@
 import { esc } from '../utils/strings.js';
 import { today, parseDate, dueLabel } from '../utils/dates.js';
 import { getAllTasks } from '../domain/models.js';
+import { EmptyState } from '../ui/components.js';
 
 /**
  * Render projects view
@@ -59,7 +60,11 @@ export function renderProjects(containerEl, state, handlers) {
     });
     
     if (!list.length) {
-      c.innerHTML = '<div class="empty-state">No projects yet<small>Create a project above</small></div>';
+      c.innerHTML = EmptyState({
+        icon: '📁',
+        message: 'No projects yet',
+        subtitle: 'Create a project above'
+      });
       // Re-hydrate Lucide icons after innerHTML (fixes "halo" issue)
       if (window.lucide?.createIcons) {
         window.lucide.createIcons();
@@ -197,10 +202,11 @@ export function renderProjects(containerEl, state, handlers) {
     console.error(e?.stack);
     // Show error in UI - use provided container only, no global fallback
     if (containerEl) {
-      containerEl.innerHTML = `<div class="empty-state" style="color:var(--error,red);">
-        Projects failed to render
-        <small>See console for error</small>
-      </div>`;
+      containerEl.innerHTML = EmptyState({
+        icon: '⚠️',
+        message: 'Projects failed to render',
+        subtitle: 'See console for error'
+      });
     }
   }
 }
@@ -408,8 +414,25 @@ function renderProjectCard(project, state, openSet) {
     ${isOpen ? `<div class="project-details" style="padding:16px 20px;border-top:1px solid var(--border);margin-top:12px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <h4 style="font-size:14px;font-weight:600;color:var(--text);margin:0;">📋 Tasks ${totalTasks > 0 ? `(${totalTasks})` : ''}</h4>
-        <button data-action="add-project-task" data-project-id="${project.id}" style="padding:6px 12px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;">+ Add Task</button>
+        <div style="display:flex;gap:8px;">
+          <button data-action="project:view-tasks" data-project-id="${project.id}" style="padding:6px 12px;background:var(--sage);color:white;border:none;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;" title="View all project tasks">📋 View Tasks</button>
+          <button data-action="add-project-task" data-project-id="${project.id}" style="padding:6px 12px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;">+ Add Task</button>
+        </div>
       </div>
+      
+      ${projectTasks.length > 0 ? `<div class="project-task-badges" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;">
+        ${projectTasks.slice(0, 5).map(t => {
+          const taskStatus = t.status || 'Todo';
+          const taskPriority = t.priority === 3 ? 'high' : t.priority === 1 ? 'low' : 'medium';
+          const taskDone = t.done || false;
+          const priorityColor = taskPriority === 'high' ? 'var(--overdue)' : taskPriority === 'low' ? 'var(--text-dim)' : 'var(--soon)';
+          const statusColor = taskDone ? 'var(--text-dim)' : taskStatus === 'Doing' ? '#4ade80' : taskStatus === 'Done' ? 'var(--text-dim)' : 'var(--blush)';
+          const taskTitle = (t.title || 'Untitled').substring(0, 30);
+          
+          return `<span class="project-task-badge" data-task-id="${t.id || ''}" style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;background:${statusColor}20;border:1px solid ${statusColor};border-left:3px solid ${priorityColor};border-radius:6px;font-size:10px;color:${taskDone ? 'var(--text-dim)' : 'var(--text)'};font-weight:500;cursor:pointer;transition:all 0.15s;" onmouseover="this.style.background='${statusColor}40';this.style.transform='scale(1.05)'" onmouseout="this.style.background='${statusColor}20';this.style.transform='scale(1)'" title="${esc(taskTitle)} - ${taskStatus} (${taskPriority} priority)" data-action="project:open-task" data-task-id="${t.id || ''}">${taskDone ? '✓' : '○'} ${esc(taskStatus)}</span>`;
+        }).join('')}
+        ${projectTasks.length > 5 ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;font-size:10px;color:var(--text-dim);">+${projectTasks.length - 5} more</span>` : ''}
+      </div>` : ''}
       ${totalTasks > 0 ? `<div>
         ${projectTasks.map(t => {
           const priorityClass = t.priority === 3 ? 'high' : t.priority === 1 ? 'low' : 'medium';

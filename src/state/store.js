@@ -25,6 +25,9 @@ class AppStore {
       routines: [],
       routineCheckins: {},
       
+      // Goals
+      goals: [],
+      
       // 3D Printing
       prints3d: [],
       
@@ -422,9 +425,12 @@ class AppStore {
       events: state.events || [],
       recurringRules: state.recurringRules || [],
       habits: Array.isArray(state.habits) ? state.habits : [],
-      habitCheckins: state.habitCheckins && typeof state.habitCheckins === 'object' ? state.habitCheckins : {},
+      habitCheckins: (state.habitCheckins && typeof state.habitCheckins === 'object')
+        ? state.habitCheckins
+        : (state.habitCompletions && typeof state.habitCompletions === 'object' ? state.habitCompletions : {}),
       routines: Array.isArray(state.routines) ? state.routines : [],
       routineCheckins: state.routineCheckins && typeof state.routineCheckins === 'object' ? state.routineCheckins : {},
+      goals: Array.isArray(state.goals) ? state.goals : [],
       prints3d: Array.isArray(state.prints3d) ? state.prints3d : [],
       currentView: state.currentView || 'today',
       currentSort: state.currentSort || 'all',
@@ -514,6 +520,7 @@ class AppStore {
       habitCheckins: this._state.habitCheckins && typeof this._state.habitCheckins === 'object' ? this._state.habitCheckins : {},
       routines: Array.isArray(this._state.routines) ? this._state.routines : [],
       routineCheckins: this._state.routineCheckins && typeof this._state.routineCheckins === 'object' ? this._state.routineCheckins : {},
+      goals: Array.isArray(this._state.goals) ? this._state.goals : [],
       prints3d: Array.isArray(this._state.prints3d) ? this._state.prints3d : [],
       files: Array.isArray(this._state.files) ? this._state.files : [],
       workflow: this._state.workflow || getDefaultWorkflow()

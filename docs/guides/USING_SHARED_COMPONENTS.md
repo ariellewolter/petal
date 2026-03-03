@@ -5,7 +5,24 @@ This guide shows how to use the standardized UI components across all pages for 
 ## Import Components
 
 ```javascript
-import { Buttons, EmptyState, PageHeader, StatCard, Tabs, Modal, FormField, Card } from '../ui/components.js';
+import { 
+  Buttons, 
+  EmptyState, 
+  PageHeader, 
+  StatCard, 
+  Tabs, 
+  Modal, 
+  FormField, 
+  Card, 
+  Forms,
+  LoadingState,
+  showNotification
+} from '../ui/components.js';
+
+// Keyboard shortcuts and focus management are automatically initialized in app init
+// Import if you need to use them directly:
+// import { setupKeyboardShortcuts, getKeyboardShortcuts } from '../ui/keyboardShortcuts.js';
+// import { trapFocus, restoreFocus, focusFirst } from '../ui/focusManagement.js';
 ```
 
 ## Button Components
@@ -153,7 +170,56 @@ FormField({
 })
 ```
 
+## Form Utilities
+
+The `Forms` object provides utilities for building complete forms:
+
+```javascript
+// Form Row (side-by-side fields)
+Forms.row([
+  { label: 'First Name', name: 'firstName' },
+  { label: 'Last Name', name: 'lastName' }
+])
+
+// Form Actions (buttons)
+Forms.actions({
+  primary: { text: 'Save', action: 'save-form' },
+  secondary: [
+    { text: 'Draft', action: 'save-draft' }
+  ],
+  cancel: { text: 'Cancel', action: 'close-modal' }
+})
+
+// Form Card (wrapper)
+Forms.card({
+  title: 'Add New Task',
+  subtitle: 'Fill in the details below',
+  children: `
+    ${FormField({ label: 'Title', name: 'title', required: true })}
+    ${Forms.row([
+      { label: 'Priority', name: 'priority', type: 'select', options: ['High', 'Medium', 'Low'] },
+      { label: 'Due Date', name: 'due', type: 'date' }
+    ])}
+    ${Forms.actions({
+      primary: { text: 'Add Task', action: 'save-task' },
+      cancel: { text: 'Cancel', action: 'close-modal' }
+    })}
+  `
+})
+
+// Form Group (grouped fields)
+Forms.group({
+  label: 'Task Details',
+  children: `
+    ${FormField({ label: 'Title', name: 'title' })}
+    ${FormField({ label: 'Description', name: 'description', type: 'textarea' })}
+  `
+})
+```
+
 ## Card Component
+
+Enhanced card component with header actions, badges, and variants:
 
 ```javascript
 Card({
@@ -171,7 +237,17 @@ Card({
   `,
   selected: false,
   onClick: 'select-task',
-  priority: 'high'
+  priority: 'high', // 'high', 'med', 'low'
+  variant: 'task', // 'default', 'task', 'project', 'file'
+  icon: '📝', // Optional icon in header
+  headerActions: [
+    { icon: '✎', action: 'edit-task', title: 'Edit', dataAttrs: { 'task-id': '123' } },
+    { icon: '✕', action: 'delete-task', title: 'Delete', dataAttrs: { 'task-id': '123' } }
+  ],
+  badges: [
+    { text: 'High', class: 'high' },
+    { text: 'Urgent', class: '' }
+  ]
 })
 ```
 
@@ -227,13 +303,131 @@ export async function renderTasksPage(container, state, features) {
 }
 ```
 
+## Loading State
+
+Show a loading indicator during async operations:
+
+```javascript
+// Show loading state
+container.innerHTML = LoadingState({
+  message: 'Loading tasks...',
+  size: 'medium' // 'small', 'medium', 'large'
+});
+
+// After data loads, replace with content
+const data = await fetchData();
+container.innerHTML = renderContent(data);
+```
+
+### Sizes
+- `small` - 20px spinner, compact for inline use
+- `medium` - 32px spinner (default), standard size
+- `large` - 48px spinner, for full-page loading
+
+## Notifications/Toasts
+
+Show user feedback with toast notifications:
+
+```javascript
+// Success notification
+showNotification({
+  message: 'Task saved successfully!',
+  type: 'success',
+  duration: 3000
+});
+
+// Error notification
+showNotification({
+  message: 'Failed to save task',
+  type: 'error',
+  duration: 5000
+});
+
+// Warning notification
+showNotification({
+  message: 'Task is overdue',
+  type: 'warning'
+});
+
+// Info notification
+showNotification({
+  message: 'Task updated',
+  type: 'info'
+});
+```
+
+### Notification Types
+- `success` - Green border, checkmark icon
+- `error` - Red border, X icon
+- `warning` - Yellow border, warning icon
+- `info` - Purple border, info icon (default)
+
+### Options
+- `message` (required) - Text to display
+- `type` (optional) - One of: 'success', 'error', 'warning', 'info' (default: 'info')
+- `duration` (optional) - Auto-dismiss time in ms (default: 3000)
+
+Notifications auto-dismiss after the duration, or can be dismissed by clicking the close button or clicking anywhere on the notification.
+
+## Keyboard Shortcuts
+
+Keyboard shortcuts are automatically enabled when the app initializes. Available shortcuts:
+
+### Navigation
+- `g` then `t` - Go to Tasks
+- `g` then `p` - Go to Projects
+- `g` then `f` - Go to Files
+- `g` then `w` - Go to Workflow
+- `g` then `c` - Go to Cell Log
+- `g` then `d` - Go to Today
+- `g` then `l` - Go to Planner
+
+### Actions
+- `n` - Quick Add (task/project)
+- `a` - Add Task
+- `p` - Add Project (focuses project name input)
+
+### Modals & Search
+- `Escape` - Close modal/drawer
+- `/` - Focus search
+- `Ctrl+K` or `Cmd+K` - Focus search
+
+### Help
+- `?` - Show keyboard shortcuts help (logs to console)
+
+Shortcuts are disabled when typing in input fields, textareas, or contenteditable elements (except Escape and Ctrl/Cmd+K).
+
+## Focus Management
+
+Focus management is automatically set up for modals:
+- Focus is trapped within open modals
+- Focus is restored to previous element when modal closes
+- First focusable element is automatically focused when modal opens
+
+To manually manage focus:
+```javascript
+import { trapFocus, restoreFocus, focusFirst } from '../ui/focusManagement.js';
+
+// Trap focus in a modal
+trapFocus(modalElement);
+
+// Restore focus when closing
+restoreFocus();
+
+// Focus first element in a container
+focusFirst(containerElement);
+```
+
 ## Benefits
 
 1. **Consistency**: All pages use the same components
 2. **Maintainability**: Update once, affects all pages
 3. **Speed**: Faster development with reusable components
-4. **Accessibility**: Components include proper ARIA attributes
+4. **Accessibility**: Components include proper ARIA attributes, keyboard shortcuts, and focus management
 5. **Responsive**: Components work across screen sizes
+6. **User Feedback**: Toast notifications for actions
+7. **Loading States**: Better UX during async operations
+8. **Keyboard Navigation**: Power-user shortcuts for faster workflow
 
 ## Migration Guide
 

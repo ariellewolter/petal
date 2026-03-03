@@ -1,6 +1,8 @@
 // ═══════════════════════ DELETE HANDLERS ═══════════════════════
 // Handles deletion confirmation and execution for tasks, files, projects, and subtasks
 
+import { showNotification } from '../ui/components.js';
+
 /**
  * Confirm deletion of a task
  */
@@ -34,7 +36,11 @@ export function confirmDeleteTask(ctx, taskId, isSubtask, projectId, parentTaskI
       taskIds: tasks.map(t => t?.id).slice(0, 5),
       allTaskIds: tasks.map(t => String(t?.id))
     });
-    alert('Task not found');
+    showNotification({
+      message: 'Task not found',
+      type: 'error',
+      duration: 3000
+    });
     return;
   }
   
@@ -42,7 +48,11 @@ export function confirmDeleteTask(ctx, taskId, isSubtask, projectId, parentTaskI
   
   // If already deleted, inform user
   if (task.deletedAt) {
-    alert('This task has already been deleted');
+    showNotification({
+      message: 'This task has already been deleted',
+      type: 'warning',
+      duration: 3000
+    });
     return;
   }
   
@@ -119,13 +129,21 @@ export function confirmDeleteFile(ctx, projectId, fileId) {
   const { projects } = ctx;
   const project = projects.find(p => p.id === projectId);
   if (!project || !project.files) {
-    alert('File not found');
+    showNotification({
+      message: 'File not found',
+      type: 'error',
+      duration: 3000
+    });
     return;
   }
   
   const file = project.files.find(f => f && f.id === fileId);
   if (!file) {
-    alert('File not found');
+    showNotification({
+      message: 'File not found',
+      type: 'error',
+      duration: 3000
+    });
     return;
   }
   
@@ -207,13 +225,25 @@ export async function executeDelete(ctx) {
       await save();
     }
     
+    // Show success notification
+    const itemType = pendingDelete.type === 'task' ? 'task' : 'file';
+    showNotification({
+      message: `${itemType === 'task' ? 'Task' : 'File'} deleted successfully`,
+      type: 'success',
+      duration: 3000
+    });
+    
     if (render) {
       render();
     }
   } catch (error) {
     console.error('❌ Error executing delete:', error);
     closeDeleteConfirmModal();
-    alert('Error deleting item: ' + error.message);
+    showNotification({
+      message: `Error deleting item: ${error.message}`,
+      type: 'error',
+      duration: 5000
+    });
   }
 }
 
@@ -277,7 +307,11 @@ export async function softDeleteTask(ctx, taskId) {
     // SAFETY CHECK: Ensure we have tasks before proceeding
     if (currentTasks.length === 0) {
       console.error('❌ CRITICAL: No tasks in store! Aborting delete to prevent data loss.');
-      alert('Error: No tasks found in store. Cannot delete task. Please check your data.');
+      showNotification({
+        message: 'Error: No tasks found in store. Cannot delete task. Please check your data.',
+        type: 'error',
+        duration: 5000
+      });
       return;
     }
     
@@ -316,7 +350,11 @@ export async function softDeleteTask(ctx, taskId) {
         tasksToDelete,
         taskId
       });
-      alert('Error: This operation would delete all tasks. Aborted to prevent data loss.');
+      showNotification({
+        message: 'Error: This operation would delete all tasks. Aborted to prevent data loss.',
+        type: 'error',
+        duration: 5000
+      });
       return;
     }
     
@@ -327,7 +365,11 @@ export async function softDeleteTask(ctx, taskId) {
         tasksToDelete,
         percentage: (tasksToDelete / currentTasks.length * 100).toFixed(1) + '%'
       });
-      alert(`Error: This operation would delete ${tasksToDelete} out of ${currentTasks.length} tasks (${(tasksToDelete / currentTasks.length * 100).toFixed(1)}%). Aborted to prevent data loss.`);
+      showNotification({
+        message: `Error: This operation would delete ${tasksToDelete} out of ${currentTasks.length} tasks (${(tasksToDelete / currentTasks.length * 100).toFixed(1)}%). Aborted to prevent data loss.`,
+        type: 'error',
+        duration: 5000
+      });
       return;
     }
     
@@ -341,6 +383,26 @@ export async function softDeleteTask(ctx, taskId) {
       remainingTasks,
       updatedTasksCount: updatedTasks.length
     });
+    
+    // Sync: Rebuild file registry after task deletion
+    if (window.Petal?.features?.fileManagement?.buildFileRegistry) {
+      const updatedState = store.getState();
+      try {
+        const result = window.Petal.features.fileManagement.buildFileRegistry({
+          tasks: updatedTasks,
+          projects: updatedState.projects || [],
+          fileRegistry: updatedState.fileRegistry || {},
+          fileHistory: updatedState.fileHistory || {},
+          files: updatedState.files || [],
+        }, { commit: true });
+        
+        if (window.__DEBUG__) {
+          console.log('✅ File registry rebuilt after task deletion');
+        }
+      } catch (e) {
+        console.error('Error rebuilding file registry after task deletion:', e);
+      }
+    }
   } else {
     // Fallback: mutate directly (not ideal, but for backward compatibility)
     console.warn('⚠️ Store not available, using direct mutation (fallback)');

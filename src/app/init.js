@@ -4,7 +4,7 @@
 
 import { appStore } from '../state/store.js';
 import { handlers } from '../ui/handlers.js';
-import { initPersistence, setLoading } from '../storage/persistence.js';
+import { initPersistence } from '../storage/persistence.js';
 import { switchView as routerSwitchView } from './router.js';
 import { PAGES, getPageRenderer } from './pages.js';
 import { renderRegistry } from './renderRegistry.js';
@@ -61,14 +61,20 @@ import * as RenderLanes from '../ui/renderLanes.js';
 import * as PlannerOperations from '../features/plannerOperations.js';
 import * as MatrixOperations from '../features/matrixOperations.js';
 import * as ReviewOperations from '../features/reviewOperations.js';
+import * as FileTaskOperations from '../features/fileTaskOperations.js';
+import * as WorkflowTaskOperations from '../features/workflowTaskOperations.js';
+import * as ProjectTaskOperations from '../features/projectTaskOperations.js';
+import * as FileProjectOperations from '../features/fileProjectOperations.js';
+import * as WorkflowPlannerOperations from '../features/workflowPlannerOperations.js';
 
 // Note: Event delegation is now set up in TodayPage.js
 
 // Import render functions
 import { renderGlobalSidebar, render } from './viewManager.js';
 import { setupEventDelegation } from './delegation.js';
-import { auditHookups } from './auditHookups.js';
 import * as buttonHandlers from '../ui/buttonHandlers.js';
+import { setupKeyboardShortcuts } from '../ui/keyboardShortcuts.js';
+import { initFocusManagement } from '../ui/focusManagement.js';
 
 /**
  * Initialize the application
@@ -170,6 +176,11 @@ export async function initApp() {
   window.Petal.features.matrixOperations = MatrixOperations;
   window.Petal.features.plannerOperations = PlannerOperations;
   window.Petal.features.reviewOperations = ReviewOperations;
+  window.Petal.features.fileTaskOperations = FileTaskOperations;
+  window.Petal.features.workflowTaskOperations = WorkflowTaskOperations;
+  window.Petal.features.projectTaskOperations = ProjectTaskOperations;
+  window.Petal.features.fileProjectOperations = FileProjectOperations;
+  window.Petal.features.workflowPlannerOperations = WorkflowPlannerOperations;
   window.Petal.features.taskDrawer = TaskDrawer;
   window.Petal.features.exportImport = ExportImport;
   window.Petal.features.search = Search;
@@ -245,6 +256,12 @@ export async function initApp() {
   // Step 5.5: Set up global event delegation (all hookups)
   // This ensures all app-wide event handlers are initialized before any page renders
   setupEventDelegation();
+  
+  // Set up keyboard shortcuts for accessibility
+  setupKeyboardShortcuts();
+  
+  // Set up focus management for accessibility
+  initFocusManagement();
   
   // Step 6: Initialize state (vault resolution, loading, migrations)
   await initState();

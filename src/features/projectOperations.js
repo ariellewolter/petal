@@ -4,6 +4,7 @@
 import { defaultProjectBrief, normalizeListValue, defaultMilestonesFromTemplate } from '../utils/projectHelpers.js';
 import { esc, escAttr, fileIcon } from '../utils/strings.js';
 import { LANE_STAGES } from '../domain/schema.js';
+import { showNotification } from '../ui/components.js';
 
 /**
  * Helper: Update store with safety - preserves all state fields
@@ -193,6 +194,28 @@ export async function addProject(ctx) {
   if (defaultColorSwatch) defaultColorSwatch.classList.add('selected');
   if (typeof window !== 'undefined') {
     window.selectedColor = 1;
+  }
+  
+  // Show success notification
+  if (typeof window.showNotification === 'function') {
+    window.showNotification({
+      message: `Project "${name}" created successfully`,
+      type: 'success',
+      duration: 3000
+    });
+  } else {
+    // Import and use if available
+    import('../ui/components.js').then(module => {
+      if (module.showNotification) {
+        module.showNotification({
+          message: `Project "${name}" created successfully`,
+          type: 'success',
+          duration: 3000
+        });
+      }
+    }).catch(() => {
+      // Notification system not available, skip
+    });
   }
 }
 
@@ -519,7 +542,11 @@ export async function removePinnedFile(ctx, projectId, fileDataAttr) {
     }
   } catch (e) {
     console.error('Error removing pinned file:', e);
-    alert('Error removing pinned file: ' + (e.message || e));
+    showNotification({
+      message: 'Error removing pinned file: ' + (e.message || e),
+      type: 'error',
+      duration: 5000
+    });
   }
 }
 
@@ -671,13 +698,21 @@ export async function addMilestone(ctx) {
   }
   
   if (!projectId) {
-    alert('Please select a project first');
+    showNotification({
+      message: 'Please select a project first',
+      type: 'warning',
+      duration: 3000
+    });
     return;
   }
   
   const project = projects.find(p => p.id === projectId);
   if (!project) {
-    alert('Project not found');
+    showNotification({
+      message: 'Project not found',
+      type: 'error',
+      duration: 3000
+    });
     return;
   }
   
@@ -876,7 +911,11 @@ export async function saveCheckpoint(ctx) {
   
   const name = nameInput.value.trim();
   if (!name) {
-    alert('Please enter a checkpoint name');
+    showNotification({
+      message: 'Please enter a checkpoint name',
+      type: 'warning',
+      duration: 3000
+    });
     return;
   }
   
@@ -990,11 +1029,19 @@ export async function addFileVersion(ctx, projectId, fileDataAttr) {
         await renderFilesTab(currentFilesTab, project);
       }
     } else {
-      alert('File not found in project');
+      showNotification({
+        message: 'File not found in project',
+        type: 'error',
+        duration: 3000
+      });
     }
   } catch (e) {
     console.error('Error adding file version:', e);
-    alert('Error adding version');
+    showNotification({
+      message: 'Error adding version',
+      type: 'error',
+      duration: 5000
+    });
   }
 }
 
@@ -1093,7 +1140,11 @@ export async function addFileToProject(ctx, projId) {
     : getFileLinks('proj-files-'+projId, 'p-'+projId);
   
   if (files.length === 0) {
-    alert('Please add at least one file');
+    showNotification({
+      message: 'Please add at least one file',
+      type: 'warning',
+      duration: 3000
+    });
     return;
   }
   
@@ -1532,7 +1583,11 @@ export async function addFileToArtifact(ctx, artifactId) {
       }
     } catch (e) {
       console.error('File picker error:', e);
-      alert('Could not open file picker: ' + e.message);
+      showNotification({
+        message: 'Could not open file picker: ' + e.message,
+        type: 'error',
+        duration: 5000
+      });
     }
   } else {
     // Fallback: prompt for URL
@@ -1577,7 +1632,11 @@ export async function openAddCellLogEntry(ctx) {
   
   const selectedProjectId = selectedProjectIdValue || (typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null);
   if (!selectedProjectId) {
-    alert('Please select a project first');
+    showNotification({
+      message: 'Please select a project first',
+      type: 'warning',
+      duration: 3000
+    });
     return;
   }
   

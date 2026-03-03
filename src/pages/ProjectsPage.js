@@ -3,7 +3,8 @@
 // Replaces inline onclick handlers with delegated events
 
 import { renderProjects } from '../ui/renderProjects.js';
-import { PageHeader } from '../ui/components.js';
+import { PageHeader, StatCard } from '../ui/components.js';
+import { getAllTasks } from '../domain/models.js';
 
 let bound = false;
 
@@ -109,6 +110,46 @@ function bind(container, features) {
         features.projectOperations.selectProjectForMatrix(projectId);
       } else if (projectId && window.selectProjectForMatrix) {
         window.selectProjectForMatrix(projectId);
+      }
+      return;
+    }
+    
+    if (action === 'project:view-tasks') {
+      // View all tasks for this project
+      if (projectId && window.Petal?.features?.projectTaskOperations?.viewProjectTasks) {
+        const ctx = {
+          tasks: window.Petal?.store?.getState()?.tasks || [],
+          projects: window.Petal?.store?.getState()?.projects || [],
+          save: window.Petal?.handlers?.save || (async () => {}),
+        };
+        window.Petal.features.projectTaskOperations.viewProjectTasks(projectId, ctx);
+      } else if (projectId) {
+        // Fallback: navigate to tasks page and filter by project
+        if (window.Petal?.store) {
+          window.Petal.store.setState({ 
+            currentPage: 'tasks',
+            boardProjectFilter: projectId 
+          });
+        }
+        if (window.Petal?.router?.switchView) {
+          window.Petal.router.switchView('tasks');
+        } else if (window.switchView) {
+          window.switchView('tasks');
+        }
+      }
+      return;
+    }
+    
+    if (action === 'project:open-task') {
+      // Open task drawer from project task badge
+      const taskId = btn.dataset.taskId;
+      if (taskId && window.Petal?.features?.taskDrawer?.openTaskDrawer) {
+        const ctx = {
+          tasks: window.Petal?.store?.getState()?.tasks || [],
+          projects: window.Petal?.store?.getState()?.projects || [],
+          save: window.Petal?.handlers?.save || (async () => {}),
+        };
+        window.Petal.features.taskDrawer.openTaskDrawer(ctx, taskId);
       }
       return;
     }
@@ -299,8 +340,24 @@ export function renderProjectsPage(container, state, features) {
   
   // Calculate project stats
   const projects = Array.isArray(state.projects) ? state.projects : [];
+  const tasks = Array.isArray(state.tasks) ? state.tasks : [];
+  const allTasks = getAllTasks(tasks, projects);
   const activeProjects = projects.filter(p => p && !p.done);
   const doneProjects = projects.filter(p => p && p.done);
+  
+  // Calculate tasks per project
+  const projectsWithTasks = activeProjects.filter(p => {
+    const projectTasks = allTasks.filter(t => t && t.projectId && String(t.projectId) === String(p.id) && !t.deletedAt);
+    return projectTasks.length > 0;
+  });
+  
+  // Calculate overdue projects
+  const now = new Date();
+  const overdueProjects = activeProjects.filter(p => {
+    if (!p.due) return false;
+    const dueDate = new Date(p.due);
+    return dueDate < now;
+  });
   
   // Create or find header - must be before setting padding styles
   let projectsHeader = container.querySelector('.page-header');
@@ -318,6 +375,48 @@ export function renderProjectsPage(container, state, features) {
     status: `${activeProjects.length} active · ${doneProjects.length} completed`,
     actions: []
   });
+  
+  // Create or find stats container
+  let statsContainer = container.querySelector('.projects-stats-container');
+  if (!statsContainer) {
+    statsContainer = document.createElement('div');
+    statsContainer.className = 'projects-stats-container';
+    statsContainer.style.cssText = 'display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 20px 28px; background: var(--surface);';
+    // Insert after header
+    if (projectsHeader.nextSibling) {
+      container.insertBefore(statsContainer, projectsHeader.nextSibling);
+    } else {
+      container.appendChild(statsContainer);
+    }
+  }
+  
+  // Render stat cards
+  statsContainer.innerHTML = `
+    ${StatCard({ 
+      label: 'Active', 
+      value: String(activeProjects.length), 
+      subtitle: 'projects',
+      variant: 1 
+    })}
+    ${StatCard({ 
+      label: 'Completed', 
+      value: String(doneProjects.length), 
+      subtitle: 'projects',
+      variant: 2 
+    })}
+    ${StatCard({ 
+      label: 'With Tasks', 
+      value: String(projectsWithTasks.length), 
+      subtitle: 'projects',
+      variant: 3 
+    })}
+    ${StatCard({ 
+      label: 'Overdue', 
+      value: String(overdueProjects.length), 
+      subtitle: 'projects',
+      variant: 4 
+    })}
+  `;
   
   // If still not found, create it INSIDE the view container
   if (!projectContainer) {

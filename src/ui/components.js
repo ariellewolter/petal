@@ -232,6 +232,7 @@ export function FormField({
 
 /**
  * Standard card component
+ * Enhanced with header actions, badges, and flexible patterns
  */
 export function Card({ 
   id, 
@@ -242,25 +243,216 @@ export function Card({
   selected = false,
   onClick = null,
   className = '',
-  priority = 'med'
+  priority = 'med',
+  headerActions = [],
+  badges = [],
+  icon = '',
+  variant = 'default' // 'default', 'task', 'project', 'file'
 }) {
   const onClickAttr = onClick ? `data-action="${escapeHtml(onClick)}"` : '';
   const dataAttrs = id ? `data-id="${escapeHtml(id)}"` : '';
   
+  const headerActionsHtml = headerActions.length > 0
+    ? `<div class="card-header-actions">${headerActions.map(action => {
+        if (typeof action === 'string') {
+          // Simple icon button
+          return Buttons.icon({ icon: action, action: 'card-action' });
+        }
+        return Buttons.icon(action);
+      }).join('')}</div>`
+    : '';
+  
+  const badgesHtml = badges.length > 0
+    ? `<div class="card-badges">${badges.map(badge => {
+        const badgeText = typeof badge === 'string' ? badge : badge.text;
+        const badgeClass = typeof badge === 'string' ? '' : badge.class || '';
+        return `<span class="card-badge ${badgeClass}">${escapeHtml(badgeText)}</span>`;
+      }).join('')}</div>`
+    : '';
+  
   return `
     <div 
-      class="card prio-${priority} ${selected ? 'selected' : ''} ${className}"
+      class="card card-${variant} prio-${priority} ${selected ? 'selected' : ''} ${className}"
       ${dataAttrs}
       ${onClickAttr}
     >
-      ${title ? `
+      ${title || icon || headerActionsHtml || badgesHtml ? `
         <div class="card-header">
-          <div class="card-title">${escapeHtml(title)}</div>
-          ${subtitle ? `<div class="card-subtitle">${escapeHtml(subtitle)}</div>` : ''}
+          <div class="card-header-left">
+            ${icon ? `<div class="card-icon">${escapeHtml(icon)}</div>` : ''}
+            <div class="card-title-wrap">
+              ${title ? `<div class="card-title">${escapeHtml(title)}</div>` : ''}
+              ${subtitle ? `<div class="card-subtitle">${escapeHtml(subtitle)}</div>` : ''}
+              ${badgesHtml}
+            </div>
+          </div>
+          ${headerActionsHtml}
         </div>
       ` : ''}
       ${content ? `<div class="card-content">${content}</div>` : ''}
       ${footer ? `<div class="card-footer">${footer}</div>` : ''}
     </div>
   `;
+}
+
+/**
+ * Form utilities for consistent form layouts
+ */
+export const Forms = {
+  /**
+   * Create a form row (for side-by-side fields)
+   */
+  row(fields) {
+    return `
+      <div class="form-row">
+        ${fields.map(field => FormField(field)).join('')}
+      </div>
+    `;
+  },
+  
+  /**
+   * Create form actions (buttons at bottom of form)
+   */
+  actions({ primary, secondary = [], cancel = null }) {
+    const cancelBtn = cancel 
+      ? Buttons.secondary({ text: cancel.text || 'Cancel', action: cancel.action || 'cancel' })
+      : '';
+    const secondaryBtns = secondary.map(btn => Buttons.secondary(btn)).join('');
+    const primaryBtn = primary ? Buttons.primary(primary) : '';
+    
+    return `
+      <div class="form-actions">
+        ${cancelBtn}
+        ${secondaryBtns}
+        ${primaryBtn}
+      </div>
+    `;
+  },
+  
+  /**
+   * Create a form card wrapper
+   */
+  card({ title, subtitle = '', children, className = '' }) {
+    return `
+      <div class="form-card ${className}">
+        ${title ? `<div class="form-title">${escapeHtml(title)}</div>` : ''}
+        ${subtitle ? `<div class="form-subtitle">${escapeHtml(subtitle)}</div>` : ''}
+        ${children}
+      </div>
+    `;
+  },
+  
+  /**
+   * Create a form group (for grouping related fields)
+   */
+  group({ label, children, className = '' }) {
+    return `
+      <div class="form-group-wrapper ${className}">
+        ${label ? `<div class="form-group-label">${escapeHtml(label)}</div>` : ''}
+        <div class="form-group-fields">
+          ${children}
+        </div>
+      </div>
+    `;
+  }
+};
+
+/**
+ * Loading state component
+ */
+export function LoadingState({ message = 'Loading...', size = 'medium' }) {
+  const sizeClass = size === 'small' ? 'loading-small' : size === 'large' ? 'loading-large' : '';
+  return `
+    <div class="loading-state ${sizeClass}">
+      <div class="loading-spinner"></div>
+      <div class="loading-message">${escapeHtml(message)}</div>
+    </div>
+  `;
+}
+
+/**
+ * Notification/Toast system
+ * Usage: Call showNotification() to display a toast
+ */
+let notificationContainer = null;
+let notificationTimeout = null;
+
+function ensureNotificationContainer() {
+  if (!notificationContainer) {
+    notificationContainer = document.createElement('div');
+    notificationContainer.id = 'notification-container';
+    notificationContainer.className = 'notification-container';
+    document.body.appendChild(notificationContainer);
+  }
+  return notificationContainer;
+}
+
+/**
+ * Show a notification toast
+ * @param {Object} options - Notification options
+ * @param {string} options.message - Message to display
+ * @param {string} options.type - Type: 'success', 'error', 'info', 'warning'
+ * @param {number} options.duration - Duration in ms (default: 3000)
+ */
+export function showNotification({ message, type = 'info', duration = 3000 }) {
+  ensureNotificationContainer();
+  
+  // Clear any existing notification
+  if (notificationTimeout) {
+    clearTimeout(notificationTimeout);
+  }
+  
+  const notification = document.createElement('div');
+  notification.className = `notification notification-${type}`;
+  notification.innerHTML = `
+    <div class="notification-content">
+      <div class="notification-icon">${getNotificationIcon(type)}</div>
+      <div class="notification-message">${escapeHtml(message)}</div>
+      <button class="notification-close" data-action="close-notification">✕</button>
+    </div>
+  `;
+  
+  // Add to container
+  notificationContainer.innerHTML = '';
+  notificationContainer.appendChild(notification);
+  notificationContainer.classList.add('active');
+  
+  // Auto-dismiss
+  notificationTimeout = setTimeout(() => {
+    dismissNotification();
+  }, duration);
+  
+  // Close button handler
+  const closeBtn = notification.querySelector('.notification-close');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', dismissNotification);
+  }
+  
+  // Click anywhere to dismiss
+  notification.addEventListener('click', dismissNotification);
+}
+
+function dismissNotification() {
+  if (notificationContainer) {
+    notificationContainer.classList.remove('active');
+    setTimeout(() => {
+      if (notificationContainer) {
+        notificationContainer.innerHTML = '';
+      }
+    }, 300); // Wait for animation
+  }
+  if (notificationTimeout) {
+    clearTimeout(notificationTimeout);
+    notificationTimeout = null;
+  }
+}
+
+function getNotificationIcon(type) {
+  const icons = {
+    success: '✓',
+    error: '✕',
+    warning: '⚠',
+    info: 'ℹ'
+  };
+  return icons[type] || icons.info;
 }

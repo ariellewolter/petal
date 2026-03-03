@@ -61,6 +61,17 @@ export function setupEventDelegation() {
     if (!action) {
       return;
     }
+
+    // Goals page: handle when click is in Goals view or in the portaled add-goal modal (#modal-bg on body)
+    if (action.startsWith('goal:') && (actionBtn.closest('#view-goals') || actionBtn.closest('#modal-bg'))) {
+      e.preventDefault();
+      e.stopPropagation();
+      const handler = window._goalsHandleAction || document.getElementById('view-goals')?._goalsHandleAction;
+      if (typeof handler === 'function') {
+        handler(action, actionBtn);
+      }
+      return;
+    }
     
     // Debug logging
     console.log('🔘 Button clicked:', {
@@ -1190,7 +1201,58 @@ export function setupEventDelegation() {
   
     // Attach handler to root container (capture phase to catch early)
     appContainer.addEventListener('click', window._eventDelegationHandler, true);
-    
+
+    // Portaled Goals modal (#modal-bg) lives on body, outside .app — so clicks there never hit the handler above.
+    // Listen on body for clicks inside #modal-bg and delegate to the same Goals handler.
+    if (window._goalsModalDelegationHandler) {
+      document.body.removeEventListener('click', window._goalsModalDelegationHandler, true);
+    }
+    window._goalsModalDelegationHandler = function(e) {
+      const actionBtn = (e.target && e.target.closest) ? e.target.closest('[data-action]') : null;
+      if (!actionBtn || !actionBtn.closest('#modal-bg')) return;
+      const action = actionBtn.getAttribute('data-action');
+      if (!action || !action.startsWith('goal:')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      // Always close modal when X or Cancel is clicked (don't rely on Goals handler — re-renders can leave modal on body)
+      if (action === 'goal:close-modal') {
+        if (typeof window._goalsCloseModal === 'function') {
+          window._goalsCloseModal();
+        } else {
+          closeGoalsModalInline();
+        }
+        return;
+      }
+      if (action === 'goal:close-drawer' && typeof window._goalsCloseDrawer === 'function') {
+        window._goalsCloseDrawer();
+        return;
+      }
+      const handler = window._goalsHandleAction || document.getElementById('view-goals')?._goalsHandleAction;
+      if (typeof handler === 'function') handler(action, actionBtn);
+    };
+
+    function closeGoalsModalInline() {
+      const bg = document.querySelector('body > #modal-bg');
+      if (!bg) return;
+      document.documentElement.classList.remove('goals-modal-open');
+      document.body.classList.remove('goals-modal-open');
+      bg.classList.remove('open', 'quick-capture-modal');
+      const inner = bg.querySelector('.modal');
+      if (inner) inner.classList.remove('quick-capture-box');
+      bg.style.removeProperty('display');
+      bg.style.removeProperty('visibility');
+      bg.style.removeProperty('opacity');
+      bg.style.removeProperty('z-index');
+      const goalsPage = document.querySelector('#view-goals .goals-page');
+      if (goalsPage) {
+        const existing = goalsPage.querySelector('#modal-bg');
+        if (existing && existing !== bg) existing.remove();
+        goalsPage.appendChild(bg);
+      }
+      bg.style.setProperty('display', 'none', 'important');
+    }
+    document.body.addEventListener('click', window._goalsModalDelegationHandler, true);
+
     console.log('✅ Event delegation set up');
   } finally {
     // Clear the guard flag

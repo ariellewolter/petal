@@ -4,6 +4,7 @@
 // Subscribes to store changes, never called directly from UI
 
 import { appStore } from '../state/store.js';
+import { showNotification } from '../ui/components.js';
 // Use window.storage since storage.js is loaded as a regular script, not a module
 const storage = window.storage;
 
@@ -231,7 +232,11 @@ async function performSave() {
       
       // Show user-friendly error (only for critical errors)
       if (errorMsg === 'Vault not resolved') {
-        alert('Error: Cannot save - vault not resolved. Please restart the app.');
+        showNotification({
+          message: 'Error: Cannot save - vault not resolved. Please restart the app.',
+          type: 'error',
+          duration: 5000
+        });
       }
     }
   } catch (error) {
@@ -330,6 +335,10 @@ function createImmutableSnapshot(state) {
     habitCheckins: state.habitCheckins ? { ...state.habitCheckins } : {},
     routines: state.routines ? state.routines.map(r => ({ ...r })) : [],
     routineCheckins: state.routineCheckins ? { ...state.routineCheckins } : {},
+    goals: state.goals ? state.goals.map(g => ({
+      ...g,
+      milestones: Array.isArray(g.milestones) ? g.milestones.map(m => ({ ...m })) : []
+    })) : [],
     prints3d: state.prints3d ? state.prints3d.map(p => ({ ...p })) : [],
     files: state.files ? state.files.map(f => ({ ...f })) : [], // ✅ Persisted files list
     workflow: state.workflow ? {

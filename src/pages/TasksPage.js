@@ -5,7 +5,7 @@
 import { renderTasks } from '../ui/renderTasks.js';
 import { asIdString, normalizeProjectId } from '../utils/ids.js';
 import { getAllTasks } from '../domain/models.js';
-import { PageHeader } from '../ui/components.js';
+import { PageHeader, StatCard } from '../ui/components.js';
 
 /**
  * Bind event handlers to the tasks container
@@ -34,6 +34,29 @@ function bind(container, features) {
     const [namespace, actionName] = action.includes(':') ? action.split(':') : [null, action];
     
     switch (namespace) {
+      case 'workflow':
+        switch (actionName) {
+          case 'view-lane':
+            const laneName = btn.dataset.lane;
+            if (laneName && features?.workflowTaskOperations?.viewLaneTasks) {
+              const ctx = {
+                tasks: window.Petal?.store?.getState()?.tasks || [],
+                projects: window.Petal?.store?.getState()?.projects || [],
+                save: window.Petal?.handlers?.save || window.save,
+              };
+              features.workflowTaskOperations.viewLaneTasks(laneName, ctx);
+            } else if (laneName && window.Petal?.features?.workflowTaskOperations?.viewLaneTasks) {
+              const ctx = {
+                tasks: window.Petal?.store?.getState()?.tasks || [],
+                projects: window.Petal?.store?.getState()?.projects || [],
+                save: window.Petal?.handlers?.save || window.save,
+              };
+              window.Petal.features.workflowTaskOperations.viewLaneTasks(laneName, ctx);
+            }
+            break;
+        }
+        break;
+        
       case 'task':
         switch (actionName) {
           case 'add':
@@ -163,6 +186,8 @@ function bind(container, features) {
         // Sort action: data-action="sort:all", data-action="sort:day", etc.
         if (features?.handlers?.setSort) {
           features.handlers.setSort(actionName, btn);
+        } else if (features?.setSort) {
+          features.setSort(actionName, btn);
         } else if (window.setSort) {
           window.setSort(actionName, btn);
         }
@@ -172,6 +197,8 @@ function bind(container, features) {
         // Filter action: data-action="filter:all", data-action="filter:active", etc.
         if (features?.handlers?.setFilter) {
           features.handlers.setFilter(actionName, btn);
+        } else if (features?.setFilter) {
+          features.setFilter(actionName, btn);
         } else if (window.setFilter) {
           window.setFilter(actionName, btn);
         }
@@ -282,33 +309,72 @@ export async function renderTasksPage(container, state, features) {
     return;
   }
   
-  // Create or find header
-  let tasksHeader = container.querySelector('.tasks-header');
-  if (!tasksHeader) {
-    tasksHeader = document.createElement('header');
-    tasksHeader.className = 'tasks-header';
-    // Insert at the very beginning of the container
-    container.insertBefore(tasksHeader, container.firstChild);
-  }
-  
   // Calculate task stats
   const tasks = Array.isArray(state.tasks) ? state.tasks : [];
   const projects = Array.isArray(state.projects) ? state.projects : [];
   const allTasks = getAllTasks(tasks, projects);
   const activeTasks = allTasks.filter(t => t && !t.done && !t.deletedAt && !t.parentTaskId);
   const completedTasks = allTasks.filter(t => t && t.done && !t.deletedAt && !t.parentTaskId);
+  const overdueTasks = activeTasks.filter(t => {
+    if (!t.due) return false;
+    const dueDate = new Date(t.due);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return dueDate < today;
+  });
+  const subtasks = allTasks.filter(t => t && t.parentTaskId && !t.deletedAt);
   
-  // Render header
-  tasksHeader.innerHTML = `
-    <div class="tasks-header-title">
-      <span class="tasks-header-name">Tasks</span>
-    </div>
-    <div class="tasks-header-right">
-      <div style="display:flex;align-items:center;gap:6px">
-        <span class="tasks-header-status">${activeTasks.length} active${activeTasks.length !== 1 ? '' : ''} · ${completedTasks.length} completed</span>
-      </div>
-    </div>
+  // Clear container and build structure
+  container.innerHTML = '';
+  
+  // Create header
+  const header = document.createElement('header');
+  header.className = 'page-header';
+  header.innerHTML = PageHeader({
+    title: 'Tasks',
+    icon: '⊡',
+    status: `${activeTasks.length} active · ${completedTasks.length} completed`,
+    actions: [
+      {
+        type: 'primary',
+        text: '+ Add Task',
+        action: 'ui:toggle-add-form'
+      }
+    ]
+  });
+  container.appendChild(header);
+  
+  // Create stats cards container
+  const statsContainer = document.createElement('div');
+  statsContainer.className = 'tasks-stats-container';
+  statsContainer.style.cssText = 'display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 20px 28px; background: var(--surface);';
+  statsContainer.innerHTML = `
+    ${StatCard({ 
+      label: 'Active', 
+      value: String(activeTasks.length), 
+      subtitle: 'tasks',
+      variant: 1 
+    })}
+    ${StatCard({ 
+      label: 'Completed', 
+      value: String(completedTasks.length), 
+      subtitle: 'tasks',
+      variant: 2 
+    })}
+    ${StatCard({ 
+      label: 'Overdue', 
+      value: String(overdueTasks.length), 
+      subtitle: 'tasks',
+      variant: 3 
+    })}
+    ${StatCard({ 
+      label: 'Subtasks', 
+      value: String(subtasks.length), 
+      subtitle: 'total',
+      variant: 4 
+    })}
   `;
+  container.appendChild(statsContainer);
   
   // Bind event handlers (only once)
   bind(container, features);

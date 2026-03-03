@@ -2,6 +2,7 @@
 // Core task management functions
 
 import { esc, normalizePriorityValue, normalizeDueInput } from '../utils/strings.js';
+import { showNotification } from '../ui/components.js';
 
 /**
  * Helper: Update store with safety - preserves all state fields
@@ -192,6 +193,14 @@ export async function addTask(ctx, titleOverride = null, statusOverride = null) 
   // Get board order
   const boardOrder = nextBoardOrderForNewTask(tasks, status, projectId, ctx.boardProjectFilter || 'all');
   
+  // Get planner scheduling fields (if available in modal)
+  const scheduledDate = document.getElementById('in-scheduled-date')?.value || null;
+  const scheduledStartTime = document.getElementById('in-scheduled-start-time')?.value || null;
+  const scheduledDurationMin = document.getElementById('in-scheduled-duration')?.value 
+    ? parseInt(document.getElementById('in-scheduled-duration').value) 
+    : null;
+  const autoCreateBlock = document.getElementById('in-auto-create-block')?.checked || false;
+  
   // Create task
   const newTask = {
     id: Date.now(),
@@ -214,7 +223,13 @@ export async function addTask(ctx, titleOverride = null, statusOverride = null) 
     stage: stage,
     projectId,
     dependsOn: dependsOn ? parseInt(dependsOn) : null,
-    boardOrder
+    boardOrder,
+    // Planner integration fields
+    plannerEventId: null, // Will be set if block is created
+    scheduledDate: scheduledDate,
+    scheduledStartTime: scheduledStartTime,
+    scheduledDurationMin: scheduledDurationMin,
+    autoCreateBlock: autoCreateBlock
   };
   
   // Step 2e: Use store instead of direct save/render
@@ -225,12 +240,34 @@ export async function addTask(ctx, titleOverride = null, statusOverride = null) 
     currentTasksCount: tasks?.length || 0
   });
   
+  // Check if we should create a planner block for this task
+  const shouldCreateBlock = (autoCreateBlock && scheduledDate && scheduledStartTime) ||
+                           (scheduledDate && scheduledStartTime);
+  
+  let plannerEvent = null;
+  if (shouldCreateBlock) {
+    // Import converter dynamically to avoid circular dependencies
+    const { taskToEvent } = await import('../utils/taskEventConverter.js');
+    plannerEvent = taskToEvent(newTask, scheduledDate, projects || []);
+    newTask.plannerEventId = plannerEvent.id;
+  }
+  
+  // Prepare store update with task and potentially new event
+  const storeUpdate = { tasks: [newTask, ...(tasks || [])] };
+  if (plannerEvent) {
+    const currentEvents = window.Petal?.store?.getState()?.events || [];
+    storeUpdate.events = [plannerEvent, ...currentEvents];
+  }
+  
   updateStoreSafely(
-    { tasks: [newTask, ...(tasks || [])] },
+    storeUpdate,
     async () => {
       // Fallback: old pattern for backward compatibility
       console.log('⚠️ addTask: Using fallback save (store not available)');
       tasks.unshift(newTask);
+      if (plannerEvent && window.events) {
+        window.events.unshift(plannerEvent);
+      }
       await save();
       if (render) render();
     }
@@ -240,9 +277,33 @@ export async function addTask(ctx, titleOverride = null, statusOverride = null) 
   if (window.Petal?.store) {
     const updatedState = window.Petal.store.getState();
     const taskWasAdded = updatedState.tasks?.some(t => t.id === newTask.id);
-    console.log('✅ addTask: Store updated, task added:', taskWasAdded, {
-      tasksInStore: updatedState.tasks?.length || 0
+    const eventWasAdded = plannerEvent ? updatedState.events?.some(e => e.id === plannerEvent.id) : true;
+    console.log('✅ addTask: Store updated', {
+      taskAdded: taskWasAdded,
+      eventAdded: eventWasAdded,
+      tasksInStore: updatedState.tasks?.length || 0,
+      eventsInStore: updatedState.events?.length || 0,
+      createdBlock: !!plannerEvent
     });
+    
+    // Sync: Rebuild file registry if task has files
+    if ((fileIds.length > 0 || fileLinks.length > 0) && window.Petal?.features?.fileManagement?.buildFileRegistry) {
+      try {
+        const result = window.Petal.features.fileManagement.buildFileRegistry({
+          tasks: updatedState.tasks || [],
+          projects: updatedState.projects || [],
+          fileRegistry: updatedState.fileRegistry || {},
+          fileHistory: updatedState.fileHistory || {},
+          files: updatedState.files || [],
+        }, { commit: true });
+        
+        if (window.__DEBUG__) {
+          console.log('✅ File registry rebuilt after task creation with files');
+        }
+      } catch (e) {
+        console.error('Error rebuilding file registry after task creation:', e);
+      }
+    }
   }
   
   // Clear form if not using override
@@ -286,6 +347,13 @@ export async function addTask(ctx, titleOverride = null, statusOverride = null) 
     if (typeof updateProjectFilesSelect === 'function') {
       updateProjectFilesSelect();
     }
+    
+    // Show success notification
+    showNotification({
+      message: `Task "${cleanTitle}" created successfully`,
+      type: 'success',
+      duration: 3000
+    });
   }
 }
 
@@ -322,15 +390,49 @@ export async function toggleTask(ctx, id) {
       // Handle both number and string ID comparison
       if (task.id === id || String(task.id) === String(id)) {
         const newDone = !task.done;
-        return {
+        const updatedTask = {
           ...task,
           done: newDone,
           status: newDone ? 'Done' : (task.status === 'Done' ? 'Todo' : task.status)
         };
+        
+        // Sync task completion to linked planner event
+        if (task.plannerEventId) {
+          const events = state.events || [];
+          const updatedEvents = events.map(event => {
+            if (String(event.id) === String(task.plannerEventId)) {
+              return {
+                ...event,
+                taskDone: newDone,
+                taskStatus: updatedTask.status
+              };
+            }
+            return event;
+          });
+          updateStoreSafely({ tasks: updatedTasks, events: updatedEvents });
+          return updatedTask;
+        }
+        
+        return updatedTask;
       }
       return task;
     });
     updateStoreSafely({ tasks: updatedTasks });
+    
+    // Sync: Update project completion if all tasks are done
+    if (t.projectId && window.Petal?.features?.projectTaskOperations?.syncProjectCompletion) {
+      try {
+        const updatedState = window.Petal.store.getState();
+        const ctx = {
+          tasks: updatedState.tasks || [],
+          projects: updatedState.projects || [],
+          save: save || (async () => {}),
+        };
+        await window.Petal.features.projectTaskOperations.syncProjectCompletion(t.projectId, ctx);
+      } catch (e) {
+        console.error('Error syncing project completion:', e);
+      }
+    }
   } else {
     // Fallback: old pattern
     t.done = !t.done;
@@ -340,6 +442,16 @@ export async function toggleTask(ctx, id) {
       t.status = 'Todo';
     }
     await save();
+    
+    // Sync: Update project completion if all tasks are done
+    if (t.projectId && window.Petal?.features?.projectTaskOperations?.syncProjectCompletion) {
+      try {
+        await window.Petal.features.projectTaskOperations.syncProjectCompletion(t.projectId, ctx);
+      } catch (e) {
+        console.error('Error syncing project completion:', e);
+      }
+    }
+    
     if (render) render();
   }
 }
@@ -557,7 +669,11 @@ export async function saveEditModal(ctx) {
   
   const titleValue = titleInput.value.trim();
   if (!titleValue) {
-    alert('Title cannot be empty.');
+    showNotification({
+      message: 'Title cannot be empty',
+      type: 'warning',
+      duration: 3000
+    });
     return;
   }
   
@@ -571,13 +687,21 @@ export async function saveEditModal(ctx) {
       // Editing a task subtask
       const t = tasks.find(task => task.id === currentEditingSubtaskInfo.taskId);
       if (!t || !t.subtasks) {
-        alert('Task not found.');
+        showNotification({
+          message: 'Task not found',
+          type: 'error',
+          duration: 3000
+        });
         if (typeof closeEditModal === 'function') closeEditModal();
         return;
       }
       const s = t.subtasks.find(sub => sub.id === currentEditingSubtaskInfo.subtaskId);
       if (!s) {
-        alert('Subtask not found.');
+        showNotification({
+          message: 'Subtask not found',
+          type: 'error',
+          duration: 3000
+        });
         if (typeof closeEditModal === 'function') closeEditModal();
         return;
       }
@@ -586,7 +710,11 @@ export async function saveEditModal(ctx) {
       const dueValue = dueInput ? dueInput.value : '';
       const normalizedDue = normalizeDueInput(dueValue);
       if (normalizedDue === null && dueValue.trim() !== '') {
-        alert('Invalid date format. Please use YYYY-MM-DD (e.g., 2024-12-25) or leave blank.');
+        showNotification({
+          message: 'Invalid date format. Please use YYYY-MM-DD (e.g., 2024-12-25) or leave blank',
+          type: 'warning',
+          duration: 4000
+        });
         return;
       }
       
@@ -624,13 +752,21 @@ export async function saveEditModal(ctx) {
       // Editing a project subtask (legacy - should be removed eventually)
       const p = projects.find(proj => proj.id === currentEditingSubtaskInfo.projectId);
       if (!p) {
-        alert('Project not found.');
+        showNotification({
+          message: 'Project not found',
+          type: 'error',
+          duration: 3000
+        });
         if (typeof closeEditModal === 'function') closeEditModal();
         return;
       }
       const s = (p.subtasks || []).find(sub => sub.id === currentEditingSubtaskInfo.subtaskId);
       if (!s) {
-        alert('Subtask not found.');
+        showNotification({
+          message: 'Subtask not found',
+          type: 'error',
+          duration: 3000
+        });
         if (typeof closeEditModal === 'function') closeEditModal();
         return;
       }
@@ -639,7 +775,11 @@ export async function saveEditModal(ctx) {
       const dueValue = dueInput ? dueInput.value : '';
       const normalizedDue = normalizeDueInput(dueValue);
       if (normalizedDue === null && dueValue.trim() !== '') {
-        alert('Invalid date format. Please use YYYY-MM-DD (e.g., 2024-12-25) or leave blank.');
+        showNotification({
+          message: 'Invalid date format. Please use YYYY-MM-DD (e.g., 2024-12-25) or leave blank',
+          type: 'warning',
+          duration: 4000
+        });
         return;
       }
       
@@ -681,14 +821,22 @@ export async function saveEditModal(ctx) {
     const tasksArray = state?.tasks || tasks;
     const t = findActiveTask(tasksArray, currentEditingTaskId);
     if (!t) {
-      alert('Task not found or has been deleted.');
+      showNotification({
+        message: 'Task not found or has been deleted',
+        type: 'error',
+        duration: 3000
+      });
       if (typeof closeEditModal === 'function') closeEditModal();
       return;
     }
     
     const cleanTitle = removeTags ? removeTags(titleValue) : titleValue.replace(/#\w+/g, '').trim();
     if (!cleanTitle) {
-      alert('Task title cannot be empty.');
+      showNotification({
+        message: 'Task title cannot be empty',
+        type: 'warning',
+        duration: 3000
+      });
       return;
     }
     
@@ -698,7 +846,11 @@ export async function saveEditModal(ctx) {
     const dueValue = dueInput ? dueInput.value : '';
     const normalizedDue = normalizeDueInput(dueValue);
     if (normalizedDue === null && dueValue.trim() !== '') {
-      alert('Invalid date format. Please use YYYY-MM-DD (e.g., 2024-12-25) or leave blank.');
+      showNotification({
+        message: 'Invalid date format. Please use YYYY-MM-DD (e.g., 2024-12-25) or leave blank',
+        type: 'warning',
+        duration: 4000
+      });
       return;
     }
     

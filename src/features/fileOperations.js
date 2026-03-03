@@ -2,6 +2,7 @@
 // UI-level file operations (file rows, URL normalization, etc.)
 
 import { esc } from '../utils/strings.js';
+import { showNotification } from '../ui/components.js';
 
 /**
  * Add a file row to a container (for file input forms)
@@ -10,7 +11,11 @@ export async function addFileRow(containerId, prefix, subtaskProjId, subtaskId) 
   const c = document.getElementById(containerId);
   if (!c) {
     console.error('Container not found:', containerId);
-    alert('Error: Could not find file container. Please refresh the page.');
+    showNotification({
+      message: 'Error: Could not find file container. Please refresh the page.',
+      type: 'error',
+      duration: 5000
+    });
     return;
   }
   
@@ -46,7 +51,11 @@ export async function addFileRow(containerId, prefix, subtaskProjId, subtaskId) 
       return;
     } catch (e) {
       console.error('File picker error:', e);
-      alert('Could not open file picker: ' + e.message);
+      showNotification({
+        message: 'Could not open file picker: ' + e.message,
+        type: 'error',
+        duration: 5000
+      });
       // Don't fall back to manual input - let user try again
       return;
     }

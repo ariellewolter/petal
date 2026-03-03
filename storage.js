@@ -89,11 +89,12 @@ class StorageAdapter {
             fileRegistry: {},
             events: [],
             recurringRules: [],
-            habits: [],
-            habitCheckins: {},
-            routines: [],
-            routineCheckins: {},
-            prints3d: []
+          habits: [],
+          habitCheckins: {},
+          routines: [],
+          routineCheckins: {},
+          goals: [],
+          prints3d: []
           },
           hasConflicts: false,
           conflicts: [],
@@ -117,6 +118,7 @@ class StorageAdapter {
           habitCheckins: JSON.parse(localStorage.getItem('petal-habit-checkins') || '{}'),
           routines: JSON.parse(localStorage.getItem('petal-routines') || '[]'),
           routineCheckins: JSON.parse(localStorage.getItem('petal-routine-checkins') || '{}'),
+          goals: JSON.parse(localStorage.getItem('petal-goals') || '[]'),
           prints3d: JSON.parse(localStorage.getItem('petal-prints3d') || '[]')
         };
       } catch (e) {
@@ -135,6 +137,7 @@ class StorageAdapter {
           habitCheckins: {},
           routines: [],
           routineCheckins: {},
+          goals: [],
           prints3d: []
         };
       }
@@ -169,6 +172,7 @@ class StorageAdapter {
           habitCheckins: state.habitCheckins || {},
           routines: state.routines || [],
           routineCheckins: state.routineCheckins || {},
+          goals: state.goals || [],
           prints3d: state.prints3d || [],
           files: state.files || [], // ✅ Persisted files list
           workflow: state.workflow || {},
@@ -212,6 +216,7 @@ class StorageAdapter {
         localStorage.setItem('petal-habit-checkins', JSON.stringify(state.habitCheckins || {}));
         localStorage.setItem('petal-routines', JSON.stringify(state.routines || []));
         localStorage.setItem('petal-routine-checkins', JSON.stringify(state.routineCheckins || {}));
+        localStorage.setItem('petal-goals', JSON.stringify(state.goals || []));
         localStorage.setItem('petal-prints3d', JSON.stringify(state.prints3d || []));
         localStorage.setItem('petal-files', JSON.stringify(state.files || [])); // ✅ Persisted files list
         localStorage.setItem('petal-file-history', JSON.stringify(state.fileHistory || {}));

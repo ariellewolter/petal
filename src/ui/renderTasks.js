@@ -6,6 +6,7 @@ console.log("✅ renderTasks.js LOADED — EDITBTN TEST 2026-02-21");
 import { esc } from '../utils/strings.js';
 import { today, parseDate, dueLabel, inRange } from '../utils/dates.js';
 import { getAllTasks } from '../domain/models.js';
+import { LANES } from '../domain/schema.js';
 import { EmptyState } from '../ui/components.js';
 
 /**
@@ -310,7 +311,15 @@ function renderTaskItem(task, state) {
   const dueClass = dl?.class || '';
   const dueText = dl?.label || '';
   
-  return `<div class="task-card ${task.done ? 'done' : ''}" data-id="${task.id}" data-task-id="${task.id}" data-priority="${priorityClass}" draggable="true" style="cursor:grab;">
+  // Get lane badge if task has a lane
+  let laneBadge = '';
+  if (task.lane && LANES[task.lane]) {
+    const laneInfo = LANES[task.lane];
+    const laneColor = laneInfo.color || 'var(--text-dim)';
+    laneBadge = `<span class="lane-badge" data-lane="${esc(task.lane)}" style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;background:${laneColor}20;border:1px solid ${laneColor};border-left:3px solid ${laneColor};border-radius:6px;font-size:10px;color:${laneColor};font-weight:500;cursor:pointer;transition:all 0.15s;" onmouseover="this.style.background='${laneColor}40';this.style.transform='scale(1.05)'" onmouseout="this.style.background='${laneColor}20';this.style.transform='scale(1)'" title="Workflow lane: ${esc(laneInfo.label)}" data-action="workflow:view-lane" data-lane="${esc(task.lane)}">${esc(laneInfo.label)}</span>`;
+  }
+  
+  return `<div class="task-card ${task.done ? 'done' : ''}" data-id="${task.id}" data-task-id="${task.id}" data-priority="${priorityClass}" draggable="true" style="cursor:grab;" ondragstart="window.Petal?.features?.workflowTaskOperations?.handleTaskDragStart?.(event, ${task.id})" ondragover="event.preventDefault();event.stopPropagation();this.style.background='var(--bg3)';" ondragleave="this.style.background='';" ondrop="event.preventDefault();event.stopPropagation();this.style.background='';window.Petal?.features?.fileTaskOperations?.handleTaskCardDrop?.(event, ${JSON.stringify(task)}, window.Petal?.store ? {tasks: window.Petal.store.getState().tasks || [], projects: window.Petal.store.getState().projects || [], save: window.Petal?.save, rerenderViewIfActive: window.Petal?.rerenderViewIfActive}) : null);">
     <div class="task-top">
       <div class="task-content">
         <button type="button" class="check-box ${task.done ? 'checked' : ''}"
@@ -326,6 +335,7 @@ function renderTaskItem(task, state) {
           </div>
           
           <div class="task-meta-row">
+            ${laneBadge}
             <span class="priority-tag ${priorityClass}">${priorityClass}</span>
             ${dueText ? `<span class="due-tag ${dueClass}">${esc(dueText)}</span>` : ''}
           </div>

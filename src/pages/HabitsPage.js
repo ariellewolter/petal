@@ -1,7 +1,8 @@
-// ═══════════════════════ HABITS & ROUTINES PAGE ═══════════════════════
-// Habits and routines tracking page with monthly/yearly views and goals
+// ═══════════════════════ HABITS PAGE ═══════════════════════
+// Habits tracking page with monthly/yearly views and goals
 
 import { escapeHtml } from '../utils/strings.js';
+import { EmptyState, Buttons, PageHeader, StatCard } from '../ui/components.js';
 
 // Constants
 const COLORS = ['#c98b8b', '#b8a0c9', '#8ab4c9', '#8ac9a0', '#c9b88a', '#c98ab4', '#a0b8c9', '#c9a08a'];
@@ -11,7 +12,6 @@ const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 // State
 let habits = [];
-let goals = [];
 let completions = {}; // { habitId: { 'YYYY-MM-DD': true } }
 let currentTab = 'monthly';
 let selectedHabitId = null;
@@ -36,84 +36,8 @@ function injectStyles() {
   styleEl.id = styleId;
   styleEl.textContent = `
     /* ── HABITS PAGE STYLES ── */
-    #view-habits {
-      grid-column: 2 !important;
-      grid-row: 1 !important;
-      position: relative !important;
-      top: 0 !important;
-      left: 0 !important;
-      margin: 0 !important;
-      padding: 82px 36px 100px !important;
-      box-sizing: border-box !important;
-      width: 100% !important;
-      max-width: 100% !important;
-      overflow-x: hidden !important;
-      overflow-y: auto !important;
-      min-width: 0 !important;
-      height: 100vh !important;
-      padding-top: 82px !important;
-    }
-
-    #view-habits .habits-page-header {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 0 28px;
-      height: 58px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin: 0;
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 10;
-    }
-    #view-habits .habits-page-header-title {
-      display: flex;
-      align-items: baseline;
-      gap: 10px;
-    }
-    #view-habits .habits-page-header-name {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 18px;
-      font-weight: 300;
-      font-style: italic;
-    }
-    #view-habits .habits-page-header-right {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-    #view-habits .habits-page-header-status {
-      font-size: 11px;
-      color: var(--text-dim);
-    }
-
-    #view-habits .habits-main {
-      margin-top: 74px;
-    }
-    #view-habits .habits-page-title {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 36px;
-      font-weight: 400;
-      color: var(--text);
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      margin-bottom: 28px;
-    }
-    #view-habits .habits-page-title-icon {
-      width: 44px;
-      height: 44px;
-      background: var(--rose-pale);
-      border: 1px solid var(--rose-soft);
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 24px;
-    }
+    /* Note: Container padding and layout are handled by main.css */
+    /* This file only contains Habits-specific component styles */
 
     /* Stats */
     #view-habits .habits-stats-row {
@@ -1075,23 +999,23 @@ function initData() {
   if (window.Petal?.store) {
     const state = window.Petal.store.getState();
     habits = state.habits || [];
-    goals = state.goals || [];
-    completions = state.habitCompletions || {};
+    completions = state.habitCheckins || {};
     
     // Ensure data exists in store if it doesn't
     if (!state.habits) {
       window.Petal.store.setState({ habits: [] });
     }
-    if (!state.goals) {
-      window.Petal.store.setState({ goals: [] });
-    }
-    if (!state.habitCompletions) {
-      window.Petal.store.setState({ habitCompletions: {} });
+    if (!state.habitCheckins) {
+      window.Petal.store.setState({ habitCheckins: {} });
     }
   } else {
     habits = [];
-    goals = [];
     completions = {};
+  }
+  
+  // Ensure currentTab is valid (default to monthly if it was 'goals')
+  if (currentTab === 'goals') {
+    currentTab = 'monthly';
   }
 }
 
@@ -1102,8 +1026,7 @@ async function saveData() {
   if (window.Petal?.store) {
     window.Petal.store.setState({
       habits,
-      goals,
-      habitCompletions: completions
+      habitCheckins: completions
     });
     if (window.Petal?.persistence?.flush) {
       await window.Petal.persistence.flush();
@@ -1112,44 +1035,57 @@ async function saveData() {
 }
 
 /**
- * Render stats
+ * Render stats using standard StatCard component
  */
 function renderStats() {
   const today = todayStr();
   const totalH = habits.length;
   const doneToday = habits.filter(h => (completions[h.id] || {})[today]).length;
   const bestStreak = habits.reduce((mx, h) => Math.max(mx, getStreak(h.id)), 0);
-  const totalG = goals.length;
+  const totalCompletions = Object.values(completions).reduce((sum, comp) => sum + Object.keys(comp).length, 0);
 
   const statsRow = document.getElementById('habits-stats-row');
   if (!statsRow) return;
 
+  // Use standard StatCard component like other pages
   statsRow.innerHTML = `
-    <div class="habits-stat-card s1">
-      <div class="habits-stat-label">Habits</div>
-      <div class="habits-stat-value">${totalH}</div>
-      <div class="habits-stat-sub">being tracked</div>
-    </div>
-    <div class="habits-stat-card s2">
-      <div class="habits-stat-label">Today</div>
-      <div class="habits-stat-value">${doneToday}<span style="font-size:16px;color:var(--text-dim)">/${totalH}</span></div>
-      <div class="habits-stat-sub">completed</div>
-    </div>
-    <div class="habits-stat-card s3">
-      <div class="habits-stat-label">Best Streak</div>
-      <div class="habits-stat-value">${bestStreak}</div>
-      <div class="habits-stat-sub">days in a row</div>
-    </div>
-    <div class="habits-stat-card s4">
-      <div class="habits-stat-label">Goals</div>
-      <div class="habits-stat-value">${totalG}</div>
-      <div class="habits-stat-sub">this year</div>
-    </div>
+    ${StatCard({
+      label: 'Habits',
+      value: String(totalH),
+      subtitle: 'being tracked',
+      variant: 1
+    })}
+    ${StatCard({
+      label: 'Today',
+      value: `${doneToday}/${totalH}`,
+      subtitle: 'completed',
+      variant: 2
+    })}
+    ${StatCard({
+      label: 'Best Streak',
+      value: String(bestStreak),
+      subtitle: 'days in a row',
+      variant: 3
+    })}
+    ${StatCard({
+      label: 'Total',
+      value: String(totalCompletions),
+      subtitle: 'completions',
+      variant: 4
+    })}
   `;
 
+  // Update header status if it exists
   const navStatus = document.getElementById('habits-nav-status');
   if (navStatus) {
     navStatus.textContent = `${doneToday} / ${totalH} today`;
+  }
+  
+  // Also update page header status
+  const container = document.getElementById('view-habits');
+  const pageHeaderStatus = container?.querySelector('.page-header .page-header-status');
+  if (pageHeaderStatus) {
+    pageHeaderStatus.textContent = `${doneToday} / ${totalH} today`;
   }
 }
 
@@ -1161,11 +1097,12 @@ function renderMonthly() {
   if (!viewArea) return;
 
   if (habits.length === 0) {
-    viewArea.innerHTML = `<div class="habits-empty-state">
-      <div class="habits-empty-icon">🌱</div>
-      <div class="habits-empty-msg">No habits yet.<br>Add your first habit to start tracking!</div>
-      <button class="habits-btn-primary" data-action="open-modal" data-modal-type="habit">+ Add Habit</button>
-    </div>`;
+    viewArea.innerHTML = EmptyState({
+      icon: '🌱',
+      message: 'No habits yet',
+      subtitle: 'Add your first habit to start tracking!',
+      action: { text: '+ Add Habit', action: 'open-modal', dataAttrs: { modalType: 'habit' } }
+    });
     return;
   }
 
@@ -1260,11 +1197,11 @@ function renderYearly() {
   if (!viewArea) return;
 
   if (habits.length === 0) {
-    viewArea.innerHTML = `<div class="habits-empty-state">
-      <div class="habits-empty-icon">📅</div>
-      <div class="habits-empty-msg">Add habits to see your yearly overview!</div>
-      <button class="habits-btn-primary" data-action="open-modal" data-modal-type="habit">+ Add Habit</button>
-    </div>`;
+    viewArea.innerHTML = EmptyState({
+      icon: '📅',
+      message: 'Add habits to see your yearly overview!',
+      action: { text: '+ Add Habit', action: 'open-modal', dataAttrs: { modalType: 'habit' } }
+    });
     return;
   }
 
@@ -1324,57 +1261,6 @@ function renderYearly() {
   viewArea.innerHTML = `<div class="habits-yearly-layout">${blocks}</div>`;
 }
 
-/**
- * Render goals view
- */
-function renderGoals() {
-  const viewArea = document.getElementById('habits-view-area');
-  if (!viewArea) return;
-
-  if (goals.length === 0) {
-    viewArea.innerHTML = `<div class="habits-empty-state">
-      <div class="habits-empty-icon">🎯</div>
-      <div class="habits-empty-msg">No goals yet.<br>Set your first goal and start making progress!</div>
-      <button class="habits-btn-primary" data-action="open-modal" data-modal-type="goal">+ Add Goal</button>
-    </div>`;
-    return;
-  }
-
-  const cards = goals.map(g => {
-    const pct = g.target > 0 ? Math.min(100, Math.round(((g.current || 0) / g.target) * 100)) : 0;
-    const remaining = g.target - (g.current || 0);
-    return `<div class="habits-goal-card cat-${g.category || 'mind'}">
-      <div class="habits-goal-actions">
-        <button class="habits-action-btn" data-action="delete-goal" data-goal-id="${g.id}" title="Delete">✕</button>
-      </div>
-      <div class="habits-goal-head">
-        <div class="habits-goal-icon">${escapeHtml(g.icon || '🎯')}</div>
-        <div class="habits-goal-title-wrap">
-          <div class="habits-goal-name">${escapeHtml(g.name)}</div>
-          <div class="habits-goal-cat">${escapeHtml(g.category || 'goal')} · ${g.year || viewYear}</div>
-        </div>
-      </div>
-      <div class="habits-goal-progress-nums">
-        <div class="habits-goal-current">${g.current || 0}<span style="font-size:14px;color:var(--text-dim);margin-left:4px;">${escapeHtml(g.unit || '')}</span></div>
-        <div class="habits-goal-target">of ${g.target} ${escapeHtml(g.unit || '')}</div>
-      </div>
-      <div class="habits-goal-track"><div class="habits-goal-fill" style="width:${pct}%"></div></div>
-      <div class="habits-goal-chips">
-        <div class="habits-goal-chip">${pct}% complete</div>
-        ${remaining > 0
-          ? `<div class="habits-goal-chip">${remaining} ${escapeHtml(g.unit || '')} left</div>`
-          : `<div class="habits-goal-chip done">✓ Achieved!</div>`
-        }
-      </div>
-      <div class="habits-goal-update-row">
-        <input type="number" id="habits-prog-${g.id}" value="${g.current || 0}" min="0" max="${g.target}" placeholder="Progress">
-        <button class="habits-btn-small" data-action="update-goal" data-goal-id="${g.id}">Update</button>
-      </div>
-    </div>`;
-  }).join('');
-
-  viewArea.innerHTML = `<div class="habits-goals-grid">${cards}</div>`;
-}
 
 /**
  * Render all views
@@ -1384,11 +1270,7 @@ function renderAll() {
   
   const toolbarBtns = document.getElementById('habits-toolbar-btns');
   if (toolbarBtns) {
-    if (currentTab === 'goals') {
-      toolbarBtns.innerHTML = `<button class="habits-btn-primary" data-action="open-modal" data-modal-type="goal">+ Add Goal</button>`;
-    } else {
-      toolbarBtns.innerHTML = `<button class="habits-btn-ghost" data-action="open-modal" data-modal-type="habit">+ Add Habit</button>`;
-    }
+    toolbarBtns.innerHTML = `<button class="habits-btn-ghost" data-action="open-modal" data-modal-type="habit">+ Add Habit</button>`;
   }
 
   const yearNav = document.getElementById('habits-year-nav');
@@ -1404,100 +1286,51 @@ function renderAll() {
 
   if (currentTab === 'monthly') renderMonthly();
   else if (currentTab === 'yearly') renderYearly();
-  else renderGoals();
+  else renderMonthly(); // Default to monthly if invalid tab
 }
 
 /**
  * Get modal template
  */
 function getModalTemplate(mode) {
-  if (mode === 'habit') {
-    return `
-      <div class="habits-form-row">
-        <div class="habits-form-group full">
-          <label class="habits-form-label">Habit Name</label>
-          <input class="habits-form-input" id="habits-m-name" placeholder="e.g. Morning meditation" autofocus>
+  // Only habit mode is supported now (goals have their own page)
+  return `
+    <div class="habits-form-row">
+      <div class="habits-form-group full">
+        <label class="habits-form-label">Habit Name</label>
+        <input class="habits-form-input" id="habits-m-name" placeholder="e.g. Morning meditation" autofocus>
+      </div>
+    </div>
+    <div class="habits-form-row">
+      <div class="habits-form-group">
+        <label class="habits-form-label">Emoji Icon</label>
+        <input class="habits-form-input" id="habits-m-icon" placeholder="🌿" maxlength="4" style="font-size:18px;">
+      </div>
+      <div class="habits-form-group">
+        <label class="habits-form-label">Color</label>
+        <div class="habits-color-row" id="habits-color-row">
+          ${COLORS.map((c, i) => `<div class="habits-cswatch ${i === 0 ? 'sel' : ''}" style="background:${c}" data-c="${c}"></div>`).join('')}
         </div>
       </div>
-      <div class="habits-form-row">
-        <div class="habits-form-group">
-          <label class="habits-form-label">Emoji Icon</label>
-          <input class="habits-form-input" id="habits-m-icon" placeholder="🌿" maxlength="4" style="font-size:18px;">
-        </div>
-        <div class="habits-form-group">
-          <label class="habits-form-label">Color</label>
-          <div class="habits-color-row" id="habits-color-row">
-            ${COLORS.map((c, i) => `<div class="habits-cswatch ${i === 0 ? 'sel' : ''}" style="background:${c}" data-c="${c}"></div>`).join('')}
-          </div>
-        </div>
-      </div>
-      <div class="habits-form-row">
-        <div class="habits-form-group full">
-          <label class="habits-form-label">Frequency</label>
-          <div class="habits-freq-row">
-            <div class="habits-fpill sel" data-f="daily">Daily</div>
-            <div class="habits-fpill" data-f="weekdays">Weekdays</div>
-            <div class="habits-fpill" data-f="weekends">Weekends</div>
-            <div class="habits-fpill" data-f="3× / week">3× / week</div>
-          </div>
+    </div>
+    <div class="habits-form-row">
+      <div class="habits-form-group full">
+        <label class="habits-form-label">Frequency</label>
+        <div class="habits-freq-row">
+          <div class="habits-fpill sel" data-f="daily">Daily</div>
+          <div class="habits-fpill" data-f="weekdays">Weekdays</div>
+          <div class="habits-fpill" data-f="weekends">Weekends</div>
+          <div class="habits-fpill" data-f="3× / week">3× / week</div>
         </div>
       </div>
-      <div class="habits-form-row">
-        <div class="habits-form-group full">
-          <label class="habits-form-label">Notes (optional)</label>
-          <textarea class="habits-form-input" id="habits-m-notes" placeholder="Why this habit matters…" style="min-height:68px;resize:vertical;"></textarea>
-        </div>
+    </div>
+    <div class="habits-form-row">
+      <div class="habits-form-group full">
+        <label class="habits-form-label">Notes (optional)</label>
+        <textarea class="habits-form-input" id="habits-m-notes" placeholder="Why this habit matters…" style="min-height:68px;resize:vertical;"></textarea>
       </div>
-    `;
-  } else {
-    return `
-      <div class="habits-form-row">
-        <div class="habits-form-group full">
-          <label class="habits-form-label">Goal Title</label>
-          <input class="habits-form-input" id="habits-m-name" placeholder="e.g. Read 24 books this year" autofocus>
-        </div>
-      </div>
-      <div class="habits-form-row">
-        <div class="habits-form-group">
-          <label class="habits-form-label">Emoji Icon</label>
-          <input class="habits-form-input" id="habits-m-icon" placeholder="📚" maxlength="4" style="font-size:18px;">
-        </div>
-        <div class="habits-form-group">
-          <label class="habits-form-label">Category</label>
-          <select class="habits-form-select" id="habits-m-category">
-            <option value="health">🏃 Health</option>
-            <option value="mind">📚 Mind</option>
-            <option value="body">💪 Body</option>
-            <option value="social">💛 Social</option>
-            <option value="creative">🎨 Creative</option>
-          </select>
-        </div>
-      </div>
-      <div class="habits-form-row">
-        <div class="habits-form-group">
-          <label class="habits-form-label">Target Number</label>
-          <input class="habits-form-input" id="habits-m-target" type="number" placeholder="24" min="1">
-        </div>
-        <div class="habits-form-group">
-          <label class="habits-form-label">Unit</label>
-          <input class="habits-form-input" id="habits-m-unit" placeholder="books">
-        </div>
-      </div>
-      <div class="habits-form-row">
-        <div class="habits-form-group">
-          <label class="habits-form-label">Current Progress</label>
-          <input class="habits-form-input" id="habits-m-current" type="number" placeholder="0" min="0">
-        </div>
-        <div class="habits-form-group">
-          <label class="habits-form-label">Year</label>
-          <select class="habits-form-select" id="habits-m-year">
-            <option>${new Date().getFullYear()}</option>
-            <option>${new Date().getFullYear() + 1}</option>
-          </select>
-        </div>
-      </div>
-    `;
-  }
+    </div>
+  `;
 }
 
 /**
@@ -1512,62 +1345,39 @@ function openModal(mode) {
   selectedColor = COLORS[0];
   selectedFreq = 'daily';
   
-  // Try to find modal in the container first, then fall back to document
+  // Find modal in the container (should always exist after render)
   const container = document.getElementById('view-habits');
-  let modalTitle = container?.querySelector('#habits-modal-title') || document.getElementById('habits-modal-title');
-  let modalSave = container?.querySelector('#habits-modal-save') || document.getElementById('habits-modal-save');
-  let modalBody = container?.querySelector('#habits-modal-body') || document.getElementById('habits-modal-body');
-  let modalBackdrop = container?.querySelector('#habits-modal-backdrop') || document.getElementById('habits-modal-backdrop');
+  if (!container) {
+    console.error('❌ Habits container not found');
+    return;
+  }
+  
+  // Ensure only one modal exists (safety check - should never be needed)
+  const allModals = container.querySelectorAll('#habits-modal-backdrop');
+  if (allModals.length > 1) {
+    console.warn(`⚠️ Found ${allModals.length} modals, removing duplicates`);
+    for (let i = 1; i < allModals.length; i++) {
+      allModals[i].remove();
+    }
+  }
+  
+  let modalBackdrop = container.querySelector('#habits-modal-backdrop');
+  let modalTitle = container.querySelector('#habits-modal-title');
+  let modalSave = container.querySelector('#habits-modal-save');
+  let modalBody = container.querySelector('#habits-modal-body');
   
   if (!modalTitle || !modalSave || !modalBody || !modalBackdrop) {
     console.error('❌ Habits modal elements not found:', {
       modalTitle: !!modalTitle,
       modalSave: !!modalSave,
       modalBody: !!modalBody,
-      modalBackdrop: !!modalBackdrop,
-      container: !!container,
-      containerHTML: container ? container.innerHTML.substring(0, 200) : 'no container'
+      modalBackdrop: !!modalBackdrop
     });
-    
-    // Try to recreate the modal if it's missing
-    if (container && !modalBackdrop) {
-      console.log('🔧 Recreating missing modal...');
-      const modalHTML = `
-        <div class="habits-modal-backdrop" id="habits-modal-backdrop" data-action="close-modal-backdrop">
-          <div class="habits-modal">
-            <div class="habits-modal-head">
-              <div class="habits-modal-title" id="habits-modal-title">Add Habit</div>
-              <button class="habits-modal-close" data-action="close-modal">✕</button>
-            </div>
-            <div class="habits-modal-body" id="habits-modal-body"></div>
-            <div class="habits-modal-foot">
-              <button class="habits-mfbtn cancel" data-action="close-modal">Cancel</button>
-              <button class="habits-mfbtn save" id="habits-modal-save" data-action="save-modal">Save</button>
-            </div>
-          </div>
-        </div>
-      `;
-      container.insertAdjacentHTML('beforeend', modalHTML);
-      
-      // Try again with newly created elements
-      modalBackdrop = container.querySelector('#habits-modal-backdrop');
-      modalTitle = container.querySelector('#habits-modal-title');
-      modalSave = container.querySelector('#habits-modal-save');
-      modalBody = container.querySelector('#habits-modal-body');
-      
-      if (modalBackdrop && modalTitle && modalSave && modalBody) {
-        console.log('✅ Modal recreated successfully');
-      } else {
-        console.error('❌ Failed to recreate modal');
-        return;
-      }
-    } else {
-      return;
-    }
+    return;
   }
   
-  modalTitle.textContent = mode === 'habit' ? 'Add Habit' : 'Add Goal';
-  modalSave.textContent = mode === 'habit' ? 'Add Habit' : 'Add Goal';
+  modalTitle.textContent = 'Add Habit';
+  modalSave.textContent = 'Add Habit';
   modalBody.innerHTML = getModalTemplate(mode);
   modalBackdrop.classList.add('open');
   
@@ -1621,45 +1431,20 @@ async function saveModal() {
   }
   
   const iconInput = document.getElementById('habits-m-icon');
-  const icon = (iconInput?.value.trim() || (modalMode === 'habit' ? '🌿' : '🎯'));
+  const icon = (iconInput?.value.trim() || '🌿');
   
-  if (modalMode === 'habit') {
-    const notesInput = document.getElementById('habits-m-notes');
-    const notes = notesInput?.value || '';
-    habits.push({
-      id: Date.now(),
-      name,
-      icon,
-      color: selectedColor,
-      freq: selectedFreq,
-      notes
-    });
-    if (!selectedHabitId && habits.length > 0) {
-      selectedHabitId = habits[0].id;
-    }
-  } else {
-    const targetInput = document.getElementById('habits-m-target');
-    const unitInput = document.getElementById('habits-m-unit');
-    const currentInput = document.getElementById('habits-m-current');
-    const yearInput = document.getElementById('habits-m-year');
-    const categoryInput = document.getElementById('habits-m-category');
-    
-    const target = parseInt(targetInput?.value) || 1;
-    const unit = unitInput?.value || '';
-    const current = parseInt(currentInput?.value) || 0;
-    const year = parseInt(yearInput?.value) || new Date().getFullYear();
-    const cat = categoryInput?.value || 'mind';
-    
-    goals.push({
-      id: Date.now(),
-      name,
-      icon,
-      category: cat,
-      target,
-      unit,
-      current,
-      year
-    });
+  const notesInput = document.getElementById('habits-m-notes');
+  const notes = notesInput?.value || '';
+  habits.push({
+    id: Date.now(),
+    name,
+    icon,
+    color: selectedColor,
+    freq: selectedFreq,
+    notes
+  });
+  if (!selectedHabitId && habits.length > 0) {
+    selectedHabitId = habits[0].id;
   }
   
   await saveData();
@@ -1672,32 +1457,6 @@ async function saveModal() {
   }
 }
 
-/**
- * Delete goal
- */
-async function deleteGoal(id) {
-  if (!confirm('Delete this goal?')) return;
-  goals = goals.filter(g => g.id !== id);
-  await saveData();
-  renderGoals();
-  renderStats();
-}
-
-/**
- * Update goal progress
- */
-async function updateGoalProgress(id) {
-  const inp = document.getElementById(`habits-prog-${id}`);
-  if (!inp) return;
-  const val = parseInt(inp.value);
-  if (isNaN(val)) return;
-  const g = goals.find(g => g.id === id);
-  if (!g) return;
-  g.current = Math.max(0, val);
-  await saveData();
-  renderGoals();
-  renderStats();
-}
 
 /**
  * Bind event handlers using event delegation
@@ -1743,9 +1502,8 @@ function bind(container) {
         break;
         
       case 'open-modal':
-        const modalType = btn.dataset.modalType || btn.getAttribute('data-modal-type') || 'habit';
-        console.log('🔍 Opening modal:', modalType, 'Button:', btn);
-        openModal(modalType);
+        // Only habit mode is supported (goals have their own page)
+        openModal('habit');
         break;
         
       case 'close-modal':
@@ -1829,16 +1587,6 @@ function bind(container) {
         const yearLabel2 = document.getElementById('habits-year-label');
         if (yearLabel2) yearLabel2.textContent = viewYear;
         break;
-        
-      case 'delete-goal':
-        const goalId = parseInt(btn.dataset.goalId);
-        if (goalId) deleteGoal(goalId);
-        break;
-        
-      case 'update-goal':
-        const goalId2 = parseInt(btn.dataset.goalId);
-        if (goalId2) updateGoalProgress(goalId2);
-        break;
     }
   });
   
@@ -1886,41 +1634,33 @@ function bind(container) {
 }
 
 /**
- * Get HTML template
+ * Get HTML template (header is added separately using PageHeader component)
  */
 function getHTMLTemplate() {
   return `
-    <div class="habits-main">
-      <div class="habits-page-title">
-        <div class="habits-page-title-icon">🌿</div>
-        Habits &amp; Routines
-      </div>
+    <!-- Stats -->
+    <div class="habits-stats-row" id="habits-stats-row" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 20px 28px 0; background: var(--surface);"></div>
 
-      <!-- Stats -->
-      <div class="habits-stats-row" id="habits-stats-row"></div>
-
-      <!-- Toolbar -->
-      <div class="habits-toolbar">
-        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-          <div class="habits-tabs">
-            <button class="habits-tab active" data-action="switch-tab" data-tab="monthly">Monthly</button>
-            <button class="habits-tab" data-action="switch-tab" data-tab="yearly">Yearly</button>
-            <button class="habits-tab" data-action="switch-tab" data-tab="goals">Goals</button>
-          </div>
-          <div id="habits-year-nav" style="display:none;align-items:center;gap:8px;">
-            <button class="habits-btn-icon" data-action="prev-year">‹</button>
-            <span id="habits-year-label" style="font-family:'Cormorant Garamond',serif;font-size:19px;"></span>
-            <button class="habits-btn-icon" data-action="next-year">›</button>
-          </div>
+    <!-- Toolbar -->
+    <div class="habits-toolbar" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin: 20px 28px 28px;">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div class="habits-tabs">
+          <button class="habits-tab ${currentTab === 'monthly' ? 'active' : ''}" data-action="switch-tab" data-tab="monthly">Monthly</button>
+          <button class="habits-tab ${currentTab === 'yearly' ? 'active' : ''}" data-action="switch-tab" data-tab="yearly">Yearly</button>
         </div>
-        <div class="habits-btn-row" id="habits-toolbar-btns"></div>
+        <div id="habits-year-nav" style="display:none;align-items:center;gap:8px;">
+          <button class="habits-btn-icon" data-action="prev-year">‹</button>
+          <span id="habits-year-label" style="font-family:'Cormorant Garamond',serif;font-size:19px;"></span>
+          <button class="habits-btn-icon" data-action="next-year">›</button>
+        </div>
       </div>
-
-      <!-- View Area -->
-      <div id="habits-view-area"></div>
+      <div class="habits-btn-row" id="habits-toolbar-btns"></div>
     </div>
 
-    <!-- Modal -->
+    <!-- View Area -->
+    <div id="habits-view-area" style="padding: 0 28px;"></div>
+
+    <!-- Modal (single instance) -->
     <div class="habits-modal-backdrop" id="habits-modal-backdrop" data-action="close-modal-backdrop">
       <div class="habits-modal">
         <div class="habits-modal-head">
@@ -1955,70 +1695,43 @@ export async function renderHabitsPage(container, state, features) {
   // Initialize data
   initData();
   
-  // Check if modal already exists (to preserve it across re-renders)
-  const existingModal = container.querySelector('#habits-modal-backdrop');
-  
-  // Render main content
-  container.innerHTML = getHTMLTemplate();
-  
-  // If modal was removed, recreate it
-  if (!container.querySelector('#habits-modal-backdrop')) {
-    const modalHTML = `
-      <div class="habits-modal-backdrop" id="habits-modal-backdrop" data-action="close-modal-backdrop">
-        <div class="habits-modal">
-          <div class="habits-modal-head">
-            <div class="habits-modal-title" id="habits-modal-title">Add Habit</div>
-            <button class="habits-modal-close" data-action="close-modal">✕</button>
-          </div>
-          <div class="habits-modal-body" id="habits-modal-body"></div>
-          <div class="habits-modal-foot">
-            <button class="habits-mfbtn cancel" data-action="close-modal">Cancel</button>
-            <button class="habits-mfbtn save" id="habits-modal-save" data-action="save-modal">Save</button>
-          </div>
-        </div>
-      </div>
-    `;
-    container.insertAdjacentHTML('beforeend', modalHTML);
-  }
-  
-  // Create or find header
-  let pageHeader = container.querySelector('.habits-page-header');
-  if (!pageHeader) {
-    pageHeader = document.createElement('header');
-    pageHeader.className = 'habits-page-header';
-    container.insertBefore(pageHeader, container.firstChild);
-  }
-  
-  // Render header
+  // Calculate status for header
   const today = todayStr();
   const totalH = habits.length;
   const doneToday = habits.filter(h => (completions[h.id] || {})[today]).length;
   
-  pageHeader.innerHTML = `
-    <div class="habits-page-header-title">
-      <span class="habits-page-header-name">Habits &amp; Routines</span>
-    </div>
-    <div class="habits-page-header-right">
-      <div style="display: flex; align-items: center; gap: 6px">
-        <span class="habits-page-header-status" id="habits-nav-status">${doneToday} / ${totalH} today</span>
-      </div>
-    </div>
-  `;
+  // Clear container
+  container.innerHTML = '';
   
-  // Initialize and render first (so modal elements exist)
+  // Create header using standard PageHeader component (like other pages)
+  const header = document.createElement('header');
+  header.className = 'page-header';
+  header.innerHTML = PageHeader({
+    title: 'Habits',
+    icon: '🌿',
+    status: `${doneToday} / ${totalH} today`,
+    actions: []
+  });
+  container.appendChild(header);
+  
+  // Render main content (template includes modal - single instance)
+  container.insertAdjacentHTML('beforeend', getHTMLTemplate());
+  
+  // Ensure only one modal exists (safety check)
+  const allModals = container.querySelectorAll('#habits-modal-backdrop');
+  if (allModals.length > 1) {
+    console.warn(`⚠️ Found ${allModals.length} modals, removing duplicates`);
+    for (let i = 1; i < allModals.length; i++) {
+      allModals[i].remove();
+    }
+  }
+  
+  // Initialize and render content
   initData();
   renderAll();
   
-  // Bind event handlers after content is rendered (only once per container instance)
+  // Bind event handlers (only once per container instance)
   bind(container);
-  
-  // Test: verify modal elements exist
-  const testModal = document.getElementById('habits-modal-backdrop');
-  if (!testModal) {
-    console.error('❌ Habits modal not found in DOM after render');
-  } else {
-    console.log('✅ Habits modal found in DOM');
-  }
 }
 
 /**
