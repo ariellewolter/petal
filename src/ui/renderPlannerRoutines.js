@@ -29,7 +29,10 @@ export function renderPlannerRoutines(containerEl, state, viewDate = new Date())
     <div class="planner-card" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <div style="font-family:'Jost',sans-serif;font-size:8px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);">Routines</div>
-        <button class="sidebar-add" onclick="openAddRoutineModal()" style="font-size:16px;color:var(--text-muted);cursor:pointer;transition:color 0.13s;background:none;border:none;line-height:1;">+</button>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span class="today-card-action" data-action="nav:routines" role="button" tabindex="0" style="font-size:8px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);cursor:pointer;transition:color 0.13s;">All routines →</span>
+          <button class="sidebar-add" onclick="openAddRoutineModal()" style="font-size:16px;color:var(--text-muted);cursor:pointer;transition:color 0.13s;background:none;border:none;line-height:1;">+</button>
+        </div>
       </div>
       <div class="routines-list" style="display:flex;flex-direction:column;gap:6px;">
   `;

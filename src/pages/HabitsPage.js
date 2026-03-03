@@ -281,6 +281,30 @@ function injectStyles() {
       white-space: nowrap;
       flex-shrink: 0;
     }
+    #view-habits .habits-habit-list-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    #view-habits .habits-habit-list-actions button {
+      background: none;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: color 0.13s, background 0.13s;
+    }
+    #view-habits .habits-habit-list-actions button:hover {
+      color: var(--text);
+      background: var(--bg2);
+    }
+    #view-habits .habits-habit-list-actions button.habits-btn-delete:hover {
+      color: var(--overdue);
+      background: var(--rose-pale);
+    }
 
     /* Calendar */
     #view-habits .habits-calendar-panel {
@@ -314,6 +338,33 @@ function injectStyles() {
       align-items: center;
       gap: 10px;
       margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+    #view-habits .habits-cal-habit-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+    }
+    #view-habits .habits-cal-habit-actions button {
+      background: none;
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: color 0.13s, background 0.13s, border-color 0.13s;
+    }
+    #view-habits .habits-cal-habit-actions button:hover {
+      color: var(--text);
+      background: var(--bg2);
+      border-color: var(--border2);
+    }
+    #view-habits .habits-cal-habit-actions button.habits-btn-delete:hover {
+      color: var(--overdue);
+      border-color: var(--rose);
+      background: var(--rose-pale);
     }
     #view-habits .habits-cal-habit-name {
       font-family: 'Cormorant Garamond', serif;
@@ -1192,10 +1243,15 @@ function renderMonthly() {
   // Habit list
   const listItems = habits.map(h => {
     const s = getStreak(h.id);
-    return `<div class="habits-habit-list-item ${h.id === selId ? 'active' : ''}" data-action="select-habit" data-hid="${h.id}">
+    const hidEsc = escapeHtml(String(h.id));
+    return `<div class="habits-habit-list-item ${h.id === selId ? 'active' : ''}" data-action="select-habit" data-hid="${hidEsc}">
       <div class="habits-habit-dot" style="background:${h.color || COLORS[0]}"></div>
       <div class="habits-habit-list-name">${escapeHtml(h.icon || '📝')} ${escapeHtml(h.name)}${(h.durationMin != null && h.durationMin > 0) ? ` · ${h.durationMin} min` : ''}</div>
       ${s > 0 ? `<div class="habits-habit-list-streak">🔥 ${s}</div>` : ''}
+      <div class="habits-habit-list-actions">
+        <button type="button" data-action="edit-habit" data-hid="${hidEsc}" title="Edit habit">Edit</button>
+        <button type="button" data-action="delete-habit" data-hid="${hidEsc}" class="habits-btn-delete" title="Delete habit">Delete</button>
+      </div>
     </div>`;
   }).join('');
 
@@ -1217,8 +1273,12 @@ function renderMonthly() {
           <div class="habits-calendar-body">
             <div class="habits-cal-habit-info">
               <div class="habits-habit-dot" style="background:${habit.color || COLORS[0]};width:12px;height:12px;"></div>
-              <div class="habits-cal-habit-name">${escapeHtml(habit.icon || '📝')} ${escapeHtml(habit.name)}${(habit.durationMin != null && habit.durationMin > 0) ? ` · ${habit.durationMin} min` : ''}</div>
+              <div class="habits-cal-habit-name">${escapeHtml(habit.icon || '📝')} ${escapeHtml(habit.name)}${habit.timeOfDay ? ` · ${escapeHtml(habit.timeOfDay)}` : ''}${(habit.durationMin != null && habit.durationMin > 0) ? ` · ${habit.durationMin} min` : ''}</div>
               ${habit.freq ? `<div style="font-size:10px;color:var(--text-dim);margin-left:8px;background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:2px 9px;">${escapeHtml(habit.freq)}</div>` : ''}
+              <div class="habits-cal-habit-actions">
+                <button type="button" data-action="edit-habit" data-hid="${escapeHtml(String(habit.id))}" title="Edit habit">Edit</button>
+                <button type="button" data-action="delete-habit" data-hid="${escapeHtml(String(habit.id))}" class="habits-btn-delete" title="Delete habit">Delete</button>
+              </div>
             </div>
             <div class="habits-cal-dow-row">${DAYS_OF_WEEK.map(d => `<div class="habits-cal-dow">${d}</div>`).join('')}</div>
             <div class="habits-cal-days">${cells}</div>
@@ -1295,7 +1355,7 @@ function renderYearly() {
     return `<div class="habits-yearly-habit-block" style="animation-delay:${idx * .07}s">
       <div class="habits-yearly-habit-header">
         <div class="habits-habit-dot" style="background:${habit.color || COLORS[0]};width:12px;height:12px;"></div>
-        <div class="habits-yearly-habit-name">${escapeHtml(habit.icon || '📝')} ${escapeHtml(habit.name)}${(habit.durationMin != null && habit.durationMin > 0) ? ` · ${habit.durationMin} min` : ''}</div>
+        <div class="habits-yearly-habit-name">${escapeHtml(habit.icon || '📝')} ${escapeHtml(habit.name)}${habit.timeOfDay ? ` · ${escapeHtml(habit.timeOfDay)}` : ''}${(habit.durationMin != null && habit.durationMin > 0) ? ` · ${habit.durationMin} min` : ''}</div>
         ${streak > 0 ? `<div class="habits-habit-list-streak">🔥 ${streak} day streak</div>` : ''}
         <div class="habits-yearly-rate">${rate}% this year</div>
       </div>
@@ -1379,6 +1439,10 @@ function getModalTemplate(mode) {
     </div>
     <div class="habits-form-row">
       <div class="habits-form-group">
+        <label class="habits-form-label">Set time (optional)</label>
+        <input class="habits-form-input" id="habits-m-time" type="time" title="Preferred time of day for this habit">
+      </div>
+      <div class="habits-form-group">
         <label class="habits-form-label">Time to complete</label>
         <input class="habits-form-input" id="habits-m-duration" type="number" min="1" max="480" placeholder="e.g. 15" title="Minutes (used when you drag this habit onto the calendar)">
         <span class="habits-form-hint">minutes — used when scheduling on calendar</span>
@@ -1394,16 +1458,22 @@ function getModalTemplate(mode) {
 }
 
 /**
- * Open modal
+ * Open modal (optionally for editing a habit)
+ * @param {string} mode - 'habit' etc.
+ * @param {string|number} [habitId] - If provided, open in edit mode with form pre-filled
  */
+let editingHabitId = null;
 let modalMode = 'habit';
 let selectedColor = COLORS[0];
 let selectedFreq = 'daily';
 
-function openModal(mode) {
+function openModal(mode, habitId) {
   modalMode = mode;
-  selectedColor = COLORS[0];
-  selectedFreq = 'daily';
+  editingHabitId = habitId != null ? habitId : null;
+  const habit = editingHabitId != null ? habits.find(h => String(h.id) === String(editingHabitId)) : null;
+  
+  selectedColor = (habit && habit.color) ? habit.color : COLORS[0];
+  selectedFreq = (habit && habit.freq) ? habit.freq : 'daily';
   
   // Find modal in the container (should always exist after render)
   const container = document.getElementById('view-habits');
@@ -1436,10 +1506,35 @@ function openModal(mode) {
     return;
   }
   
-  modalTitle.textContent = 'Add Habit';
-  modalSave.textContent = 'Add Habit';
+  modalTitle.textContent = editingHabitId ? 'Edit Habit' : 'Add Habit';
+  modalSave.textContent = editingHabitId ? 'Save' : 'Add Habit';
   modalBody.innerHTML = getModalTemplate(mode);
   modalBackdrop.classList.add('open');
+  
+  // Pre-fill form when editing
+  if (habit) {
+    const nameInput = document.getElementById('habits-m-name');
+    if (nameInput) nameInput.value = habit.name || '';
+    const durationInput = document.getElementById('habits-m-duration');
+    if (durationInput && habit.durationMin != null) durationInput.value = String(habit.durationMin);
+    const timeInput = document.getElementById('habits-m-time');
+    if (timeInput && habit.timeOfDay) timeInput.value = habit.timeOfDay;
+    const notesInput = document.getElementById('habits-m-notes');
+    if (notesInput) notesInput.value = habit.notes || '';
+    const colorRow = document.getElementById('habits-color-row');
+    if (colorRow) {
+      const swatch = colorRow.querySelector(`[data-c="${habit.color || COLORS[0]}"]`);
+      colorRow.querySelectorAll('.habits-cswatch').forEach(x => x.classList.remove('sel'));
+      if (swatch) swatch.classList.add('sel');
+    }
+    const freqPill = modalBody.querySelector(`.habits-fpill[data-f="${habit.freq || 'daily'}"]`);
+    modalBody.querySelectorAll('.habits-fpill').forEach(x => x.classList.remove('sel'));
+    if (freqPill) freqPill.classList.add('sel');
+    const emojiBtn = modalBody.querySelector(`.habits-epick[data-e="${habit.icon || '📝'}"]`);
+    modalBody.querySelectorAll('.habits-epick').forEach(b => b.classList.remove('on'));
+    if (emojiBtn) emojiBtn.classList.add('on');
+    else if (modalBody.querySelector('.habits-epick')) modalBody.querySelector('.habits-epick').classList.add('on');
+  }
   
   setTimeout(() => {
     const inp = document.getElementById('habits-m-name');
@@ -1504,17 +1599,40 @@ async function saveModal() {
   const durationInput = document.getElementById('habits-m-duration');
   const durationMin = durationInput?.value ? Math.max(1, Math.min(480, parseInt(durationInput.value, 10) || 0)) : null;
   
+  const timeInput = document.getElementById('habits-m-time');
+  const timeValue = timeInput?.value?.trim();
+  const timeOfDay = timeValue && /^\d{2}:\d{2}$/.test(timeValue) ? timeValue : undefined;
+  
   const notesInput = document.getElementById('habits-m-notes');
   const notes = notesInput?.value || '';
-  habits.push({
-    id: Date.now(),
-    name,
-    icon,
-    color: selectedColor,
-    freq: selectedFreq,
-    durationMin: durationMin || undefined,
-    notes
-  });
+  
+  if (editingHabitId != null) {
+    const idx = habits.findIndex(h => String(h.id) === String(editingHabitId));
+    if (idx !== -1) {
+      habits[idx] = {
+        ...habits[idx],
+        name,
+        icon,
+        color: selectedColor,
+        freq: selectedFreq,
+        durationMin: durationMin || undefined,
+        timeOfDay,
+        notes
+      };
+    }
+    editingHabitId = null;
+  } else {
+    habits.push({
+      id: Date.now(),
+      name,
+      icon,
+      color: selectedColor,
+      freq: selectedFreq,
+      durationMin: durationMin || undefined,
+      timeOfDay,
+      notes
+    });
+  }
   if (!selectedHabitId && habits.length > 0) {
     selectedHabitId = habits[0].id;
   }
@@ -1589,12 +1707,39 @@ function bind(container) {
         break;
         
       case 'select-habit':
-        const hid = parseInt(btn.dataset.hid);
-        if (hid) {
-          selectedHabitId = hid;
+        const hid = btn.dataset.hid;
+        if (hid !== undefined) {
+          const habit = habits.find(h => String(h.id) === String(hid));
+          selectedHabitId = habit ? habit.id : (parseInt(hid, 10) || hid);
           saveData();
           renderMonthly();
           renderStats();
+        }
+        break;
+        
+      case 'edit-habit':
+        const editHid = btn.dataset.hid;
+        if (editHid !== undefined) {
+          openModal('habit', editHid);
+        }
+        break;
+        
+      case 'delete-habit':
+        const delHid = btn.dataset.hid;
+        if (delHid !== undefined && confirm('Delete this habit? Its completion history will be removed.')) {
+          const habitToDelete = habits.find(h => String(h.id) === String(delHid));
+          if (habitToDelete) {
+            habits = habits.filter(h => String(h.id) !== String(delHid));
+            delete completions[habitToDelete.id];
+            if (selectedHabitId != null && String(selectedHabitId) === String(delHid)) {
+              selectedHabitId = habits.length > 0 ? habits[0].id : null;
+            }
+            saveData();
+            renderAll();
+            if (window.renderGlobalSidebar && window.Petal?.store) {
+              window.renderGlobalSidebar(window.Petal.store.getState());
+            }
+          }
         }
         break;
         

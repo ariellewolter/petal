@@ -604,7 +604,7 @@
       
       <div style="display:flex;gap:10px;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid var(--border);">
         <div>
-          <button id="event-delete-btn" data-action="event:delete" 
+          <button type="button" id="event-delete-btn" data-action="event:delete" 
                   class="btn-secondary" 
                   style="display:none;background:var(--overdue);color:white;border-color:var(--overdue);"
                   onmouseover="this.style.background='var(--overdue)';this.style.opacity='0.9';" 
@@ -1096,6 +1096,17 @@
           </label>
         </div>
         <div style="font-size:11px;color:var(--text-dim);margin-top:6px;">If no days are selected, habit will show on all days</div>
+      </div>
+      
+      <div class="field-row" style="margin-bottom:16px;">
+        <div class="field" style="flex:1;">
+          <label>Time of Day (optional)</label>
+          <input type="time" id="habit-time" style="width:100%;">
+        </div>
+        <div class="field" style="flex:1;">
+          <label>Duration (minutes, optional)</label>
+          <input type="number" id="habit-duration" placeholder="15" min="1" step="5" style="width:100%;">
+        </div>
       </div>
       
       <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:8px;border-top:1px solid var(--border);">
@@ -6656,8 +6667,12 @@ function closeEventModal() {
     modal.classList.remove('active');
     modal.style.display = 'none';
   }
-  if (deleteBtn) deleteBtn.style.display = 'none';
+  if (deleteBtn) {
+    deleteBtn.style.display = 'none';
+    deleteBtn.removeAttribute('data-event-id');
+  }
   editingEventId = null;
+  if (typeof window !== 'undefined') window.editingEventId = null;
 }
 
 async function submitEventModal() {

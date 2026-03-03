@@ -1155,6 +1155,8 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 .today-goal-item{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;}
 .today-goal-item:last-child{border-bottom:none;}
 .today-goal-item:hover{background:var(--bg2);}
+.today-habit-item:last-child,.today-routine-item:last-child{border-bottom:none;}
+.today-habit-item:hover,.today-routine-item:hover{background:var(--bg2);}
 .today-goal-name{font-size:12px;color:var(--text);margin-bottom:4px;display:flex;align-items:center;}
 .today-goal-meta{font-size:9px;color:var(--text-dim);display:flex;align-items:center;gap:8px;margin-top:2px;}
 .today-goal-progress-bar{height:3px;background:var(--border2);border-radius:2px;overflow:hidden;margin-top:6px;}
@@ -2225,8 +2227,10 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 .goals-page .ms-ck:hover{border-color:var(--rose-soft);}
 .goals-page .ms-ck.on{background:var(--rose);border-color:var(--rose);}
 .goals-page .ms-goal-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
-.goals-page .ms-title{flex:1;font-size:11.5px;color:var(--text);}
+.goals-page .ms-item-goal-relation{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.goals-page .ms-title{font-size:11.5px;color:var(--text);}
 .goals-page .ms-title.done{text-decoration:line-through;color:var(--text-light);}
+.goals-page .ms-under-goal{font-size:9px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .goals-page .ms-goal-name{font-size:9.5px;color:var(--text-light);white-space:nowrap;max-width:90px;overflow:hidden;text-overflow:ellipsis;}
 .goals-page .ms-date{font-size:9.5px;color:var(--text-dim);white-space:nowrap;flex-shrink:0;margin-left:4px;}
 .goals-page .ms-date.late{color:var(--overdue);}

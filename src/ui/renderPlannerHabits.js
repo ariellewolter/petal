@@ -50,11 +50,13 @@ export function renderPlannerHabits(containerEl, state, viewDate = new Date()) {
       const habitNameEsc = esc(habit.name);
       
       const durationEsc = (habit.durationMin != null && habit.durationMin > 0) ? String(habit.durationMin) : '';
+      const timeOfDayEsc = (habit.timeOfDay && /^\d{2}:\d{2}$/.test(habit.timeOfDay)) ? habit.timeOfDay : '';
       html += `
         <div class="habit-item habit-draggable" draggable="true"
              data-habit-id="${habitIdEsc}"
              data-habit-name="${habitNameEsc}"
              data-habit-duration="${durationEsc}"
+             data-habit-time="${esc(timeOfDayEsc)}"
              style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:4px;transition:background 0.13s;cursor:grab;" 
              onclick="if(!event.target.closest('input') && !event.target.closest('button')){if(window.Petal?.features?.habits?.toggleHabit){window.Petal.features.habits.toggleHabit('${habitIdEsc}');if(typeof buildPlannerSidebar==='function'){buildPlannerSidebar();}}}"
              ondragstart="handleHabitDragStart(event)"
@@ -66,6 +68,7 @@ export function renderPlannerHabits(containerEl, state, viewDate = new Date()) {
                  draggable="false">
           <span style="font-size:12px;color:var(--text);flex:1;${checked ? 'text-decoration:line-through;opacity:0.6;' : ''}">${esc(habit.name)}</span>
           ${habit.cadence === 'weekly' ? '<span style="font-size:9px;color:var(--text-dim);">(weekly)</span>' : ''}
+          ${timeOfDayEsc ? `<span style="font-size:9px;color:var(--text-dim);">${esc(timeOfDayEsc)}</span>` : ''}
           ${(habit.durationMin != null && habit.durationMin > 0) ? `<span style="font-size:9px;color:var(--text-dim);">${habit.durationMin} min</span>` : ''}
           <span style="font-size:8px;color:var(--text-dim);opacity:0.7;">(drag to schedule)</span>
           <button onclick="event.stopPropagation();if(confirm('Delete this habit?')){if(window.Petal?.features?.habits?.archiveHabit){window.Petal.features.habits.archiveHabit('${habitIdEsc}');if(typeof buildPlannerSidebar==='function'){buildPlannerSidebar();}}}" 
