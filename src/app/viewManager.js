@@ -68,6 +68,14 @@ export function renderGlobalSidebar(state) {
     <a class="global-sidebar-nav-item ${currentView === 'planner' ? 'active' : ''}" href="#" data-nav="planner">
       <span class="global-sidebar-nav-icon">◻</span> Planner
     </a>
+    <a class="global-sidebar-nav-item ${currentView === 'goals' ? 'active' : ''}" href="#" data-nav="goals">
+      <span class="global-sidebar-nav-icon">✦</span> Goals
+      ${(() => {
+        const goals = state.goals || [];
+        const activeGoals = goals.filter(g => g.progress < 100).length;
+        return activeGoals > 0 ? `<span class="global-sidebar-nav-badge">${activeGoals}</span>` : '';
+      })()}
+    </a>
     <a class="global-sidebar-nav-item ${currentView === 'workflow' ? 'active' : ''}" href="#" data-nav="workflow">
       <span class="global-sidebar-nav-icon">⚡</span> Workflow
     </a>
@@ -98,12 +106,43 @@ export function renderGlobalSidebar(state) {
       })()}
     </a>
     <a class="global-sidebar-nav-item ${currentView === 'habits' ? 'active' : ''}" href="#" data-nav="habits">
-      <span class="global-sidebar-nav-icon">🌿</span> Habits &amp; Routines
+      <span class="global-sidebar-nav-icon">🌿</span> Habits
       ${(() => {
         const habits = state.habits || [];
         const today = new Date().toISOString().slice(0, 10);
-        const doneToday = habits.filter(h => (state.habitCompletions?.[h.id] || {})[today]).length;
+        const doneToday = habits.filter(h => (state.habitCheckins?.[h.id] || {})[today]).length;
         return doneToday > 0 && doneToday < habits.length ? `<span class="global-sidebar-nav-badge">${doneToday}/${habits.length}</span>` : '';
+      })()}
+    </a>
+    <a class="global-sidebar-nav-item ${currentView === 'routines' ? 'active' : ''}" href="#" data-nav="routines">
+      <span class="global-sidebar-nav-icon">◷</span> Routines
+      ${(() => {
+        const routines = state.routines || [];
+        const activeRoutines = routines.filter(r => !r.archived);
+        const routineCheckins = state.routineCheckins || {};
+        const today = new Date();
+        const dayKey = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+        const weekKey = (() => {
+          const d = new Date(today);
+          d.setHours(0, 0, 0, 0);
+          const thursday = new Date(d);
+          const dayOfWeek = d.getDay();
+          const daysToThursday = (4 - dayOfWeek + 7) % 7;
+          thursday.setDate(d.getDate() + daysToThursday);
+          const year = thursday.getFullYear();
+          const jan1 = new Date(year, 0, 1);
+          const msPerDay = 24 * 60 * 60 * 1000;
+          const daysSinceJan1 = Math.floor((thursday - jan1) / msPerDay);
+          const jan1DayOfWeek = jan1.getDay();
+          const week = Math.ceil((daysSinceJan1 + jan1DayOfWeek + 1) / 7);
+          return year + '-W' + String(week).padStart(2, '0');
+        })();
+        let doneToday = 0;
+        activeRoutines.forEach(r => {
+          const pk = r.cadence === 'daily' ? dayKey : weekKey;
+          if (routineCheckins[pk + ':' + r.id]) doneToday++;
+        });
+        return activeRoutines.length > 0 && doneToday > 0 && doneToday < activeRoutines.length ? `<span class="global-sidebar-nav-badge">${doneToday}/${activeRoutines.length}</span>` : '';
       })()}
     </a>
   `;

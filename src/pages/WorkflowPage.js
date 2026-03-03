@@ -6,6 +6,7 @@
 import { esc } from '../utils/strings.js';
 import { parseDate } from '../utils/dates.js';
 import { getAllTasks } from '../domain/models.js';
+import { PageHeader } from '../ui/components.js';
 
 // ═══════════════════════════════════════════════════════════
 // VIEW SWITCHING
@@ -91,11 +92,17 @@ export function filterWorkflowProjects() {
 export async function renderWorkflowPage(containerEl, state, handlers) {
   if (!containerEl) return;
   
+  // Calculate workflow stats
+  const projects = Array.isArray(state.projects) ? state.projects : [];
+  const tasks = Array.isArray(state.tasks) ? state.tasks : [];
+  const activeProjects = projects.filter(p => p && !p.done);
+  const activeTasks = tasks.filter(t => t && !t.done && !t.deletedAt && !t.parentTaskId);
+  
   // Create or find header - must be first element
-  let workflowHeader = containerEl.querySelector('.workflow-header');
+  let workflowHeader = containerEl.querySelector('.page-header');
   if (!workflowHeader) {
     workflowHeader = document.createElement('header');
-    workflowHeader.className = 'workflow-header';
+    workflowHeader.className = 'page-header';
     // Insert at the very beginning of the container, before any existing content
     const firstChild = containerEl.firstChild;
     if (firstChild && firstChild.nodeType === 1) { // Element node
@@ -105,26 +112,31 @@ export async function renderWorkflowPage(containerEl, state, handlers) {
     }
   }
   
-  // Calculate workflow stats
-  const projects = Array.isArray(state.projects) ? state.projects : [];
-  const tasks = Array.isArray(state.tasks) ? state.tasks : [];
-  const activeProjects = projects.filter(p => p && !p.done);
-  const activeTasks = tasks.filter(t => t && !t.done && !t.deletedAt && !t.parentTaskId);
-  
-  // Render header
-  workflowHeader.innerHTML = `
-    <div class="workflow-header-title">
-      <span class="workflow-header-name">Workflow</span>
-    </div>
-    <div class="workflow-header-right">
-      <div style="display:flex;align-items:center;gap:6px">
-        <span class="workflow-header-status">${activeProjects.length} project${activeProjects.length !== 1 ? 's' : ''} · ${activeTasks.length} active task${activeTasks.length !== 1 ? 's' : ''}</span>
-      </div>
-    </div>
-  `;
+  // Render header using standard component
+  workflowHeader.innerHTML = PageHeader({
+    title: 'Workflow',
+    icon: '◈',
+    status: `${activeProjects.length} project${activeProjects.length !== 1 ? 's' : ''} · ${activeTasks.length} active task${activeTasks.length !== 1 ? 's' : ''}`,
+    actions: []
+  });
   
   // Populate project filter dropdown
   populateWorkflowProjectFilter(state);
+  
+  // Set up event delegation for workflow tasks (only once)
+  if (!containerEl.__workflowBound) {
+    containerEl.__workflowBound = true;
+    containerEl.addEventListener('click', (e) => {
+      const taskEl = e.target.closest('[data-action="toggle-task"]');
+      if (taskEl) {
+        e.stopPropagation();
+        const taskId = taskEl.getAttribute('data-task-id');
+        if (taskId && window.Petal?.handlers?.toggleTask) {
+          window.Petal.handlers.toggleTask(taskId);
+        }
+      }
+    });
+  }
   
   // Render list view by default
   renderWorkflowList();
@@ -409,12 +421,19 @@ export function renderWorkflowList() {
           <div>
             <div class="wf-expand-section-title">${selectedProjectId ? 'All Tasks' : 'Open Tasks'}</div>
             <div class="wf-expand-tasks">
-              ${(selectedProjectId ? projectTasks : projectTasks.slice(0, 5)).map(t => `
-                <div class="wf-etask ${t.done ? 'done-t' : ''}" onclick="event.stopPropagation();if(window.Petal?.handlers?.toggleTask){window.Petal.handlers.toggleTask(${t.id})}">
+              ${(selectedProjectId ? projectTasks : projectTasks.slice(0, 5)).map(t => {
+                const taskId = t.id != null ? t.id : (t.taskId != null ? t.taskId : null);
+                if (!taskId) {
+                  console.warn('WorkflowPage: Task missing ID', t);
+                  return '';
+                }
+                return `
+                <div class="wf-etask ${t.done ? 'done-t' : ''}" data-action="toggle-task" data-task-id="${taskId}" style="cursor:pointer;">
                   <div class="wf-etask-check ${t.done ? 'done' : ''}"></div>
                   <span class="wf-etask-label">${esc(t.title || 'Untitled')}</span>
                 </div>
-              `).join('')}
+              `;
+              }).filter(Boolean).join('')}
               ${projectTasks.length === 0 ? '<div style="font-size:10px;color:var(--text-light);padding:8px;">No tasks</div>' : ''}
               ${!selectedProjectId && projectTasks.length > 5 ? `<div style="font-size:10px;color:var(--text-light);padding:8px;font-style:italic;">+${projectTasks.length - 5} more tasks (select project to see all)</div>` : ''}
             </div>

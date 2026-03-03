@@ -15,6 +15,9 @@ import { EmptyState } from '../ui/components.js';
 export async function renderFiles(containerEl, state, handlers) {
   const { files: persistedFiles, fileRegistry, fileHistory, currentFileView, currentFileProjectFilter, tasks, projects } = state;
   
+  // Pass projects to renderFileCard for project badge rendering
+  const projectsForRendering = projects || [];
+  
   // CONTRACT: containerEl is required - no global fallback
   if (!containerEl) {
     console.error('❌ renderFiles: containerEl is required (no global fallback allowed)');
@@ -349,7 +352,7 @@ export async function renderFiles(containerEl, state, handlers) {
       }
     }
     
-    return renderFileCard(f, fileHistory || {}, tasks || []);
+    return renderFileCard(f, fileHistory || {}, tasks || [], projectsForRendering, state);
   }));
   
   // Update container (preserve buttons and filters)
@@ -367,8 +370,10 @@ export async function renderFiles(containerEl, state, handlers) {
  * @param {Object} file - File object from registry
  * @param {Object} fileHistory - File history object
  * @param {Array} allTasks - All tasks from state (for resolving task details)
+ * @param {Array} allProjects - All projects from state (for resolving project details)
+ * @param {Object} state - Full state object (for accessing projects)
  */
-function renderFileCard(file, fileHistory, allTasks = []) {
+function renderFileCard(file, fileHistory, allTasks = [], allProjects = [], state = {}) {
   // Phase 3 Fix: Handle both persisted file format and registry format
   const fileLink = file.fileLink || file; // Persisted files have fileLink, registry files are the link
   const filePath = file.path || fileLink.onedrive_rel || fileLink.abs_path || fileLink.share_url || '';
@@ -445,6 +450,27 @@ function renderFileCard(file, fileHistory, allTasks = []) {
     statusBadge = '<span class="file-status-badge file-status-active" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#4ade80;color:white;border-radius:12px;font-size:10px;font-weight:500;text-transform:uppercase;">⚡ Active</span>';
   }
   
+  // Get linked projects from state
+  const linkedProjects = [];
+  (file.projects || []).forEach(p => {
+    if (!p) return;
+    
+    // If p is already a full project object, use it
+    if (typeof p === 'object' && p.id && p.name) {
+      linkedProjects.push(p);
+      return;
+    }
+    
+    // If p is a project ID, find the project in allProjects
+    const projectId = typeof p === 'object' ? (p.id || p.projectId) : p;
+    if (projectId) {
+      const fullProject = allProjects.find(pp => String(pp.id) === String(projectId));
+      if (fullProject) {
+        linkedProjects.push(fullProject);
+      }
+    }
+  });
+  
   // Render task badges (showing status and priority)
   const taskBadges = linkedTasks.slice(0, 3).map(t => {
     const taskStatus = t.status || 'Todo';
@@ -457,6 +483,16 @@ function renderFileCard(file, fileHistory, allTasks = []) {
   }).join('');
   
   const moreTasksCount = linkedTasks.length > 3 ? linkedTasks.length - 3 : 0;
+  
+  // Render project badges
+  const projectBadges = linkedProjects.slice(0, 3).map(p => {
+    const projectColor = `var(--proj-${p.color || 1})`;
+    const projectDone = p.done || false;
+    
+    return `<span class="file-project-badge" data-project-id="${esc(p.id || '')}" style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;background:${projectColor}20;border:1px solid ${projectColor};border-left:3px solid ${projectColor};border-radius:6px;font-size:10px;color:${projectDone ? 'var(--text-dim)' : projectColor};font-weight:500;cursor:pointer;transition:all 0.15s;" onmouseover="this.style.background='${projectColor}40';this.style.transform='scale(1.05)'" onmouseout="this.style.background='${projectColor}20';this.style.transform='scale(1)'" title="${esc(p.name || 'Project')}${projectDone ? ' (Done)' : ''}" data-action="file:open-project" data-project-id="${esc(p.id || '')}">📁 ${esc(p.name || 'Project')}</span>`;
+  }).join('');
+  
+  const moreProjectsCount = linkedProjects.length > 3 ? linkedProjects.length - 3 : 0;
   
   return `<div class="file-card ${isMissing ? 'file-missing' : ''}" data-file-id="${esc(fileId)}" data-file-key="${esc(fileKey)}" draggable="true" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;transition:all 0.2s;cursor:grab;" ondragstart="window.Petal?.features?.fileTaskOperations?.handleFileDragStart?.(event, ${esc(JSON.stringify(fileLink))}, '${esc(fileKey)}')">
     <div class="file-card-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px;">
@@ -495,12 +531,19 @@ function renderFileCard(file, fileHistory, allTasks = []) {
       ${moreTasksCount > 0 ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;font-size:10px;color:var(--text-dim);">+${moreTasksCount} more</span>` : ''}
     </div>` : ''}
     
+    ${projectBadges ? `<div class="file-project-badges" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;">
+      ${projectBadges}
+      ${moreProjectsCount > 0 ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;font-size:10px;color:var(--text-dim);">+${moreProjectsCount} more</span>` : ''}
+    </div>` : ''}
+    
     ${file.notes ? `<div style="margin-bottom:12px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--text-dim);line-height:1.5;max-height:80px;overflow:hidden;text-overflow:ellipsis;white-space:pre-wrap;">${esc(file.notes.length > 150 ? file.notes.substring(0, 150) + '...' : file.notes)}</div>` : ''}
     
     <div class="file-card-actions" style="display:flex;gap:8px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--border);">
       ${isMissing ? `<button class="btn-secondary" data-action="file:locate" data-file-key="${esc(fileKey)}" data-path="${escAttr(JSON.stringify(fileLink))}" style="font-size:11px;padding:6px 12px;background:var(--rose);color:white;">🔍 Locate File</button>` : ''}
       ${tasksCount > 0 ? `<button class="btn-secondary" data-action="file:view-tasks" data-file-key="${esc(fileKey)}" style="font-size:11px;padding:6px 12px;background:var(--rose);color:white;" title="View linked tasks">📋 View Tasks</button>` : ''}
+      ${projectsCount > 0 ? `<button class="btn-secondary" data-action="file:view-projects" data-file-key="${esc(fileKey)}" style="font-size:11px;padding:6px 12px;background:var(--mauve);color:white;" title="View linked projects">📁 View Projects</button>` : ''}
       <button class="btn-secondary" data-action="file:create-task" data-file-key="${esc(fileKey)}" data-path="${escAttr(JSON.stringify(fileLink))}" style="font-size:11px;padding:6px 12px;background:var(--sage);color:white;" title="Create task from this file">➕ Create Task</button>
+      <button class="btn-secondary" data-action="file:add-to-project" data-file-key="${esc(fileKey)}" data-path="${escAttr(JSON.stringify(fileLink))}" style="font-size:11px;padding:6px 12px;background:var(--blush);color:white;" title="Add file to a project">📁 Add to Project</button>
       ${file.key ? `<button data-action="file:show-relations" data-file-key="${esc(file.key)}" class="btn-secondary" style="font-size:11px;padding:6px 12px;">Relations</button>` : ''}
       <button data-action="file:notes" data-file-id="${esc(fileId)}" class="btn-secondary" style="font-size:11px;padding:6px 12px;" title="Add or edit notes for this file">${file.notes ? '📝 Edit Notes' : '📄 Add Notes'}</button>
     </div>

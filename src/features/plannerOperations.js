@@ -166,15 +166,73 @@ export function editEvent(ctx, eventId) {
 }
 
 /**
+ * Sync event changes to linked task
+ * Called when event time/duration is updated
+ */
+export async function syncEventToTask(event) {
+  if (!event || !event.linkedTaskId || !event.isTaskBlock) {
+    return; // Not a task block, no sync needed
+  }
+  
+  if (!window.Petal?.store) {
+    return; // Store not available
+  }
+  
+  const state = window.Petal.store.getState();
+  const tasks = state.tasks || [];
+  const { updateTaskFromEvent } = await import('../utils/taskEventConverter.js');
+  
+  const updatedTasks = tasks.map(task => {
+    if (String(task.id) === String(event.linkedTaskId)) {
+      return updateTaskFromEvent(task, event);
+    }
+    return task;
+  });
+  
+  window.Petal.store.setState({ tasks: updatedTasks });
+  
+  console.log('✅ Event changes synced to task:', {
+    eventId: event.id,
+    taskId: event.linkedTaskId,
+    date: event.date,
+    startTime: event.startTime,
+    duration: event.durationMin
+  });
+}
+
+/**
  * Delete event
  */
-export function deleteEvent(ctx, eventId) {
+export async function deleteEvent(ctx, eventId) {
   if (confirm('Delete this event?')) {
     // Update store (single source of truth - auto-saves via persistence)
     if (window.Petal?.store) {
       const state = window.Petal.store.getState();
-      const updatedEvents = (state.events || []).filter(e => e.id !== eventId);
-      window.Petal.store.setState({ events: updatedEvents });
+      const eventToDelete = (state.events || []).find(e => String(e.id) === String(eventId));
+      
+      // If event is linked to a task, clear task scheduling
+      if (eventToDelete && eventToDelete.linkedTaskId && eventToDelete.isTaskBlock) {
+        // Import converter dynamically
+        const { clearTaskScheduling } = await import('../utils/taskEventConverter.js');
+        const tasks = state.tasks || [];
+        const updatedTasks = tasks.map(task => {
+          if (String(task.id) === String(eventToDelete.linkedTaskId)) {
+            return clearTaskScheduling(task);
+          }
+          return task;
+        });
+        
+        const updatedEvents = (state.events || []).filter(e => String(e.id) !== String(eventId));
+        window.Petal.store.setState({ events: updatedEvents, tasks: updatedTasks });
+        
+        console.log('✅ Event deleted, task scheduling cleared:', {
+          eventId: eventId,
+          taskId: eventToDelete.linkedTaskId
+        });
+      } else {
+        const updatedEvents = (state.events || []).filter(e => String(e.id) !== String(eventId));
+        window.Petal.store.setState({ events: updatedEvents });
+      }
     } else {
       // Fallback: use local variable if store not available (shouldn't happen)
       const { events: eventsValue, save } = ctx;
@@ -341,6 +399,7 @@ export function submitRoutineModal() {
  */
 let draggedRoutine = null;
 let draggedHabit = null;
+let draggedTask = null;
 
 /**
  * Handle routine drag start
@@ -421,10 +480,69 @@ export function handleHabitDragEnd(event) {
 }
 
 /**
- * Handle timeline drop (create event from routine/habit)
+ * Handle task drag start
+ * @param {Event} event - Drag event
+ * @param {Object} task - Task object
+ */
+export function handleTaskDragStart(event, task) {
+  // Don't drag if clicking on interactive elements
+  if (event.target.tagName === 'INPUT' || 
+      event.target.tagName === 'BUTTON' || 
+      event.target.tagName === 'A' ||
+      event.target.closest('button') ||
+      event.target.closest('a')) {
+    event.preventDefault();
+    return false;
+  }
+  
+  const taskCard = event.target.closest('.task-card, .task-item, [data-task-id]');
+  if (!taskCard) {
+    event.preventDefault();
+    return false;
+  }
+  
+  draggedTask = {
+    id: task.id,
+    title: task.title,
+    estimatedMinutes: task.estimatedMinutes || 60,
+    priority: task.priority || 2,
+    projectId: task.projectId || null,
+    scheduledDate: task.scheduledDate || null,
+    scheduledStartTime: task.scheduledStartTime || null,
+    scheduledDurationMin: task.scheduledDurationMin || null,
+    plannerEventId: task.plannerEventId || null
+  };
+  
+  event.dataTransfer.effectAllowed = 'copy';
+  event.dataTransfer.setData('text/plain', task.title);
+  event.dataTransfer.setData('application/json', JSON.stringify({ type: 'task', taskId: task.id }));
+  
+  if (taskCard) {
+    taskCard.classList.add('dragging');
+    taskCard.style.opacity = '0.5';
+  }
+  
+  console.log('Task drag started:', draggedTask);
+}
+
+/**
+ * Handle task drag end
+ * @param {Event} event - Drag event
+ */
+export function handleTaskDragEnd(event) {
+  const taskCard = event.target.closest('.task-card, .task-item, [data-task-id]');
+  if (taskCard) {
+    taskCard.classList.remove('dragging');
+    taskCard.style.opacity = '';
+  }
+  draggedTask = null;
+}
+
+/**
+ * Handle timeline drop (create event from routine/habit/task)
  */
 export function handleTimelineDrop(ctx, event, hour, dateStr) {
-  const { events: eventsValue, formatTime: formatTimeFn, save: saveFn } = ctx;
+  const { events: eventsValue, formatTime: formatTimeFn, save: saveFn, tasks: tasksValue, projects: projectsValue } = ctx;
   
   const formatTimeFunction = formatTimeFn || (typeof window.Petal?.formatTime === 'function' ? window.Petal.formatTime : null);
   if (!formatTimeFunction) {
@@ -432,7 +550,14 @@ export function handleTimelineDrop(ctx, event, hour, dateStr) {
     return;
   }
   
-  console.log('Timeline drop:', { draggedRoutine, draggedHabit, hour, dateStr });
+  console.log('Timeline drop:', { draggedRoutine, draggedHabit, draggedTask, hour, dateStr });
+  
+  // Handle task drop first (highest priority)
+  if (draggedTask) {
+    handleTaskTimelineDrop(ctx, event, hour, dateStr, formatTimeFunction);
+    return;
+  }
+  
   if (!draggedRoutine && !draggedHabit) {
     console.warn('No dragged item');
     return;
@@ -520,4 +645,140 @@ export function handleTimelineDrop(ctx, event, hour, dateStr) {
   
   draggedRoutine = null;
   draggedHabit = null;
+  draggedTask = null;
+}
+
+/**
+ * Handle task drop on timeline
+ * Creates or updates planner event for the task
+ */
+async function handleTaskTimelineDrop(ctx, event, hour, dateStr, formatTimeFunction) {
+  const { tasks: tasksValue, projects: projectsValue } = ctx;
+  
+  // Calculate exact time based on drop position within the hour slot
+  const slot = event.currentTarget;
+  const slotRect = slot.getBoundingClientRect();
+  const dropY = event.clientY - slotRect.top;
+  const PIXELS_PER_MINUTE = 1;
+  const minutesIntoHour = Math.max(0, Math.min(59, Math.round(dropY / PIXELS_PER_MINUTE)));
+  
+  const startTime = formatTimeFunction(hour * 60 + minutesIntoHour);
+  const duration = draggedTask.scheduledDurationMin || draggedTask.estimatedMinutes || 60;
+  
+  // Get the full task object from store
+  const state = window.Petal?.store?.getState();
+  const allTasks = state?.tasks || tasksValue || [];
+  const task = allTasks.find(t => String(t.id) === String(draggedTask.id));
+  
+  if (!task) {
+    console.error('Task not found:', draggedTask.id);
+    draggedTask = null;
+    return;
+  }
+  
+  // Import converter
+  const { taskToEvent, updateTaskFromEvent } = await import('../utils/taskEventConverter.js');
+  
+  // Check if task already has a linked event
+  let eventObj;
+  let updatedTask;
+  
+  if (task.plannerEventId) {
+    // Update existing event
+    const currentEvents = state?.events || [];
+    const existingEvent = currentEvents.find(e => String(e.id) === String(task.plannerEventId));
+    
+    if (existingEvent) {
+      // Update existing event
+      eventObj = {
+        ...existingEvent,
+        date: dateStr,
+        startTime: startTime,
+        durationMin: duration
+      };
+      
+      // Update task with new scheduling
+      updatedTask = {
+        ...task,
+        scheduledDate: dateStr,
+        scheduledStartTime: startTime,
+        scheduledDurationMin: duration
+      };
+      
+      // Update both event and task in store
+      const updatedEvents = currentEvents.map(e => 
+        String(e.id) === String(eventObj.id) ? eventObj : e
+      );
+      const updatedTasks = allTasks.map(t => 
+        String(t.id) === String(task.id) ? updatedTask : t
+      );
+      
+      if (window.Petal?.store) {
+        window.Petal.store.setState({
+          events: updatedEvents,
+          tasks: updatedTasks
+        });
+      }
+    } else {
+      // Event was deleted, create new one
+      eventObj = taskToEvent(task, dateStr, projectsValue || []);
+      eventObj.startTime = startTime;
+      eventObj.durationMin = duration;
+      
+      updatedTask = updateTaskFromEvent(task, eventObj);
+      
+      const updatedEvents = [...(state?.events || []), eventObj];
+      const updatedTasks = allTasks.map(t => 
+        String(t.id) === String(task.id) ? updatedTask : t
+      );
+      
+      if (window.Petal?.store) {
+        window.Petal.store.setState({
+          events: updatedEvents,
+          tasks: updatedTasks
+        });
+      }
+    }
+  } else {
+    // Create new event for task
+    eventObj = taskToEvent(task, dateStr, projectsValue || []);
+    eventObj.startTime = startTime;
+    eventObj.durationMin = duration;
+    
+    updatedTask = updateTaskFromEvent(task, eventObj);
+    
+    const updatedEvents = [...(state?.events || []), eventObj];
+    const updatedTasks = allTasks.map(t => 
+      String(t.id) === String(task.id) ? updatedTask : t
+    );
+    
+    if (window.Petal?.store) {
+      window.Petal.store.setState({
+        events: updatedEvents,
+        tasks: updatedTasks
+      });
+    }
+  }
+  
+  // Re-render planner
+  if (window.routerSwitchView) {
+    window.routerSwitchView('planner');
+  }
+  if (typeof window.buildPlannerSidebar === 'function') {
+    window.buildPlannerSidebar();
+  }
+  if (typeof window.buildPlannerCalendar === 'function') {
+    window.buildPlannerCalendar();
+  }
+  
+  draggedTask = null;
+  
+  console.log('✅ Task scheduled in planner:', {
+    taskId: task.id,
+    taskTitle: task.title,
+    eventId: eventObj.id,
+    date: dateStr,
+    startTime: startTime,
+    duration: duration
+  });
 }

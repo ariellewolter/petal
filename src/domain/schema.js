@@ -74,7 +74,14 @@ export function createDefaultTask() {
     lane: null,
     stage: null,
     boardOrder: 1024,
-    dependsOn: null
+    dependsOn: null,
+    // Planner integration fields
+    timeBlock: null, // Keep for backward compatibility (project view grouping)
+    plannerEventId: null, // ID of linked planner event
+    scheduledDate: null, // ISO date string (YYYY-MM-DD)
+    scheduledStartTime: null, // Time string (HH:MM)
+    scheduledDurationMin: null, // Duration in minutes (from estimatedMinutes or default)
+    autoCreateBlock: false // Whether to auto-create block when task is created
   };
 }
 

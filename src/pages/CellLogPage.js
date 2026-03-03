@@ -2,6 +2,7 @@
 // Self-contained page module for Cell Log tab
 
 import { esc, escJsonForAttr } from '../utils/strings.js';
+import { PageHeader } from '../ui/components.js';
 
 /**
  * Ensure cell log settings exist and are properly initialized
@@ -33,20 +34,6 @@ export async function renderCellLogPage(containerEl, state, handlers) {
     return;
   }
   
-  // Create or find header - must be first element
-  let cellLogHeader = containerEl.querySelector('.cell-log-header');
-  if (!cellLogHeader) {
-    cellLogHeader = document.createElement('header');
-    cellLogHeader.className = 'cell-log-header';
-    // Insert at the very beginning of the container, before any existing content
-    const firstChild = containerEl.firstChild;
-    if (firstChild && firstChild.nodeType === 1) { // Element node
-      containerEl.insertBefore(cellLogHeader, firstChild);
-    } else {
-      containerEl.insertBefore(cellLogHeader, containerEl.firstChild);
-    }
-  }
-  
   const settings = state.settings || {};
   const projects = state.projects || [];
   
@@ -56,17 +43,27 @@ export async function renderCellLogPage(containerEl, state, handlers) {
   const entries = Array.isArray(settings?.cellLog?.entries) ? settings.cellLog.entries : [];
   const cellTypes = Array.isArray(settings?.cellLog?.cellTypes) ? settings.cellLog.cellTypes : [];
   
-  // Render header
-  cellLogHeader.innerHTML = `
-    <div class="cell-log-header-title">
-      <span class="cell-log-header-name">Cell Log</span>
-    </div>
-    <div class="cell-log-header-right">
-      <div style="display:flex;align-items:center;gap:6px">
-        <span class="cell-log-header-status">${entries.length} entr${entries.length !== 1 ? 'ies' : 'y'} · ${cellTypes.length} cell type${cellTypes.length !== 1 ? 's' : ''}</span>
-      </div>
-    </div>
-  `;
+  // Create or find header - must be first element
+  let cellLogHeader = containerEl.querySelector('.page-header');
+  if (!cellLogHeader) {
+    cellLogHeader = document.createElement('header');
+    cellLogHeader.className = 'page-header';
+    // Insert at the very beginning of the container, before any existing content
+    const firstChild = containerEl.firstChild;
+    if (firstChild && firstChild.nodeType === 1) { // Element node
+      containerEl.insertBefore(cellLogHeader, firstChild);
+    } else {
+      containerEl.insertBefore(cellLogHeader, containerEl.firstChild);
+    }
+  }
+  
+  // Render header using standard component
+  cellLogHeader.innerHTML = PageHeader({
+    title: 'Cell Log',
+    icon: '🧪',
+    status: `${entries.length} entr${entries.length !== 1 ? 'ies' : 'y'} · ${cellTypes.length} cell type${cellTypes.length !== 1 ? 's' : ''}`,
+    actions: []
+  });
 
   const dateInput = document.getElementById('cell-log-date');
   if (dateInput && !dateInput.value) {

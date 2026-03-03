@@ -441,7 +441,19 @@ export const handlers = {
   async toggleTask(id) {
     // Use taskOperations if available, otherwise use handler
     if (window.Petal?.features?.taskOperations?.toggleTask) {
-      await window.Petal.features.taskOperations.toggleTask(id);
+      // Create a context object for taskOperations.toggleTask
+      const state = window.Petal?.store?.getState() || {};
+      const ctx = {
+        tasks: state.tasks || [],
+        projects: state.projects || [],
+        save: async () => {
+          if (window.Petal?.persistence?.flush) {
+            await window.Petal.persistence.flush();
+          }
+        },
+        render: window.render || (() => {})
+      };
+      await window.Petal.features.taskOperations.toggleTask(ctx, id);
     } else {
       await taskHandlers.toggleTask(id);
     }

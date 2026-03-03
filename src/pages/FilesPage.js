@@ -270,6 +270,57 @@ function bind(container, features) {
               window.Petal.features.fileTaskOperations.openTaskFromFile(parseInt(taskId), ctx);
             }
             break;
+            
+          case 'open-project':
+            const projectId = btn.dataset.projectId;
+            if (projectId && features?.fileProjectOperations?.viewProjectFromFile) {
+              const ctx = features?.handlers?.createPageContext?.() || 
+                         window.Petal?.handlers?.createPageContext?.() || 
+                         {};
+              features.fileProjectOperations.viewProjectFromFile(projectId, ctx);
+            } else if (projectId && window.Petal?.features?.fileProjectOperations?.viewProjectFromFile) {
+              const ctx = window.Petal?.handlers?.createPageContext?.() || {};
+              window.Petal.features.fileProjectOperations.viewProjectFromFile(projectId, ctx);
+            } else if (projectId && window.Petal?.features?.matrixOperations?.openProjectView) {
+              const ctx = window.Petal?.handlers?.createPageContext?.() || {};
+              window.Petal.features.matrixOperations.openProjectView(ctx, projectId);
+            }
+            break;
+            
+          case 'view-projects':
+            const viewProjectsFileKey = btn.dataset.fileKey;
+            if (viewProjectsFileKey && features?.fileProjectOperations?.viewFileProjects) {
+              const ctx = features?.handlers?.createPageContext?.() || 
+                         window.Petal?.handlers?.createPageContext?.() || 
+                         {};
+              features.fileProjectOperations.viewFileProjects(viewProjectsFileKey, ctx);
+            } else if (viewProjectsFileKey && window.Petal?.features?.fileProjectOperations?.viewFileProjects) {
+              const ctx = window.Petal?.handlers?.createPageContext?.() || {};
+              window.Petal.features.fileProjectOperations.viewFileProjects(viewProjectsFileKey, ctx);
+            }
+            break;
+            
+          case 'add-to-project':
+            const addToProjectFileKey = btn.dataset.fileKey;
+            const addToProjectFilePath = btn.dataset.path;
+            if (addToProjectFileKey && addToProjectFilePath) {
+              try {
+                const fileLink = JSON.parse(addToProjectFilePath);
+                const ctx = features?.handlers?.createPageContext?.() || 
+                           window.Petal?.handlers?.createPageContext?.() || 
+                           {};
+                
+                if (features?.fileProjectOperations?.addFileToProject) {
+                  features.fileProjectOperations.addFileToProject(fileLink, addToProjectFileKey, ctx);
+                } else if (window.Petal?.features?.fileProjectOperations?.addFileToProject) {
+                  window.Petal.features.fileProjectOperations.addFileToProject(fileLink, addToProjectFileKey, ctx);
+                }
+              } catch (e) {
+                console.error('Error parsing file path:', e);
+                alert('Error adding file to project: ' + (e.message || 'Invalid file data'));
+              }
+            }
+            break;
         }
         break;
         

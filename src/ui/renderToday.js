@@ -2,7 +2,7 @@
 // Data-driven Today view renderer matching LabOS layout
 // Takes state and handlers as parameters - no store peeking
 
-import { esc } from '../utils/strings.js';
+import { esc, escapeHtml } from '../utils/strings.js';
 import { today, parseDate } from '../utils/dates.js';
 import { getAllTasks } from '../domain/models.js';
 
@@ -215,15 +215,6 @@ export function renderToday(containerEl, state, handlers) {
 }
 
 // --- helpers ---
-function escapeHtml(s) {
-  return String(s ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
 function getStatusLine(state, cellLogEntries) {
   const n = cellLogEntries.length;
   return `${n} culture${n !== 1 ? 's' : ''} active`;

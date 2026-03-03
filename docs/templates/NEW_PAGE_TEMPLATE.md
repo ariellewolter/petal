@@ -978,10 +978,10 @@ if (!state.yourData) {
 
 Here's a minimal example for a "Notes" page:
 
-1. **File**: `src/pages/NotesPage.js` (use template above, replace `your` with `notes`)
-2. **Registry**: Add `'notes': renderNotesPage` to `PAGES` object
-3. **HTML**: Add `<div id="view-notes" style="display:none;"></div>`
-4. **CSS**: Add `#view-notes { ... }` styles
+1. **File**: `src/pages/YourPage.js` (use template above, replace `your` with your page name)
+2. **Registry**: Add `'your-page': renderYourPage` to `PAGES` object in `src/app/pages.js`
+3. **HTML**: Add `<div id="view-your-page" style="display:none;"></div>` to `tasklist.html`
+4. **CSS**: Add `#view-your-page { ... }` styles to `src/styles/main.css`
 5. **Sidebar**: Add navigation link with icon and badge
 6. **State**: Add `notes: []` to initial state
 

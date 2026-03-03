@@ -31,6 +31,39 @@ export async function renderLane(ctx, laneName, allTasks) {
   const laneEl = document.getElementById(`lane-${laneName}`);
   if (!laneEl) return;
   
+  // Add drop zone handlers to lane container
+  if (!laneEl.dataset.dropZoneSetup) {
+    laneEl.dataset.dropZoneSetup = 'true';
+    laneEl.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      laneEl.style.background = 'var(--bg3)';
+      laneEl.style.border = '2px dashed var(--rose)';
+    });
+    laneEl.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      laneEl.style.background = '';
+      laneEl.style.border = '';
+    });
+    laneEl.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      laneEl.style.background = '';
+      laneEl.style.border = '';
+      
+      if (window.Petal?.features?.workflowTaskOperations?.handleLaneDrop) {
+        const state = window.Petal?.store?.getState() || {};
+        const ctx = {
+          tasks: state.tasks || [],
+          projects: state.projects || [],
+          save: window.Petal?.handlers?.save || (async () => {}),
+        };
+        await window.Petal.features.workflowTaskOperations.handleLaneDrop(e, laneName, ctx);
+      }
+    });
+  }
+  
   const escFunction = escFn || esc;
   const escAttrFunction = escAttrFn || escAttr;
   const escJsonForAttrFunction = escJsonForAttrFn || escJsonForAttr;
@@ -52,7 +85,7 @@ export async function renderLane(ctx, laneName, allTasks) {
   if (laneTasks.length === 0) {
     laneEl.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--text-dim);">
       <div style="font-size:14px;margin-bottom:8px;">No tasks assigned</div>
-      <div style="font-size:12px;">Assign tasks to this lane from the Projects tab</div>
+      <div style="font-size:12px;">Drag tasks here to assign them to this lane</div>
     </div>`;
     return;
   }

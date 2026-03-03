@@ -333,9 +333,11 @@ function renderTaskCard(task, handlers, allTasksForBlocking = []) {
           ${filesHtml}
           <div style="margin-top:6px;display:flex;gap:4px;">
             <button onclick="event.stopPropagation();if(window.Petal?.handlers?.openTaskDrawer){window.Petal.handlers.openTaskDrawer(${task.id})}" 
-                    style="padding:2px 6px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:9px;cursor:pointer;color:var(--text-dim);">📝</button>
+                    style="padding:2px 6px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:9px;cursor:pointer;color:var(--text-dim);" title="Open drawer">📝</button>
+            ${task.scheduledDate ? `<button onclick="event.stopPropagation();if(window.Petal?.features?.workflowPlannerOperations?.showTaskInPlanner){const ctx={tasks:window.Petal.store.getState().tasks||[],projects:window.Petal.store.getState().projects||[],save:window.Petal.handlers.save||async()=>{}};window.Petal.features.workflowPlannerOperations.showTaskInPlanner(${task.id},ctx)}" 
+                    style="padding:2px 6px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:9px;cursor:pointer;color:var(--sage);" title="Show in planner">📅</button>` : ''}
             <button onclick="event.stopPropagation();if(window.Petal?.handlers?.quickAssignToLane){window.Petal.handlers.quickAssignToLane(${task.id})}" 
-                    style="padding:2px 6px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:9px;cursor:pointer;color:var(--text-dim);">⚡</button>
+                    style="padding:2px 6px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:9px;cursor:pointer;color:var(--text-dim);" title="Quick assign">⚡</button>
           </div>
         </div>
       </div>
