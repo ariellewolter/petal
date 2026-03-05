@@ -137,7 +137,10 @@ export function normalizeProjectStructure(project) {
   
   // Linked Cell Lines - array of cell line names linked to this project
   normalized.linkedCellLines = Array.isArray(project.linkedCellLines) ? project.linkedCellLines : [];
-  
+
+  // Linked Goals - array of goal IDs attached to this project
+  normalized.goalIds = Array.isArray(project.goalIds) ? project.goalIds : [];
+
   // Artifacts - the center of gravity (figure, dataset, build, protocol, manuscript)
   normalized.artifacts = Array.isArray(project.artifacts) ? project.artifacts.map((art, idx) => ({
     id: art.id || Date.now() + idx + 1,

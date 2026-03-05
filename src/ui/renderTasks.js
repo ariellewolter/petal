@@ -4,7 +4,8 @@
 console.log("✅ renderTasks.js LOADED — EDITBTN TEST 2026-02-21");
 
 import { esc } from '../utils/strings.js';
-import { today, parseDate, dueLabel, inRange } from '../utils/dates.js';
+import { today, parseDate, dueLabel, inRange, formatScheduledWork } from '../utils/dates.js';
+import { getTaskScheduledWorkForDisplay } from '../utils/taskEventConverter.js';
 import { getAllTasks } from '../domain/models.js';
 import { LANES } from '../domain/schema.js';
 import { EmptyState } from '../ui/components.js';
@@ -311,6 +312,10 @@ function renderTaskItem(task, state) {
   const dueClass = dl?.class || '';
   const dueText = dl?.label || '';
   
+  // Planner schedule: show date/time from task or from linked event
+  const work = getTaskScheduledWorkForDisplay(task, state.events);
+  const scheduledWork = work ? formatScheduledWork(work.scheduledDate, work.scheduledStartTime, work.scheduledDurationMin) : '';
+  
   // Get lane badge if task has a lane
   let laneBadge = '';
   if (task.lane && LANES[task.lane]) {
@@ -338,6 +343,7 @@ function renderTaskItem(task, state) {
             ${laneBadge}
             <span class="priority-tag ${priorityClass}">${priorityClass}</span>
             ${dueText ? `<span class="due-tag ${dueClass}">${esc(dueText)}</span>` : ''}
+            ${scheduledWork ? `<span class="due-tag" style="background:var(--sage-pale);color:var(--sage);" title="Scheduled in planner">📅 ${esc(scheduledWork)}</span>` : ''}
           </div>
           
           ${task.notes ? `<div class="task-notes">${esc(task.notes)}</div>` : ''}
@@ -345,6 +351,7 @@ function renderTaskItem(task, state) {
       </div>
       
       <div class="task-actions" style="display:flex;gap:4px;align-items:center;">
+        <button class="btn-del" data-action="task:link-file" data-task-id="${String(task.id)}" title="Link or add file" style="font-size:13px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);">📎</button>
         <button class="btn-del" data-action="task:open-drawer" data-task-id="${String(task.id)}" title="Open drawer (Notes, Files, Subtasks)" style="font-size:13px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);">📝</button>
         <button class="btn-del btn-edit" data-action="edit-task" data-task-id="${String(task.id)}" title="Edit" style="font-size:13px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);">✎</button>
         <button class="btn-del btn-delete" data-action="delete" data-id="${String(task.id)}" data-task-id="${String(task.id)}" data-is-subtask="false" data-project-id="${task.projectId || ''}" title="Delete" style="font-size:16px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:bold;opacity:1;">×</button>

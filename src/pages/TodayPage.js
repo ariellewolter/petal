@@ -4,9 +4,10 @@
 
 import { esc } from '../utils/strings.js';
 import { escapeHtml } from '../utils/strings.js';
-import { today, parseDate, parseTime, formatTime } from '../utils/dates.js';
+import { today, parseDate, parseTime, formatTime, formatScheduledWork } from '../utils/dates.js';
 import { getAllTasks } from '../domain/models.js';
 import { setupEventDelegation } from '../app/delegation.js';
+import { getTaskScheduledWorkForDisplay } from '../utils/taskEventConverter.js';
 import { getEventsForDate } from '../utils/eventHelpers.js';
 import { PageHeader } from '../ui/components.js';
 import { getActiveHabits, isHabitChecked, shouldShowHabit } from '../features/habits.js';
@@ -127,7 +128,6 @@ export async function renderTodayPage(containerEl, state, handlers) {
             <div class="today-status-dot"></div>
             <span class="today-header-status">${escapeHtml(getStatusLine(state, cellLogEntries))}</span>
           </div>
-          <button class="today-header-btn" data-action="quick-add">+ Quick Add</button>
         </div>
       </header>
 
@@ -150,11 +150,6 @@ export async function renderTodayPage(containerEl, state, handlers) {
             <div class="today-stat-value">${getActiveCellLinesCount(cellLogEntries)}</div>
             <div class="today-stat-sub">${escapeHtml(getCultureAttentionLine(cellLogEntries))}</div>
           </div>
-          <div class="today-stat-card c4">
-            <div class="today-stat-label">Hours Logged</div>
-            <div class="today-stat-value">—</div>
-            <div class="today-stat-sub">time log not enabled</div>
-          </div>
         </div>
 
         <!-- PLANNER -->
@@ -170,7 +165,7 @@ export async function renderTodayPage(containerEl, state, handlers) {
             <span class="today-card-action" data-nav="tasks">All tasks →</span>
           </div>
           <div class="today-task-list">
-            ${renderTodayTasks(tasksToday, doneToday, state.projects || [])}
+            ${renderTodayTasks(tasksToday, doneToday, state.projects || [], state.events || [])}
           </div>
         </div>
 
@@ -624,7 +619,7 @@ function renderScheduleCard(state, now, events, recurringRules) {
   `;
 }
 
-function renderTodayTasks(tasksToday, doneToday, projects) {
+function renderTodayTasks(tasksToday, doneToday, projects, events = []) {
   const all = [...doneToday, ...tasksToday];
   if (all.length === 0) {
     return `
@@ -656,6 +651,8 @@ function renderTodayTasks(tasksToday, doneToday, projects) {
     }
     const lane = t.lane || '';
     const tagClass = lane === 'lab' ? 'tag-green' : lane === 'comp' ? 'tag-blue' : 'tag-orange';
+    const work = getTaskScheduledWorkForDisplay(t, events);
+    const scheduledWork = work ? formatScheduledWork(work.scheduledDate, work.scheduledStartTime, work.scheduledDurationMin) : '';
     return `
       <div class="today-task-item" data-task-id="${id}">
         <div class="today-task-check ${done ? "done" : ""}"></div>
@@ -664,6 +661,7 @@ function renderTodayTasks(tasksToday, doneToday, projects) {
           <div class="today-task-meta">
             <span>${escapeHtml(projectName || "Independent")}</span>
             ${lane ? `<span class="today-task-tag ${tagClass}">${escapeHtml(lane)}</span>` : ''}
+            ${scheduledWork ? `<span class="today-task-tag" style="background:var(--sage-pale);color:var(--sage);">📅 ${escapeHtml(scheduledWork)}</span>` : ''}
           </div>
         </div>
       </div>

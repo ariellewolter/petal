@@ -373,7 +373,28 @@ export async function toggleTask(ctx, id) {
     });
   }
   
-  const t = findActiveTask(tasks, id);
+  let t = findActiveTask(tasks, id);
+  // Today page (and others) show project subtasks via getAllTasks; try projects if not in tasks
+  if (!t && window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    const projects = state.projects || [];
+    for (const p of projects) {
+      const subtasks = p.subtasks || [];
+      const idx = subtasks.findIndex(st => !st.deletedAt && (st.id === id || String(st.id) === String(id)));
+      if (idx !== -1) {
+        const st = subtasks[idx];
+        const newDone = !st.done;
+        const updatedSubtasks = subtasks.map((s, i) =>
+          i === idx ? { ...s, done: newDone, status: newDone ? 'Done' : (s.status === 'Done' ? 'Todo' : s.status) } : s
+        );
+        const updatedProjects = projects.map(proj =>
+          proj.id === p.id ? { ...proj, subtasks: updatedSubtasks } : proj
+        );
+        updateStoreSafely({ projects: updatedProjects });
+        return;
+      }
+    }
+  }
   if (!t) {
     console.warn('Task not found for ID:', id, {
       tasksCount: tasks?.length,

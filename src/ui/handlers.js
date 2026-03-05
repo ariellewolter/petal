@@ -464,11 +464,11 @@ export const handlers = {
   },
   
   editTask(id) {
-    // Use taskOperations if available
-    if (window.Petal?.features?.taskOperations?.editTask) {
-      window.Petal.features.taskOperations.editTask(id);
+    if (window.Petal?.features?.taskOperations?.editTask && id != null) {
+      const ctx = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
+      window.Petal.features.taskOperations.editTask(ctx, String(id));
     } else {
-      console.warn('editTask not available');
+      console.warn('editTask not available or missing id');
     }
   }
 };

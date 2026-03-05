@@ -177,6 +177,10 @@ export function editEvent(ctx, eventId) {
     if (typeof window.updateEventTaskOptions === 'function') {
       window.updateEventTaskOptions();
     }
+    // Disable category when event is linked to a project
+    if (typeof window.updateEventCategoryDisabledState === 'function') {
+      window.updateEventCategoryDisabledState();
+    }
   }
   
   // Set task selection
@@ -185,7 +189,12 @@ export function editEvent(ctx, eventId) {
     // Wait a moment for task options to be populated
     setTimeout(() => {
       taskSelect.value = event.linkedTaskId || '';
+      if (typeof window.updateEventCategoryDisabledState === 'function') {
+        window.updateEventCategoryDisabledState();
+      }
     }, 50);
+  } else if (typeof window.updateEventCategoryDisabledState === 'function') {
+    window.updateEventCategoryDisabledState();
   }
   
   modal.style.display = 'flex';
@@ -193,11 +202,11 @@ export function editEvent(ctx, eventId) {
 
 /**
  * Sync event changes to linked task
- * Called when event time/duration is updated
+ * Called when event is saved with a linked task (task block or regular event linked to task)
  */
 export async function syncEventToTask(event) {
-  if (!event || !event.linkedTaskId || !event.isTaskBlock) {
-    return; // Not a task block, no sync needed
+  if (!event || !event.linkedTaskId) {
+    return; // No linked task, no sync needed
   }
   
   if (!window.Petal?.store) {

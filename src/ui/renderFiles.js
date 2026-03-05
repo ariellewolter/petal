@@ -546,6 +546,7 @@ function renderFileCard(file, fileHistory, allTasks = [], allProjects = [], stat
       <button class="btn-secondary" data-action="file:add-to-project" data-file-key="${esc(fileKey)}" data-path="${escAttr(JSON.stringify(fileLink))}" style="font-size:11px;padding:6px 12px;background:var(--blush);color:white;" title="Add file to a project">📁 Add to Project</button>
       ${file.key ? `<button data-action="file:show-relations" data-file-key="${esc(file.key)}" class="btn-secondary" style="font-size:11px;padding:6px 12px;">Relations</button>` : ''}
       <button data-action="file:notes" data-file-id="${esc(fileId)}" class="btn-secondary" style="font-size:11px;padding:6px 12px;" title="Add or edit notes for this file">${file.notes ? '📝 Edit Notes' : '📄 Add Notes'}</button>
+      <button class="btn-secondary" data-action="file:delete" data-file-key="${esc(fileKey)}" data-path="${escAttr(JSON.stringify(fileLink))}" style="font-size:11px;padding:6px 12px;background:var(--overdue, #b91c1c);color:white;" title="Remove file from app (unlink from projects and tasks)">🗑️ Delete</button>
     </div>
   </div>`;
 }

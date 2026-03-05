@@ -2,7 +2,8 @@
 // UI rendering functions for project view sections (timeline, protocols, cell log, etc.)
 
 import { esc, escAttr, escJsonForDataAttr, fileIcon } from '../utils/strings.js';
-import { parseDate, dueLabel, today } from '../utils/dates.js';
+import { parseDate, dueLabel, today, formatScheduledWork } from '../utils/dates.js';
+import { getTaskScheduledWorkForDisplay } from '../utils/taskEventConverter.js';
 import { getMatrixStage, isTaskBlocked } from '../domain/models.js';
 import { calculateProtocolDayIndex } from '../features/taskOperations.js';
 
@@ -295,6 +296,76 @@ export function renderCompWindow(ctx, project, projectTasks) {
 }
 
 /**
+ * Render Computational Window panel for the daily planner.
+ * Aggregates comp tasks from all projects that have workflowLanes including 'comp'.
+ * Uses planner-comp-window-content, planner-comp-window-select, planner-comp-window-section.
+ * @param {Object} [ctx] - Context with tasks, projects, isTaskBlocked, esc, dueLabel, renderTaskItemCompact. If omitted, reads from store.
+ */
+export function renderCompWindowForPlanner(ctx) {
+  const state = ctx?.tasks != null ? { tasks: ctx.tasks, projects: ctx.projects } : (window.Petal?.store?.getState() || {});
+  const tasks = state.tasks || [];
+  const projects = state.projects || [];
+
+  const contentEl = document.getElementById('planner-comp-window-content');
+  const windowSelect = document.getElementById('planner-comp-window-select');
+  const sectionEl = document.getElementById('planner-comp-window-section');
+  if (!contentEl || !sectionEl) return;
+
+  const compProjectIds = new Set(
+    (projects || [])
+      .filter(p => Array.isArray(p.workflowLanes) && p.workflowLanes.includes('comp'))
+      .map(p => String(p.id))
+  );
+
+  if (compProjectIds.size === 0) {
+    sectionEl.style.display = 'none';
+    return;
+  }
+  sectionEl.style.display = 'block';
+
+  const projectTasks = (tasks || []).filter(t => t.projectId && compProjectIds.has(String(t.projectId)));
+  const isTaskBlockedFunction = (ctx && ctx.isTaskBlocked) || isTaskBlocked;
+  const availableWindow = parseInt(windowSelect?.value || 90, 10);
+
+  const compTasks = projectTasks.filter(t => {
+    if (t.deletedAt || t.done) return false;
+    if (t.lane !== 'comp') return false;
+    if (isTaskBlockedFunction(t, tasks)) return false;
+    const estimated = t.estimatedMinutes || 0;
+    return estimated > 0 && estimated <= availableWindow;
+  }).sort((a, b) => {
+    const priorityA = typeof a.priority === 'number' ? a.priority : (a.priority === 'high' ? 3 : a.priority === 'low' ? 1 : 2);
+    const priorityB = typeof b.priority === 'number' ? b.priority : (b.priority === 'high' ? 3 : b.priority === 'low' ? 1 : 2);
+    if (priorityB !== priorityA) return priorityB - priorityA;
+    return (a.estimatedMinutes || 0) - (b.estimatedMinutes || 0);
+  });
+
+  const escFunction = (ctx && ctx.esc) || esc;
+  const dueLabelFunction = (ctx && ctx.dueLabel) || dueLabel;
+  const renderTaskItemCompact = ctx && ctx.renderTaskItemCompact;
+
+  if (compTasks.length === 0) {
+    contentEl.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-dim);font-size:12px;">No computational tasks fit in a ${availableWindow}-minute window.</div>`;
+  } else {
+    let html = `<div style="font-size:11px;color:var(--text-dim);margin-bottom:12px;font-style:italic;">Comp Window (${availableWindow} min):</div>`;
+    html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+    const buildCtx = { ...ctx, tasks, projects, esc: escFunction, dueLabel: dueLabelFunction };
+    compTasks.forEach(task => {
+      html += renderTaskItemCompact ? renderTaskItemCompact(buildCtx, task) : renderTaskItemCompactFallback(task, escFunction, dueLabelFunction);
+    });
+    html += '</div>';
+    contentEl.innerHTML = html;
+  }
+
+  if (windowSelect && !windowSelect.dataset.compWindowWired) {
+    windowSelect.dataset.compWindowWired = '1';
+    windowSelect.addEventListener('change', () => {
+      renderCompWindowForPlanner();
+    });
+  }
+}
+
+/**
  * Render Deadlines Horizon view
  */
 export function renderDeadlinesHorizon(ctx, project, projectTasks) {
@@ -360,6 +431,61 @@ export function renderDeadlinesHorizon(ctx, project, projectTasks) {
     html = '<div style="text-align:center;padding:40px;color:var(--text-dim);font-size:12px;">No upcoming deadlines.</div>';
   }
   
+  contentEl.innerHTML = html;
+}
+
+/**
+ * Render project tasks list (Tasks card on individual project page).
+ * Populates #project-tasks-content with project tasks; supports task:toggle, open drawer on click.
+ */
+export function renderProjectTasks(ctx, project, projectTasks) {
+  const contentEl = document.getElementById('project-tasks-content');
+  if (!contentEl) return;
+
+  const { tasks, esc: escFn, dueLabel: dueLabelFn, renderTaskItemCompact } = ctx;
+  const escFunction = escFn || esc;
+  const dueLabelFunction = dueLabelFn || dueLabel;
+
+  const active = (projectTasks || []).filter(t => !t.deletedAt);
+  const topLevel = active.filter(t => !t.parentTaskId);
+  const withSubtasks = topLevel.map(t => {
+    const subs = active.filter(s => String(s.parentTaskId) === String(t.id));
+    return { task: t, subtasks: subs };
+  });
+
+  // Sort: not done first, then by due, then by priority
+  const sortTasks = (a, b) => {
+    if (a.done !== b.done) return a.done ? 1 : -1;
+    const dueA = parseDate(a.due)?.getTime() ?? Infinity;
+    const dueB = parseDate(b.due)?.getTime() ?? Infinity;
+    if (dueA !== dueB) return dueA - dueB;
+    const pA = a.priority === 'high' ? 3 : a.priority === 'low' ? 1 : 2;
+    const pB = b.priority === 'high' ? 3 : b.priority === 'low' ? 1 : 2;
+    return pB - pA;
+  };
+  withSubtasks.sort((a, b) => sortTasks(a.task, b.task));
+
+  if (active.length === 0) {
+    contentEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-dim);font-size:12px;">No tasks yet. Use + Task to add one.</div>';
+    return;
+  }
+
+  const projectId = project?.id ?? '';
+  let html = '<div style="display:flex;flex-direction:column;gap:8px;">';
+  withSubtasks.forEach(({ task, subtasks }) => {
+    html += renderTaskItemCompact
+      ? renderTaskItemCompact(ctx, task)
+      : renderTaskItemCompactFallback(task, escFunction, dueLabelFunction);
+    subtasks.sort(sortTasks).forEach(sub => {
+      html += '<div style="margin-left:20px;">';
+      html += renderTaskItemCompact
+        ? renderTaskItemCompact(ctx, sub)
+        : renderTaskItemCompactFallback(sub, escFunction, dueLabelFunction);
+      html += '</div>';
+    });
+  });
+  html += '</div>';
+  html += `<div style="margin-top:12px;"><button type="button" data-action="project:view-tasks" data-project-id="${escFunction(String(projectId))}" style="padding:6px 12px;background:var(--sage);color:white;border:none;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;">View all tasks</button></div>`;
   contentEl.innerHTML = html;
 }
 
@@ -635,9 +761,12 @@ export function renderTaskItemCompact(ctx, task) {
   const { esc: escFn, dueLabel: dueLabelFn } = ctx;
   const escFunction = escFn || esc;
   const dueLabelFunction = dueLabelFn || dueLabel;
+  const events = ctx.events || (ctx.state && ctx.state.events) || [];
   
   const tdl = dueLabelFunction(task.due, true, task.done);
   const estimated = task.estimatedMinutes ? `<span style="font-size:10px;color:var(--text-dim);margin-left:8px;">(${task.estimatedMinutes} min)</span>` : '';
+  const work = getTaskScheduledWorkForDisplay(task, events);
+  const scheduledWork = work ? formatScheduledWork(work.scheduledDate, work.scheduledStartTime, work.scheduledDurationMin) : '';
   
   let html = '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;">';
   html += `<button type="button" class="check-box ${task.done?'checked':''}" data-action="task:toggle" data-task-id="${task.id}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;" title="Toggle task"></button>`;
@@ -645,6 +774,9 @@ export function renderTaskItemCompact(ctx, task) {
   html += `<div style="font-size:13px;color:var(--text);display:flex;align-items:center;gap:6px;">${escFunction(task.title)}${estimated}</div>`;
   if (tdl) {
     html += `<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">${escFunction(tdl.text)}</div>`;
+  }
+  if (scheduledWork) {
+    html += `<div style="font-size:10px;color:var(--sage);margin-top:2px;">📅 ${escFunction(scheduledWork)}</div>`;
   }
   html += '</div>';
   html += '</div>';
@@ -663,10 +795,13 @@ export function renderTaskItem(ctx, task, isStale = false, depTask = null) {
   const { esc: escFn, dueLabel: dueLabelFn } = ctx;
   const escFunction = escFn || esc;
   const dueLabelFunction = dueLabelFn || dueLabel;
+  const events = ctx.events || (ctx.state && ctx.state.events) || [];
   
   const tdl = dueLabelFunction(task.due, true, task.done);
   const protocolBadge = task.protocol?.enabled ? (ctx.getProtocolBadge ? ctx.getProtocolBadge(task) : '') : '';
   const staleWarning = isStale ? '<span style="color:var(--overdue);font-size:10px;margin-left:8px;">⚠ Stale</span>' : '';
+  const work = getTaskScheduledWorkForDisplay(task, events);
+  const scheduledWork = work ? formatScheduledWork(work.scheduledDate, work.scheduledStartTime, work.scheduledDurationMin) : '';
   
   let html = '<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;">';
   html += `<button type="button" class="check-box ${task.done?'checked':''}" data-action="task:toggle" data-task-id="${task.id}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;" title="Toggle task"></button>`;
@@ -678,15 +813,20 @@ export function renderTaskItem(ctx, task, isStale = false, depTask = null) {
   if (tdl) {
     html += `<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">${escFunction(tdl.text)}</div>`;
   }
+  if (scheduledWork) {
+    html += `<div style="font-size:10px;color:var(--sage);margin-top:2px;">📅 ${escFunction(scheduledWork)}</div>`;
+  }
   html += '</div>';
   html += `<button data-action="edit-task" data-task-id="${task.id}" data-is-subtask="${task.isSubtask || false}" data-project-id="${task.projectId || ''}" style="padding:4px 8px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:10px;cursor:pointer;">Edit</button>`;
   html += '</div>';
   return html;
 }
 
-function renderTaskItemCompactFallback(task, escFn, dueLabelFn) {
+function renderTaskItemCompactFallback(task, escFn, dueLabelFn, events = []) {
   const tdl = dueLabelFn(task.due, true, task.done);
   const estimated = task.estimatedMinutes ? `<span style="font-size:10px;color:var(--text-dim);margin-left:8px;">(${task.estimatedMinutes} min)</span>` : '';
+  const work = getTaskScheduledWorkForDisplay(task, events);
+  const scheduledWork = work ? formatScheduledWork(work.scheduledDate, work.scheduledStartTime, work.scheduledDurationMin) : '';
   
   let html = '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;">';
   html += `<button type="button" class="check-box ${task.done?'checked':''}" data-action="task:toggle" data-task-id="${task.id}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;" title="Toggle task"></button>`;
@@ -694,6 +834,9 @@ function renderTaskItemCompactFallback(task, escFn, dueLabelFn) {
   html += `<div style="font-size:13px;color:var(--text);display:flex;align-items:center;gap:6px;">${escFn(task.title)}${estimated}</div>`;
   if (tdl) {
     html += `<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">${escFn(tdl.text)}</div>`;
+  }
+  if (scheduledWork) {
+    html += `<div style="font-size:10px;color:var(--sage);margin-top:2px;">📅 ${escFn(scheduledWork)}</div>`;
   }
   html += '</div>';
   html += '</div>';
@@ -742,7 +885,7 @@ export function renderFileItem(ctx, file, project, type) {
     html += `<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">Linked to ${linkedTasks.length} task${linkedTasks.length > 1 ? 's' : ''}</div>`;
   }
   html += '</div>';
-  html += `<button class="file-open-btn" data-path="${escAttrFunction(JSON.stringify(fileObj))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">Open</button>`;
+  html += `<button type="button" class="file-open-btn" data-action="file:open" data-path="${escAttrFunction(JSON.stringify(fileObj))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">Open</button>`;
   html += '</div>';
   return html;
 }
@@ -775,7 +918,7 @@ function renderFileItemFallback(file, project, type, escFn, escAttrFn, escJsonFo
     html += `<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">Linked to ${linkedTasks.length} task${linkedTasks.length > 1 ? 's' : ''}</div>`;
   }
   html += '</div>';
-  html += `<button class="file-open-btn" data-path="${escAttrFn(JSON.stringify(fileObj))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">Open</button>`;
+  html += `<button type="button" class="file-open-btn" data-action="file:open" data-path="${escAttrFn(JSON.stringify(fileObj))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">Open</button>`;
   html += '</div>';
   return html;
 }

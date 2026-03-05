@@ -589,8 +589,10 @@ export function editCellLogEntry(entryId) {
   
   document.getElementById('cell-log-plate-type').value = entry.plateType || '';
   document.getElementById('cell-log-well-count').value = entry.wellCount !== '' && entry.wellCount !== null && entry.wellCount !== undefined ? entry.wellCount : '';
-  document.getElementById('cell-log-confluence').value = entry.confluence !== null && entry.confluence !== undefined ? entry.confluence : '';
-  document.getElementById('cell-log-viability').value = entry.viability !== null && entry.viability !== undefined ? entry.viability : '';
+  const confluenceEl = document.getElementById('cell-log-confluence');
+  if (confluenceEl) confluenceEl.value = entry.confluence !== null && entry.confluence !== undefined ? entry.confluence : '';
+  const viabilityEl = document.getElementById('cell-log-viability');
+  if (viabilityEl) viabilityEl.value = entry.viability !== null && entry.viability !== undefined ? entry.viability : '';
   document.getElementById('cell-log-freeze').checked = entry.isFrozen || false;
   document.getElementById('cell-log-vials-count').value = entry.vialsCount || '1';
   toggleFreezeFields();
@@ -628,8 +630,10 @@ export function cancelEditCellLogEntry() {
   document.getElementById('cell-log-media-type-custom').value = '';
   document.getElementById('cell-log-plate-type').value = '';
   document.getElementById('cell-log-well-count').value = '';
-  document.getElementById('cell-log-confluence').value = '';
-  document.getElementById('cell-log-viability').value = '';
+  const confluenceEl = document.getElementById('cell-log-confluence');
+  if (confluenceEl) confluenceEl.value = '';
+  const viabilityEl = document.getElementById('cell-log-viability');
+  if (viabilityEl) viabilityEl.value = '';
   document.getElementById('cell-log-freeze').checked = false;
   document.getElementById('cell-log-vials-count').value = '1';
   toggleFreezeFields();

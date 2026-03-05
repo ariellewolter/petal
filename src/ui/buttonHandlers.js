@@ -14,23 +14,31 @@ export function handleEditTaskAction(event, buttonElement) {
   // Find the button element - try multiple methods for Electron compatibility
   let btn = null;
   
-  // Method 1: Use buttonElement parameter (passed from onclick handler)
-  if (buttonElement && buttonElement.getAttribute && buttonElement.getAttribute('data-action') === 'edit-task') {
+  // Method 1: Use buttonElement parameter (passed from delegation or onclick)
+  const editAction = buttonElement?.getAttribute?.('data-action');
+  if (buttonElement && (editAction === 'edit-task' || editAction === 'edit')) {
     btn = buttonElement;
   }
   // Method 2: Use event.target and closest
   else if (event && event.target) {
-    btn = event.target.closest ? event.target.closest('[data-action="edit-task"]') : null;
-    if (!btn && event.target.getAttribute && event.target.getAttribute('data-action') === 'edit-task') {
-      btn = event.target;
+    btn = event.target.closest?.('[data-action="edit-task"], [data-action="edit"]') || null;
+    if (!btn && event.target.getAttribute) {
+      const a = event.target.getAttribute('data-action');
+      if (a === 'edit-task' || a === 'edit') btn = event.target;
     }
   }
   // Method 3: Try to find from currentTarget
-  else if (event && event.currentTarget && event.currentTarget.getAttribute && event.currentTarget.getAttribute('data-action') === 'edit-task') {
-    btn = event.currentTarget;
+  else if (event?.currentTarget?.getAttribute) {
+    const a = event.currentTarget.getAttribute('data-action');
+    if (a === 'edit-task' || a === 'edit') btn = event.currentTarget;
   }
   
-  if (!btn || btn.getAttribute('data-action') !== 'edit-task') {
+  if (!btn) {
+    btn = event?.target?.closest?.('[data-action="edit-task"], [data-action="edit"]') || null;
+  }
+  
+  const btnAction = btn?.getAttribute?.('data-action');
+  if (!btn || (btnAction !== 'edit-task' && btnAction !== 'edit')) {
     console.warn('Could not find edit button element', { event, buttonElement, btn });
     return;
   }

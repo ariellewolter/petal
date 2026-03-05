@@ -3,6 +3,8 @@
 // Takes state and handlers as parameters - no store peeking, no store writes
 
 import { esc, escAttr, fileIcon } from '../utils/strings.js';
+import { formatScheduledWork } from '../utils/dates.js';
+import { getTaskScheduledWorkForDisplay } from '../utils/taskEventConverter.js';
 import { selectWorkflowTasks, selectBottlenecks, selectActiveFiles, selectTasksByLaneAndColumn } from '../features/workflow/selectors.js';
 import { LANES } from '../domain/schema.js';
 import { isTaskBlocked } from '../domain/models.js';
@@ -299,6 +301,14 @@ function renderTaskCard(task, handlers, allTasksForBlocking = []) {
     dueHtml = `<span class="due-tag ${dueClass}" style="font-size:10px;padding:2px 6px;background:var(--bg2);border-radius:4px;">${calendarIcon}${esc(dueText)}</span>`;
   }
   
+  // Planner schedule: show date/time from task or from linked event
+  const state = handlers._state || {};
+  const work = getTaskScheduledWorkForDisplay(task, state.events);
+  const scheduledWork = work ? formatScheduledWork(work.scheduledDate, work.scheduledStartTime, work.scheduledDurationMin) : '';
+  const scheduledWorkHtml = scheduledWork
+    ? `<span class="due-tag" style="font-size:10px;padding:2px 6px;background:var(--sage-pale);color:var(--sage);border-radius:4px;" title="Scheduled in planner">📅 ${esc(scheduledWork)}</span>`
+    : '';
+  
   // Files
   let filesHtml = '';
   if (task.files && task.files.length > 0) {
@@ -328,6 +338,7 @@ function renderTaskCard(task, handlers, allTasksForBlocking = []) {
             ${projectName ? `<span class="due-tag" style="font-size:9px;padding:2px 6px;background:var(--bg2);border-radius:4px;">${esc(projectName)}</span>` : ''}
             <span class="priority-tag ${task.priority}" style="font-size:9px;padding:2px 6px;background:var(--${task.priority === 'high' ? 'rose' : task.priority === 'medium' ? 'mauve' : 'sage'}-pale);color:var(--${task.priority === 'high' ? 'rose' : task.priority === 'medium' ? 'mauve' : 'sage'});border-radius:4px;">${esc(task.priority || 'medium')}</span>
             ${dueHtml}
+            ${scheduledWorkHtml}
           </div>
           ${blocked ? `<div style="font-size:9px;color:var(--overdue);margin-top:4px;">🔒 Blocked</div>` : ''}
           ${filesHtml}
@@ -387,7 +398,7 @@ function renderActiveFilesSidebar(activeFiles, showActiveFiles, handlers) {
               <div style="font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${icon} ${esc(label)}</div>
               ${file.taskIds && file.taskIds.length > 0 ? `<div style="font-size:9px;color:var(--text-dim);margin-top:2px;">${file.taskIds.length} task${file.taskIds.length > 1 ? 's' : ''}</div>` : ''}
             </div>
-            <button class="file-open-btn" data-path="${escAttr(JSON.stringify(file))}" 
+            <button type="button" class="file-open-btn" data-action="file:open" data-path="${escAttr(JSON.stringify(file))}" 
                     style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;margin-left:8px;">Open</button>
           </div>
         `;

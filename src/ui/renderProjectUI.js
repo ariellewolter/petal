@@ -149,7 +149,7 @@ export async function renderFilesTab(ctx, tab, project) {
           <div style="display:flex;align-items:center;gap:8px;">
             <span style="font-size:16px;">${icon}</span>
             <span style="flex:1;font-size:13px;color:var(--text);">${escFunction(label)}</span>
-            <button class="file-open-btn" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;">Open</button>
+            <button type="button" class="file-open-btn" data-action="file:open" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;">Open</button>
           </div>
         </div>`;
       });
@@ -171,7 +171,7 @@ export async function renderFilesTab(ctx, tab, project) {
             <span style="font-size:16px;">${icon}</span>
             <span style="flex:1;font-size:13px;color:var(--text);">${escFunction(label)}</span>
             <span style="font-size:10px;padding:2px 6px;background:var(--sage-pale);color:var(--sage);border-radius:10px;">Current</span>
-            <button class="file-open-btn" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;">Open</button>
+            <button type="button" class="file-open-btn" data-action="file:open" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;">Open</button>
           </div>
         </div>`;
       });
@@ -192,7 +192,7 @@ export async function renderFilesTab(ctx, tab, project) {
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
             <span style="font-size:16px;">${icon}</span>
             <span style="flex:1;font-size:13px;color:var(--text);">${escFunction(label)}</span>
-            <button class="file-open-btn" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;">Open</button>
+            <button type="button" class="file-open-btn" data-action="file:open" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;">Open</button>
           </div>
           <div style="padding-left:24px;font-size:11px;color:var(--text-dim);">
             ${(f.versions || []).map(v => `v${escFunction(v.version || v)}`).join(', ')}
@@ -233,7 +233,7 @@ export async function renderFilesTab(ctx, tab, project) {
           html += `<div style="display:flex;align-items:center;gap:8px;">
             <span style="font-size:14px;">${icon}</span>
             <span style="flex:1;font-size:12px;color:var(--text-dim);">${escFunction(label)}</span>
-            <button class="file-open-btn" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;">Open</button>
+            <button type="button" class="file-open-btn" data-action="file:open" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;">Open</button>
           </div>`;
         });
         html += '</div></div>';
@@ -381,10 +381,10 @@ export function renderProjectHeader(ctx, project) {
 }
 
 /**
- * Render project files
+ * Render project files (project-linked and task-linked) on the project page Files tab
  */
 export async function renderProjectFiles(ctx) {
-  const { projects, tasks, fileHistory, esc: escFn, escAttr: escAttrFn, escJsonForDataAttr: escJsonForDataAttrFn, fileIcon: fileIconFn, getMatrixStage: getMatrixStageFn, toggleAddPinnedFile, removePinnedFile } = ctx;
+  const { projects, tasks, esc: escFn, escAttr: escAttrFn, escJsonForDataAttr: escJsonForDataAttrFn, fileIcon: fileIconFn, getTaskFiles: getTaskFilesFn } = ctx;
   
   const filesEl = document.getElementById('project-files-content');
   if (!filesEl) return;
@@ -393,7 +393,7 @@ export async function renderProjectFiles(ctx) {
   const escAttrFunction = escAttrFn || escAttr;
   const escJsonForDataAttrFunction = escJsonForDataAttrFn || escJsonForDataAttr;
   const fileIconFunction = fileIconFn || fileIcon;
-  const getMatrixStageFunction = getMatrixStageFn || getMatrixStage;
+  const getTaskFilesFromCtx = getTaskFilesFn || getTaskFiles;
   
   const selectedProjectId = typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null;
   if (!selectedProjectId) {
@@ -407,34 +407,157 @@ export async function renderProjectFiles(ctx) {
     return;
   }
   
-  const allFiles = project.files || [];
-  const currentTab = typeof window.currentProjectFilesTab !== 'undefined' ? window.currentProjectFilesTab : 'all';
+  const projectFiles = (project.files || []).filter(f => {
+    const fileObj = typeof f === 'object' ? f : { abs_path: f };
+    return !fileObj.deletedAt;
+  });
+  const projectTasks = (tasks || []).filter(t => String(t.projectId) === String(selectedProjectId) && !t.deletedAt);
   
   let html = '<div class="project-files-container">';
   
-  if (allFiles.length > 0) {
+  // ─── Project-linked files ───
+  html += '<div style="margin-bottom:24px;">';
+  html += '<div style="font-size:12px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">📁 Project files</div>';
+  if (projectFiles.length > 0) {
     html += '<div style="display:flex;flex-direction:column;gap:8px;">';
-    allFiles.forEach((f, idx) => {
+    projectFiles.forEach((f) => {
       const fileLink = typeof f === 'string' ? { abs_path: f } : f;
-      const label = f.label || f.name || 'File';
-      const fileDataAttr = escJsonForDataAttrFunction(fileLink);
+      const label = (typeof f === 'object' && (f.label || f.name)) ? (f.label || f.name) : 'File';
       const icon = fileIconFunction(fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url || '');
-      const stage = getMatrixStageFunction(t);
-      html += `<div class="file-item" data-file="${escAttrFunction(fileDataAttr)}">
+      html += `<div class="file-item" data-file="${escAttrFunction(escJsonForDataAttrFunction(fileLink))}">
         <div style="display:flex;align-items:center;gap:8px;">
           <span style="font-size:16px;">${icon}</span>
           <span style="flex:1;font-size:13px;color:var(--text);">${escFunction(label)}</span>
-          <button class="file-open-btn" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;">Open</button>
+          <button type="button" class="file-open-btn" data-action="file:open" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;">Open</button>
         </div>
       </div>`;
     });
     html += '</div>';
   } else {
-    html += '<div style="text-align:center;padding:20px;color:var(--text-dim);font-size:12px;">No files</div>';
+    html += '<div style="padding:12px;color:var(--text-dim);font-size:12px;">No files linked to this project</div>';
   }
   html += '</div>';
   
+  // ─── Task-linked files ───
+  const tasksWithFiles = projectTasks
+    .map(t => ({ task: t, files: getTaskFilesFromCtx(t, ctx) }))
+    .filter(({ files }) => files && files.length > 0);
+  
+  html += '<div>';
+  html += '<div style="font-size:12px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">📋 Files linked to tasks</div>';
+  if (tasksWithFiles.length > 0) {
+    html += '<div style="display:flex;flex-direction:column;gap:14px;">';
+    tasksWithFiles.forEach(({ task, files }) => {
+      html += '<div style="padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;">';
+      html += `<button type="button" data-action="task:open-drawer" data-task-id="${task.id}" style="width:100%;text-align:left;background:none;border:none;padding:0 0 6px 0;margin-bottom:6px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;border-bottom:1px solid var(--border);" onmouseover="this.style.color='var(--rose)'" onmouseout="this.style.color='var(--text)'">${escFunction(task.title || 'Untitled task')}</button>`;
+      html += '<div style="display:flex;flex-direction:column;gap:6px;">';
+      files.forEach((f) => {
+        const fileLink = typeof f === 'object' ? f : { abs_path: f };
+        const label = (typeof f === 'object' && (f.label || f.name)) ? (f.label || f.name) : 'File';
+        const icon = fileIconFunction(fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url || '');
+        html += `<div class="file-item" style="display:flex;align-items:center;gap:8px;padding:4px 0;">
+          <span style="font-size:14px;">${icon}</span>
+          <span style="flex:1;font-size:12px;color:var(--text);">${escFunction(label)}</span>
+          <button type="button" class="file-open-btn" data-action="file:open" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;">Open</button>
+        </div>`;
+      });
+      html += '</div></div>';
+    });
+    html += '</div>';
+  } else {
+    html += '<div style="padding:12px;color:var(--text-dim);font-size:12px;">No files linked to any task in this project</div>';
+  }
+  html += '</div>';
+  
+  html += '</div>';
   filesEl.innerHTML = html;
+}
+
+/**
+ * Render the "Project files" right card on the individual project (matrix) page.
+ * Shows project-linked files and files linked to tasks; supports Add file and Open.
+ */
+export function renderMatrixProjectFilesCard(ctx, project, projectTasks) {
+  const listEl = document.getElementById('matrix-project-files-list');
+  const addBtn = document.getElementById('matrix-add-file-to-project-btn');
+  if (!listEl) return;
+
+  if (addBtn && project && project.id != null) {
+    addBtn.setAttribute('data-project-id', String(project.id));
+  }
+
+  if (!project) {
+    listEl.innerHTML = '<div style="padding:12px;color:var(--text-dim);font-size:12px;">No project selected</div>';
+    return;
+  }
+
+  const { esc: escFn, escAttr: escAttrFn, escJsonForDataAttr: escJsonForDataAttrFn, fileIcon: fileIconFn, getTaskFiles: getTaskFilesFn } = ctx;
+  const escFunction = escFn || esc;
+  const escAttrFunction = escAttrFn || escAttr;
+  const escJsonForDataAttrFunction = escJsonForDataAttrFn || escJsonForDataAttr;
+  const fileIconFunction = fileIconFn || fileIcon;
+  const getTaskFilesFromCtx = getTaskFilesFn || getTaskFiles;
+
+  const projectFiles = (project.files || []).filter(f => {
+    const fileObj = typeof f === 'object' ? f : { abs_path: f };
+    return !fileObj.deletedAt;
+  });
+
+  const tasksWithFiles = (projectTasks || [])
+    .map(t => ({ task: t, files: getTaskFilesFromCtx(t, ctx) }))
+    .filter(({ files }) => files && files.length > 0);
+
+  let html = '';
+
+  // Project-linked files
+  html += '<div style="margin-bottom:16px;">';
+  html += '<div style="font-size:11px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">📁 Linked to project</div>';
+  if (projectFiles.length > 0) {
+    html += '<div style="display:flex;flex-direction:column;gap:6px;">';
+    projectFiles.forEach((f) => {
+      const fileLink = typeof f === 'string' ? { abs_path: f } : f;
+      const label = (typeof f === 'object' && (f.label || f.name)) ? (f.label || f.name) : 'File';
+      const icon = fileIconFunction(fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url || '');
+      html += `<div class="file-item" style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;">
+        <span style="font-size:14px;">${icon}</span>
+        <span style="flex:1;font-size:12px;color:var(--text);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escFunction(label)}</span>
+        <button type="button" class="file-open-btn" data-action="file:open" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;flex-shrink:0;">Open</button>
+      </div>`;
+    });
+    html += '</div>';
+  } else {
+    html += '<div style="padding:10px;color:var(--text-dim);font-size:11px;">No files linked to this project</div>';
+  }
+  html += '</div>';
+
+  // Task-linked files
+  html += '<div>';
+  html += '<div style="font-size:11px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">📋 Linked to tasks</div>';
+  if (tasksWithFiles.length > 0) {
+    html += '<div style="display:flex;flex-direction:column;gap:10px;">';
+    tasksWithFiles.forEach(({ task, files }) => {
+      html += '<div style="padding:8px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;">';
+      html += `<button type="button" data-action="task:open-drawer" data-task-id="${task.id}" style="width:100%;text-align:left;background:none;border:none;padding:0 0 4px 0;margin-bottom:4px;font-size:12px;font-weight:600;color:var(--text);cursor:pointer;border-bottom:1px solid var(--border);" onmouseover="this.style.color='var(--rose)'" onmouseout="this.style.color='var(--text)'">${escFunction(task.title || 'Untitled task')}</button>`;
+      html += '<div style="display:flex;flex-direction:column;gap:4px;">';
+      files.forEach((f) => {
+        const fileLink = typeof f === 'object' ? f : { abs_path: f };
+        const label = (typeof f === 'object' && (f.label || f.name)) ? (f.label || f.name) : 'File';
+        const icon = fileIconFunction(fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url || '');
+        html += `<div class="file-item" style="display:flex;align-items:center;gap:6px;padding:4px 0;">
+          <span style="font-size:12px;">${icon}</span>
+          <span style="flex:1;font-size:11px;color:var(--text);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escFunction(label)}</span>
+          <button type="button" class="file-open-btn" data-action="file:open" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="padding:3px 6px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">Open</button>
+        </div>`;
+      });
+      html += '</div></div>';
+    });
+    html += '</div>';
+  } else {
+    html += '<div style="padding:10px;color:var(--text-dim);font-size:11px;">No files linked to tasks</div>';
+  }
+  html += '</div>';
+
+  listEl.innerHTML = html;
 }
 
 /**
@@ -657,6 +780,7 @@ export function projectHTML(ctx, p, tasksFromStore = null, openProjectsFromStore
                 ${t.lane && t.lane !== 'none' && LANE_STAGES[t.lane] ? `<select onchange="updateTaskStage(${t.id}, '${t.lane}', this.value); window.rerenderViewIfActive('projects');" style="font-size:11px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);cursor:pointer;" title="Change stage">
                   ${LANE_STAGES[t.lane].map(s => `<option value="${s}" ${t.stage === s ? 'selected' : ''}>${escFunction(s)}</option>`).join('')}
                 </select>` : ''}
+                <button class="btn-del" data-action="task:link-file" data-task-id="${String(t.id)}" title="Link or add file" style="font-size:13px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);">📎</button>
                 <button class="btn-del" data-action="task:open-drawer" data-task-id="${String(t.id)}" title="Open drawer (Notes, Files, Subtasks)" style="font-size:13px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);">📝</button>
                 <button class="btn-del" data-action="task:toggle-subtasks" data-task-id="${String(t.id)}" title="Toggle subtasks" style="font-size:12px;">${taskSubtasks.length > 0 ? (taskSubtasksOpen ? '▼' : '▶') : ''}</button>
                 <button class="btn-del btn-edit" data-action="edit-task" data-task-id="${String(t.id)}" title="Edit" style="font-size:13px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);">✎</button>
@@ -683,7 +807,7 @@ export function projectHTML(ctx, p, tasksFromStore = null, openProjectsFromStore
         </div>
           </div>
             </div>` : `<div style="margin-top:8px;">
-              <button onclick="toggleAddSubtaskToTask(${t.id})" style="width:100%;padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:11px;cursor:pointer;">+ Add Subtask</button>
+              <button type="button" data-action="task:toggle-add-subtask" data-task-id="${t.id}" style="width:100%;padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:11px;cursor:pointer;">+ Add Subtask</button>
               <div id="add-subtask-to-task-${t.id}" style="display:none;margin-top:8px;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;">
                 <input type="text" id="subtask-title-${t.id}" placeholder="Subtask title..." style="width:100%;margin-bottom:6px;padding:6px;font-size:12px;">
                 <div style="display:flex;gap:6px;">
@@ -736,6 +860,31 @@ export function projectHTML(ctx, p, tasksFromStore = null, openProjectsFromStore
           </div>
         </div>`;
       }).join('')}</div>` : '<div style="font-size:12px;color:var(--text-dim);">No files yet</div>'}
+    </div>
+
+    <!-- Goals Section -->
+    <div style="padding:12px 20px 12px 32px;border-top:1px solid var(--border);margin-top:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h3 style="font-size:14px;font-weight:600;color:var(--text);margin:0;">🎯 Goals ${(p.goalIds || []).length > 0 ? `(${(p.goalIds || []).length})` : ''}</h3>
+        <select data-action="project:attach-goal" data-project-id="${p.id}" style="padding:6px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--text);cursor:pointer;" title="Attach a goal to this project">
+          <option value="">+ Attach goal</option>
+          ${(function() {
+            const goals = ctx.goals || (typeof window !== 'undefined' && window.Petal?.store?.getState?.()?.goals) || [];
+            const goalIds = p.goalIds || [];
+            const available = goals.filter(g => !goalIds.some(id => String(id) === String(g.id)));
+            return available.map(g => '<option value="' + escAttrFunction(String(g.id)) + '">' + escFunction((g.name || 'Goal').slice(0, 50)) + '</option>').join('');
+          })()}
+        </select>
+      </div>
+      <div id="project-goals-list-${p.id}" style="display:flex;flex-direction:column;gap:6px;">
+        ${(function() {
+          const goals = ctx.goals || (typeof window !== 'undefined' && window.Petal?.store?.getState?.()?.goals) || [];
+          const goalIds = p.goalIds || [];
+          const linked = goalIds.map(gid => goals.find(g => String(g.id) === String(gid))).filter(Boolean);
+          if (linked.length === 0) return '<div style="font-size:12px;color:var(--text-dim);">No goals attached</div>';
+          return linked.map(g => '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;"><span style="font-size:12px;color:var(--text);">' + (g.emoji || '◎') + ' ' + escFunction((g.name || 'Goal').slice(0, 40)) + ((g.name || '').length > 40 ? '…' : '') + '</span><button type="button" data-action="project:detach-goal" data-project-id="' + escAttrFunction(String(p.id)) + '" data-goal-id="' + escAttrFunction(String(g.id)) + '" style="padding:2px 8px;background:none;border:1px solid var(--border);border-radius:4px;font-size:11px;color:var(--text-dim);cursor:pointer;">Unlink</button></div>').join('');
+        })()}
+      </div>
     </div>
   </div>`;
 }

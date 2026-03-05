@@ -491,9 +491,16 @@ function exposePageRenderers() {
   }
   
   if (typeof window.submitEventModal === 'undefined') {
-    // Fallback - the real function is in tasklist.html
+    // Fallback - the real implementation lives in tasklist.html (submitEventModal). If init runs first, use this.
     window.submitEventModal = async function() {
+      if (typeof window.Petal?.handlers?.submitEventModal === 'function') {
+        await window.Petal.handlers.submitEventModal();
+        return;
+      }
       console.warn('submitEventModal not found - ensure it is defined in tasklist.html');
+      if (typeof alert === 'function') {
+        alert('Event form is not available. Please refresh the page.');
+      }
     };
   }
   
@@ -538,6 +545,12 @@ function exposeWindowFunctions() {
     window.addTaskLogEntry = async () => {
       const ctx = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
       await window.Petal.features.taskDrawer.addTaskLogEntry(ctx);
+    };
+  }
+  if (typeof window.toggleTaskSubtask === 'undefined' && window.Petal?.features?.taskOperations?.toggleTaskSubtask) {
+    window.toggleTaskSubtask = (taskId, subtaskId) => {
+      const ctx = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
+      return window.Petal.features.taskOperations.toggleTaskSubtask(ctx, taskId, subtaskId);
     };
   }
   if (typeof window.saveProtocolDailyEntry === 'undefined' && window.Petal?.features?.taskOperations?.saveProtocolDailyEntry) {
@@ -613,6 +626,33 @@ function exposeWindowFunctions() {
     window.saveEditModal = async () => {
       const ctx = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
       await window.Petal.features.taskOperations.saveEditModal(ctx);
+    };
+  }
+  if (typeof window.toggleAddSubtaskToTask === 'undefined' && window.Petal?.features?.taskOperations?.toggleAddSubtaskToTask) {
+    window.toggleAddSubtaskToTask = (taskId) => {
+      window.Petal.features.taskOperations.toggleAddSubtaskToTask(taskId);
+    };
+  }
+  if (typeof window.addSubtaskToTaskInline === 'undefined' && window.Petal?.features?.taskOperations?.addSubtaskToTaskInline) {
+    window.addSubtaskToTaskInline = async (taskId) => {
+      const ctx = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
+      await window.Petal.features.taskOperations.addSubtaskToTaskInline(ctx, taskId);
+    };
+  }
+  if (typeof window.editTask === 'undefined' && window.Petal?.features?.taskOperations?.editTask) {
+    window.editTask = (ctxOrId, taskIdArg) => {
+      const hasTwoArgs = taskIdArg !== undefined && taskIdArg !== null;
+      const ctx = hasTwoArgs && typeof ctxOrId === 'object' && ctxOrId !== null
+        ? ctxOrId
+        : (window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] });
+      const taskId = hasTwoArgs ? String(taskIdArg) : (ctxOrId != null ? String(ctxOrId) : null);
+      if (taskId) window.Petal.features.taskOperations.editTask(ctx, taskId);
+    };
+  }
+  if (typeof window.editSubtask === 'undefined' && window.Petal?.features?.taskOperations?.editSubtask) {
+    window.editSubtask = (projectId, subtaskId) => {
+      const ctx = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
+      window.Petal.features.taskOperations.editSubtask(ctx, String(projectId), String(subtaskId));
     };
   }
   if (typeof window.submitAddTaskModal === 'undefined' && window.Petal?.features?.modalOperations?.submitAddTaskModal) {

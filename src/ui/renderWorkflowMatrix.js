@@ -4,6 +4,7 @@
 import { esc, escAttr, escJsonForAttr, fileIcon } from '../utils/strings.js';
 import { parseDate, dueLabel, today } from '../utils/dates.js';
 import { getMatrixStage, isTaskBlocked, getAllTasks } from '../domain/models.js';
+import { renderMatrixProjectFilesCard } from './renderProjectUI.js';
 
 /**
  * Get matrix stage for subtask
@@ -77,6 +78,8 @@ export function renderMatrixTaskCard(ctx, task, isSubtaskTask = false, subtaskId
         ${isTaskSubtask ? `<span style="font-size:8px;color:var(--text-light);margin-left:4px;">(subtask)</span>` : ''}
       </div>
       <div style="display:flex;gap:4px;flex-shrink:0;">
+        <button class="btn-del" data-action="task:link-file" data-task-id="${task.id}" title="Link or add file" style="background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:11px;padding:2px 4px;border-radius:3px;transition:all 0.15s;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='transparent';this.style.color='var(--text-dim)'">📎</button>
+        <button class="btn-del" data-action="task:open-drawer" data-task-id="${task.id}" title="Open drawer" style="background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:11px;padding:2px 4px;border-radius:3px;transition:all 0.15s;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='transparent';this.style.color='var(--text-dim)'">📝</button>
         <button class="btn-del" data-action="edit-task" data-task-id="${task.id}" data-is-subtask="${isSubtask}" data-project-id="${projectId}" title="Edit" style="background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:11px;padding:2px 4px;border-radius:3px;transition:all 0.15s;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='transparent';this.style.color='var(--text-dim)'">✎</button>
         <button class="btn-del btn-delete" data-action="delete" data-id="${String(task.id)}" data-task-id="${String(task.id)}" data-is-subtask="${isSubtask}" data-project-id="${projectId || ''}" title="Delete" style="background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;font-weight:bold;padding:2px 4px;border-radius:3px;transition:all 0.15s;opacity:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--overdue)'" onmouseout="this.style.background='transparent';this.style.color='var(--text-dim)'">×</button>
       </div>
@@ -349,7 +352,13 @@ export async function renderWorkflowMatrix(ctx) {
   }
   
   console.log('✅ renderWorkflowMatrix: Found project', { id: project.id, name: project.name });
-  
+
+  // Workflow-type visibility: only show lab sections (Cell Log, Active Protocols) when project has lab lane;
+  // only show Computational Window when project has comp lane.
+  const workflowLanes = Array.isArray(project.workflowLanes) ? project.workflowLanes : [];
+  const hasLab = workflowLanes.includes('lab');
+  const hasComp = workflowLanes.includes('comp');
+
   // Update file button hint for matrix view
   const fileHint = document.getElementById('file-hint-matrix');
   const fileBtn = document.getElementById('btn-add-file-matrix');
@@ -563,9 +572,17 @@ export async function renderWorkflowMatrix(ctx) {
     }
   }
   
-  // Render linked cell lines section
+  // Show/hide workflow-type-specific sections (lab: Active Protocols, Cell Log; comp: Computational Window)
+  const activeProtocolsSection = document.getElementById('active-protocols-section');
+  const cellLogSection = document.getElementById('cell-log-section');
+  const compWindowSection = document.getElementById('comp-window-section');
+  if (activeProtocolsSection) activeProtocolsSection.style.display = hasLab ? '' : 'none';
+  if (cellLogSection) cellLogSection.style.display = hasLab ? '' : 'none';
+  if (compWindowSection) compWindowSection.style.display = hasComp ? '' : 'none';
+
+  // Render linked cell lines section (lab only)
   let cellLinesEl = document.getElementById('project-cell-lines-display');
-  if (!cellLinesEl && matrixView) {
+  if (!cellLinesEl && matrixView && hasLab) {
     // Create cell lines container if it doesn't exist
     const titleContainer = titleEl?.parentElement;
     if (titleContainer) {
@@ -578,9 +595,13 @@ export async function renderWorkflowMatrix(ctx) {
   }
   
   if (cellLinesEl) {
+    if (!hasLab) {
+      cellLinesEl.style.display = 'none';
+      cellLinesEl.innerHTML = '';
+    } else {
     const linkedCellLines = Array.isArray(project.linkedCellLines) ? project.linkedCellLines : [];
     const projectId = project.id;
-    
+
     let cellLinesHTML = '';
     if (linkedCellLines.length > 0) {
       cellLinesHTML = `
@@ -626,18 +647,25 @@ export async function renderWorkflowMatrix(ctx) {
     cellLinesEl.innerHTML = cellLinesHTML;
     cellLinesEl.style.display = 'block';
     cellLinesEl.style.visibility = 'visible';
+    }
   }
-  
-  // Render research orchestration dashboard
+
+  // Render research orchestration dashboard (Today Timeline, Deadlines, Tasks for all; Protocols/Cell Log only for lab; Comp Window only for comp)
+  const renderProjectTasksFn = renderProjectTasks || window.Petal?.ui?.renderProjectTasks;
   if (renderTodayTimeline) renderTodayTimeline(ctx, project, projectTasks);
-  if (renderActiveProtocols) renderActiveProtocols(ctx, project, projectTasks);
-  if (renderCellLog) renderCellLog(ctx, project);
-  if (renderCompWindow) renderCompWindow(ctx, project, projectTasks);
+  if (hasLab && renderActiveProtocols) renderActiveProtocols(ctx, project, projectTasks);
+  if (hasLab && renderCellLog) renderCellLog(ctx, project);
+  if (hasComp && renderCompWindow) renderCompWindow(ctx, project, projectTasks);
   if (renderDeadlinesHorizon) renderDeadlinesHorizon(ctx, project, projectTasks);
-  if (renderProjectTasks) renderProjectTasks(ctx, project, projectTasks);
+  if (renderProjectTasksFn) renderProjectTasksFn(ctx, project, projectTasks);
   
   // Render sidebar
   await renderMatrixSidebarFunction(ctx, project, projectTasks);
+
+  // Render right-hand Project files card (add/see files linked to project)
+  if (renderMatrixProjectFilesCard) {
+    renderMatrixProjectFilesCard(ctx, project, projectTasks);
+  }
 }
 
 /**

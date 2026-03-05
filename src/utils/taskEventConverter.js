@@ -158,6 +158,31 @@ export function updateTaskFromEvent(task, event) {
 }
 
 /**
+ * Get scheduled work info for display (task fields or from linked event if task not synced yet)
+ * @param {Object} task - Task object
+ * @param {Array} [events] - All events (to find one with linkedTaskId === task.id)
+ * @returns {{ scheduledDate: string, scheduledStartTime: string, scheduledDurationMin: number } | null}
+ */
+export function getTaskScheduledWorkForDisplay(task, events = []) {
+  if (task.scheduledDate || task.plannerEventId) {
+    if (task.scheduledDate)
+      return {
+        scheduledDate: task.scheduledDate,
+        scheduledStartTime: task.scheduledStartTime || '',
+        scheduledDurationMin: task.scheduledDurationMin || null
+      };
+  }
+  const linked = (events || []).find(e => e.linkedTaskId != null && String(e.linkedTaskId) === String(task.id));
+  if (linked && linked.date)
+    return {
+      scheduledDate: linked.date,
+      scheduledStartTime: linked.startTime || '',
+      scheduledDurationMin: linked.durationMin || null
+    };
+  return null;
+}
+
+/**
  * Clear scheduling information from task
  * @param {Object} task - Task object
  * @returns {Object} Task with scheduling cleared

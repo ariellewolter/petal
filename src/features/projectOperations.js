@@ -1420,7 +1420,7 @@ export function openArtifactDetail(ctx, artifactId) {
       }
       html += `</div>`;
       html += `<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">`;
-      html += `<button class="file-open-btn" data-path="${escAttrFunction(JSON.stringify(file))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">Open</button>`;
+      html += `<button type="button" class="file-open-btn" data-action="file:open" data-path="${escAttrFunction(JSON.stringify(file))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">Open</button>`;
       html += `<button onclick="editFileNotes('${file.id}')" style="padding:4px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;font-size:10px;cursor:pointer;color:var(--text-dim);">Notes</button>`;
       html += `</div>`;
       html += `</div></div>`;

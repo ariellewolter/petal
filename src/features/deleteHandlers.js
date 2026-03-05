@@ -436,6 +436,102 @@ export async function softDeleteFile(ctx, projectId, fileId) {
 }
 
 /**
+ * Helper: does this file object match the given key/link?
+ */
+function fileMatchesKey(f, fileKey, fileLink) {
+  if (!f) return false;
+  const path = typeof f === 'object'
+    ? (f.key || f.path || f.onedrive_rel || f.abs_path || f.share_url || '')
+    : String(f);
+  if (path && fileKey && path === fileKey) return true;
+  if (fileLink) {
+    const linkPath = fileLink.onedrive_rel || fileLink.abs_path || fileLink.share_url || fileLink.key || '';
+    if (linkPath && (path === linkPath || (f.abs_path === fileLink.abs_path && fileLink.abs_path))) return true;
+  }
+  return false;
+}
+
+/**
+ * Remove a file from the app (Files page): remove from state.files and unlink from all projects/tasks.
+ * @param {Object} ctx - Context with tasks, projects, save
+ * @param {string} fileKey - File key (path or canonical key)
+ * @param {Object} [fileLink] - Optional file link for matching
+ */
+export async function removeFileFromApp(ctx, fileKey, fileLink) {
+  if (!fileKey && !fileLink) return;
+  const keyToMatch = fileKey || (fileLink && (fileLink.key || fileLink.onedrive_rel || fileLink.abs_path || fileLink.share_url)) || '';
+  if (!keyToMatch) return;
+
+  const label = (fileLink && (fileLink.label || fileLink.name)) || fileKey || 'this file';
+  if (!window.confirm(`Remove "${label}" from the app?\n\nThis will remove it from your file list and unlink it from any projects and tasks. The file on disk is not deleted.`)) {
+    return;
+  }
+
+  const store = window.Petal?.store;
+  if (!store) {
+    showNotification({ message: 'Could not remove file: app store not available.', type: 'error', duration: 3000 });
+    return;
+  }
+
+  const state = store.getState();
+  const currentFiles = state.files || [];
+  const updatedFiles = currentFiles.filter(f => !fileMatchesKey(f, keyToMatch, fileLink));
+  if (updatedFiles.length === currentFiles.length) {
+    showNotification({ message: 'File not found in file list.', type: 'info', duration: 3000 });
+    return;
+  }
+
+  const removedFileIds = new Set();
+  const updatedProjects = (state.projects || []).map(project => {
+    if (!project.files || project.files.length === 0) return project;
+    const newFiles = project.files.filter(f => {
+      const match = f && fileMatchesKey(f, keyToMatch, fileLink);
+      if (match && f.id) removedFileIds.add(f.id);
+      return !match;
+    });
+    if (newFiles.length === project.files.length) return project;
+    return { ...project, files: newFiles };
+  });
+
+  const updatedTasks = (state.tasks || []).map(task => {
+    if (!task.fileIds || task.fileIds.length === 0) return task;
+    const newFileIds = task.fileIds.filter(id => !removedFileIds.has(id));
+    if (newFileIds.length === task.fileIds.length) return task;
+    return { ...task, fileIds: newFileIds };
+  });
+
+  store.setState({ files: updatedFiles, projects: updatedProjects, tasks: updatedTasks });
+
+  if (window.Petal?.features?.fileManagement?.buildFileRegistry) {
+    try {
+      const nextState = store.getState();
+      window.Petal.features.fileManagement.buildFileRegistry({
+        tasks: nextState.tasks || [],
+        projects: nextState.projects || [],
+        fileRegistry: nextState.fileRegistry || {},
+        fileHistory: nextState.fileHistory || {},
+        files: nextState.files || [],
+      }, { commit: true });
+    } catch (e) {
+      console.error('Error rebuilding file registry after file removal:', e);
+    }
+  }
+
+  const save = ctx?.save || window.Petal?.handlers?.save;
+  if (save && typeof save === 'function') await save();
+
+  showNotification({ message: 'File removed from app.', type: 'success', duration: 3000 });
+
+  if (window.Petal?.pages?.FilesPage?.render) {
+    const nextState = store.getState();
+    const containerEl = document.getElementById('view-files');
+    if (containerEl) {
+      window.Petal.pages.FilesPage.render(containerEl, nextState, window.Petal.handlers);
+    }
+  }
+}
+
+/**
  * Delete a project (hard delete - removes from array)
  */
 export async function delProject(ctx, id) {

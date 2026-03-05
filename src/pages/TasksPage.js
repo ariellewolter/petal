@@ -73,10 +73,11 @@ function bind(container, features) {
               console.warn('Edit action: no valid taskId found', btn);
               return;
             }
+            const editCtx = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
             if (features?.taskOperations?.editTask) {
-              features.taskOperations.editTask(taskId); // Already normalized string
+              features.taskOperations.editTask(editCtx, String(taskId));
             } else if (window.Petal?.features?.taskOperations?.editTask) {
-              window.Petal.features.taskOperations.editTask(taskId);
+              window.Petal.features.taskOperations.editTask(editCtx, String(taskId));
             } else {
               console.error('No editTask handler available');
             }
@@ -137,14 +138,27 @@ function bind(container, features) {
             
           case 'open-drawer':
           case 'drawer':
+          case 'open-drawer-files':
             if (!taskId) {
               console.warn('Open drawer action: no valid taskId found', btn);
               return;
             }
+            if (btn.dataset.tab === 'files') {
+              window.openTaskDrawerToTab = 'files';
+            }
+            const state = window.Petal?.store?.getState?.() || {};
+            const drawerCtx = {
+              tasks: state.tasks || [],
+              projects: state.projects || [],
+              save: features?.handlers?.save || window.Petal?.handlers?.save || (() => Promise.resolve()),
+              render: features?.handlers?.render || window.Petal?.handlers?.render || (() => {})
+            };
             if (features?.taskDrawer?.openDrawer) {
-              features.taskDrawer.openDrawer(taskId); // Already normalized string
+              features.taskDrawer.openDrawer(taskId);
             } else if (window.Petal?.features?.taskDrawer?.openTaskDrawer) {
-              window.Petal.features.taskDrawer.openTaskDrawer(taskId);
+              window.Petal.features.taskDrawer.openTaskDrawer(drawerCtx, taskId);
+            } else if (window.openTaskDrawer) {
+              window.openTaskDrawer(drawerCtx, taskId);
             } else {
               console.error('No openDrawer handler available');
             }
@@ -209,8 +223,11 @@ function bind(container, features) {
         switch (action) {
           case 'edit-task':
           case 'edit':
-            if (taskId && features?.taskOperations?.editTask) {
-              features.taskOperations.editTask(taskId); // Already normalized
+            if (taskId) {
+              const editCtx2 = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
+              if (features?.taskOperations?.editTask) {
+                features.taskOperations.editTask(editCtx2, String(taskId));
+              }
             }
             break;
             
@@ -324,31 +341,32 @@ export async function renderTasksPage(container, state, features) {
   });
   const subtasks = allTasks.filter(t => t && t.parentTaskId && !t.deletedAt);
   
-  // Clear container and build structure
-  container.innerHTML = '';
-  
-  // Create header
-  const header = document.createElement('header');
-  header.className = 'page-header';
-  header.innerHTML = PageHeader({
-    title: 'Tasks',
-    icon: '⊡',
-    status: `${activeTasks.length} active · ${completedTasks.length} completed`,
-    actions: [
-      {
-        type: 'primary',
-        text: '+ Add Task',
-        action: 'ui:toggle-add-form'
-      }
-    ]
-  });
-  container.appendChild(header);
-  
-  // Create stats cards container
-  const statsContainer = document.createElement('div');
-  statsContainer.className = 'tasks-stats-container';
-  statsContainer.style.cssText = 'display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 20px 28px; background: var(--surface);';
-  statsContainer.innerHTML = `
+  // Preserve add-task form and task-container (so "＋ Choose new file" and other buttons keep working).
+  // Only insert header and stats if not already present; never wipe the container.
+  let header = container.querySelector('.page-header');
+  if (!header) {
+    header = document.createElement('header');
+    header.className = 'page-header';
+    header.innerHTML = PageHeader({
+      title: 'Tasks',
+      icon: '⊡',
+      status: `${activeTasks.length} active · ${completedTasks.length} completed`,
+      actions: [
+        {
+          type: 'primary',
+          text: '+ Add Task',
+          action: 'ui:toggle-add-form'
+        }
+      ]
+    });
+    container.insertBefore(header, container.firstChild);
+  }
+  let statsContainer = container.querySelector('.tasks-stats-container');
+  if (!statsContainer) {
+    statsContainer = document.createElement('div');
+    statsContainer.className = 'tasks-stats-container';
+    statsContainer.style.cssText = 'display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 20px 28px; background: var(--surface);';
+    statsContainer.innerHTML = `
     ${StatCard({ 
       label: 'Active', 
       value: String(activeTasks.length), 
@@ -374,7 +392,16 @@ export async function renderTasksPage(container, state, features) {
       variant: 4 
     })}
   `;
-  container.appendChild(statsContainer);
+    container.insertBefore(statsContainer, header.nextSibling);
+  } else {
+    // Refresh stats numbers
+    statsContainer.innerHTML = `
+    ${StatCard({ label: 'Active', value: String(activeTasks.length), subtitle: 'tasks', variant: 1 })}
+    ${StatCard({ label: 'Completed', value: String(completedTasks.length), subtitle: 'tasks', variant: 2 })}
+    ${StatCard({ label: 'Overdue', value: String(overdueTasks.length), subtitle: 'tasks', variant: 3 })}
+    ${StatCard({ label: 'Subtasks', value: String(subtasks.length), subtitle: 'total', variant: 4 })}
+  `;
+  }
   
   // Bind event handlers (only once)
   bind(container, features);

@@ -547,13 +547,13 @@
       <div class="field-row" style="margin-bottom:16px;">
         <div class="field" style="flex:1;">
           <label>Link to Project (optional)</label>
-          <select id="event-linked-project" style="width:100%;" onchange="updateEventTaskOptions();updateEventCreateTaskOptions()">
+          <select id="event-linked-project" style="width:100%;" onchange="updateEventTaskOptions();updateEventCreateTaskOptions();updateEventCategoryDisabledState();">
             <option value="">No project</option>
           </select>
         </div>
         <div class="field" style="flex:1;">
           <label>Link to Existing Task (optional)</label>
-          <select id="event-linked-task" style="width:100%;">
+          <select id="event-linked-task" style="width:100%;" onchange="updateEventCategoryDisabledState();">
             <option value="">No task</option>
           </select>
         </div>
@@ -1028,6 +1028,18 @@
               <div class="allday-events" id="planner-allday-events" style="display:flex;gap:5px;flex-wrap:wrap;"></div>
             </div>
             <div class="timeline" id="planner-timeline" style="display:flex;flex-direction:column;position:relative;padding-top:4px;"></div>
+            <!-- Computational Window panel (comp projects only) -->
+            <div id="planner-comp-window-section" style="margin-top:24px;padding:20px;background:var(--surface);border:1px solid var(--border);border-radius:12px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                <h3 style="font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin:0;font-weight:500;">💻 Computational Window</h3>
+                <select id="planner-comp-window-select" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:11px;color:var(--text);">
+                  <option value="60">60 min</option>
+                  <option value="90" selected>90 min</option>
+                  <option value="120">120 min</option>
+                </select>
+              </div>
+              <div id="planner-comp-window-content" style="min-height:60px;"></div>
+            </div>
           </div>
         </div>
 
@@ -1573,6 +1585,19 @@
         </div>
       </div>
         </div>
+
+      <!-- Right card: Project files -->
+      <div id="matrix-project-files-card" style="flex-shrink:0;width:300px;position:sticky;top:90px;align-self:flex-start;">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3 style="font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin:0;font-weight:500;">📎 Project files</h3>
+            <button id="matrix-add-file-to-project-btn" type="button" data-action="add-file-to-project" data-project-id="" style="padding:6px 12px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:11px;cursor:pointer;font-weight:500;">+ Add file</button>
+          </div>
+          <div id="matrix-project-files-list" style="max-height:60vh;overflow-y:auto;font-size:12px;">
+            <div style="padding:12px;color:var(--text-dim);font-size:12px;">Loading…</div>
+          </div>
+        </div>
+      </div>
       </div>
     </div>
 
@@ -2466,7 +2491,8 @@ function removeTags(text) {
 
 async function addTask(titleOverride = null, statusOverride = null) {
   if (window.Petal?.features?.taskOperations?.addTask) {
-    await window.Petal.features.taskOperations.addTask(titleOverride, statusOverride);
+    const ctx = window.Petal?.handlers?.createPageContext?.() || {};
+    await window.Petal.features.taskOperations.addTask(ctx, titleOverride, statusOverride);
     // Close the add task form after adding (unless using override)
     if (!titleOverride) {
       const form = document.getElementById('add-task-form');
@@ -6556,7 +6582,9 @@ function openAddEventModal(dateStr = null) {
     projectSelect.onchange = () => {
       updateEventTaskOptions();
       updateEventCreateTaskOptions();
+      updateEventCategoryDisabledState();
     };
+    updateEventCategoryDisabledState();
   }
   
   // Initialize create task fields
@@ -6571,6 +6599,35 @@ function openAddEventModal(dateStr = null) {
   
   modal.style.display = 'flex';
   document.getElementById('event-title').focus();
+}
+
+// Map task lane to event category (event dropdown: personal, lab, equipment, travel, writing, comp)
+function taskLaneToEventCategory(lane) {
+  if (!lane) return 'personal';
+  const map = { lab: 'lab', comp: 'comp', writing: 'writing', personal: 'personal', presentation: 'writing', product: 'personal' };
+  return map[lane] || 'personal';
+}
+
+// Disable category when a project or task is linked; when a task is selected, set category from task type (lane)
+function updateEventCategoryDisabledState() {
+  const projectSelect = document.getElementById('event-linked-project');
+  const taskSelect = document.getElementById('event-linked-task');
+  const categoryEl = document.getElementById('event-category');
+  if (!categoryEl) return;
+  const projectLinked = !!(projectSelect && projectSelect.value);
+  const taskId = taskSelect && taskSelect.value ? taskSelect.value : null;
+  if (taskId) {
+    const state = window.Petal?.store?.getState();
+    const tasks = state?.tasks || [];
+    const projects = state?.projects || [];
+    const getAllTasks = window.getAllTasks || window.Petal?.getAllTasks;
+    const allTasks = (typeof getAllTasks === 'function') ? getAllTasks(tasks, projects) : tasks;
+    const task = allTasks.find(t => String(t.id) === String(taskId));
+    if (task) {
+      categoryEl.value = taskLaneToEventCategory(task.lane);
+    }
+  }
+  categoryEl.disabled = projectLinked || !!taskId;
 }
 
 // Update task options based on selected project
@@ -6760,8 +6817,8 @@ async function submitEventModal() {
     // Update store with all events (this will auto-save via persistence)
     window.Petal.store.setState({ events: updatedEvents });
     
-    // Sync event changes to linked task (if it's a task block)
-    if (event.linkedTaskId && event.isTaskBlock && window.Petal?.features?.plannerOperations?.syncEventToTask) {
+    // Sync event date/time to linked task (so task shows "scheduled" on Tasks/Today/Workflow)
+    if (event.linkedTaskId && window.Petal?.features?.plannerOperations?.syncEventToTask) {
       window.Petal.features.plannerOperations.syncEventToTask(event);
     }
   } else {

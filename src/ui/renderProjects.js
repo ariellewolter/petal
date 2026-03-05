@@ -480,6 +480,7 @@ function renderProjectCard(project, state, openSet) {
               </div>
               
               <div class="task-actions" style="display:flex;gap:4px;align-items:center;">
+                <button class="btn-del" data-action="task:link-file" data-task-id="${t.id}" data-project-id="${t.projectId || project.id || ''}" title="Link or add file" style="font-size:13px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);">📎</button>
                 <button class="btn-del" data-action="task:open-drawer" data-task-id="${t.id}" data-project-id="${t.projectId || project.id || ''}" title="Open drawer (Notes, Files, Subtasks)" style="font-size:13px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);">📝</button>
                 <button class="btn-del btn-edit" data-action="edit-task" data-task-id="${String(t.id)}" data-project-id="${t.projectId || project.id || ''}" title="Edit" style="font-size:13px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);">✎</button>
                 <button class="btn-del btn-delete" data-action="delete" data-id="${String(t.id)}" data-task-id="${String(t.id)}" data-is-subtask="false" data-project-id="${t.projectId || project.id || ''}" title="Delete" style="font-size:16px;line-height:1;min-width:28px;min-height:28px;color:var(--text-dim);cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:bold;opacity:1;">×</button>

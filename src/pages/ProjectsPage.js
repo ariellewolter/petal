@@ -228,12 +228,20 @@ function bind(container, features) {
       return;
     }
     
-    // Handle task actions (inside project cards)
+    // Handle task actions (inside project cards) — pass ctx so editTask finds the task
     if (action === 'edit-task' || action === 'edit') {
-      if (taskId && features?.taskOperations?.editTask) {
-        features.taskOperations.editTask(String(taskId));
-      } else if (taskId && window.Petal?.features?.taskOperations?.editTask) {
-        window.Petal.features.taskOperations.editTask(String(taskId));
+      if (!taskId) return;
+      const currentState = window.Petal?.store?.getState() || {};
+      const ctx = {
+        tasks: currentState.tasks || [],
+        projects: currentState.projects || [],
+        save: window.Petal?.handlers?.save || (() => Promise.resolve()),
+        render: window.render || (() => {}),
+      };
+      if (features?.taskOperations?.editTask) {
+        features.taskOperations.editTask(ctx, String(taskId));
+      } else if (window.Petal?.features?.taskOperations?.editTask) {
+        window.Petal.features.taskOperations.editTask(ctx, String(taskId));
       }
       return;
     }

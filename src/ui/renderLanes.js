@@ -177,6 +177,7 @@ export async function renderLane(ctx, laneName, allTasks) {
           </div>
         </div>
         <div class="task-actions">
+          <button type="button" class="btn-del" data-action="task:link-file" data-task-id="${t.id}" title="Link or add file" style="font-size:11px;">📎</button>
           <button type="button" class="btn-del" data-action="task:open-drawer" data-task-id="${t.id}" title="Open drawer" style="font-size:11px;">📝</button>
           <button type="button" class="btn-del" data-action="edit-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" title="Edit">✎</button>
           <button type="button" class="btn-del btn-delete" data-action="delete" data-id="${String(t.id)}" data-task-id="${String(t.id)}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" title="Delete">×</button>
@@ -184,7 +185,7 @@ export async function renderLane(ctx, laneName, allTasks) {
       </div>
     </div>`;
   }));
-  
+
   laneEl.innerHTML = `<div style="max-width:100%;">${cardsHtml.join('')}</div>`;
 }
 
@@ -289,6 +290,7 @@ export async function renderUnassignedLane(ctx, allTasks) {
           </div>
         </div>
         <div class="task-actions">
+          <button type="button" class="btn-del" data-action="task:link-file" data-task-id="${t.id}" title="Link or add file" style="font-size:11px;">📎</button>
           <button type="button" class="btn-del" data-action="task:open-drawer" data-task-id="${t.id}" title="Open drawer" style="font-size:11px;">📝</button>
           <button type="button" class="btn-del" data-action="edit-task" data-task-id="${t.id}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" title="Edit">✎</button>
           <button type="button" class="btn-del btn-delete" data-action="delete" data-id="${String(t.id)}" data-task-id="${String(t.id)}" data-is-subtask="${t.isSubtask || false}" data-project-id="${t.projectId || ''}" title="Delete">×</button>
@@ -296,6 +298,6 @@ export async function renderUnassignedLane(ctx, allTasks) {
       </div>
     </div>`;
   }));
-  
+
   laneEl.innerHTML = `<div style="max-width:100%;">${cardsHtml.join('')}</div>`;
 }

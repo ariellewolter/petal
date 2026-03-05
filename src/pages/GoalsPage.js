@@ -82,6 +82,18 @@ function saveGoals(state, handlers) {
 }
 
 /**
+ * Save goals and projects to state (used when linking/unlinking goals to projects)
+ */
+function saveGoalsAndProjects(state, handlers) {
+  if (handlers?.save) {
+    handlers.save({ goals, projects: state?.projects || [] });
+  } else if (window.Petal?.store) {
+    const s = window.Petal.store.getState();
+    window.Petal.store.setState({ goals, projects: s?.projects || [] });
+  }
+}
+
+/**
  * Load goals from state
  */
 function loadGoals(state) {
@@ -1272,7 +1284,14 @@ function openProjectLinkModal(gid, state, handlers) {
     if (!goal.projectIds) goal.projectIds = [];
     if (!goal.projectIds.some(id => String(id) === val)) {
       goal.projectIds.push(val);
-      saveGoals(state, handlers);
+      const project = (state?.projects || []).find(p => String(p.id) === val);
+      if (project) {
+        if (!project.goalIds) project.goalIds = [];
+        if (!project.goalIds.some(id => String(id) === String(linkProjectGoalId))) {
+          project.goalIds.push(linkProjectGoalId);
+        }
+      }
+      saveGoalsAndProjects(state, handlers);
       openProjectLinkModal(linkProjectGoalId, state, handlers);
     }
     addSel.value = '';
@@ -1281,12 +1300,14 @@ function openProjectLinkModal(gid, state, handlers) {
   bg.style.visibility = 'visible';
   bg.style.opacity = '1';
   bg.style.zIndex = '1000';
+  bg.classList.add('open');
 }
 
 function closeProjectLinkModal() {
   linkProjectGoalId = null;
   const bg = document.getElementById('goal-project-modal-bg');
   if (bg) {
+    bg.classList.remove('open');
     bg.style.display = 'none';
     bg.style.visibility = 'hidden';
     bg.style.opacity = '0';
@@ -1330,12 +1351,14 @@ function openTasksLinkModal(gid, state, handlers) {
   bg.style.visibility = 'visible';
   bg.style.opacity = '1';
   bg.style.zIndex = '1000';
+  bg.classList.add('open');
 }
 
 function closeTasksLinkModal() {
   linkTasksGoalId = null;
   const bg = document.getElementById('goal-tasks-modal-bg');
   if (bg) {
+    bg.classList.remove('open');
     bg.style.display = 'none';
     bg.style.visibility = 'hidden';
     bg.style.opacity = '0';
@@ -1359,6 +1382,7 @@ function openMilestoneModal(gid, state, handlers) {
     bg.style.visibility = 'visible';
     bg.style.opacity = '1';
     bg.style.zIndex = '1000';
+    bg.classList.add('open');
   }
 }
 
@@ -1366,6 +1390,7 @@ function closeMilestoneModal() {
   addMilestoneGoalId = null;
   const bg = document.getElementById('goal-milestone-modal-bg');
   if (bg) {
+    bg.classList.remove('open');
     bg.style.display = 'none';
     bg.style.visibility = 'hidden';
     bg.style.opacity = '0';
@@ -1444,7 +1469,11 @@ function runGoalAction(action, actionEl, state, handlers) {
       const g = goals.find(x => x.id === linkProjectGoalId);
       if (g && projectId && Array.isArray(g.projectIds)) {
         g.projectIds = g.projectIds.filter(id => String(id) !== String(projectId));
-        saveGoals(state, handlers);
+        const project = (state?.projects || []).find(p => String(p.id) === String(projectId));
+        if (project && Array.isArray(project.goalIds)) {
+          project.goalIds = project.goalIds.filter(id => String(id) !== String(linkProjectGoalId));
+        }
+        saveGoalsAndProjects(state, handlers);
         openProjectLinkModal(linkProjectGoalId, state, handlers);
       }
     } else if (action === 'goal:close-tasks-modal') {
@@ -1641,6 +1670,20 @@ function setupEventDelegation(containerEl, state, handlers) {
 
   containerEl.addEventListener('click', handleClick, true);
 
+  // Portaled modals (drawer, project/tasks/milestone link modals) live under body > .goals-page, so
+  // clicks there never reach containerEl. Delegate from body for elements inside those overlays.
+  document.body.addEventListener('click', (e) => {
+    const actionEl = e.target.closest('[data-action]');
+    if (!actionEl) return;
+    const action = actionEl.getAttribute('data-action');
+    if (!action || !action.startsWith('goal:')) return;
+    const portaled = actionEl.closest('body > .goals-page');
+    if (!portaled) return;
+    e.preventDefault();
+    e.stopPropagation();
+    runGoalAction(action, actionEl, state, handlers);
+  }, true);
+
   // Horizon tabs
   containerEl.querySelectorAll('[data-h]').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1662,9 +1705,11 @@ function setupEventDelegation(containerEl, state, handlers) {
   // Close on escape
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      closeProjectLinkModal();
+      closeTasksLinkModal();
+      closeMilestoneModal();
       closeModal();
       closeDrawer();
-      closeMilestoneModal();
     }
   });
 

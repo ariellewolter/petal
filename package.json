@@ -1,6 +1,6 @@
 {
   "name": "petal-task-tracker",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "description": "A beautiful task and project tracker with file-based sync",
   "main": "main.js",
   "scripts": {

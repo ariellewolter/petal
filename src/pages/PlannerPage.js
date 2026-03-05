@@ -802,6 +802,11 @@ async function renderDailyPlanner(containerEl, state, handlers) {
       scrollParent.scrollTop = scrollTo;
     }
   }
+
+  // Computational Window panel: show comp tasks from all computation projects (only when such projects exist)
+  if (window.Petal?.ui?.renderCompWindowForPlanner) {
+    window.Petal.ui.renderCompWindowForPlanner({ tasks: state.tasks, projects: state.projects });
+  }
 }
 
 /**

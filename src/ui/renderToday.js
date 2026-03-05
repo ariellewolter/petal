@@ -91,11 +91,6 @@ export function renderToday(containerEl, state, handlers) {
             <div class="today-stat-value">${cellLogEntries.length}</div>
             <div class="today-stat-sub">${escapeHtml(getCultureAttentionLine(cellLogEntries))}</div>
           </div>
-          <div class="today-stat-card c4">
-            <div class="today-stat-label">Hours Logged</div>
-            <div class="today-stat-value">—</div>
-            <div class="today-stat-sub">time log not enabled</div>
-          </div>
         </div>
 
         <!-- PLANNER -->

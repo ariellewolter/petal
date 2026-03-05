@@ -95,3 +95,28 @@ export function formatTime(minutes) {
   const mins = minutes % 60;
   return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
 }
+
+/**
+ * Format planner-scheduled work for display on tasks linked to the planner.
+ * @param {string} scheduledDate - YYYY-MM-DD
+ * @param {string} [scheduledStartTime] - HH:MM (24h)
+ * @param {number} [scheduledDurationMin] - Optional duration in minutes
+ * @returns {string} e.g. "Mar 5, 9:00 AM" or "Mar 5, 9:00 AM (60 min)", or '' if no date
+ */
+export function formatScheduledWork(scheduledDate, scheduledStartTime, scheduledDurationMin) {
+  if (!scheduledDate) return '';
+  const d = parseDate(scheduledDate);
+  if (!d) return '';
+  const dateStr = d.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: d.getFullYear() !== today().getFullYear() ? 'numeric' : undefined
+  });
+  if (!scheduledStartTime) return dateStr;
+  const [h, m] = scheduledStartTime.split(':').map(Number);
+  const hour12 = h % 12 || 12;
+  const ampm = h < 12 ? 'AM' : 'PM';
+  const timeStr = `${hour12}:${String(m || 0).padStart(2, '0')} ${ampm}`;
+  const durationStr = scheduledDurationMin ? ` (${scheduledDurationMin} min)` : '';
+  return `${dateStr}, ${timeStr}${durationStr}`;
+}

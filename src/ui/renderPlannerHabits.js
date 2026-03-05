@@ -54,23 +54,27 @@ export function renderPlannerHabits(containerEl, state, viewDate = new Date()) {
       const timeOfDayEsc = (habit.timeOfDay && /^\d{2}:\d{2}$/.test(habit.timeOfDay)) ? habit.timeOfDay : '';
       html += `
         <div class="habit-item habit-draggable" draggable="true"
+             data-action="planner:toggle-habit"
              data-habit-id="${habitIdEsc}"
              data-habit-name="${habitNameEsc}"
              data-habit-duration="${durationEsc}"
              data-habit-time="${esc(timeOfDayEsc)}"
              data-view-date="${escAttr(viewDateIso)}"
-             style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:4px;transition:background 0.13s;cursor:grab;"
+             role="button"
+             tabindex="0"
+             style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:4px;transition:background 0.13s;cursor:pointer;"
              ondragstart="handleHabitDragStart(event)"
              ondragend="handleHabitDragEnd(event)">
-          <label class="habit-check-wrap" style="display:flex;align-items:center;cursor:pointer;flex-shrink:0;position:relative;z-index:2;padding:4px;margin:-4px 4px -4px 0;" data-habit-id="${habitIdEsc}" data-view-date="${escAttr(viewDateIso)}">
+          <span class="habit-check-wrap" style="display:flex;align-items:center;cursor:pointer;flex-shrink:0;position:relative;z-index:2;padding:4px;margin:-4px 4px -4px 0;pointer-events:none;">
             <input type="checkbox" ${checked ? 'checked' : ''}
-                   style="cursor:pointer;width:18px;height:18px;accent-color:var(--rose);pointer-events:auto;flex-shrink:0;margin:0;"
-                   tabindex="0"
+                   style="cursor:pointer;width:18px;height:18px;accent-color:var(--rose);flex-shrink:0;margin:0;pointer-events:none;"
+                   tabindex="-1"
                    data-habit-id="${habitIdEsc}"
                    data-view-date="${escAttr(viewDateIso)}"
                    ondragstart="event.stopPropagation();return false;"
-                   draggable="false">
-          </label>
+                   draggable="false"
+                   aria-hidden="true">
+          </span>
           <span style="font-size:12px;color:var(--text);flex:1;${checked ? 'text-decoration:line-through;opacity:0.6;' : ''}">${esc(habit.name)}</span>
           ${habit.cadence === 'weekly' ? '<span style="font-size:9px;color:var(--text-dim);">(weekly)</span>' : ''}
           ${timeOfDayEsc ? `<span style="font-size:9px;color:var(--text-dim);">${esc(timeOfDayEsc)}</span>` : ''}
@@ -93,32 +97,6 @@ export function renderPlannerHabits(containerEl, state, viewDate = new Date()) {
   
   c.innerHTML = html;
 
-  // Event delegation: bind once per container, re-use stored handlers so we can remove before re-adding when DOM is replaced.
-  const onMouseDown = (e) => {
-    if (e.target.closest('.habit-item input[type=checkbox]') || e.target.closest('.habit-item label.habit-check-wrap')) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-  };
-  const onClick = (e) => {
-    const row = e.target.closest('.habit-item');
-    if (!row) return;
-    if (e.target.closest('button')) return; // delete button has its own handler
-    const habitId = row.getAttribute('data-habit-id');
-    const viewDateStr = row.getAttribute('data-view-date');
-    const date = viewDateStr ? new Date(viewDateStr) : new Date();
-    if (e.target.closest('input[type=checkbox]') || e.target.closest('label.habit-check-wrap')) e.preventDefault();
-    if (habitId && window.Petal?.features?.habits?.toggleHabit) {
-      window.Petal.features.habits.toggleHabit(habitId, date);
-      if (typeof window.buildPlannerSidebar === 'function') window.buildPlannerSidebar();
-    }
-  };
-  if (c._habitMouseDown) {
-    c.removeEventListener('mousedown', c._habitMouseDown, true);
-    c.removeEventListener('click', c._habitClick);
-  }
-  c._habitMouseDown = onMouseDown;
-  c._habitClick = onClick;
-  c.addEventListener('mousedown', onMouseDown, true);
-  c.addEventListener('click', onClick);
+  // Habit toggle is handled by global delegation (data-action="planner:toggle-habit" on .habit-item).
+  // Delete button uses data-action="habit-archive" and is handled in delegation.js.
 }
