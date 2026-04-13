@@ -9,6 +9,26 @@ import { ensureCellLogSettings } from '../utils/settings.js';
 import { refreshProjectSelects } from '../ui/selects.js';
 import { showConflictBanner } from '../ui/conflictBanner.js';
 
+function applyIncomingStateToStore(payload, sourceLabel) {
+  const incoming = payload?.data || payload;
+  const store = window.Petal?.store;
+  if (!store || !incoming || typeof incoming !== 'object') {
+    return false;
+  }
+
+  try {
+    store.loadState(incoming);
+    if (typeof render === 'function') {
+      render();
+    }
+    console.log(`✓ Applied incoming state from ${sourceLabel}`);
+    return true;
+  } catch (error) {
+    console.error(`Failed to apply incoming state from ${sourceLabel}:`, error);
+    return false;
+  }
+}
+
 /**
  * Initialize application state
  * This function handles:
@@ -33,6 +53,37 @@ export async function initStateInternal() {
       window.electronAPI.onVaultNeedsChoice((data) => {
         console.log('⚠️ Vault needs user choice:', data);
       });
+
+      window.electronAPI.onVaultExternalModification(async (data) => {
+        console.warn('⚠️ External vault modification detected:', data);
+        if (window.electronAPI?.supportReloadExternalChanges) {
+          const result = await window.electronAPI.supportReloadExternalChanges();
+          if (result?.success) {
+            applyIncomingStateToStore(result.data, 'external modification');
+          }
+        }
+      });
+
+      window.electronAPI.onVaultCorruptionRecovered((data) => {
+        console.warn('⚠️ Vault recovered from backup:', data);
+        alert('Petal detected a corrupted vault file and recovered from backup.');
+      });
+
+      window.electronAPI.onVaultRelocated((data) => {
+        console.log('ℹ️ Vault relocation detected:', data);
+      });
+
+      window.electronAPI.onVaultNeedsRelocation((data) => {
+        console.warn('⚠️ Vault needs relocation:', data);
+      });
+
+      window.electronAPI.onStorageStateChanged((data) => {
+        applyIncomingStateToStore(data, 'storage:stateChanged');
+      });
+
+      window.electronAPI.onVaultReloadState((payload) => {
+        applyIncomingStateToStore(payload, 'vault:reloadState');
+      });
       
       // Check vault status using new vault system
       const vaultStatus = await window.electronAPI.vaultGetStatus();
@@ -48,7 +99,7 @@ export async function initStateInternal() {
         };
         // Update UI badge
         await updateVaultBadge();
-      } else if (vaultStatus.initialized && vaultStatus.activeVault && vaultStatus.activeVault.is_valid) {
+      } else if (vaultStatus.initialized && vaultStatus.activeVault && (vaultStatus.activeVault.isValid || vaultStatus.activeVault.is_valid)) {
         // Backward compatibility check
         console.log('✓ Vault already resolved (legacy format):', vaultStatus.activeVault.path);
         vaultResolved = true;
@@ -243,12 +294,18 @@ export async function initStateInternal() {
     const selectedProjectId = window.selectedProjectId || loadedData.selectedProjectId || null;
     
     const stateToLoad = {
+      schemaVersion: loadedData.schemaVersion,
       tasks: loadedData.tasks || [],
       projects: loadedData.projects || [],
       openProjects: loadedData.openProjects || [],
       settings: loadedData.settings || {},
       events: loadedData.events || [],
       recurringRules: loadedData.recurringRules || [],
+      habits: loadedData.habits || [],
+      habitCheckins: loadedData.habitCheckins || {},
+      routines: loadedData.routines || [],
+      routineCheckins: loadedData.routineCheckins || {},
+      workflow: loadedData.workflow || {},
       prints3d: loadedData.prints3d || [], // 3D print queue
       currentView,
       currentSort,

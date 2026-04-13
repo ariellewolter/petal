@@ -434,8 +434,8 @@ function renderProjectCard(project, state, openSet) {
           return `<div class="task-card ${t.done ? 'done' : ''}" data-id="${t.id}" data-priority="${priorityClass}">
             <div class="task-top">
               <div class="task-content">
-                <div class="check-box ${t.done ? 'checked' : ''}"
-                     data-action="toggle-task" data-task-id="${t.id}"></div>
+                <button type="button" class="check-box ${t.done ? 'checked' : ''}"
+                     data-action="task:toggle" data-task-id="${t.id}" style="background:none;border:none;padding:0;cursor:pointer;" title="Toggle task"></button>
                 
                 <div class="task-body">
                   <div class="task-title">

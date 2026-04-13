@@ -4,7 +4,7 @@
 const CACHE_NAME = 'petal-cache-v1';
 const ASSETS = [
   './',
-  './tasklist (1).html',
+  './tasklist.html',
   './storage.js',
   './manifest.json',
   './icon-192.png',
@@ -77,7 +77,7 @@ self.addEventListener('fetch', (event) => {
           .catch(() => {
             // If fetch fails and it's a navigation request, return a fallback
             if (event.request.mode === 'navigate') {
-              return caches.match('./tasklist (1).html');
+              return caches.match('./tasklist.html');
             }
           });
       })

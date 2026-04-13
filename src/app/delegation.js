@@ -61,6 +61,21 @@ export function setupEventDelegation() {
     if (!action) {
       return;
     }
+
+    // Avoid duplicate handling: page-level modules already handle these actions.
+    // Global delegation runs in capture phase, so without this guard we can fire twice.
+    const inTasksView = !!actionBtn.closest('#view-tasks');
+    if (inTasksView && /^(task:|ui:|sort:|filter:|edit-task|delete-task|delete|toggle-task|toggle|open-drawer|drawer)/.test(action)) {
+      return;
+    }
+    const inFilesView = !!actionBtn.closest('#view-files');
+    if (inFilesView && /^(file:|view:|add-file|addFileToRegistry)/.test(action)) {
+      return;
+    }
+    const inTodayView = !!actionBtn.closest('#view-today');
+    if (inTodayView && action === 'quick-add') {
+      return;
+    }
     
     // Debug logging
     console.log('🔘 Button clicked:', {
@@ -440,6 +455,7 @@ export function setupEventDelegation() {
     };
     
     if (modalHandlers[action]) {
+      e.preventDefault();
       e.stopPropagation();
       modalHandlers[action]();
       return;
@@ -450,6 +466,7 @@ export function setupEventDelegation() {
     const [namespace, modalAction] = action.includes(':') ? action.split(':') : [null, action];
     
     if (namespace === 'modal') {
+      e.preventDefault();
       e.stopPropagation();
       
       // Get modal ID from data attribute or infer from action
@@ -556,8 +573,15 @@ export function setupEventDelegation() {
       e.stopPropagation();
       const taskId = actionBtn.getAttribute('data-task-id');
       if (taskId) {
+        const state = window.Petal?.store?.getState?.() || {};
+        const drawerCtx = {
+          tasks: Array.isArray(state.tasks) ? state.tasks : [],
+          projects: Array.isArray(state.projects) ? state.projects : [],
+          save: window.Petal?.handlers?.save || (() => Promise.resolve()),
+          render: window.Petal?.handlers?.render || (() => {})
+        };
         if (window.Petal?.features?.taskDrawer?.openTaskDrawer) {
-          window.Petal.features.taskDrawer.openTaskDrawer(taskId);
+          window.Petal.features.taskDrawer.openTaskDrawer(drawerCtx, taskId);
         } else if (window.openTaskDrawer) {
           window.openTaskDrawer(taskId);
         }
@@ -573,59 +597,70 @@ export function setupEventDelegation() {
       return;
     }
     if (action === 'task-drawer:close') {
+      e.preventDefault();
       e.stopPropagation();
       if (window.closeTaskDrawer) window.closeTaskDrawer();
       return;
     }
     if (action === 'task-drawer:switch-tab') {
+      e.preventDefault();
       e.stopPropagation();
       const tab = actionBtn.getAttribute('data-tab');
       if (tab && window.switchTaskDrawerTab) window.switchTaskDrawerTab(tab);
       return;
     }
     if (action === 'task-drawer:add-log-entry') {
+      e.preventDefault();
       e.stopPropagation();
       if (window.addTaskLogEntry) window.addTaskLogEntry();
       return;
     }
     if (action === 'task-drawer:save-protocol-entry') {
+      e.preventDefault();
       e.stopPropagation();
       if (window.saveProtocolDailyEntry) window.saveProtocolDailyEntry();
       return;
     }
     if (action === 'task-drawer:link-file-protocol') {
+      e.preventDefault();
       e.stopPropagation();
       if (window.linkFileToProtocolEntry) window.linkFileToProtocolEntry();
       return;
     }
     if (action === 'task-drawer:toggle-protocol-steps') {
+      e.preventDefault();
       e.stopPropagation();
       if (window.toggleProtocolSteps) window.toggleProtocolSteps();
       return;
     }
     if (action === 'task-drawer:add-protocol-step') {
+      e.preventDefault();
       e.stopPropagation();
       if (window.addProtocolStep) window.addProtocolStep();
       return;
     }
     if (action === 'task-drawer:link-existing-file') {
+      e.preventDefault();
       e.stopPropagation();
       if (window.linkExistingFileToTask) window.linkExistingFileToTask();
       return;
     }
     if (action === 'task-drawer:add-new-file') {
+      e.preventDefault();
       e.stopPropagation();
       if (window.addNewFileToTask) window.addNewFileToTask();
       return;
     }
     if (action === 'task-drawer:add-subtask') {
+      e.preventDefault();
       e.stopPropagation();
       if (window.addSubtaskToTask) window.addSubtaskToTask();
       return;
     }
     
-    // Task toggle (checkbox)
-    if (action === 'task:toggle') {
+    // Task toggle (checkbox) — `toggle-task` is legacy markup; prefer `task:toggle`
+    if (action === 'task:toggle' || action === 'toggle-task') {
+      e.preventDefault();
       e.stopPropagation();
       const taskId = actionBtn.getAttribute('data-task-id') || actionBtn.getAttribute('data-id');
       if (taskId) {
@@ -864,6 +899,7 @@ export function setupEventDelegation() {
     
     // Planner actions
     if (action === 'planner:nav') {
+      e.preventDefault();
       e.stopPropagation();
       const dir = actionBtn.getAttribute('data-dir');
       if (dir && window.plannerNav) {
@@ -901,6 +937,7 @@ export function setupEventDelegation() {
     
     // Planner actions
     if (action === 'planner:set-view') {
+      e.preventDefault();
       e.stopPropagation();
       const view = actionBtn.getAttribute('data-view');
       if (view) {
@@ -915,6 +952,7 @@ export function setupEventDelegation() {
       return;
     }
     if (action === 'planner:cal-nav') {
+      e.preventDefault();
       e.stopPropagation();
       const dir = actionBtn.getAttribute('data-dir');
       if (dir) {
@@ -931,6 +969,7 @@ export function setupEventDelegation() {
       return;
     }
     if (action === 'planner:open-add-event') {
+      e.preventDefault();
       e.stopPropagation();
       const dateStr = actionBtn.getAttribute('data-date') || null;
       if (window.openAddEventModal) window.openAddEventModal(dateStr);

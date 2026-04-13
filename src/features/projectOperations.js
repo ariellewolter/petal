@@ -26,7 +26,7 @@ function updateStoreSafely(updates, fallbackFn) {
  * Add a new project
  */
 export async function addProject(ctx) {
-  const { tasks, projects, save, render, refreshProjectSelects, getFileLinks, getFileLinksNormalized } = ctx;
+  const { tasks, projects, save, render, refreshProjectSelects, getFileLinks, getFileLinksNormalized } = ctx || {};
   
   const nameInput = document.getElementById('pr-name');
   if (!nameInput) return;
@@ -38,9 +38,14 @@ export async function addProject(ctx) {
   }
   
   // Get files
-  const files = window.electronAPI 
-    ? await getFileLinksNormalized('proj-files-container', 'p') 
-    : getFileLinks('proj-files-container', 'p');
+  const fileOps = window.Petal?.features?.fileOperations || {};
+  const getFileLinksFn = typeof getFileLinks === 'function' ? getFileLinks : fileOps.getFileLinks;
+  const getFileLinksNormalizedFn = typeof getFileLinksNormalized === 'function'
+    ? getFileLinksNormalized
+    : fileOps.getFileLinksNormalized;
+  const files = window.electronAPI
+    ? (getFileLinksNormalizedFn ? await getFileLinksNormalizedFn('proj-files-container', 'p') : [])
+    : (getFileLinksFn ? getFileLinksFn('proj-files-container', 'p') : []);
   
   // Get selected workflow lanes
   const workflowLanes = [];
@@ -1083,14 +1088,20 @@ export function addFileVersionInternal(ctx, projectId, fileId, versionString, no
  * Add files to project from form container (non-modal)
  */
 export async function addFileToProject(ctx, projId) {
-  const { projects, getFileLinks, getFileLinksNormalized, save, render } = ctx;
-  
-  const p = projects.find(p => p.id === projId);
+  const { projects, getFileLinks, getFileLinksNormalized, save, render } = ctx || {};
+  const projectList = Array.isArray(projects) ? projects : [];
+
+  const p = projectList.find(p => p.id === projId);
   if (!p) return;
-  
-  const files = window.electronAPI 
-    ? await getFileLinksNormalized('proj-files-'+projId, 'p-'+projId)
-    : getFileLinks('proj-files-'+projId, 'p-'+projId);
+
+  const fileOps = window.Petal?.features?.fileOperations || {};
+  const getFileLinksFn = typeof getFileLinks === 'function' ? getFileLinks : fileOps.getFileLinks;
+  const getFileLinksNormalizedFn = typeof getFileLinksNormalized === 'function'
+    ? getFileLinksNormalized
+    : fileOps.getFileLinksNormalized;
+  const files = window.electronAPI
+    ? (getFileLinksNormalizedFn ? await getFileLinksNormalizedFn('proj-files-' + projId, 'p-' + projId) : [])
+    : (getFileLinksFn ? getFileLinksFn('proj-files-' + projId, 'p-' + projId) : []);
   
   if (files.length === 0) {
     alert('Please add at least one file');

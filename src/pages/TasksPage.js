@@ -37,7 +37,16 @@ function bind(container, features) {
         switch (actionName) {
           case 'add':
             if (features?.taskOperations?.addTask) {
-              features.taskOperations.addTask();
+              const store = window.Petal?.store;
+              const state = store?.getState?.() || {};
+              const ctx = {
+                tasks: Array.isArray(state.tasks) ? state.tasks : [],
+                projects: Array.isArray(state.projects) ? state.projects : [],
+                boardProjectFilter: state.boardProjectFilter || 'all',
+                save: window.Petal?.handlers?.save || window.save,
+                render: window.Petal?.handlers?.render || window.render
+              };
+              features.taskOperations.addTask(ctx);
             } else if (window.addTask) {
               window.addTask();
             }
@@ -102,12 +111,23 @@ function bind(container, features) {
               console.warn('Toggle action: no valid taskId found', btn);
               return;
             }
-            if (features?.taskOperations?.toggleTask) {
-              features.taskOperations.toggleTask(taskId); // Already normalized string
-            } else if (window.Petal?.handlers?.toggleTask) {
-              window.Petal.handlers.toggleTask(taskId);
-            } else {
-              console.error('No toggleTask handler available');
+            {
+              const store = window.Petal?.store;
+              const state = store?.getState?.() || {};
+              const taskCtx = {
+                tasks: Array.isArray(state.tasks) ? state.tasks : [],
+                projects: Array.isArray(state.projects) ? state.projects : [],
+                boardProjectFilter: state.boardProjectFilter || 'all',
+                save: window.Petal?.handlers?.save || window.save || (() => Promise.resolve()),
+                render: window.Petal?.handlers?.render || window.render || (() => {})
+              };
+              if (features?.taskOperations?.toggleTask) {
+                features.taskOperations.toggleTask(taskCtx, taskId);
+              } else if (window.Petal?.handlers?.toggleTask) {
+                window.Petal.handlers.toggleTask(taskId);
+              } else {
+                console.error('No toggleTask handler available');
+              }
             }
             break;
             
@@ -117,12 +137,22 @@ function bind(container, features) {
               console.warn('Open drawer action: no valid taskId found', btn);
               return;
             }
-            if (features?.taskDrawer?.openDrawer) {
-              features.taskDrawer.openDrawer(taskId); // Already normalized string
-            } else if (window.Petal?.features?.taskDrawer?.openTaskDrawer) {
-              window.Petal.features.taskDrawer.openTaskDrawer(taskId);
-            } else {
-              console.error('No openDrawer handler available');
+            {
+              const store = window.Petal?.store;
+              const state = store?.getState?.() || {};
+              const drawerCtx = {
+                tasks: Array.isArray(state.tasks) ? state.tasks : [],
+                projects: Array.isArray(state.projects) ? state.projects : [],
+                save: window.Petal?.handlers?.save || window.save || (() => Promise.resolve()),
+                render: window.Petal?.handlers?.render || window.render || (() => {})
+              };
+              if (features?.taskDrawer?.openDrawer) {
+                features.taskDrawer.openDrawer(taskId);
+              } else if (window.Petal?.features?.taskDrawer?.openTaskDrawer) {
+                window.Petal.features.taskDrawer.openTaskDrawer(drawerCtx, taskId);
+              } else {
+                console.error('No openDrawer handler available');
+              }
             }
             break;
         }

@@ -308,9 +308,10 @@ export async function softDeleteTask(ctx, taskId) {
       return t;
     });
     
-    // SAFETY CHECK: If we're about to delete all tasks, abort!
+    // SAFETY CHECK: If a broad ID match would wipe a large dataset, abort.
+    // Allow intentional deletions in tiny datasets (for example a single task in a new project).
     const remainingTasks = updatedTasks.filter(t => !t.deletedAt).length;
-    if (remainingTasks === 0 && currentTasks.length > 0) {
+    if (remainingTasks === 0 && currentTasks.length > 25) {
       console.error('❌ CRITICAL: Delete would remove ALL tasks! Aborting to prevent data loss.', {
         originalCount: currentTasks.length,
         tasksToDelete,
@@ -320,8 +321,8 @@ export async function softDeleteTask(ctx, taskId) {
       return;
     }
     
-    // SAFETY CHECK: Ensure we're only deleting a reasonable number of tasks
-    if (tasksToDelete > currentTasks.length * 0.5) {
+    // SAFETY CHECK: Block suspiciously broad deletions on larger datasets.
+    if (currentTasks.length > 25 && tasksToDelete > currentTasks.length * 0.5) {
       console.error('❌ CRITICAL: Delete would remove more than 50% of tasks! Aborting.', {
         originalCount: currentTasks.length,
         tasksToDelete,

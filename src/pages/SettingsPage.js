@@ -15,12 +15,14 @@ export async function renderSettingsPage(containerEl, state, handlers) {
   // Get vault info if in Electron
   let vaultPath = 'Not available (browser mode)';
   let vaultStatus = null;
+  let dataPath = null;
   const isElectron = typeof window.electronAPI !== 'undefined';
 
   if (isElectron) {
     try {
       vaultPath = await window.electronAPI.getVaultPath() || 'Not set';
       vaultStatus = await window.electronAPI.vaultGetStatus();
+      dataPath = await window.electronAPI.getDataPath();
     } catch (err) {
       console.error('Error getting vault info:', err);
       vaultPath = 'Error loading path';
@@ -28,7 +30,10 @@ export async function renderSettingsPage(containerEl, state, handlers) {
   }
   
   // Calculate settings stats
-  const vaultReady = vaultStatus?.status === 'ready';
+  const vaultReady = vaultStatus?.resolved === true;
+  const vaultStatusText = vaultStatus
+    ? (vaultReady ? 'ready' : (vaultStatus.lastError || 'not ready'))
+    : 'unknown';
   
   // Set content first
   containerEl.innerHTML = `
@@ -62,12 +67,12 @@ export async function renderSettingsPage(containerEl, state, handlers) {
         <div class="settings-vault-status">
           <div class="settings-status-item">
             <span class="settings-status-label">Status:</span>
-            <span class="settings-status-value ${vaultStatus.status === 'ready' ? 'status-ok' : 'status-warning'}">${esc(vaultStatus.status || 'unknown')}</span>
+            <span class="settings-status-value ${vaultReady ? 'status-ok' : 'status-warning'}">${esc(vaultStatusText)}</span>
           </div>
-          ${vaultStatus.dataFile ? `
+          ${dataPath ? `
           <div class="settings-status-item">
             <span class="settings-status-label">Data File:</span>
-            <span class="settings-status-value">${esc(vaultStatus.dataFile)}</span>
+            <span class="settings-status-value">${esc(dataPath)}</span>
           </div>
           ` : ''}
         </div>
@@ -163,8 +168,8 @@ export async function renderSettingsPage(containerEl, state, handlers) {
       case 'choose-vault-folder':
         if (isElectron) {
           try {
-            const newPath = await window.electronAPI.vaultChoose();
-            if (newPath) {
+            const chooseResult = await window.electronAPI.vaultChoose();
+            if (chooseResult?.success) {
               alert('Vault location changed. Please restart the app for changes to take effect.');
               // Re-render to show new path
               await renderSettingsPage(containerEl, state, handlers);

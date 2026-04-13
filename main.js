@@ -1259,19 +1259,25 @@ ipcMain.handle('storage:resolveConflict', async (event, action, conflictFilePath
   const paths = getVaultPaths();
   
   try {
-    if (action === 'useMain') {
+    const normalizedAction =
+      action === 'keep-local' ? 'useMain' :
+      action === 'use-remote' ? 'useConflict' :
+      action === 'merge' ? 'keepBoth' :
+      action;
+
+    if (normalizedAction === 'useMain') {
       // Keep main file, delete conflict
       if (fs.existsSync(conflictFilePath)) {
         await fsPromises.unlink(conflictFilePath);
       }
       return { success: true };
-    } else if (action === 'useConflict') {
+    } else if (normalizedAction === 'useConflict') {
       // Replace main with conflict file
       const conflictData = await fsPromises.readFile(conflictFilePath, 'utf-8');
       await writeDataFile(JSON.parse(conflictData));
       await fsPromises.unlink(conflictFilePath);
       return { success: true };
-    } else if (action === 'keepBoth') {
+    } else if (normalizedAction === 'keepBoth') {
       // Rename conflict to app format and keep both
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
       const newPath = path.join(paths.vaultPath, `petal.conflict-${timestamp}.json`);
@@ -1658,6 +1664,20 @@ ipcMain.handle('file:resolvePath', async (event, fileLink) => {
       success: false,
       error: error.message
     };
+  }
+});
+
+ipcMain.handle('file:normalizePath', async (event, inputPath) => {
+  try {
+    if (!inputPath || typeof inputPath !== 'string') {
+      return null;
+    }
+
+    const cleanPath = inputPath.replace(/^file:\/\//, '').replace(/^file:\/\/\//, '');
+    return path.normalize(cleanPath);
+  } catch (error) {
+    safeError('Error normalizing file path:', error);
+    return null;
   }
 });
 
@@ -2283,52 +2303,6 @@ ipcMain.handle('vault:openFolder', async (event, vaultPath) => {
     await shell.openPath(pathToOpen);
     
     return { success: true };
-  } catch (error) {
-    safeError('Error opening vault folder:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-// Support bundle utilities
-ipcMain.handle('support:copyDiagnostics', async () => {
-  if (!vaultManager) {
-    return { success: false, error: 'VaultManager not initialized' };
-  }
-  try {
-    const diagnostics = vaultManager.getDiagnostics();
-    const diagnosticsJson = JSON.stringify(diagnostics, null, 2);
-    // Copy to clipboard (requires clipboard API)
-    const { clipboard } = require('electron');
-    clipboard.writeText(diagnosticsJson);
-    return { success: true, data: diagnosticsJson };
-  } catch (error) {
-    safeError('Error copying diagnostics:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle('support:openLogsFolder', () => {
-  try {
-    if (!vaultManager) {
-      return { success: false, error: 'VaultManager not initialized' };
-    }
-    const logsDir = path.dirname(vaultManager.logPath);
-    shell.openPath(logsDir);
-    return { success: true, path: logsDir };
-  } catch (error) {
-    safeError('Error opening logs folder:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle('support:openVaultFolder', () => {
-  try {
-    const vaultPath = getVaultPath();
-    if (!vaultPath || !fs.existsSync(vaultPath)) {
-      return { success: false, error: 'Vault path not available or does not exist' };
-    }
-    shell.openPath(vaultPath);
-    return { success: true, path: vaultPath };
   } catch (error) {
     safeError('Error opening vault folder:', error);
     return { success: false, error: error.message };

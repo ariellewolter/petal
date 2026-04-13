@@ -7,6 +7,7 @@ const path = require('path');
 
 const FAILURES = [];
 const WARNINGS = [];
+const HTML_ENTRY_CANDIDATES = ['tasklist.html', 'tasklist (1).html'];
 
 // Colors for terminal output
 const RESET = '\x1b[0m';
@@ -72,12 +73,22 @@ function findFiles(dir, pattern, exclude = []) {
   return files;
 }
 
+function resolveHtmlEntryFile() {
+  for (const fileName of HTML_ENTRY_CANDIDATES) {
+    const filePath = path.join(process.cwd(), fileName);
+    if (fs.existsSync(filePath)) {
+      return filePath;
+    }
+  }
+  return null;
+}
+
 // Check 1: All view containers exist in HTML
 function checkViewContainers() {
   log('\n📋 CHECK 1: View Containers', BLUE);
-  const htmlFile = path.join(process.cwd(), 'tasklist (1).html');
-  if (!fs.existsSync(htmlFile)) {
-    fail('View Containers', 'tasklist (1).html not found');
+  const htmlFile = resolveHtmlEntryFile();
+  if (!htmlFile) {
+    fail('View Containers', `No HTML entry file found (checked: ${HTML_ENTRY_CANDIDATES.join(', ')})`);
     return;
   }
   
@@ -107,7 +118,7 @@ function checkViewContainers() {
   for (const page of registeredPages) {
     const viewId = `view-${page}`;
     if (!html.includes(`id="${viewId}"`) && !html.includes(`id='${viewId}'`)) {
-      fail('View Containers', `Missing container: #${viewId}`, 'tasklist (1).html');
+      fail('View Containers', `Missing container: #${viewId}`, path.basename(htmlFile));
     } else {
       pass(`Container exists: #${viewId}`);
     }
@@ -180,7 +191,7 @@ function checkProcessUsage() {
 function checkDuplicateFunctions() {
   log('\n📋 CHECK 4: Duplicate Function Names', BLUE);
   const srcFiles = findFiles(path.join(process.cwd(), 'src'), /\.js$/, ['node_modules', '.git']);
-  const htmlFile = path.join(process.cwd(), 'tasklist (1).html');
+  const htmlFile = resolveHtmlEntryFile();
   
   const functionNames = new Map();
   
@@ -240,9 +251,9 @@ function checkDuplicateFunctions() {
 // Check 5: Inline onclick handlers
 function checkInlineOnclick() {
   log('\n📋 CHECK 5: Inline onclick Handlers', BLUE);
-  const htmlFile = path.join(process.cwd(), 'tasklist (1).html');
-  if (!fs.existsSync(htmlFile)) {
-    fail('Inline onclick', 'tasklist (1).html not found');
+  const htmlFile = resolveHtmlEntryFile();
+  if (!htmlFile) {
+    fail('Inline onclick', `No HTML entry file found (checked: ${HTML_ENTRY_CANDIDATES.join(', ')})`);
     return;
   }
   
@@ -301,9 +312,9 @@ function checkExports() {
 function checkPagesRegistry() {
   log('\n📋 CHECK 7: Pages Registry vs Sidebar', BLUE);
   const pagesFile = path.join(process.cwd(), 'src/app/pages.js');
-  const htmlFile = path.join(process.cwd(), 'tasklist (1).html');
+  const htmlFile = resolveHtmlEntryFile();
   
-  if (!fs.existsSync(pagesFile) || !fs.existsSync(htmlFile)) {
+  if (!fs.existsSync(pagesFile) || !htmlFile || !fs.existsSync(htmlFile)) {
     fail('Pages Registry', 'Required files not found');
     return;
   }
@@ -343,7 +354,7 @@ function checkPagesRegistry() {
   
   for (const view of sidebarViews) {
     if (!registeredPages.has(view)) {
-      warn('Pages Registry', `Sidebar view ${view} not in pages registry`, 'tasklist (1).html');
+      warn('Pages Registry', `Sidebar view ${view} not in pages registry`, path.basename(htmlFile));
     }
   }
   

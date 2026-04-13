@@ -61,7 +61,7 @@ export async function waitForVaultResolved(timeoutMs = 15000) {
       };
     }
     // Also check backward compatibility shape
-    if (status?.initialized && status?.activeVault && status?.activeVault?.is_valid && status?.activeVault?.path) {
+    if (status?.initialized && status?.activeVault && (status.activeVault.isValid || status.activeVault.is_valid) && status?.activeVault?.path) {
       return {
         resolved: true,
         vaultPath: status.activeVault.path,

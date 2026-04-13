@@ -3,6 +3,34 @@
 
 import { esc, normalizePriorityValue, normalizeDueInput } from '../utils/strings.js';
 
+function isTaskContext(value) {
+  return !!value && typeof value === 'object' && !Array.isArray(value) && (
+    'tasks' in value ||
+    'projects' in value ||
+    'save' in value ||
+    'render' in value ||
+    'boardProjectFilter' in value
+  );
+}
+
+function createTaskContext(overrides = {}) {
+  const state = window.Petal?.store?.getState?.() || {};
+  const base = {
+    tasks: Array.isArray(state.tasks) ? state.tasks : [],
+    projects: Array.isArray(state.projects) ? state.projects : [],
+    boardProjectFilter: state.boardProjectFilter || 'all',
+    save: window.Petal?.handlers?.save || window.save || (() => Promise.resolve()),
+    render: window.Petal?.handlers?.render || window.render || (() => {})
+  };
+  if (!overrides || typeof overrides !== 'object') return base;
+  if (Array.isArray(overrides.tasks)) base.tasks = overrides.tasks;
+  if (Array.isArray(overrides.projects)) base.projects = overrides.projects;
+  if (typeof overrides.boardProjectFilter === 'string') base.boardProjectFilter = overrides.boardProjectFilter;
+  if (typeof overrides.save === 'function') base.save = overrides.save;
+  if (typeof overrides.render === 'function') base.render = overrides.render;
+  return base;
+}
+
 /**
  * Helper: Update store with safety - preserves all state fields
  * Step 2e: Use store when available, fallback for backward compatibility
@@ -133,6 +161,13 @@ export function getStageForLaneAndStatus(lane, status) {
  * Add a new task
  */
 export async function addTask(ctx, titleOverride = null, statusOverride = null) {
+  if (!isTaskContext(ctx)) {
+    statusOverride = titleOverride;
+    titleOverride = typeof ctx === 'string' ? ctx : titleOverride;
+    ctx = createTaskContext();
+  } else {
+    ctx = createTaskContext(ctx);
+  }
   const { tasks, projects, save, render } = ctx;
   
   // Get form values
@@ -293,6 +328,12 @@ export async function addTask(ctx, titleOverride = null, statusOverride = null) 
  * Toggle task done status
  */
 export async function toggleTask(ctx, id) {
+  if (!isTaskContext(ctx)) {
+    id = ctx;
+    ctx = createTaskContext();
+  } else {
+    ctx = createTaskContext(ctx);
+  }
   const { tasks, save, render } = ctx;
   
   // Debug: Log task count and ID being searched
@@ -929,6 +970,12 @@ export async function saveProtocolDailyEntry(ctx) {
  * Edit a task - opens the edit modal
  */
 export function editTask(ctx, id) {
+  if (!isTaskContext(ctx)) {
+    id = ctx;
+    ctx = createTaskContext();
+  } else {
+    ctx = createTaskContext(ctx);
+  }
   console.log('🔍🔍🔍 TaskOperations.editTask START', { id, idType: typeof id });
   const { tasks } = ctx;
   console.log('🔍🔍🔍 Tasks from context:', { tasksCount: tasks?.length, tasks: tasks?.slice(0, 3).map(t => ({ id: t.id, idType: typeof t.id, title: t.title?.substring(0, 20) })) });

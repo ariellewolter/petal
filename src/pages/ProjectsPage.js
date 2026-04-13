@@ -215,14 +215,21 @@ function bind(container, features) {
       return;
     }
     
-    if (action === 'toggle-task' || btn.classList.contains('check-box')) {
-      // Toggle task done state
+    if (action === 'task:toggle' || action === 'toggle-task' || btn.classList.contains('check-box')) {
+      // Toggle task done state (parity with global delegation + task:toggle markup)
       if (taskId && features?.taskOperations?.toggleTask) {
-        // Get context for toggleTask (it expects ctx, id)
-        const ctx = window.Petal?.handlers?.createPageContext?.() || {};
+        const state = window.Petal?.store?.getState() || {};
+        const ctx = {
+          tasks: state.tasks || [],
+          projects: state.projects || [],
+          save: window.Petal?.handlers?.save || (() => Promise.resolve()),
+          render: window.Petal?.handlers?.render || (() => {})
+        };
         features.taskOperations.toggleTask(ctx, String(taskId));
       } else if (taskId && window.Petal?.handlers?.toggleTask) {
         window.Petal.handlers.toggleTask(taskId);
+      } else if (taskId && window.toggleTask) {
+        window.toggleTask(taskId);
       }
       return;
     }

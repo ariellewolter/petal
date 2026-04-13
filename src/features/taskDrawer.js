@@ -3,6 +3,31 @@
 
 import { esc, escAttr, fileIcon } from '../utils/strings.js';
 
+function isDrawerContext(value) {
+  return !!value && typeof value === 'object' && !Array.isArray(value) && (
+    'tasks' in value ||
+    'projects' in value ||
+    'save' in value ||
+    'render' in value
+  );
+}
+
+function createDrawerContext(overrides = {}) {
+  const state = window.Petal?.store?.getState?.() || {};
+  const base = {
+    tasks: Array.isArray(state.tasks) ? state.tasks : [],
+    projects: Array.isArray(state.projects) ? state.projects : [],
+    save: window.Petal?.handlers?.save || window.save || (() => Promise.resolve()),
+    render: window.Petal?.handlers?.render || window.render || (() => {})
+  };
+  if (!overrides || typeof overrides !== 'object') return base;
+  if (Array.isArray(overrides.tasks)) base.tasks = overrides.tasks;
+  if (Array.isArray(overrides.projects)) base.projects = overrides.projects;
+  if (typeof overrides.save === 'function') base.save = overrides.save;
+  if (typeof overrides.render === 'function') base.render = overrides.render;
+  return base;
+}
+
 // Store drawer state in window (shared across module and main script)
 if (typeof window !== 'undefined') {
   window.currentDrawerTaskId = window.currentDrawerTaskId || null;
@@ -30,6 +55,12 @@ function projectNameById(projects, projectId) {
  * Open the task drawer for a specific task
  */
 export function openTaskDrawer(ctx, taskId) {
+  if (!isDrawerContext(ctx)) {
+    taskId = ctx;
+    ctx = createDrawerContext();
+  } else {
+    ctx = createDrawerContext(ctx);
+  }
   const { tasks, projects } = ctx;
   // Normalize taskId for comparison (handle string/number mismatch)
   const taskIdNum = Number(taskId);

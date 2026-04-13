@@ -221,11 +221,26 @@ class StorageAdapter {
 
   // Export state as JSON string
   exportState(state) {
+    const openProjects = Array.isArray(state.openProjects)
+      ? state.openProjects
+      : (state.openProjects instanceof Set ? Array.from(state.openProjects) : []);
+
     return JSON.stringify({
+      schemaVersion: state.schemaVersion ?? 1,
       tasks: state.tasks || [],
       projects: state.projects || [],
-      openProjects: state.openProjects || [],
+      openProjects,
       settings: state.settings || {},
+      events: state.events || [],
+      recurringRules: state.recurringRules || [],
+      habits: state.habits || [],
+      habitCheckins: state.habitCheckins || {},
+      routines: state.routines || [],
+      routineCheckins: state.routineCheckins || {},
+      files: state.files || [],
+      workflow: state.workflow || {},
+      fileHistory: state.fileHistory || {},
+      fileRegistry: state.fileRegistry || {},
       exportedAt: new Date().toISOString(),
       version: '1.0'
     }, null, 2);
@@ -241,24 +256,39 @@ class StorageAdapter {
       if (merge) {
         // Merge: combine arrays, prefer imported for conflicts
         return {
-          tasks: [...current.tasks, ...(imported.tasks || [])],
-          projects: [...current.projects, ...(imported.projects || [])],
-          openProjects: [...new Set([...current.openProjects, ...(imported.openProjects || [])])],
+          tasks: [...(current.tasks || []), ...(imported.tasks || [])],
+          projects: [...(current.projects || []), ...(imported.projects || [])],
+          openProjects: [...new Set([...(current.openProjects || []), ...(imported.openProjects || [])])],
           settings: { ...(current.settings || {}), ...(imported.settings || {}) },
           files: [...(current.files || []), ...(imported.files || [])], // ✅ Include files
           events: [...(current.events || []), ...(imported.events || [])],
-          recurringRules: [...(current.recurringRules || []), ...(imported.recurringRules || [])]
+          recurringRules: [...(current.recurringRules || []), ...(imported.recurringRules || [])],
+          habits: [...(current.habits || []), ...(imported.habits || [])],
+          habitCheckins: { ...(current.habitCheckins || {}), ...(imported.habitCheckins || {}) },
+          routines: [...(current.routines || []), ...(imported.routines || [])],
+          routineCheckins: { ...(current.routineCheckins || {}), ...(imported.routineCheckins || {}) },
+          workflow: { ...(current.workflow || {}), ...(imported.workflow || {}) },
+          fileHistory: { ...(current.fileHistory || {}), ...(imported.fileHistory || {}) },
+          fileRegistry: { ...(current.fileRegistry || {}), ...(imported.fileRegistry || {}) }
         };
       } else {
         // Replace: use imported data
         return {
+          schemaVersion: imported.schemaVersion ?? current.schemaVersion ?? 1,
           tasks: imported.tasks || [],
           projects: imported.projects || [],
           openProjects: imported.openProjects || [],
           settings: imported.settings || {},
           files: imported.files || [], // ✅ Include files
           events: imported.events || [],
-          recurringRules: imported.recurringRules || []
+          recurringRules: imported.recurringRules || [],
+          habits: imported.habits || [],
+          habitCheckins: imported.habitCheckins || {},
+          routines: imported.routines || [],
+          routineCheckins: imported.routineCheckins || {},
+          workflow: imported.workflow || {},
+          fileHistory: imported.fileHistory || {},
+          fileRegistry: imported.fileRegistry || {}
         };
       }
     } catch (e) {

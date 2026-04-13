@@ -7,16 +7,15 @@
  * @param {Array} newerConflicts - Array of newer conflict file paths
  */
 export function showConflictBanner(conflicts, newerConflicts) {
+  const safeConflicts = Array.isArray(conflicts) ? conflicts : [];
+  const safeNewerConflicts = Array.isArray(newerConflicts) ? newerConflicts : [];
+
   // Store conflicts globally (should be moved to store eventually)
-  window.currentConflicts = conflicts;
-  
-  const banner = document.getElementById('conflict-banner');
-  const details = document.getElementById('conflict-details');
-  
-  if (!banner || !details) return;
-  
-  const conflictCount = conflicts.length;
-  const newerCount = newerConflicts.length;
+  window.currentConflicts = safeConflicts;
+
+  const { banner, details, actions } = ensureConflictBannerElements();
+  const conflictCount = safeConflicts.length;
+  const newerCount = safeNewerConflicts.length;
   
   let detailText = '';
   if (conflictCount === 1) {
@@ -34,6 +33,35 @@ export function showConflictBanner(conflicts, newerConflicts) {
   }
   
   details.textContent = detailText;
+  actions.innerHTML = '';
+
+  const targetConflict = safeConflicts[0];
+  if (targetConflict) {
+    const keepLocalBtn = document.createElement('button');
+    keepLocalBtn.className = 'btn btn-sm';
+    keepLocalBtn.textContent = 'Keep Local';
+    keepLocalBtn.onclick = () => resolveConflict('useMain', targetConflict);
+    actions.appendChild(keepLocalBtn);
+
+    const useRemoteBtn = document.createElement('button');
+    useRemoteBtn.className = 'btn btn-sm';
+    useRemoteBtn.textContent = 'Use Remote';
+    useRemoteBtn.onclick = () => resolveConflict('useConflict', targetConflict);
+    actions.appendChild(useRemoteBtn);
+
+    const keepBothBtn = document.createElement('button');
+    keepBothBtn.className = 'btn btn-sm';
+    keepBothBtn.textContent = 'Keep Both';
+    keepBothBtn.onclick = () => resolveConflict('keepBoth', targetConflict);
+    actions.appendChild(keepBothBtn);
+  }
+
+  const dismissBtn = document.createElement('button');
+  dismissBtn.className = 'btn btn-sm';
+  dismissBtn.textContent = 'Dismiss';
+  dismissBtn.onclick = hideConflictBanner;
+  actions.appendChild(dismissBtn);
+
   banner.style.display = 'flex';
   
   // Scroll to top to show banner
@@ -53,7 +81,7 @@ export function hideConflictBanner() {
 
 /**
  * Resolve a conflict by choosing an action
- * @param {string} action - 'keep-local', 'use-remote', or 'merge'
+ * @param {string} action - 'useMain', 'useConflict', or 'keepBoth'
  * @param {string} filePath - Path to the conflict file
  */
 export async function resolveConflict(action, filePath) {
@@ -63,7 +91,8 @@ export async function resolveConflict(action, filePath) {
   }
   
   try {
-    const result = await window.electronAPI.resolveConflict(action, filePath);
+    const normalizedAction = normalizeConflictAction(action);
+    const result = await window.electronAPI.resolveConflict(normalizedAction, filePath);
     if (result && result.success) {
       // Reload state after resolution
       if (window.storage && window.storage.loadState) {
@@ -100,6 +129,42 @@ export async function resolveConflict(action, filePath) {
     console.error('Error resolving conflict:', error);
     alert('Error resolving conflict: ' + error.message);
   }
+}
+
+function normalizeConflictAction(action) {
+  if (action === 'keep-local') return 'useMain';
+  if (action === 'use-remote') return 'useConflict';
+  if (action === 'merge') return 'keepBoth';
+  return action;
+}
+
+function ensureConflictBannerElements() {
+  let banner = document.getElementById('conflict-banner');
+  let details = document.getElementById('conflict-details');
+  let actions = document.getElementById('conflict-actions');
+
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'conflict-banner';
+    banner.className = 'conflict-banner';
+    banner.style.display = 'none';
+    banner.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;">
+        <div>
+          <strong>Sync conflict detected</strong>
+          <div id="conflict-details" style="margin-top:4px;"></div>
+        </div>
+        <div id="conflict-actions" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+      </div>
+    `;
+    const parent = document.querySelector('.app-container') || document.body;
+    parent.insertBefore(banner, parent.firstChild);
+  }
+
+  details = document.getElementById('conflict-details');
+  actions = document.getElementById('conflict-actions');
+
+  return { banner, details, actions };
 }
 
 // Expose globally for backward compatibility

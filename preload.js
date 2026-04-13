@@ -59,6 +59,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onVaultNeedsRelocation: (callback) => {
     ipcRenderer.on('vault:needsRelocation', (event, data) => callback(data));
   },
+  onStorageStateChanged: (callback) => {
+    ipcRenderer.on('storage:stateChanged', (event, data) => callback(data));
+  },
+  onVaultReloadState: (callback) => {
+    ipcRenderer.on('vault:reloadState', (event, data) => callback(data));
+  },
   
   // Support bundle utilities
   supportCopyDiagnostics: () => ipcRenderer.invoke('support:copyDiagnostics'),
@@ -66,6 +72,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   supportOpenVaultFolder: () => ipcRenderer.invoke('support:openVaultFolder'),
   supportReloadExternalChanges: () => ipcRenderer.invoke('support:reloadExternalChanges'),
   supportExportCurrentState: (exportPath) => ipcRenderer.invoke('support:exportCurrentState', exportPath),
+  supportExportBundle: () => ipcRenderer.invoke('support:exportBundle'),
   
   // Mark state as dirty (unsaved changes)
   markStateDirty: () => ipcRenderer.invoke('storage:markDirty'),
@@ -78,6 +85,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   chooseFile: () => ipcRenderer.invoke('file:chooseFile'),
   pickFile: (options) => ipcRenderer.invoke('file:pickFile', options),
   resolveFilePath: (fileLink) => ipcRenderer.invoke('file:resolvePath', fileLink),
+  normalizePath: (inputPath) => ipcRenderer.invoke('file:normalizePath', inputPath),
   getFileMetadata: (fileLink) => ipcRenderer.invoke('file:getMetadata', fileLink),
   
   // OneDrive operations

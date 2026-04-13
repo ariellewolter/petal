@@ -111,14 +111,21 @@ export async function openLogsFolder() {
   }
   
   try {
-    const diagnostics = await window.electronAPI.vaultGetDiagnostics();
-    if (diagnostics.log_path) {
-      const result = await window.electronAPI.vaultOpenFolder(diagnostics.log_path);
+    if (window.electronAPI.supportOpenLogsFolder) {
+      const result = await window.electronAPI.supportOpenLogsFolder();
       if (!result || !result.success) {
         alert('Error opening logs folder: ' + (result?.error || 'Unknown error'));
       }
     } else {
-      alert('Log path not available');
+      const diagnostics = await window.electronAPI.vaultGetDiagnostics();
+      if (diagnostics.log_path) {
+        const result = await window.electronAPI.vaultOpenFolder(diagnostics.log_path);
+        if (!result || !result.success) {
+          alert('Error opening logs folder: ' + (result?.error || 'Unknown error'));
+        }
+      } else {
+        alert('Log path not available');
+      }
     }
   } catch (error) {
     console.error('Error opening logs folder:', error);
@@ -136,14 +143,21 @@ export async function openVaultFolder() {
   }
   
   try {
-    const diagnostics = await window.electronAPI.vaultGetDiagnostics();
-    if (diagnostics.active_vault && diagnostics.active_vault.path) {
-      const result = await window.electronAPI.vaultOpenFolder(diagnostics.active_vault.path);
+    if (window.electronAPI.supportOpenVaultFolder) {
+      const result = await window.electronAPI.supportOpenVaultFolder();
       if (!result || !result.success) {
         alert('Error opening vault folder: ' + (result?.error || 'Unknown error'));
       }
     } else {
-      alert('Vault path not available');
+      const diagnostics = await window.electronAPI.vaultGetDiagnostics();
+      if (diagnostics.active_vault && diagnostics.active_vault.path) {
+        const result = await window.electronAPI.vaultOpenFolder(diagnostics.active_vault.path);
+        if (!result || !result.success) {
+          alert('Error opening vault folder: ' + (result?.error || 'Unknown error'));
+        }
+      } else {
+        alert('Vault path not available');
+      }
     }
   } catch (error) {
     console.error('Error opening vault folder:', error);
