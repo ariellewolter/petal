@@ -2044,10 +2044,11 @@ export function openProtocolRunDetail(ctx, runId) {
     html += `<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em;">Linked Tasks</div>`;
     html += `<div style="display:flex;flex-direction:column;gap:6px;">`;
     linkedTasks.forEach(task => {
-      html += `<div style="padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--text);">`;
-      html += `<span style="font-weight:500;">${escFunction(task.title)}</span>`;
+      html += `<div style="padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--text);display:flex;align-items:center;gap:8px;">`;
+      html += `<button type="button" class="check-box ${task.done ? 'checked' : ''}" data-action="task:toggle" data-task-id="${task.id}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;" title="Toggle task"></button>`;
+      html += `<span style="font-weight:500;flex:1;min-width:0;${task.done ? 'text-decoration:line-through;opacity:0.7;' : ''}">${escFunction(task.title)}</span>`;
       if (task.priority) {
-        html += ` <span style="color:var(--text-dim);">(${task.priority})</span>`;
+        html += ` <span style="color:var(--text-dim);flex-shrink:0;">(${task.priority})</span>`;
       }
       html += `</div>`;
     });

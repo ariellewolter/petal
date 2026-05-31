@@ -620,6 +620,21 @@ export async function moveTaskInSubtask(ctx, taskId, subtaskId, currentOrder, di
   await renderWorkflowMatrixFunction(ctx);
 }
 
+function persistProjectFiles(projectId, filesToAdd) {
+  const store = window.Petal?.store;
+  if (!store || !filesToAdd.length) return false;
+
+  const state = store.getState();
+  const updatedProjects = (state.projects || []).map(proj => {
+    if (projectIdsMatch(proj.id, projectId)) {
+      return { ...proj, files: [...(proj.files || []), ...filesToAdd] };
+    }
+    return proj;
+  });
+  store.setState({ projects: updatedProjects });
+  return true;
+}
+
 /**
  * Add file to matrix project
  */
@@ -643,11 +658,11 @@ export async function addFileToMatrixProject(ctx) {
     return;
   }
   
-  // Add files to project
-  const existingFiles = project.files || [];
-  project.files = [...existingFiles, ...files];
-  
-  if (save) await save();
+  if (!persistProjectFiles(selectedProjectId, files)) {
+    const existingFiles = project.files || [];
+    project.files = [...existingFiles, ...files];
+    if (save) await save();
+  }
   await renderWorkflowMatrixFunction(ctx);
   
   // Clear file container
@@ -685,11 +700,11 @@ export async function addFileToProjectFromActive(ctx) {
     return;
   }
   
-  // Add files to project
-  const existingFiles = project.files || [];
-  project.files = [...existingFiles, ...files];
-  
-  if (save) await save();
+  if (!persistProjectFiles(selectedProjectId, files)) {
+    const existingFiles = project.files || [];
+    project.files = [...existingFiles, ...files];
+    if (save) await save();
+  }
   await renderWorkflowMatrixFunction(ctx);
   
   // Clear file container and hide form

@@ -320,6 +320,7 @@ function createImmutableSnapshot(state) {
   }
   
   return {
+    schemaVersion: state.schemaVersion,
     tasks: state.tasks ? state.tasks.map(t => ({ ...t })) : [],
     projects: state.projects ? state.projects.map(p => ({ ...p })) : [],
     openProjects: state.openProjects ? Array.from(state.openProjects) : [],

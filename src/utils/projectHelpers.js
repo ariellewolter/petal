@@ -324,10 +324,7 @@ export function cancelWorkflowLanesEdit(projectId) {
  * @param {number|string} projectId - Project ID
  */
 export async function saveWorkflowLanes(ctx, projectId) {
-  const { projects, tasks, save, rerenderViewIfActive } = ctx;
-  
-  const project = findProjectById(projects, projectId);
-  if (!project) return;
+  const { rerenderViewIfActive } = ctx;
   
   const workflowLanes = [];
   const labCheckbox = document.getElementById(`edit-workflow-lab-${projectId}`);
@@ -340,18 +337,23 @@ export async function saveWorkflowLanes(ctx, projectId) {
   if (writingCheckbox && writingCheckbox.checked) workflowLanes.push('writing');
   if (presentationCheckbox && presentationCheckbox.checked) workflowLanes.push('presentation');
   
-  project.workflowLanes = workflowLanes.length > 0 ? workflowLanes : null;
-  
-  // Update any tasks that are assigned to lanes not in the new list
-  (tasks || []).filter(t => taskBelongsToProject(t, projectId)).forEach(t => {
-    if (t.lane && workflowLanes.length > 0 && !workflowLanes.includes(t.lane)) {
-      t.lane = null;
-      t.stage = null;
-    }
-  });
-  
-  if (save) {
-    await save();
+  const lanesValue = workflowLanes.length > 0 ? workflowLanes : null;
+  const store = window.Petal?.store;
+
+  if (store) {
+    const state = store.getState();
+    const updatedProjects = (state.projects || []).map(p => {
+      if (!projectIdsMatch(p.id, projectId)) return p;
+      return { ...p, workflowLanes: lanesValue };
+    });
+    const updatedTasks = (state.tasks || []).map(t => {
+      if (!taskBelongsToProject(t, projectId)) return t;
+      if (t.lane && workflowLanes.length > 0 && !workflowLanes.includes(t.lane)) {
+        return { ...t, lane: null, stage: null };
+      }
+      return t;
+    });
+    store.setState({ projects: updatedProjects, tasks: updatedTasks });
   }
   
   // Re-render projects view if visible

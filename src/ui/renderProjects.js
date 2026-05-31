@@ -386,7 +386,7 @@ function renderProjectCard(project, state, openSet) {
         <span class="metric-label">Overdue</span>
       </div>` : ''}
     </div>
-    ${dl ? `<div class="project-due ${dl.class}">${dl.label}</div>` : ''}
+    ${dl ? `<div class="project-due ${dl.cls || ''}">${esc(dl.text || '')}</div>` : ''}
     ${isOpen ? `<div class="project-details" style="padding:16px 20px;border-top:1px solid var(--border);margin-top:12px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <h4 style="font-size:14px;font-weight:600;color:var(--text);margin:0;">📋 Tasks ${totalTasks > 0 ? `(${totalTasks})` : ''}</h4>
@@ -431,7 +431,7 @@ function renderProjectCard(project, state, openSet) {
                   
                   <div class="task-meta-row">
                     <span class="priority-tag ${priorityClass}">${priorityClass}</span>
-                    ${tdl ? `<span class="due-tag ${tdl.class}">${esc(tdl.label)}</span>` : ''}
+                    ${tdl ? `<span class="due-tag ${tdl.cls || ''}">${esc(tdl.text || '')}</span>` : ''}
                   </div>
                   
                   ${t.notes ? `<div class="task-notes">${esc(t.notes)}</div>` : ''}

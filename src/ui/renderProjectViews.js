@@ -71,12 +71,14 @@ export function renderTodayTimeline(ctx, project, projectTasks) {
         const steps = protocol.steps || [];
         const nextStep = steps.find(s => !s.done);
         
-        html += '<div style="padding:8px;background:var(--surface);border-radius:4px;margin-bottom:6px;">';
+        html += '<div style="padding:8px;background:var(--surface);border-radius:4px;margin-bottom:6px;display:flex;align-items:flex-start;gap:8px;">';
+        html += `<button type="button" class="check-box ${task.done?'checked':''}" data-action="task:toggle" data-task-id="${task.id}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;margin-top:2px;" title="Toggle task"></button>`;
+        html += '<div style="flex:1;min-width:0;">';
         html += `<div style="font-size:13px;color:var(--text);font-weight:500;">${escFunction(task.title)} (Day ${dayIndex})</div>`;
         if (nextStep) {
           html += `<div style="font-size:11px;color:var(--sage);margin-top:4px;">Next step: ${escFunction(nextStep.title)}</div>`;
         }
-        html += '</div>';
+        html += '</div></div>';
       });
     } else {
       tasks.forEach(task => {
@@ -135,7 +137,9 @@ export function renderActiveProtocols(ctx, project, projectTasks) {
     const steps = protocol.steps || [];
     const nextStep = steps.find(s => !s.done);
     
-    html += '<div style="padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;">';
+    html += '<div style="padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;display:flex;align-items:flex-start;gap:8px;">';
+    html += `<button type="button" class="check-box ${task.done?'checked':''}" data-action="task:toggle" data-task-id="${task.id}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;margin-top:2px;" title="Toggle task"></button>`;
+    html += '<div style="flex:1;min-width:0;">';
     html += `<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px;">${escFunction(task.title)}</div>`;
     html += `<div style="font-size:12px;color:var(--rose);margin-bottom:4px;font-weight:500;">Day ${dayIndex} of ${totalDays}</div>`;
     if (nextStep) {
@@ -144,7 +148,7 @@ export function renderActiveProtocols(ctx, project, projectTasks) {
     if (expectedEndStr) {
       html += `<div style="font-size:11px;color:var(--text-dim);">Expected completion: ${expectedEndStr}</div>`;
     }
-    html += '</div>';
+    html += '</div></div>';
   });
   html += '</div>';
   
@@ -334,10 +338,12 @@ export function renderDeadlinesHorizon(ctx, project, projectTasks) {
     dueIn7Days.forEach(task => {
       const due = parseDateFunction(task.due);
       const dueStr = due.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-      html += '<div style="padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;">';
+      html += '<div style="padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;display:flex;align-items:flex-start;gap:8px;">';
+      html += `<button type="button" class="check-box ${task.done?'checked':''}" data-action="task:toggle" data-task-id="${task.id}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;margin-top:2px;" title="Toggle task"></button>`;
+      html += '<div style="flex:1;min-width:0;">';
       html += `<div style="font-size:13px;color:var(--text);font-weight:500;">${escFunction(task.title)}</div>`;
       html += `<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Due: ${dueStr}</div>`;
-      html += '</div>';
+      html += '</div></div>';
     });
     html += '</div>';
   }
@@ -348,10 +354,12 @@ export function renderDeadlinesHorizon(ctx, project, projectTasks) {
     dueIn30Days.forEach(task => {
       const due = parseDateFunction(task.due);
       const dueStr = due.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-      html += '<div style="padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;">';
+      html += '<div style="padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;display:flex;align-items:flex-start;gap:8px;">';
+      html += `<button type="button" class="check-box ${task.done?'checked':''}" data-action="task:toggle" data-task-id="${task.id}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;margin-top:2px;" title="Toggle task"></button>`;
+      html += '<div style="flex:1;min-width:0;">';
       html += `<div style="font-size:13px;color:var(--text);font-weight:500;">${escFunction(task.title)}</div>`;
       html += `<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Due: ${dueStr}</div>`;
-      html += '</div>';
+      html += '</div></div>';
     });
     html += '</div>';
   }

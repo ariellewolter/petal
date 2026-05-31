@@ -103,6 +103,7 @@ export function renderMatrixTaskCard(ctx, task, isSubtaskTask = false, subtaskId
     ondragstart="onMatrixDragStart(event, ${task.id})"
     ondragend="onMatrixDragEnd(event)">
     <div class="matrix-task-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+      <button type="button" class="check-box ${task.done ? 'checked' : ''}" data-action="task:toggle" data-task-id="${task.id}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;" title="Toggle task" onclick="event.stopPropagation()"></button>
       <div style="flex:1;min-width:0;">
         ${isTaskSubtask && parentTask ? `<span style="opacity:0.6;font-size:9px;color:var(--text-dim);">↳ ${escFunction(parentTask.title)} → </span>` : ''}
         ${escFunction(task.title)}
@@ -885,11 +886,25 @@ export function renderMindMap(ctx, project, projectTasks, standaloneTasks, tasks
       ${isBlocked ? 'border-color:var(--overdue);' : ''}
     `;
     
+    const titleRow = document.createElement('div');
+    titleRow.style.cssText = 'display:flex;align-items:flex-start;gap:6px;margin-bottom:4px;';
+
+    const doneBtn = document.createElement('button');
+    doneBtn.type = 'button';
+    doneBtn.className = `check-box${isDone ? ' checked' : ''}`;
+    doneBtn.dataset.action = 'task:toggle';
+    doneBtn.dataset.taskId = String(task.id);
+    doneBtn.title = 'Toggle task';
+    doneBtn.style.cssText = 'flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;margin-top:1px;';
+    doneBtn.onclick = (e) => e.stopPropagation();
+    titleRow.appendChild(doneBtn);
+
     const title = document.createElement('div');
-    title.style.cssText = 'font-weight:500;margin-bottom:4px;line-height:1.3;';
+    title.style.cssText = 'font-weight:500;line-height:1.3;flex:1;min-width:0;';
     title.textContent = escFunction(task.title);
     if (isDone) title.style.textDecoration = 'line-through';
-    taskNode.appendChild(title);
+    titleRow.appendChild(title);
+    taskNode.appendChild(titleRow);
     
     const meta = document.createElement('div');
     meta.style.cssText = 'display:flex;gap:4px;align-items:center;flex-wrap:wrap;font-size:10px;color:var(--text-dim);';

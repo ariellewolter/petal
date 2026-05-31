@@ -693,9 +693,12 @@
   <div class="quick-capture-modal" id="task-drawer" style="display:none;" onclick="if(event.target===this)closeTaskDrawer()" onkeydown="if(event.key==='Escape')closeTaskDrawer()" tabindex="-1">
     <div class="quick-capture-box" style="max-width:680px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;" onclick="event.stopPropagation()">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;flex-shrink:0;">
-        <div>
-          <h3 id="task-drawer-title" style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:400;color:var(--rose);margin:0 0 4px 0;"></h3>
-          <div id="task-drawer-meta" style="font-size:11px;color:var(--text-dim);"></div>
+        <div style="display:flex;align-items:flex-start;gap:12px;flex:1;min-width:0;">
+          <button type="button" id="task-drawer-done-toggle" class="check-box" data-action="task:toggle" title="Mark as done" style="flex-shrink:0;margin-top:6px;background:none;border:none;padding:0;cursor:pointer;"></button>
+          <div style="flex:1;min-width:0;">
+            <h3 id="task-drawer-title" style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:400;color:var(--rose);margin:0 0 4px 0;"></h3>
+            <div id="task-drawer-meta" style="font-size:11px;color:var(--text-dim);"></div>
+          </div>
         </div>
         <button data-action="task-drawer:close" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
       </div>
@@ -5402,9 +5405,10 @@ function openWfDetail(projectId, state, handlers) {
     const tasksHtml = projectTasks.length > 0 
       ? projectTasks.map(t => `
         <div class="dp-task ${t.done ? 'done-t' : ''}" 
-             onclick="if(window.Petal?.handlers?.openTaskDrawer){window.Petal.handlers.openTaskDrawer(${t.id})}">
-          <div class="dp-task-check ${t.done ? 'done' : ''}" 
-               onclick="event.stopPropagation();if(window.Petal?.handlers?.toggleTask){window.Petal.handlers.toggleTask(${t.id})}"></div>
+             data-action="task:open-drawer" data-task-id="${t.id}">
+          <button type="button" class="dp-task-check ${t.done ? 'done' : ''}" 
+               data-action="task:toggle" data-task-id="${t.id}" title="Toggle task"
+               style="background:none;border:none;padding:0;cursor:pointer;"></button>
           <div class="dp-task-label">${esc(t.title || 'Untitled')}</div>
         </div>
       `).join('')

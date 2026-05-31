@@ -56,6 +56,12 @@ export async function initStateInternal() {
 
       window.electronAPI.onVaultExternalModification(async (data) => {
         console.warn('⚠️ External vault modification detected:', data);
+        if (data?.hasUnsavedChanges) {
+          const reload = confirm(
+            'The vault file was changed externally (e.g. iCloud sync). You have unsaved local changes. Reload from disk and discard local edits?'
+          );
+          if (!reload) return;
+        }
         if (window.electronAPI?.supportReloadExternalChanges) {
           const result = await window.electronAPI.supportReloadExternalChanges();
           if (result?.success) {

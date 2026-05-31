@@ -4,7 +4,7 @@
 console.log("✅ renderTasks.js LOADED — EDITBTN TEST 2026-02-21");
 
 import { esc } from '../utils/strings.js';
-import { today, parseDate, dueLabel } from '../utils/dates.js';
+import { today, parseDate, dueLabel, inRange } from '../utils/dates.js';
 import { getAllTasks } from '../domain/models.js';
 
 /**
@@ -181,6 +181,10 @@ async function renderTaskList(containerEl, state, handlers) {
     if (searchQuery && searchQuery.trim()) {
       if (!matchesSearch(t, searchQuery)) return false;
     }
+
+    if (['day', 'week', 'month'].includes(currentSort) && !inRange(t, currentSort)) {
+      return false;
+    }
     
     return true;
   });
@@ -245,8 +249,8 @@ function renderTaskItem(task, state) {
   const projectColor = project ? `var(--proj-${project.color})` : '';
   
   const priorityClass = task.priority === 3 ? 'high' : task.priority === 1 ? 'low' : 'medium';
-  const dueClass = dl?.class || '';
-  const dueText = dl?.label || '';
+  const dueClass = dl?.cls || '';
+  const dueText = dl?.text || '';
   
   return `<div class="task-card ${task.done ? 'done' : ''}" data-id="${task.id}" data-priority="${priorityClass}">
     <div class="task-top">

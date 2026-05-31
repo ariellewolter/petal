@@ -416,8 +416,8 @@ export function renderWorkflowList() {
             <div class="wf-expand-section-title">${selectedProjectId ? 'All Tasks' : 'Open Tasks'}</div>
             <div class="wf-expand-tasks">
               ${(selectedProjectId ? projectTasks : projectTasks.slice(0, 5)).map(t => `
-                <div class="wf-etask ${t.done ? 'done-t' : ''}" onclick="event.stopPropagation();if(window.Petal?.handlers?.toggleTask){window.Petal.handlers.toggleTask(${t.id})}">
-                  <div class="wf-etask-check ${t.done ? 'done' : ''}"></div>
+                <div class="wf-etask ${t.done ? 'done-t' : ''}">
+                  <button type="button" class="wf-etask-check ${t.done ? 'done' : ''}" data-action="task:toggle" data-task-id="${t.id}" title="Toggle task" style="background:none;border:none;padding:0;cursor:pointer;"></button>
                   <span class="wf-etask-label">${esc(t.title || 'Untitled')}</span>
                 </div>
               `).join('')}

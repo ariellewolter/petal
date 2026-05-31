@@ -57,7 +57,7 @@ function bind(container, features) {
     e.stopPropagation();
     
     // Handle project actions
-    if (action === 'toggle-project' || btn.classList.contains('btn-icon') && btn.textContent.includes('▼') || btn.textContent.includes('▶')) {
+    if (action === 'toggle-project' || (btn.classList.contains('btn-icon') && (btn.textContent.includes('▼') || btn.textContent.includes('▶')))) {
       // Toggle project expand/collapse
       if (projectId && features?.projectOperations?.toggleProjectOpen) {
         // toggleProjectOpen expects (ctx, id) - create a minimal context
@@ -265,7 +265,7 @@ function bind(container, features) {
     if (btn.dataset.bound) return;
     btn.dataset.bound = 'true';
     btn.addEventListener('click', () => {
-      const filter = btn.textContent.trim().toLowerCase();
+      const filter = btn.dataset.filter || btn.textContent.trim().toLowerCase();
       if (features?.handlers?.setProjFilter) {
         features.handlers.setProjFilter(filter, btn);
       } else if (window.setProjFilter) {

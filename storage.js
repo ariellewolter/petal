@@ -12,6 +12,29 @@ window.markStateSaved = window.markStateSaved || function () {
   console.debug('markStateSaved called (no-op guard)');
 };
 
+function mergeRecordsById(current = [], imported = []) {
+  const merged = new Map();
+  const withoutId = [];
+
+  for (const item of current) {
+    if (!item) continue;
+    if (item.id != null && item.id !== '') {
+      merged.set(String(item.id), item);
+    } else {
+      withoutId.push(item);
+    }
+  }
+  for (const item of imported) {
+    if (!item) continue;
+    if (item.id != null && item.id !== '') {
+      merged.set(String(item.id), item);
+    } else {
+      withoutId.push(item);
+    }
+  }
+  return [...merged.values(), ...withoutId];
+}
+
 class StorageAdapter {
   constructor() {
     this.listeners = [];
@@ -269,18 +292,19 @@ class StorageAdapter {
       const current = currentLoad.data ? currentLoad.data : currentLoad;
       
       if (merge) {
-        // Merge: combine arrays, prefer imported for conflicts
+        // Merge: deduplicate by id, prefer imported for conflicts
         return {
-          tasks: [...(current.tasks || []), ...(imported.tasks || [])],
-          projects: [...(current.projects || []), ...(imported.projects || [])],
+          schemaVersion: Math.max(imported.schemaVersion ?? 0, current.schemaVersion ?? 0) || 1,
+          tasks: mergeRecordsById(current.tasks || [], imported.tasks || []),
+          projects: mergeRecordsById(current.projects || [], imported.projects || []),
           openProjects: [...new Set([...(current.openProjects || []), ...(imported.openProjects || [])])],
           settings: { ...(current.settings || {}), ...(imported.settings || {}) },
-          files: [...(current.files || []), ...(imported.files || [])], // ✅ Include files
-          events: [...(current.events || []), ...(imported.events || [])],
-          recurringRules: [...(current.recurringRules || []), ...(imported.recurringRules || [])],
-          habits: [...(current.habits || []), ...(imported.habits || [])],
+          files: mergeRecordsById(current.files || [], imported.files || []),
+          events: mergeRecordsById(current.events || [], imported.events || []),
+          recurringRules: mergeRecordsById(current.recurringRules || [], imported.recurringRules || []),
+          habits: mergeRecordsById(current.habits || [], imported.habits || []),
           habitCheckins: { ...(current.habitCheckins || {}), ...(imported.habitCheckins || {}) },
-          routines: [...(current.routines || []), ...(imported.routines || [])],
+          routines: mergeRecordsById(current.routines || [], imported.routines || []),
           routineCheckins: { ...(current.routineCheckins || {}), ...(imported.routineCheckins || {}) },
           workflow: { ...(current.workflow || {}), ...(imported.workflow || {}) },
           fileHistory: { ...(current.fileHistory || {}), ...(imported.fileHistory || {}) },

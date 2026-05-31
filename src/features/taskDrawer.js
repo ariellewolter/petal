@@ -113,6 +113,11 @@ export function openTaskDrawer(ctx, taskId) {
   const titleEl = document.getElementById('task-drawer-title');
   const metaEl = document.getElementById('task-drawer-meta');
   if (titleEl) titleEl.textContent = task.title || 'Untitled Task';
+  syncTaskDrawerDoneToggle(task);
+  if (titleEl) {
+    titleEl.style.textDecoration = task.done ? 'line-through' : '';
+    titleEl.style.opacity = task.done ? '0.7' : '';
+  }
   
   const meta = [];
   if (task.priority) meta.push(task.priority);
@@ -158,6 +163,45 @@ export function openTaskDrawer(ctx, taskId) {
   // Show drawer
   const drawer = document.getElementById('task-drawer');
   if (drawer) drawer.style.display = 'flex';
+}
+
+/**
+ * Sync the drawer header done checkbox with task state
+ */
+export function syncTaskDrawerDoneToggle(task) {
+  const doneToggle = document.getElementById('task-drawer-done-toggle');
+  if (!doneToggle || !task) return;
+  doneToggle.dataset.taskId = String(task.id);
+  doneToggle.classList.toggle('checked', !!task.done);
+  doneToggle.title = task.done ? 'Mark as not done' : 'Mark as done';
+}
+
+/**
+ * Refresh drawer UI after a task was toggled elsewhere
+ */
+export function refreshTaskDrawerIfOpen(ctx, toggledTaskId) {
+  if (!window.currentDrawerTaskId) return;
+  const drawerCtx = createDrawerContext(ctx);
+  const { tasks } = drawerCtx;
+  const openId = window.currentDrawerTaskId;
+  const toggled = (tasks || []).find(t => taskMatchesId(t, toggledTaskId));
+
+  if (taskMatchesId({ id: openId }, toggledTaskId)) {
+    const task = findActiveTask(tasks, openId);
+    if (task) {
+      syncTaskDrawerDoneToggle(task);
+      const titleEl = document.getElementById('task-drawer-title');
+      if (titleEl) {
+        titleEl.style.textDecoration = task.done ? 'line-through' : '';
+        titleEl.style.opacity = task.done ? '0.7' : '';
+      }
+    }
+    return;
+  }
+
+  if (toggled?.parentTaskId && taskMatchesId({ id: toggled.parentTaskId }, openId)) {
+    renderTaskDrawerSubtasks(drawerCtx);
+  }
 }
 
 /**
@@ -512,7 +556,7 @@ export function renderTaskDrawerSubtasks(ctx) {
   if (!container) return;
   
   // Find subtasks (tasks with parentTaskId matching this task), excluding deleted
-  const subtasks = tasks.filter(t => t.parentTaskId === task.id && !t.deletedAt);
+  const subtasks = tasks.filter(t => taskMatchesId({ id: t.parentTaskId }, task.id) && !t.deletedAt);
   
   if (subtasks.length === 0) {
     container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-dim);font-size:12px;">No subtasks</div>';
@@ -520,9 +564,10 @@ export function renderTaskDrawerSubtasks(ctx) {
   }
   
   container.innerHTML = subtasks.map(st => `
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center;">
-      <span style="font-size:13px;color:var(--text);">${esc(st.title)}</span>
-      <div style="display:flex;gap:6px;">
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
+      <button type="button" class="check-box ${st.done ? 'checked' : ''}" data-action="task:toggle" data-task-id="${st.id}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;" title="Toggle subtask"></button>
+      <span style="font-size:13px;color:var(--text);flex:1;min-width:0;${st.done ? 'text-decoration:line-through;opacity:0.7;' : ''}">${esc(st.title)}</span>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
         <button data-action="edit-task" data-task-id="${st.id}" data-is-subtask="false" data-project-id="${st.projectId || ''}" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;color:var(--text-dim);">Edit</button>
         <button class="btn-del btn-delete" data-action="delete" data-task-id="${st.id}" data-is-subtask="false" data-project-id="${st.projectId || ''}" data-parent-task-id="${st.parentTaskId || ''}" title="Delete" style="padding:4px 8px;min-width:28px;min-height:28px;background:none;border:1px solid var(--border);border-radius:4px;font-size:13px;cursor:pointer;color:var(--text-dim);display:flex;align-items:center;justify-content:center;">✕</button>
       </div>

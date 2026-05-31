@@ -384,6 +384,10 @@ export async function toggleTask(ctx, id) {
     await save();
     if (render) render();
   }
+
+  if (window.Petal?.features?.taskDrawer?.refreshTaskDrawerIfOpen) {
+    window.Petal.features.taskDrawer.refreshTaskDrawerIfOpen(ctx, id);
+  }
 }
 
 /**
