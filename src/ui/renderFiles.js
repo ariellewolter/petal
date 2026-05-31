@@ -4,6 +4,7 @@
 
 import { esc, escAttr } from '../utils/strings.js';
 import { fileIcon } from '../utils/strings.js';
+import { projectIdsMatch } from '../utils/projectHelpers.js';
 
 /**
  * Render files view
@@ -140,23 +141,20 @@ export async function renderFiles(containerEl, state, handlers) {
   
   // Filter by project if a project is selected
   if (currentFileProjectFilter && currentFileProjectFilter !== 'all') {
-    const projectIdNum = parseInt(currentFileProjectFilter);
+    const filterProjectId = currentFileProjectFilter;
     files = files.filter(f => {
-      // Check if file is linked to the selected project
       const fileProjects = f.projects || [];
       if (fileProjects.length === 0) return false;
       
       return fileProjects.some(p => {
-        // Handle both object format {id: ...} and direct ID format
         const pId = typeof p === 'object' && p !== null ? (p.id || p.projectId) : p;
         if (pId == null) return false;
-        const pIdNum = typeof pId === 'number' ? pId : parseInt(pId);
-        return pIdNum === projectIdNum;
+        return projectIdsMatch(pId, filterProjectId);
       });
     });
     
     if (window.__DEBUG__) {
-      console.log('🔍 Filtered by project:', projectIdNum, 'result:', files.length, 'files');
+      console.log('🔍 Filtered by project:', filterProjectId, 'result:', files.length, 'files');
     }
   }
   

@@ -1518,7 +1518,6 @@
       <div id="project-page-tab-milestones-panel" style="display:none;">
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;">
           <div id="milestones-timeline"></div>
-          <div id="project-milestones-panel-content" style="margin-top:16px;"></div>
         </div>
       </div>
 
@@ -2628,7 +2627,8 @@ function addNewFileToTask() {
 
 function unlinkFileFromTask(fileId) {
   if (window.Petal?.features?.taskDrawer?.unlinkFileFromTask) {
-    window.Petal.features.taskDrawer.unlinkFileFromTask(fileId);
+    const ctx = createPageContext();
+    window.Petal.features.taskDrawer.unlinkFileFromTask(ctx, fileId);
   } else {
     console.error('Task drawer module not loaded');
   }
@@ -2645,7 +2645,8 @@ function renderTaskDrawerSubtasks() {
 
 async function addSubtaskToTask() {
   if (window.Petal?.features?.taskDrawer?.addSubtaskToTask) {
-    await window.Petal.features.taskDrawer.addSubtaskToTask();
+    const ctx = createPageContext();
+    await window.Petal.features.taskDrawer.addSubtaskToTask(ctx);
   } else {
     console.error('Task drawer module not loaded');
   }

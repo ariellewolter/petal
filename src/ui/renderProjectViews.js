@@ -191,7 +191,7 @@ export function renderCellLog(ctx, project) {
   });
   html += '</select>';
   html += '</div>';
-  html += `<button onclick="window.Petal?.features?.projectOperations?.addCellLineToProject(${project.id})" style="padding:6px 12px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;font-weight:500;white-space:nowrap;">+ Add</button>`;
+  html += `<button type="button" data-action="cell-log:link-cell-line" data-project-id="${escAttrFunction(String(project.id))}" style="padding:6px 12px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;font-weight:500;white-space:nowrap;">+ Add</button>`;
   html += '</div>';
   
   // Display linked cell lines
@@ -202,8 +202,7 @@ export function renderCellLog(ctx, project) {
     linkedCellLines.forEach(cellLine => {
       html += '<div style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:4px;">';
       html += `<span style="font-size:12px;color:var(--text);">${escFunction(cellLine)}</span>`;
-      const cellLineJson = JSON.stringify(cellLine);
-      html += `<button onclick="window.Petal?.features?.projectOperations?.removeCellLineFromProject(${project.id}, ${escAttrFunction(cellLineJson)})" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;line-height:1;padding:0;width:16px;height:16px;display:flex;align-items:center;justify-content:center;" title="Remove">×</button>`;
+      html += `<button type="button" data-action="cell-log:unlink-cell-line" data-project-id="${escAttrFunction(String(project.id))}" data-cell-line="${escAttrFunction(cellLine)}" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;line-height:1;padding:0;width:16px;height:16px;display:flex;align-items:center;justify-content:center;" title="Remove">×</button>`;
       html += '</div>';
     });
     html += '</div>';
@@ -430,7 +429,7 @@ export function renderActiveArtifactsFiltered(ctx, project, projectTasks) {
     };
     const typeIcon = typeIcons[artifact.type] || '📦';
     
-    html += '<button type="button" data-action="artifact:open-detail" data-artifact-id="' + artifact.id + '" style="width:100%;text-align:left;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:all .15s;" onmouseover="this.style.borderColor=\'var(--rose-soft)\'" onmouseout="this.style.borderColor=\'var(--border)\'">';
+    html += `<button type="button" data-action="artifact:open-detail" data-artifact-id="${escAttrFunction(String(artifact.id))}" style="width:100%;text-align:left;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:all .15s;" onmouseover="this.style.borderColor='var(--rose-soft)'" onmouseout="this.style.borderColor='var(--border)'">`;
     html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">`;
     html += `<span style="font-size:18px;">${typeIcon}</span>`;
     html += `<div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--text);">${escFunction(artifact.name)} – ${latestVersion}</div>`;
@@ -984,48 +983,89 @@ export function renderProtocolRuns(ctx) {
  * Render Milestones Timeline
  */
 export function renderMilestonesTimeline(ctx) {
-  const { projects, esc: escFn, selectedProjectId: selectedProjectIdValue } = ctx;
+  const {
+    projects,
+    esc: escFn,
+    escAttr: escAttrFn,
+    selectedProjectId: selectedProjectIdValue,
+    normalizeProjectIdValue
+  } = ctx;
   const escFunction = escFn || esc;
-  
-  const selectedProjectId = selectedProjectIdValue || (typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null);
-  if (!selectedProjectId) return;
-  
-  const project = findProjectById(projects, selectedProjectId);
-  if (!project) return;
-  
+  const escAttrFunction = escAttrFn || escAttr;
+
+  let selectedProjectId = selectedProjectIdValue ||
+    (typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null);
+  if (!selectedProjectId) {
+    const selector = document.getElementById('matrix-project-select');
+    if (selector?.value) {
+      selectedProjectId = normalizeProjectIdValue
+        ? normalizeProjectIdValue(selector.value)
+        : selector.value;
+    }
+  }
+
   const timelineEl = document.getElementById('milestones-timeline');
+  const legacyPanelEl = document.getElementById('project-milestones-panel-content');
+  if (legacyPanelEl) {
+    legacyPanelEl.innerHTML = '';
+    legacyPanelEl.style.display = 'none';
+  }
   if (!timelineEl) return;
-  
-  const milestones = project.milestones || [];
-  
-  if (milestones.length === 0) {
-    timelineEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-dim);font-size:12px;">No milestones yet. Click + Milestone to create one.</div>';
+
+  if (!selectedProjectId) {
+    timelineEl.innerHTML =
+      '<div style="font-size:12px;color:var(--text-dim);padding:40px;text-align:center;">Please select a project first</div>';
     return;
   }
-  
-  let html = '<div style="position:relative;padding-left:24px;">';
+
+  const project = findProjectById(projects, selectedProjectId);
+  if (!project) {
+    timelineEl.innerHTML =
+      '<div style="font-size:12px;color:var(--text-dim);padding:40px;text-align:center;">Project not found</div>';
+    return;
+  }
+
+  const milestones = project.milestones || [];
+  const projectIdAttr = escAttrFunction(String(project.id));
+
+  let html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">';
+  html += '<h3 style="font-size:14px;font-weight:600;color:var(--text);margin:0;">Milestones</h3>';
+  html += '<button type="button" data-action="add-milestone" style="padding:6px 12px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;">＋ Add</button>';
+  html += '</div>';
+
+  if (milestones.length === 0) {
+    html += '<div style="text-align:center;padding:40px;color:var(--text-dim);font-size:12px;">No milestones yet. Click Add to create one.</div>';
+    timelineEl.innerHTML = html;
+    return;
+  }
+
+  html += '<div style="position:relative;padding-left:24px;">';
   html += '<div style="position:absolute;left:8px;top:0;bottom:0;width:2px;background:var(--border);"></div>';
-  
-  milestones.forEach((m, idx) => {
+
+  milestones.forEach((m) => {
     const dueDate = m.dueDate ? new Date(m.dueDate).toLocaleDateString() : '';
-    html += `<div style="position:relative;margin-bottom:20px;">`;
+    const milestoneIdAttr = escAttrFunction(String(m.id));
+    html += '<div style="position:relative;margin-bottom:20px;">';
     html += `<div style="position:absolute;left:-20px;top:4px;width:12px;height:12px;border-radius:50%;background:${m.done ? 'var(--sage)' : 'var(--rose)'};border:2px solid var(--surface);"></div>`;
-    html += `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;">`;
-    html += `<div style="display:flex;align-items:flex-start;gap:8px;">`;
-    html += `<input type="checkbox" ${m.done ? 'checked' : ''} onchange="toggleMilestone(${selectedProjectId}, ${m.id})" style="margin-top:2px;cursor:pointer;">`;
-    html += `<div style="flex:1;">`;
+    html += '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;">';
+    html += '<div style="display:flex;align-items:flex-start;gap:8px;">';
+    html += `<input type="checkbox" ${m.done ? 'checked' : ''} data-action="milestone:toggle" data-project-id="${projectIdAttr}" data-milestone-id="${milestoneIdAttr}" style="margin-top:2px;cursor:pointer;">`;
+    html += '<div style="flex:1;">';
     html += `<div style="font-size:14px;font-weight:500;color:var(--text);${m.done ? 'text-decoration:line-through;opacity:0.6;' : ''}">${escFunction(m.title)}</div>`;
     if (dueDate) {
       html += `<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Due: ${escFunction(dueDate)}</div>`;
     }
-    if (m.linkedTaskIds && m.linkedTaskIds.length > 0) {
+    if (m.linkedTaskIds?.length) {
       html += `<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Linked to ${m.linkedTaskIds.length} task(s)</div>`;
     }
-    html += `</div>`;
-    html += `<button onclick="deleteMilestone(${selectedProjectId}, ${m.id})" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:10px;cursor:pointer;">Delete</button>`;
-    html += `</div></div></div>`;
+    if (m.linkedFileIds?.length) {
+      html += `<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Linked to ${m.linkedFileIds.length} file(s)</div>`;
+    }
+    html += '</div>';
+    html += `<button type="button" data-action="milestone:delete" data-project-id="${projectIdAttr}" data-milestone-id="${milestoneIdAttr}" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:10px;cursor:pointer;">Delete</button>`;
+    html += '</div></div></div>';
   });
-  
+
   html += '</div>';
   timelineEl.innerHTML = html;
 }

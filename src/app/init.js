@@ -36,7 +36,7 @@ import { LANE_STAGES, MATRIX_STAGES, MATRIX_LANES, DEFAULT_BOARD_COLUMNS } from 
 import { getMatrixStage, isTaskBlocked, getAllTasks } from '../domain/models.js';
 import * as ordering from '../domain/ordering.js';
 import { today, parseDate, dueLabel, parseTime, formatTime } from '../utils/dates.js';
-import { esc, fileIcon, normalizePriorityValue, getEditOnclick, normalizeDueInput } from '../utils/strings.js';
+import { esc, escAttr, fileIcon, normalizePriorityValue, getEditOnclick, normalizeDueInput } from '../utils/strings.js';
 import * as uiModules from '../ui/index.js';
 import * as uiHelpers from '../ui/helpers.js';
 import * as uiHelpersNew from '../ui/uiHelpers.js';
@@ -140,6 +140,8 @@ export async function initApp() {
         renderProtocolRuns: ui.renderProtocolRuns,
         renderMilestonesTimeline: ui.renderMilestonesTimeline,
         renderProjectMilestones: ProjectOperations.renderProjectMilestones,
+        normalizeProjectIdValue: projectHelpers.normalizeProjectIdValue,
+        escAttr: escAttr,
         renderTaskItem: ui.renderTaskItem,
         selectedProjectId: window.selectedProjectId
       };
@@ -591,6 +593,48 @@ function exposeWindowFunctions() {
     window.addMilestone = async () => {
       const ctx = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
       await window.Petal.features.projectOperations.addMilestone(ctx);
+    };
+  }
+  if (typeof window.openArtifactDetail === 'undefined' && window.Petal?.features?.projectOperations?.openArtifactDetail) {
+    window.openArtifactDetail = (artifactId) => {
+      const ctx = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
+      window.Petal.features.projectOperations.openArtifactDetail(ctx, artifactId);
+    };
+  }
+  if (typeof window.closeArtifactDetail === 'undefined' && window.Petal?.features?.projectOperations?.closeArtifactDetail) {
+    window.closeArtifactDetail = window.Petal.features.projectOperations.closeArtifactDetail;
+  }
+  if (typeof window.openProtocolRunDetail === 'undefined' && window.Petal?.features?.projectOperations?.openProtocolRunDetail) {
+    window.openProtocolRunDetail = (runId) => {
+      const ctx = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
+      window.Petal.features.projectOperations.openProtocolRunDetail(ctx, runId);
+    };
+  }
+  if (typeof window.closeProtocolRunDetail === 'undefined' && window.Petal?.features?.projectOperations?.closeProtocolRunDetail) {
+    window.closeProtocolRunDetail = window.Petal.features.projectOperations.closeProtocolRunDetail;
+  }
+  if (typeof window.addFileToArtifact === 'undefined' && window.Petal?.features?.projectOperations?.addFileToArtifact) {
+    window.addFileToArtifact = async (artifactId) => {
+      const ctx = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
+      await window.Petal.features.projectOperations.addFileToArtifact(ctx, artifactId);
+    };
+  }
+  if (typeof window.saveArtifactNotes === 'undefined' && window.Petal?.features?.projectOperations?.saveArtifactNotes) {
+    window.saveArtifactNotes = async (artifactId) => {
+      const ctx = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
+      await window.Petal.features.projectOperations.saveArtifactNotes(ctx, artifactId);
+    };
+  }
+  if (typeof window.editFileNotes === 'undefined' && window.Petal?.features?.projectOperations?.editFileNotes) {
+    window.editFileNotes = async (fileId) => {
+      const ctx = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
+      await window.Petal.features.projectOperations.editFileNotes(ctx, fileId);
+    };
+  }
+  if (typeof window.addProtocolRunLogEntry === 'undefined' && window.Petal?.features?.projectOperations?.addProtocolRunLogEntry) {
+    window.addProtocolRunLogEntry = async (runId) => {
+      const ctx = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
+      await window.Petal.features.projectOperations.addProtocolRunLogEntry(ctx, runId);
     };
   }
   if (typeof window.switchProjectFilesTab === 'undefined' && window.Petal?.features?.projectOperations?.switchProjectPageTab) {

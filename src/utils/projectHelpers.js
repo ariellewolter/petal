@@ -76,6 +76,21 @@ export function findProjectById(projects, projectId) {
   return projects.find((p) => projectIdsMatch(p.id, projectId));
 }
 
+/** Whether projectId is in openProjects (Array or Set, with id normalization). */
+export function isProjectOpen(openProjects, projectId) {
+  if (!openProjects || projectId == null) return false;
+  if (openProjects instanceof Set) {
+    for (const id of openProjects) {
+      if (projectIdsMatch(id, projectId)) return true;
+    }
+    return false;
+  }
+  if (Array.isArray(openProjects)) {
+    return openProjects.some((id) => projectIdsMatch(id, projectId));
+  }
+  return false;
+}
+
 /** Whether a project object matches the given id. */
 export function projectMatchesId(project, projectId) {
   return !!project && projectIdsMatch(project.id, projectId);

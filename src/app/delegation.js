@@ -24,7 +24,7 @@ export function setupEventDelegation() {
     }
     
     // Create unified click handler
-    window._eventDelegationHandler = function(e) {
+    window._eventDelegationHandler = async function(e) {
     // Find the closest element with a data-action attribute
     // Try multiple methods to find the button
     let actionBtn = null;
@@ -259,7 +259,10 @@ export function setupEventDelegation() {
         window.selectedProjectId = projectId;
       }
       
-      if (window.addMilestone) {
+      const ctx = window.Petal?.handlers?.createPageContext?.() || window.createPageContext?.() || {};
+      if (window.Petal?.features?.projectOperations?.addMilestone) {
+        window.Petal.features.projectOperations.addMilestone(ctx);
+      } else if (window.addMilestone) {
         window.addMilestone();
       }
       return;
@@ -867,7 +870,10 @@ export function setupEventDelegation() {
     if (action === 'artifact:open-detail') {
       e.stopPropagation();
       const artifactId = actionBtn.getAttribute('data-artifact-id');
-      if (artifactId && window.openArtifactDetail) {
+      const ctx = window.Petal?.handlers?.createPageContext?.() || window.createPageContext?.() || {};
+      if (artifactId && window.Petal?.features?.projectOperations?.openArtifactDetail) {
+        window.Petal.features.projectOperations.openArtifactDetail(ctx, artifactId);
+      } else if (artifactId && window.openArtifactDetail) {
         window.openArtifactDetail(artifactId);
       }
       return;
@@ -877,7 +883,10 @@ export function setupEventDelegation() {
     if (action === 'protocol:open-run-detail') {
       e.stopPropagation();
       const runId = actionBtn.getAttribute('data-run-id');
-      if (runId && window.openProtocolRunDetail) {
+      const ctx = window.Petal?.handlers?.createPageContext?.() || window.createPageContext?.() || {};
+      if (runId && window.Petal?.features?.projectOperations?.openProtocolRunDetail) {
+        window.Petal.features.projectOperations.openProtocolRunDetail(ctx, runId);
+      } else if (runId && window.openProtocolRunDetail) {
         window.openProtocolRunDetail(runId);
       }
       return;
@@ -1168,6 +1177,108 @@ export function setupEventDelegation() {
       }
       return;
     }
+
+    if (action === 'artifact:close') {
+      e.stopPropagation();
+      if (window.Petal?.features?.projectOperations?.closeArtifactDetail) {
+        window.Petal.features.projectOperations.closeArtifactDetail();
+      } else if (window.closeArtifactDetail) {
+        window.closeArtifactDetail();
+      }
+      return;
+    }
+
+    if (action === 'artifact:add-file') {
+      e.stopPropagation();
+      const artifactId = actionBtn.getAttribute('data-artifact-id');
+      const ctx = window.Petal?.handlers?.createPageContext?.() || window.createPageContext?.() || {};
+      const id = artifactId && !Number.isNaN(Number(artifactId)) ? Number(artifactId) : artifactId;
+      if (id != null && window.Petal?.features?.projectOperations?.addFileToArtifact) {
+        await window.Petal.features.projectOperations.addFileToArtifact(ctx, id);
+      } else if (id != null && window.addFileToArtifact) {
+        window.addFileToArtifact(id);
+      }
+      return;
+    }
+
+    if (action === 'artifact:save-notes') {
+      e.stopPropagation();
+      const artifactId = actionBtn.getAttribute('data-artifact-id');
+      const ctx = window.Petal?.handlers?.createPageContext?.() || window.createPageContext?.() || {};
+      const id = artifactId && !Number.isNaN(Number(artifactId)) ? Number(artifactId) : artifactId;
+      if (id != null && window.Petal?.features?.projectOperations?.saveArtifactNotes) {
+        await window.Petal.features.projectOperations.saveArtifactNotes(ctx, id);
+      } else if (id != null && window.saveArtifactNotes) {
+        window.saveArtifactNotes(id);
+      }
+      return;
+    }
+
+    if (action === 'artifact:edit-file-notes') {
+      e.stopPropagation();
+      const fileId = actionBtn.getAttribute('data-file-id');
+      const ctx = window.Petal?.handlers?.createPageContext?.() || window.createPageContext?.() || {};
+      if (fileId && window.Petal?.features?.projectOperations?.editFileNotes) {
+        await window.Petal.features.projectOperations.editFileNotes(ctx, fileId);
+      } else if (fileId && window.editFileNotes) {
+        window.editFileNotes(fileId);
+      }
+      return;
+    }
+
+    if (action === 'protocol:close') {
+      e.stopPropagation();
+      if (window.Petal?.features?.projectOperations?.closeProtocolRunDetail) {
+        window.Petal.features.projectOperations.closeProtocolRunDetail();
+      } else if (window.closeProtocolRunDetail) {
+        window.closeProtocolRunDetail();
+      }
+      return;
+    }
+
+    if (action === 'protocol:add-log-entry') {
+      e.stopPropagation();
+      const runId = actionBtn.getAttribute('data-run-id');
+      const ctx = window.Petal?.handlers?.createPageContext?.() || window.createPageContext?.() || {};
+      const id = runId && !Number.isNaN(Number(runId)) ? Number(runId) : runId;
+      if (id != null && window.Petal?.features?.projectOperations?.addProtocolRunLogEntry) {
+        await window.Petal.features.projectOperations.addProtocolRunLogEntry(ctx, id);
+      } else if (id != null && window.addProtocolRunLogEntry) {
+        window.addProtocolRunLogEntry(id);
+      }
+      return;
+    }
+
+    if (action === 'protocol:open-linked-artifact') {
+      e.stopPropagation();
+      const artifactId = actionBtn.getAttribute('data-artifact-id');
+      const ctx = window.Petal?.handlers?.createPageContext?.() || window.createPageContext?.() || {};
+      const id = artifactId && !Number.isNaN(Number(artifactId)) ? Number(artifactId) : artifactId;
+      if (window.Petal?.features?.projectOperations?.closeProtocolRunDetail) {
+        window.Petal.features.projectOperations.closeProtocolRunDetail();
+      } else if (window.closeProtocolRunDetail) {
+        window.closeProtocolRunDetail();
+      }
+      if (id != null && window.Petal?.features?.projectOperations?.openArtifactDetail) {
+        window.Petal.features.projectOperations.openArtifactDetail(ctx, id);
+      } else if (id != null && window.openArtifactDetail) {
+        window.openArtifactDetail(id);
+      }
+      return;
+    }
+
+    if (action === 'milestone:delete') {
+      e.stopPropagation();
+      const projectId = actionBtn.getAttribute('data-project-id');
+      const milestoneId = actionBtn.getAttribute('data-milestone-id');
+      const ctx = window.Petal?.handlers?.createPageContext?.() || window.createPageContext?.() || {};
+      if (projectId && milestoneId && window.Petal?.features?.projectOperations?.deleteMilestone) {
+        await window.Petal.features.projectOperations.deleteMilestone(ctx, projectId, milestoneId);
+      } else if (projectId && milestoneId && window.deleteMilestone) {
+        window.deleteMilestone(projectId, milestoneId);
+      }
+      return;
+    }
     
     // Review actions
     if (action === 'review:weekly') {
@@ -1252,10 +1363,50 @@ export function setupEventDelegation() {
       }
       return;
     }
+
+    if (action === 'cell-log:link-cell-line') {
+      e.stopPropagation();
+      const projectId = actionBtn.getAttribute('data-project-id');
+      if (projectId && window.Petal?.features?.projectOperations?.addCellLineToProject) {
+        await window.Petal.features.projectOperations.addCellLineToProject(projectId);
+      }
+      return;
+    }
+
+    if (action === 'cell-log:unlink-cell-line') {
+      e.stopPropagation();
+      const projectId = actionBtn.getAttribute('data-project-id');
+      const cellLine = actionBtn.getAttribute('data-cell-line');
+      if (projectId && cellLine != null && window.Petal?.features?.projectOperations?.removeCellLineFromProject) {
+        await window.Petal.features.projectOperations.removeCellLineFromProject(projectId, cellLine);
+      }
+      return;
+    }
   };
   
     // Attach handler to root container (capture phase to catch early)
     appContainer.addEventListener('click', window._eventDelegationHandler, true);
+
+    if (window._eventDelegationChangeHandler) {
+      appContainer.removeEventListener('change', window._eventDelegationChangeHandler, true);
+    }
+    window._eventDelegationChangeHandler = async function(e) {
+      const target = e.target;
+      if (!target?.getAttribute?.('data-action')) return;
+      const action = target.getAttribute('data-action');
+      if (action !== 'milestone:toggle') return;
+
+      e.stopPropagation();
+      const projectId = target.getAttribute('data-project-id');
+      const milestoneId = target.getAttribute('data-milestone-id');
+      const ctx = window.Petal?.handlers?.createPageContext?.() || window.createPageContext?.() || {};
+      if (projectId && milestoneId && window.Petal?.features?.projectOperations?.toggleMilestone) {
+        await window.Petal.features.projectOperations.toggleMilestone(ctx, projectId, milestoneId);
+      } else if (projectId && milestoneId && window.toggleMilestone) {
+        await window.toggleMilestone(projectId, milestoneId);
+      }
+    };
+    appContainer.addEventListener('change', window._eventDelegationChangeHandler, true);
     
     console.log('✅ Event delegation set up');
   } finally {

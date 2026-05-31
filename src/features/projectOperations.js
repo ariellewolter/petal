@@ -506,7 +506,7 @@ export async function removePinnedFile(ctx, projectId, fileDataAttr) {
     }
     
     if (renderProjectFiles) {
-      await renderProjectFiles();
+      await renderProjectFiles(ctx);
     }
   } catch (e) {
     console.error('Error removing pinned file:', e);
@@ -566,8 +566,7 @@ export async function switchProjectPageTab(ctx, tab) {
   } else if (tab === 'milestones') {
     if (ui.renderMilestonesTimeline) {
       ui.renderMilestonesTimeline(ctx);
-    }
-    if (renderProjectMilestones) {
+    } else if (renderProjectMilestones) {
       renderProjectMilestones(ctx);
     }
   } else if (tab === 'artifacts') {
@@ -593,77 +592,11 @@ export async function switchProjectPageTab(ctx, tab) {
 /**
  * Render project milestones panel
  */
+/** @deprecated Use renderMilestonesTimeline; kept for ctx callbacks */
 export function renderProjectMilestones(ctx) {
-  const { projects, esc, normalizeProjectIdValue } = ctx;
-  const selectedProjectId = typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null;
-  
-  // Try to get project ID from selectedProjectId or from the matrix selector
-  let projectId = selectedProjectId;
-  if (!projectId) {
-    const selector = document.getElementById('matrix-project-select');
-    if (selector && selector.value) {
-      projectId = normalizeProjectIdValue ? normalizeProjectIdValue(selector.value) : selector.value;
-    }
-  } else {
-    projectId = normalizeProjectIdValue ? normalizeProjectIdValue(projectId) : projectId;
+  if (window.Petal?.ui?.renderMilestonesTimeline) {
+    window.Petal.ui.renderMilestonesTimeline(ctx);
   }
-  
-  if (!projectId) {
-    const panelEl = document.getElementById('project-milestones-panel-content');
-    if (panelEl) {
-      panelEl.innerHTML = '<div style="font-size:12px;color:var(--text-dim);padding:40px;text-align:center;">Please select a project first</div>';
-    }
-    return;
-  }
-  
-  const project = findProjectById(projects, projectId);
-  if (!project) {
-    const panelEl = document.getElementById('project-milestones-panel-content');
-    if (panelEl) {
-      panelEl.innerHTML = '<div style="font-size:12px;color:var(--text-dim);padding:40px;text-align:center;">Project not found</div>';
-    }
-    return;
-  }
-  
-  const panelEl = document.getElementById('project-milestones-panel-content');
-  if (!panelEl) return;
-  
-  const milestones = project.milestones || [];
-  const escFn = esc || ((s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'));
-  
-  let html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">';
-  html += '<h3 style="font-size:14px;font-weight:600;color:var(--text);margin:0;">Milestones</h3>';
-  html += '<button data-action="add-milestone" style="padding:6px 12px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;">＋ Add</button>';
-  html += '</div>';
-  
-  if (milestones.length > 0) {
-    milestones.forEach(m => {
-      const dueDate = m.dueDate ? new Date(m.dueDate).toLocaleDateString() : '';
-      html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;">`;
-      html += `<div style="display:flex;align-items:flex-start;gap:8px;">`;
-      // Use global wrapper functions for inline handlers
-      const toggleFn = typeof toggleMilestone === 'function' ? 'toggleMilestone' : 'window.Petal?.features?.projectOperations?.toggleMilestone';
-      const deleteFn = typeof deleteMilestone === 'function' ? 'deleteMilestone' : 'window.Petal?.features?.projectOperations?.deleteMilestone';
-      html += `<input type="checkbox" ${m.done ? 'checked' : ''} onchange="${toggleFn}(${projectId}, ${m.id})" style="margin-top:4px;cursor:pointer;">`;
-      html += `<div style="flex:1;"><div style="font-size:14px;font-weight:500;color:var(--text);${m.done ? 'text-decoration:line-through;opacity:0.6;' : ''}">${escFn(m.title)}</div>`;
-      if (dueDate) {
-        html += `<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Due: ${escFn(dueDate)}</div>`;
-      }
-      if (m.linkedTaskIds && m.linkedTaskIds.length > 0) {
-        html += `<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Linked to ${m.linkedTaskIds.length} task(s)</div>`;
-      }
-      if (m.linkedFileIds && m.linkedFileIds.length > 0) {
-        html += `<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Linked to ${m.linkedFileIds.length} file(s)</div>`;
-      }
-      html += `</div>`;
-      html += `<button onclick="${deleteFn}(${projectId}, ${m.id})" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:10px;cursor:pointer;">Delete</button>`;
-      html += `</div></div>`;
-    });
-  } else {
-    html += '<div style="font-size:12px;color:var(--text-dim);padding:40px;text-align:center;">No milestones yet. Click Add to create one.</div>';
-  }
-  
-  panelEl.innerHTML = html;
 }
 
 /**
@@ -729,9 +662,7 @@ export async function addMilestone(ctx) {
   // Refresh the milestones view if we're on that tab
   const currentProjectPageTab = typeof window.currentProjectPageTab !== 'undefined' ? window.currentProjectPageTab : null;
   if (currentProjectPageTab === 'milestones') {
-    if (renderProjectMilestones) {
-      renderProjectMilestones(ctx);
-    }
+    refreshMilestonesView(ctx);
   } else {
     // If not on milestones tab, switch to it and render
     if (switchProjectPageTab) {
@@ -743,13 +674,23 @@ export async function addMilestone(ctx) {
 /**
  * Toggle milestone completion
  */
+function refreshMilestonesView(ctx) {
+  if (window.Petal?.ui?.renderMilestonesTimeline) {
+    window.Petal.ui.renderMilestonesTimeline(ctx);
+  } else if (ctx.renderProjectMilestones) {
+    ctx.renderProjectMilestones(ctx);
+  }
+}
+
 export async function toggleMilestone(ctx, projectId, milestoneId) {
-  const { projects, save, renderProjectMilestones } = ctx;
+  const { projects, save } = ctx;
+  const milestoneIdNum = Number(milestoneId);
+  const resolvedMilestoneId = Number.isNaN(milestoneIdNum) ? milestoneId : milestoneIdNum;
   
   const project = findProjectById(projects, projectId);
   if (!project || !project.milestones) return;
   
-  const milestone = project.milestones.find(m => m.id === milestoneId);
+  const milestone = project.milestones.find(m => m.id == resolvedMilestoneId);
   if (!milestone) return;
   
   // Use store if available
@@ -760,7 +701,7 @@ export async function toggleMilestone(ctx, projectId, milestoneId) {
         return {
           ...p,
           milestones: (p.milestones || []).map(m => 
-            m.id === milestoneId ? { ...m, done: !m.done } : m
+            m.id == resolvedMilestoneId ? { ...m, done: !m.done } : m
           )
         };
       }
@@ -772,16 +713,16 @@ export async function toggleMilestone(ctx, projectId, milestoneId) {
     if (save) await save();
   }
   
-  if (renderProjectMilestones) {
-    renderProjectMilestones(ctx);
-  }
+  refreshMilestonesView(ctx);
 }
 
 /**
  * Delete a milestone
  */
 export async function deleteMilestone(ctx, projectId, milestoneId) {
-  const { projects, save, renderProjectMilestones } = ctx;
+  const { projects, save } = ctx;
+  const milestoneIdNum = Number(milestoneId);
+  const resolvedMilestoneId = Number.isNaN(milestoneIdNum) ? milestoneId : milestoneIdNum;
   
   const project = findProjectById(projects, projectId);
   if (!project || !project.milestones) return;
@@ -794,20 +735,18 @@ export async function deleteMilestone(ctx, projectId, milestoneId) {
         if (projectIdsMatch(p.id, projectId)) {
           return {
             ...p,
-            milestones: (p.milestones || []).filter(m => m.id !== milestoneId)
+            milestones: (p.milestones || []).filter(m => m.id != resolvedMilestoneId)
           };
         }
         return p;
       });
       updateStoreSafely({ projects: updatedProjects });
     } else {
-      project.milestones = project.milestones.filter(m => m.id !== milestoneId);
+      project.milestones = project.milestones.filter(m => m.id != resolvedMilestoneId);
       if (save) await save();
     }
     
-    if (renderProjectMilestones) {
-      renderProjectMilestones(ctx);
-    }
+    refreshMilestonesView(ctx);
   }
 }
 
@@ -1168,9 +1107,8 @@ export async function addSubtask(ctx, projId) {
   
   const lane = document.getElementById('sub-lane-' + projId)?.value || '';
   const stage = lane && LANE_STAGES[lane] ? LANE_STAGES[lane][0] : null;
-  
-  if (!p.subtasks) p.subtasks = [];
-  p.subtasks.push({
+
+  const newSubtask = {
     id: Date.now(),
     title,
     priority: document.getElementById('sub-pri-' + projId)?.value || 'medium',
@@ -1179,9 +1117,21 @@ export async function addSubtask(ctx, projId) {
     done: false,
     lane: lane || null,
     stage: stage || null
-  });
-  
-  if (save) await save();
+  };
+
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    const updatedProjects = (state.projects || []).map(project => {
+      if (!projectIdsMatch(project.id, projId)) return project;
+      return { ...project, subtasks: [...(project.subtasks || []), newSubtask] };
+    });
+    updateStoreSafely({ projects: updatedProjects });
+  } else {
+    if (!p.subtasks) p.subtasks = [];
+    p.subtasks.push(newSubtask);
+    if (save) await save();
+  }
+
   if (render) render();
   
   // Clear form
@@ -1200,14 +1150,28 @@ export async function addSubtask(ctx, projId) {
  */
 export async function toggleSubtask(ctx, projId, subId) {
   const { projects, save, render } = ctx;
-  
+
   const p = findProjectById(projects, projId);
   if (!p) return;
-  
-  const s = (p.subtasks || []).find(s => s.id === subId);
-  if (s) s.done = !s.done;
-  
-  if (save) await save();
+
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    const updatedProjects = (state.projects || []).map(project => {
+      if (!projectIdsMatch(project.id, projId)) return project;
+      return {
+        ...project,
+        subtasks: (project.subtasks || []).map(s =>
+          s.id === subId || String(s.id) === String(subId) ? { ...s, done: !s.done } : s
+        )
+      };
+    });
+    updateStoreSafely({ projects: updatedProjects });
+  } else {
+    const s = (p.subtasks || []).find(s => s.id === subId);
+    if (s) s.done = !s.done;
+    if (save) await save();
+  }
+
   if (render) render();
 }
 
@@ -1299,9 +1263,13 @@ export async function saveArtifactNotes(ctx, artifactId) {
   
   // Re-render artifacts if render function is available
   if (renderArtifactsFn) {
-    renderArtifactsFn();
+    renderArtifactsFn(ctx);
+  } else if (window.Petal?.ui?.renderArtifacts) {
+    window.Petal.ui.renderArtifacts(ctx);
   } else if (typeof window.renderArtifacts === 'function') {
     window.renderArtifacts();
+  } else if (window.Petal?.ui?.renderArtifacts) {
+    window.Petal.ui.renderArtifacts(ctx);
   }
 }
 
@@ -1333,7 +1301,7 @@ export function openArtifactDetail(ctx, artifactId) {
   
   let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">`;
   html += `<h2 style="font-size:20px;font-weight:600;color:var(--text);margin:0;">${escFunction(artifact.name)}</h2>`;
-  html += `<button onclick="closeArtifactDetail()" style="padding:6px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-size:12px;cursor:pointer;">Close</button>`;
+  html += `<button type="button" data-action="artifact:close" style="padding:6px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-size:12px;cursor:pointer;">Close</button>`;
   html += `</div>`;
   
   // Description
@@ -1348,7 +1316,7 @@ export function openArtifactDetail(ctx, artifactId) {
   html += `<div style="margin-bottom:20px;">`;
   html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">`;
   html += `<div style="font-size:13px;font-weight:600;color:var(--text);text-transform:uppercase;letter-spacing:.08em;">Files</div>`;
-  html += `<button onclick="addFileToArtifact(${artifactId})" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;">+ Add File</button>`;
+  html += `<button type="button" data-action="artifact:add-file" data-artifact-id="${escAttrFunction(String(artifactId))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;">+ Add File</button>`;
   html += `</div>`;
   
   if (artifactFiles.length === 0) {
@@ -1390,7 +1358,7 @@ export function openArtifactDetail(ctx, artifactId) {
       html += `</div>`;
       html += `<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">`;
       html += `<button class="file-open-btn" data-path="${escAttrFunction(JSON.stringify(file))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">Open</button>`;
-      html += `<button onclick="editFileNotes('${file.id}')" style="padding:4px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;font-size:10px;cursor:pointer;color:var(--text-dim);">Notes</button>`;
+      html += `<button type="button" data-action="artifact:edit-file-notes" data-file-id="${escAttrFunction(String(file.id))}" style="padding:4px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;font-size:10px;cursor:pointer;color:var(--text-dim);">Notes</button>`;
       html += `</div>`;
       html += `</div></div>`;
     });
@@ -1403,7 +1371,7 @@ export function openArtifactDetail(ctx, artifactId) {
   html += `<div style="margin-bottom:20px;">`;
   html += `<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em;">Notes</div>`;
   html += `<textarea id="artifact-notes-${artifactId}" style="width:100%;min-height:120px;padding:12px;font-size:12px;font-family:'Jost',sans-serif;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text);resize:vertical;" placeholder="Add notes about this artifact...">${escFunction(artifact.notes || '')}</textarea>`;
-  html += `<button onclick="saveArtifactNotes(${artifactId})" style="margin-top:8px;padding:6px 12px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:11px;cursor:pointer;">Save Notes</button>`;
+  html += `<button type="button" data-action="artifact:save-notes" data-artifact-id="${escAttrFunction(String(artifactId))}" style="margin-top:8px;padding:6px 12px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:11px;cursor:pointer;">Save Notes</button>`;
   html += `</div>`;
   
   // Version History
@@ -1475,9 +1443,13 @@ export async function openCreateArtifactModal(ctx) {
   if (save) await save();
   
   if (renderArtifactsFn) {
-    renderArtifactsFn();
+    renderArtifactsFn(ctx);
+  } else if (window.Petal?.ui?.renderArtifacts) {
+    window.Petal.ui.renderArtifacts(ctx);
   } else if (typeof window.renderArtifacts === 'function') {
     window.renderArtifacts();
+  } else if (window.Petal?.ui?.renderArtifacts) {
+    window.Petal.ui.renderArtifacts(ctx);
   }
 }
 
@@ -1924,9 +1896,10 @@ export function closeLinkCellLineModal() {
  * Open protocol run detail modal
  */
 export function openProtocolRunDetail(ctx, runId) {
-  const { projects, tasks, esc: escFn, selectedProjectId: selectedProjectIdValue } = ctx;
+  const { projects, tasks, esc: escFn, escAttr: escAttrFn, selectedProjectId: selectedProjectIdValue } = ctx;
   
   const escFunction = escFn || esc;
+  const escAttrFunction = escAttrFn || escAttr;
   const selectedProjectId = selectedProjectIdValue || (typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null);
   
   if (!selectedProjectId) return;
@@ -1956,7 +1929,7 @@ export function openProtocolRunDetail(ctx, runId) {
   
   let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">`;
   html += `<h2 style="font-size:20px;font-weight:600;color:var(--text);margin:0;">${escFunction(run.protocolName)}</h2>`;
-  html += `<button onclick="closeProtocolRunDetail()" style="padding:6px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-size:12px;cursor:pointer;">Close</button>`;
+  html += `<button type="button" data-action="protocol:close" style="padding:6px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-size:12px;cursor:pointer;">Close</button>`;
   html += `</div>`;
   
   // Status and timeline
@@ -1981,7 +1954,7 @@ export function openProtocolRunDetail(ctx, runId) {
   if (linkedArtifact) {
     html += `<div style="margin-bottom:20px;padding:12px;background:var(--bg2);border-radius:6px;">`;
     html += `<div style="font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">Linked Artifact</div>`;
-    html += `<div style="font-size:13px;color:var(--text);cursor:pointer;" onclick="closeProtocolRunDetail();openArtifactDetail(${linkedArtifact.id})">📦 ${escFunction(linkedArtifact.name)}</div>`;
+    html += `<button type="button" data-action="protocol:open-linked-artifact" data-artifact-id="${escAttrFunction(String(linkedArtifact.id))}" style="font-size:13px;color:var(--text);cursor:pointer;background:none;border:none;padding:0;text-align:left;">📦 ${escFunction(linkedArtifact.name)}</button>`;
     html += `</div>`;
   }
   
@@ -1989,7 +1962,7 @@ export function openProtocolRunDetail(ctx, runId) {
   html += `<div style="margin-bottom:20px;">`;
   html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">`;
   html += `<div style="font-size:13px;font-weight:600;color:var(--text);text-transform:uppercase;letter-spacing:.08em;">Daily Log</div>`;
-  html += `<button onclick="addProtocolRunLogEntry(${runId})" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;">+ Add Entry</button>`;
+  html += `<button type="button" data-action="protocol:add-log-entry" data-run-id="${escAttrFunction(String(runId))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;">+ Add Entry</button>`;
   html += `</div>`;
   
   if (!run.dailyLog || run.dailyLog.length === 0) {
@@ -2075,9 +2048,13 @@ export async function openCreateProtocolRunModal(ctx) {
   if (save) await save();
   
   if (renderProtocolRunsFn) {
-    renderProtocolRunsFn();
+    renderProtocolRunsFn(ctx);
+  } else if (window.Petal?.ui?.renderProtocolRuns) {
+    window.Petal.ui.renderProtocolRuns(ctx);
   } else if (typeof window.renderProtocolRuns === 'function') {
     window.renderProtocolRuns();
+  } else if (window.Petal?.ui?.renderProtocolRuns) {
+    window.Petal.ui.renderProtocolRuns(ctx);
   }
 }
 
@@ -2222,7 +2199,7 @@ export async function addWorkingLogEntry(ctx) {
   } else if (window.Petal?.ui?.renderWorkingLog) {
     window.Petal.ui.renderWorkingLog(ctx, project);
   } else if (typeof window.renderWorkingLog === 'function') {
-    window.renderWorkingLog(project);
+    window.renderWorkingLog(ctx, project);
   }
 }
 

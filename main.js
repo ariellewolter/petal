@@ -569,8 +569,12 @@ async function findVaultWithMostData(excludePath) {
   if (vaultManager?.config?.vault_path) push(vaultManager.config.vault_path);
 
   if (vaultManager) {
-    const discovered = await vaultManager.discoverVaults();
-    for (const v of discovered) push(v.path);
+    try {
+      const discovered = await vaultManager.discoverVaults();
+      for (const v of discovered) push(v.path);
+    } catch (err) {
+      safeWarn('Vault discovery failed while searching for data:', err);
+    }
   }
 
   if (process.platform === 'darwin') {
@@ -1631,12 +1635,23 @@ ipcMain.handle('storage:getVaultPath', () => {
   return getVaultPath();
 });
 
-ipcMain.handle('vault:getDetails', async () => {
+async function getVaultDetailsSnapshot() {
   const activeVaultPath = getVaultPath();
   const preferencesVaultPath = getStoredVaultPath();
   const configVaultPath = vaultManager?.config?.vault_path || null;
   const dataStats = activeVaultPath ? getVaultDataStats(activeVaultPath) : null;
-  const dataSourceWithContent = await findVaultWithMostData(null);
+
+  let dataSourceWithContent = null;
+  try {
+    const found = await findVaultWithMostData(null);
+    const norm = (p) => (p ? path.resolve(p) : null);
+    const activeNorm = norm(activeVaultPath);
+    if (found && norm(found) !== activeNorm) {
+      dataSourceWithContent = { path: found, ...getVaultDataStats(found) };
+    }
+  } catch (err) {
+    safeWarn('Could not scan for other vaults with data:', err);
+  }
 
   const norm = (p) => (p ? path.resolve(p) : null);
   const activeNorm = norm(activeVaultPath);
@@ -1651,13 +1666,24 @@ ipcMain.handle('vault:getDetails', async () => {
     configVaultPath,
     pathsAligned,
     dataStats,
-    dataSourceWithContent:
-      dataSourceWithContent && norm(dataSourceWithContent) !== activeNorm
-        ? { path: dataSourceWithContent, ...getVaultDataStats(dataSourceWithContent) }
-        : null,
+    dataSourceWithContent,
     dialogDefaultPath: getVaultDialogDefaultPath()
   };
+}
+
+ipcMain.handle('storage:getVaultDetails', async () => {
+  try {
+    return await getVaultDetailsSnapshot();
+  } catch (error) {
+    safeError('storage:getVaultDetails failed:', error);
+    return {
+      activeVaultPath: getVaultPath(),
+      error: error.message
+    };
+  }
 });
+
+ipcMain.handle('vault:getDetails', async () => getVaultDetailsSnapshot());
 
 // Recovery: List available backup files
 ipcMain.handle('storage:listBackups', async () => {

@@ -5,7 +5,7 @@ import { esc, escAttr, escJsonForDataAttr, escJsonForAttr, fileIcon } from '../u
 import { parseDate, dueLabel, today } from '../utils/dates.js';
 import { getMatrixStage, isTaskBlocked } from '../domain/models.js';
 import { LANE_STAGES } from '../domain/schema.js';
-import { getWorkflowLanesDisplay, filterTasksForProject, findProjectById } from '../utils/projectHelpers.js';
+import { getWorkflowLanesDisplay, filterTasksForProject, findProjectById, isProjectOpen } from '../utils/projectHelpers.js';
 import { getTaskSubtasks } from '../features/taskOperations.js';
 import { getTaskFiles } from '../features/fileManagement.js';
 
@@ -476,7 +476,7 @@ export function projectHTML(ctx, p, tasksFromStore = null, openProjectsFromStore
   const color = `var(--proj-${p.color || 1})`;
   const colorPale = `var(--proj-${p.color || 1}p)`;
   const dl = dueLabelFunction(p.due, true);
-  const isOpen = openProjectsToUse.has(p.id);
+  const isOpen = isProjectOpen(openProjectsToUse, p.id);
   
   const projectTasks = filterTasksForProject(tasksToUse, p.id, { excludeDeleted: true });
   const totalTasks = projectTasks.length;

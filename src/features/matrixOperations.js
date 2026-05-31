@@ -570,8 +570,13 @@ export async function addTaskToSubtask(ctx, projectId, subtaskId) {
     boardOrder: 1024
   };
   
-  if (tasks) tasks.unshift(newTask);
-  if (save) await save();
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    window.Petal.store.setState({ tasks: [newTask, ...(state.tasks || [])] });
+  } else {
+    if (tasks) tasks.unshift(newTask);
+    if (save) await save();
+  }
   await renderWorkflowMatrixFunction(ctx);
 }
 

@@ -2,7 +2,7 @@
 // Modal management functions for tasks, files, and related operations
 
 import { getDefaultLaneIds } from '../domain/schema.js';
-import { findProjectById } from '../utils/projectHelpers.js';
+import { findProjectById, projectIdsMatch } from '../utils/projectHelpers.js';
 
 /**
  * Helper: Update store with safety - preserves all state fields
@@ -36,16 +36,10 @@ export function openProjectAddTaskModal(ctx, projId) {
     window.currentModalContext = 'project';
   }
   
-  // Normalize projectId for comparison (handle string/number mismatch)
-  const normalizedProjId = typeof projId === 'string' ? parseInt(projId) : projId;
-  const p = projects.find(p => {
-    const pId = typeof p.id === 'string' ? parseInt(p.id) : p.id;
-    return pId === normalizedProjId || String(p.id) === String(projId);
-  });
+  const p = findProjectById(projects, projId);
   
   console.log('🔘 Project lookup:', { 
     projId, 
-    normalizedProjId, 
     projectFound: !!p, 
     projectName: p?.name,
     projectIds: projects?.slice(0, 3).map(p => ({ id: p.id, type: typeof p.id }))
@@ -145,16 +139,10 @@ export function openMatrixAddTaskModal(ctx) {
     window.currentModalContext = 'matrix';
   }
   
-  // Normalize projectId for comparison (handle string/number mismatch)
-  const normalizedProjId = typeof selectedProjectId === 'string' ? parseInt(selectedProjectId) : selectedProjectId;
-  const p = projects.find(p => {
-    const pId = typeof p.id === 'string' ? parseInt(p.id) : p.id;
-    return pId === normalizedProjId || String(p.id) === String(selectedProjectId);
-  });
+  const p = findProjectById(projects, selectedProjectId);
   
   console.log('🔘 Matrix project lookup:', { 
     selectedProjectId, 
-    normalizedProjId,
     projectFound: !!p, 
     projectName: p?.name 
   });
@@ -462,14 +450,7 @@ export async function addTaskToProjectFromModal(ctx, projId, title, priority, du
   });
   
   const normalizedProjId = normalizeProjectIdValue ? normalizeProjectIdValue(projId) : projId;
-  
-  // Try multiple comparison methods to handle type mismatches
-  const p = projects.find(p => {
-    const projectId = p.id;
-    return projectId === normalizedProjId || 
-           String(projectId) === String(normalizedProjId) ||
-           Number(projectId) === Number(normalizedProjId);
-  });
+  const p = findProjectById(projects, normalizedProjId);
   
   if (!p) {
     console.warn('⚠️ addTaskToProjectFromModal: Project not found:', {
@@ -552,14 +533,7 @@ export async function addTaskToMatrixFromModal(ctx, title, priority, due, lane) 
   const projects = state?.projects || ctx?.projects || [];
   
   const normalizedProjId = normalizeProjectIdValue ? normalizeProjectIdValue(selectedProjectId) : selectedProjectId;
-  
-  // Verify project exists
-  const p = projects.find(p => {
-    const projectId = p.id;
-    return projectId === normalizedProjId || 
-           String(projectId) === String(normalizedProjId) ||
-           Number(projectId) === Number(normalizedProjId);
-  });
+  const p = findProjectById(projects, normalizedProjId);
   
   if (!p) {
     console.warn('⚠️ addTaskToMatrixFromModal: Project not found:', {
@@ -733,67 +707,119 @@ export function closeAddFileModal() {
 }
 
 /**
- * Submit Add File Modal
+ * Collect file objects from the add-file modal (one entry per row).
  */
-export async function submitAddFileModal(ctx) {
-  const { addFileToProjectFromModal, addFileToMatrixFromModal, linkFilesToTaskFromModal } = ctx;
-  
-  const currentModalProjectId = typeof window.currentModalProjectId !== 'undefined' ? window.currentModalProjectId : null;
-  if (!currentModalProjectId) return;
-  
-  const container = document.getElementById('modal-files-container');
-  if (!container) return;
-  
-  const fileInputs = container.querySelectorAll('input[type="text"], input[type="file"]');
+function collectFilesFromModalContainer(container) {
   const filesToAdd = [];
-  
-  for (const input of fileInputs) {
-    if (input.type === 'file' && input.files && input.files.length > 0) {
-      const file = input.files[0];
-      if (window.electronAPI) {
-        const fileObj = {
+  const rows = container.querySelectorAll('.file-link-row');
+
+  for (const row of rows) {
+    const rowId = row.dataset.id;
+    const hidden = rowId ? document.getElementById(`modal-fl-${rowId}`) : null;
+    if (hidden?.value) {
+      try {
+        const parsed = JSON.parse(hidden.value);
+        if (parsed && (parsed.abs_path || parsed.share_url || parsed.onedrive_rel || parsed.name)) {
+          filesToAdd.push({
+            id: Date.now() + Math.random(),
+            note: '',
+            noteUpdatedAt: '',
+            ...parsed
+          });
+          continue;
+        }
+      } catch {
+        // fall through to manual inputs
+      }
+    }
+
+    const labelInput = rowId ? document.getElementById(`modal-fn-${rowId}`) : null;
+    const pathInput = rowId ? document.getElementById(`modal-fu-${rowId}`) : null;
+    const label = labelInput?.value.trim() || '';
+    const path = pathInput?.value.trim() || '';
+    if (!path && !label) continue;
+
+    if (window.electronAPI && path) {
+      filesToAdd.push({
+        id: Date.now() + Math.random(),
+        abs_path: path,
+        name: label || path.split(/[/\\]/).pop() || 'File',
+        label: label || path.split(/[/\\]/).pop() || 'File',
+        note: '',
+        noteUpdatedAt: ''
+      });
+    } else {
+      const url = path || label;
+      filesToAdd.push({
+        id: Date.now() + Math.random(),
+        share_url: url,
+        label: label || url,
+        note: '',
+        noteUpdatedAt: ''
+      });
+    }
+  }
+
+  // Legacy rows without .file-link-row — only standalone file inputs
+  if (filesToAdd.length === 0) {
+    container.querySelectorAll('input[type="file"]').forEach(input => {
+      if (input.files && input.files.length > 0 && window.electronAPI) {
+        const file = input.files[0];
+        filesToAdd.push({
           id: Date.now() + Math.random(),
           abs_path: file.path || file.name,
           name: file.name,
           label: file.name,
           note: '',
           noteUpdatedAt: ''
-        };
-        filesToAdd.push(fileObj);
+        });
       }
-    } else if (input.type === 'text' && input.value.trim()) {
-      const url = input.value.trim();
-      filesToAdd.push({
-        id: Date.now() + Math.random(),
-        share_url: url,
-        label: url,
-        note: '',
-        noteUpdatedAt: ''
-      });
-    }
+    });
   }
-  
+
+  return filesToAdd;
+}
+
+/**
+ * Submit Add File Modal
+ */
+export async function submitAddFileModal(ctx) {
+  const modalOps = window.Petal?.features?.modalOperations;
+  const addFileToProjectFromModalFn = ctx.addFileToProjectFromModal
+    || (modalOps && ((c, projId, files) => modalOps.addFileToProjectFromModal(c, projId, files)));
+  const addFileToMatrixFromModalFn = ctx.addFileToMatrixFromModal
+    || (modalOps && ((c, files) => modalOps.addFileToMatrixFromModal(c, files)));
+  const linkFilesToTaskFromModalFn = ctx.linkFilesToTaskFromModal
+    || (modalOps && ((c, taskId, files) => modalOps.linkFilesToTaskFromModal(c, taskId, files)));
+
+  const currentModalProjectId = typeof window.currentModalProjectId !== 'undefined' ? window.currentModalProjectId : null;
+  if (!currentModalProjectId) return;
+
+  const container = document.getElementById('modal-files-container');
+  if (!container) return;
+
+  const filesToAdd = collectFilesFromModalContainer(container);
+
   if (filesToAdd.length === 0) {
     alert('Please add at least one file');
     return;
   }
-  
+
   const currentModalContext = typeof window.currentModalContext !== 'undefined' ? window.currentModalContext : null;
   if (currentModalContext === 'project') {
-    if (addFileToProjectFromModal) {
-      await addFileToProjectFromModal(currentModalProjectId, filesToAdd);
+    if (addFileToProjectFromModalFn) {
+      await addFileToProjectFromModalFn(ctx, currentModalProjectId, filesToAdd);
     }
-    // If we're adding files from a task drawer, link them to the task
-    if (window.currentModalTaskId && linkFilesToTaskFromModal) {
-      await linkFilesToTaskFromModal(window.currentModalTaskId, filesToAdd);
+    if (window.currentModalTaskId && linkFilesToTaskFromModalFn) {
+      await linkFilesToTaskFromModalFn(ctx, window.currentModalTaskId, filesToAdd);
       window.currentModalTaskId = null;
     }
   } else if (currentModalContext === 'matrix') {
-    if (addFileToMatrixFromModal) {
-      await addFileToMatrixFromModal(filesToAdd);
+    if (addFileToMatrixFromModalFn) {
+      await addFileToMatrixFromModalFn(ctx, filesToAdd);
     }
   }
-  
+
   closeAddFileModal();
 }
 
@@ -819,7 +845,7 @@ export async function addFileToProjectFromModal(ctx, projId, filesToAdd) {
   if (window.Petal?.store) {
     const state = window.Petal.store.getState();
     const updatedProjects = (state.projects || []).map(proj => {
-      if (proj.id === projId) {
+      if (projectIdsMatch(proj.id, projId)) {
         return { ...proj, files: [...(proj.files || []), ...filesToAdd] };
       }
       return proj;

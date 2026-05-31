@@ -4,27 +4,29 @@
  * Export all data to JSON file
  */
 export function exportData() {
-  // Get current state from store or window globals
   const store = window.Petal?.store;
-  let tasks, projects, openProjects, events, recurringRules, settings;
-  
-  if (store) {
-    const state = store.getState();
-    tasks = state.tasks || [];
-    projects = state.projects || [];
-    openProjects = Array.isArray(state.openProjects) ? state.openProjects : [];
-    events = state.events || [];
-    recurringRules = state.recurringRules || [];
-    settings = state.settings || {};
-  } else {
-    // Fallback to window globals
-    tasks = window.tasks || [];
-    projects = window.projects || [];
-    openProjects = Array.isArray(window.openProjects) ? window.openProjects : (window.openProjects instanceof Set ? Array.from(window.openProjects) : []);
-    events = window.events || [];
-    recurringRules = window.recurringRules || [];
-    settings = window.settings || {};
+
+  if (store?.exportState) {
+    const data = window.storage.exportState(store.exportState());
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `petal-tasks-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    return;
   }
+
+  // Fallback when store is unavailable
+  const tasks = window.tasks || [];
+  const projects = window.projects || [];
+  const openProjects = Array.isArray(window.openProjects) ? window.openProjects : (window.openProjects instanceof Set ? Array.from(window.openProjects) : []);
+  const events = window.events || [];
+  const recurringRules = window.recurringRules || [];
+  const settings = window.settings || {};
   
   const data = window.storage.exportState({
     tasks,

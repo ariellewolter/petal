@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveState: (state) => ipcRenderer.invoke('storage:save', state),
   getDataPath: () => ipcRenderer.invoke('storage:getPath'),
   getVaultPath: () => ipcRenderer.invoke('storage:getVaultPath'),
+  getVaultDetails: () => ipcRenderer.invoke('storage:getVaultDetails'),
   chooseVaultFolder: () => ipcRenderer.invoke('storage:chooseVaultFolder'),
   copyVaultFromFolder: () => ipcRenderer.invoke('storage:copyVaultFromFolder'),
   checkVaultExists: () => ipcRenderer.invoke('storage:checkVaultExists'),
@@ -33,7 +34,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   vaultCopyFromFolder: () => ipcRenderer.invoke('storage:copyVaultFromFolder'),
   vaultSetActive: (vaultPath) => ipcRenderer.invoke('vault:setActive', vaultPath),
   vaultGetStatus: () => ipcRenderer.invoke('vault:getStatus'),
-  vaultGetDetails: () => ipcRenderer.invoke('vault:getDetails'),
+  vaultGetDetails: () => ipcRenderer.invoke('storage:getVaultDetails'),
   vaultEnsureResolved: () => ipcRenderer.invoke('vault:ensureResolved'),
   vaultOpenFolder: (vaultPath) => ipcRenderer.invoke('vault:openFolder', vaultPath),
   

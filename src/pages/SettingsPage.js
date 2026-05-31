@@ -22,13 +22,32 @@ export async function renderSettingsPage(containerEl, state, handlers) {
 
   if (isElectron) {
     try {
-      vaultDetails = await window.electronAPI.vaultGetDetails?.();
-      vaultPath = vaultDetails?.activeVaultPath || (await window.electronAPI.getVaultPath()) || 'Not set';
+      vaultPath = (await window.electronAPI.getVaultPath()) || 'Not set';
+    } catch (err) {
+      console.error('Error getting vault path:', err);
+      vaultPath = `Could not read vault path (${err.message || err})`;
+    }
+    try {
+      const getDetails =
+        window.electronAPI.getVaultDetails || window.electronAPI.vaultGetDetails;
+      if (getDetails) {
+        vaultDetails = await getDetails();
+        if (vaultDetails?.activeVaultPath) {
+          vaultPath = vaultDetails.activeVaultPath;
+        }
+      }
+    } catch (err) {
+      console.error('Error getting vault details:', err);
+    }
+    try {
       vaultStatus = await window.electronAPI.vaultGetStatus();
+    } catch (err) {
+      console.error('Error getting vault status:', err);
+    }
+    try {
       dataPath = await window.electronAPI.getDataPath();
     } catch (err) {
-      console.error('Error getting vault info:', err);
-      vaultPath = 'Error loading path';
+      console.error('Error getting data path:', err);
     }
   }
 

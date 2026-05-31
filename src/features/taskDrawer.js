@@ -43,6 +43,21 @@ function findActiveTask(tasks, taskId) {
   return tasks.find(t => t.id === taskId && !t.deletedAt);
 }
 
+function taskMatchesId(task, taskId) {
+  return task && (task.id === taskId || String(task.id) === String(taskId));
+}
+
+function persistTaskUpdate(taskId, updater) {
+  const store = window.Petal?.store;
+  if (!store) return false;
+  const state = store.getState();
+  const updatedTasks = (state.tasks || []).map(t =>
+    taskMatchesId(t, taskId) ? updater({ ...t }) : t
+  );
+  store.setState({ tasks: updatedTasks });
+  return true;
+}
+
 /**
  * Helper to get project name by ID
  */
@@ -227,7 +242,7 @@ export function renderTaskLogEntries(ctx) {
       <div class="task-log-entry">
         <div class="task-log-entry-header">
           <span class="task-log-entry-time">${esc(dateStr)}</span>
-          <button class="task-log-entry-delete" onclick="window.Petal?.features?.taskDrawer?.deleteTaskLogEntry('${entry.id}')" title="Delete">✕</button>
+          <button class="task-log-entry-delete" onclick="deleteTaskLogEntry('${escAttr(entry.id)}')" title="Delete">✕</button>
         </div>
         <div style="font-size:12px;color:var(--text);white-space:pre-wrap;">${esc(entry.text || '')}</div>
       </div>
@@ -246,19 +261,26 @@ export async function addTaskLogEntry(ctx) {
   
   const text = prompt('Enter log entry:');
   if (!text || !text.trim()) return;
-  
-  if (!task.log) task.log = [];
-  
+
   const entry = {
     id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     at: new Date().toISOString(),
     text: text.trim()
   };
-  
-  task.log.push(entry);
-  task.log.sort((a, b) => new Date(b.at) - new Date(a.at)); // Sort newest first
-  
-  await save();
+
+  const taskId = window.currentDrawerTaskId;
+  if (persistTaskUpdate(taskId, (t) => {
+    const log = [...(t.log || []), entry];
+    log.sort((a, b) => new Date(b.at) - new Date(a.at));
+    return { ...t, log };
+  })) {
+    renderTaskLogEntries(createDrawerContext(ctx));
+    return;
+  }
+
+  task.log = [...(task.log || []), entry];
+  task.log.sort((a, b) => new Date(b.at) - new Date(a.at));
+  if (save) await save();
   renderTaskLogEntries(ctx);
 }
 
@@ -271,8 +293,17 @@ export async function deleteTaskLogEntry(ctx, entryId) {
   const task = findActiveTask(tasks, window.currentDrawerTaskId);
   if (!task || !task.log) return;
   
+  const taskId = window.currentDrawerTaskId;
+  if (persistTaskUpdate(taskId, (t) => ({
+    ...t,
+    log: (t.log || []).filter(e => e.id !== entryId)
+  }))) {
+    renderTaskLogEntries(createDrawerContext(ctx));
+    return;
+  }
+
   task.log = task.log.filter(e => e.id !== entryId);
-  await save();
+  if (save) await save();
   renderTaskLogEntries(ctx);
 }
 
@@ -309,7 +340,7 @@ export function renderTaskDrawerFiles(ctx) {
         </div>
         <div class="task-drawer-file-actions">
           <button class="file-open-btn" data-path="${escAttr(JSON.stringify(file))}" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;">Open</button>
-          <button onclick="window.Petal?.features?.taskDrawer?.unlinkFileFromTask('${file.id}')" style="padding:4px 8px;background:none;border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;color:var(--text-dim);">Unlink</button>
+          <button onclick="unlinkFileFromTask('${escAttr(String(file.id))}')" style="padding:4px 8px;background:none;border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;color:var(--text-dim);">Unlink</button>
         </div>
       </div>
     `;
@@ -396,6 +427,18 @@ export async function linkExistingFileToTask(ctx) {
       return;
     }
     
+    if (persistTaskUpdate(window.currentDrawerTaskId, (t) => {
+      const fileIds = [...(t.fileIds || [])];
+      selected.forEach(fileId => {
+        if (!fileIds.includes(fileId)) fileIds.push(fileId);
+      });
+      return { ...t, fileIds };
+    })) {
+      renderTaskDrawerFiles(ctx);
+      document.body.removeChild(modal);
+      return;
+    }
+
     if (!task.fileIds) task.fileIds = [];
     selected.forEach(fileId => {
       if (!task.fileIds.includes(fileId)) {
@@ -442,9 +485,17 @@ export async function unlinkFileFromTask(ctx, fileId) {
   const task = findActiveTask(tasks, window.currentDrawerTaskId);
   if (!task) return;
   
+  if (persistTaskUpdate(window.currentDrawerTaskId, (t) => ({
+    ...t,
+    fileIds: (t.fileIds || []).filter(id => id !== fileId)
+  }))) {
+    renderTaskDrawerFiles(createDrawerContext(ctx));
+    return;
+  }
+
   if (!task.fileIds) task.fileIds = [];
   task.fileIds = task.fileIds.filter(id => id !== fileId);
-  await save();
+  if (save) await save();
   renderTaskDrawerFiles(ctx);
 }
 
@@ -520,13 +571,19 @@ export async function addSubtaskToTask(ctx) {
       parentTaskId: task.id,
       boardOrder: 1024
     };
-    
-    tasks.push(newSubtask);
+
     inputEl.value = '';
-    
-    await save();
-    // Don't call render() here - it re-renders the entire page and can affect the drawer
-    // We only need to update the subtasks list, which renderTaskDrawerSubtasks does
+
+    const store = window.Petal?.store;
+    if (store) {
+      const state = store.getState();
+      store.setState({ tasks: [newSubtask, ...(state.tasks || [])] });
+      renderTaskDrawerSubtasks(createDrawerContext(ctx));
+      return;
+    }
+
+    tasks.push(newSubtask);
+    if (save) await save();
     renderTaskDrawerSubtasks(ctx);
   } catch (error) {
     console.error('Error in addSubtaskToTask:', error);
