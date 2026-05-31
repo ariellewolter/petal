@@ -4979,6 +4979,23 @@ function toggleTlExpand(id) {
   }
 }
 
+function petalFilterProjectTasks(tasks, projectId, options) {
+  const fn = window.Petal?.utils?.filterTasksForProject;
+  if (fn) return fn(tasks, projectId, options || { excludeDeleted: true, topLevelOnly: true });
+  const opts = options || { excludeDeleted: true, topLevelOnly: true };
+  return (tasks || []).filter(t => {
+    if (opts.excludeDeleted && t.deletedAt) return false;
+    if (opts.topLevelOnly && t.parentTaskId) return false;
+    return String(t.projectId) === String(projectId);
+  });
+}
+
+function petalFindProject(projects, projectId) {
+  const fn = window.Petal?.utils?.findProjectById;
+  if (fn) return fn(projects, projectId);
+  return (projects || []).find(p => String(p.id) === String(projectId));
+}
+
 async function renderWorkflowCanvas(containerEl, state, handlers) {
   // If containerEl is the main workflow view, find the canvas container
   if (containerEl && containerEl.id === 'view-workflow') {
@@ -5013,9 +5030,7 @@ async function renderWorkflowCanvas(containerEl, state, handlers) {
     const pos = positions[project.id] || { x: 100 + (index % 4) * 300, y: 100 + Math.floor(index / 4) * 250 };
     
     // Get project tasks
-    const projectTasks = (tasks || []).filter(t => 
-      t.projectId === project.id && !t.deletedAt && !t.parentTaskId
-    );
+    const projectTasks = petalFilterProjectTasks(tasks, project.id, { excludeDeleted: true, topLevelOnly: true });
     
     const doneTasks = projectTasks.filter(t => t.done);
     const openTasks = projectTasks.filter(t => !t.done);
@@ -5216,8 +5231,8 @@ function drawWfEdges(projects, state) {
     projects.forEach(p2 => {
       if (p1.id === p2.id) return;
       
-      const p1Tasks = (tasks || []).filter(t => t.projectId === p1.id);
-      const p2Tasks = (tasks || []).filter(t => t.projectId === p2.id);
+      const p1Tasks = petalFilterProjectTasks(tasks, p1.id, { excludeDeleted: false, topLevelOnly: false });
+      const p2Tasks = petalFilterProjectTasks(tasks, p2.id, { excludeDeleted: false, topLevelOnly: false });
       
       const p1Lane = p1Tasks[0]?.workflowLane || p1Tasks[0]?.lane;
       const p2Lane = p2Tasks[0]?.workflowLane || p2Tasks[0]?.lane;
@@ -5344,12 +5359,10 @@ function setupPanZoom() {
 
 function openWfDetail(projectId, state, handlers) {
   const { projects, tasks } = state;
-  const project = (projects || []).find(p => p.id === projectId);
+  const project = petalFindProject(projects, projectId);
   if (!project) return;
   
-  const projectTasks = (tasks || []).filter(t => 
-    t.projectId === projectId && !t.deletedAt && !t.parentTaskId
-  );
+  const projectTasks = petalFilterProjectTasks(tasks, projectId, { excludeDeleted: true, topLevelOnly: true });
   
   const doneTasks = projectTasks.filter(t => t.done);
   const openTasks = projectTasks.filter(t => !t.done);
@@ -5714,7 +5727,7 @@ function updateActiveFilesPanel() {
     return `<div style="padding:8px;margin-bottom:8px;background:var(--bg2);border-radius:6px;">
       <div style="font-size:12px;font-weight:500;margin-bottom:4px;">${icon} ${esc(label)}</div>
       <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;">${esc(item.task.title)}</div>
-      <button class="file-open-btn" data-path="${escAttr(JSON.stringify(f))}" style="background:var(--rose);color:white;border:none;border-radius:4px;padding:4px 8px;font-size:10px;cursor:pointer;">Open</button>
+      <button type="button" class="file-open-btn" data-action="file:open" data-path="${escAttr(JSON.stringify(f))}" style="background:var(--rose);color:white;border:none;border-radius:4px;padding:4px 8px;font-size:10px;cursor:pointer;">Open</button>
     </div>`;
   }).join('');
 }
@@ -5889,7 +5902,7 @@ if (document.readyState === 'loading') {
 document.addEventListener('click', (e) => {
   // Handle file-open-btn buttons
   const btn = e.target.closest('.file-open-btn');
-  if (btn) {
+  if (btn && !btn.hasAttribute('data-action')) {
     e.preventDefault();
     const path = btn.dataset.path;
     if (path) {

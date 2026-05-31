@@ -83,6 +83,7 @@ export async function initApp() {
   
   if (appEl) {
     appEl.style.setProperty('display', 'grid', 'important');
+    appEl.style.setProperty('grid-template-columns', '220px minmax(0, 1fr)', 'important');
     appEl.style.setProperty('visibility', 'visible', 'important');
     appEl.style.setProperty('opacity', '1', 'important');
   }
@@ -291,6 +292,7 @@ export async function initApp() {
     
     if (appEl) {
       appEl.style.setProperty('display', 'grid', 'important');
+      appEl.style.setProperty('grid-template-columns', '220px minmax(0, 1fr)', 'important');
       appEl.style.setProperty('visibility', 'visible', 'important');
     }
     
@@ -637,10 +639,10 @@ function exposeWindowFunctions() {
       await window.Petal.features.projectOperations.addProtocolRunLogEntry(ctx, runId);
     };
   }
-  if (typeof window.switchProjectFilesTab === 'undefined' && window.Petal?.features?.projectOperations?.switchProjectPageTab) {
-    window.switchProjectFilesTab = (tab) => {
+  if (typeof window.switchProjectFilesTab === 'undefined' && window.Petal?.ui?.switchProjectFilesTab) {
+    window.switchProjectFilesTab = async (tab) => {
       const ctx = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
-      window.Petal.features.projectOperations.switchProjectPageTab(ctx, tab);
+      await window.Petal.ui.switchProjectFilesTab(ctx, tab);
     };
   }
   if (typeof window.openProjectAddFileModal === 'undefined' && window.Petal?.features?.modalOperations?.openProjectAddFileModal) {

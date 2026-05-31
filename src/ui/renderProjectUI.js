@@ -122,10 +122,17 @@ export function switchFilesTab(ctx, tab) {
 /**
  * Render files tab content
  */
+function getProjectFilesPanelEl(tab) {
+  return (
+    document.getElementById(`project-files-panel-${tab}`) ||
+    document.getElementById(`files-panel-${tab}`)
+  );
+}
+
 export async function renderFilesTab(ctx, tab, project) {
   const { tasks, fileHistory, esc: escFn, escAttr: escAttrFn, escJsonForDataAttr: escJsonForDataAttrFn, fileIcon: fileIconFn, getMatrixStage: getMatrixStageFn, getTaskFiles } = ctx;
   
-  const panelEl = document.getElementById(`files-panel-${tab}`);
+  const panelEl = getProjectFilesPanelEl(tab);
   if (!panelEl) return;
   
   const escFunction = escFn || esc;
@@ -149,7 +156,7 @@ export async function renderFilesTab(ctx, tab, project) {
           <div style="display:flex;align-items:center;gap:8px;">
             <span style="font-size:16px;">${icon}</span>
             <span style="flex:1;font-size:13px;color:var(--text);">${escFunction(label)}</span>
-            <button class="file-open-btn" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;">Open</button>
+            <button type="button" class="file-open-btn" data-action="file:open" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;">Open</button>
           </div>
         </div>`;
       });
@@ -171,7 +178,7 @@ export async function renderFilesTab(ctx, tab, project) {
             <span style="font-size:16px;">${icon}</span>
             <span style="flex:1;font-size:13px;color:var(--text);">${escFunction(label)}</span>
             <span style="font-size:10px;padding:2px 6px;background:var(--sage-pale);color:var(--sage);border-radius:10px;">Current</span>
-            <button class="file-open-btn" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;">Open</button>
+            <button type="button" class="file-open-btn" data-action="file:open" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;">Open</button>
           </div>
         </div>`;
       });
@@ -192,7 +199,7 @@ export async function renderFilesTab(ctx, tab, project) {
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
             <span style="font-size:16px;">${icon}</span>
             <span style="flex:1;font-size:13px;color:var(--text);">${escFunction(label)}</span>
-            <button class="file-open-btn" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;">Open</button>
+            <button type="button" class="file-open-btn" data-action="file:open" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;">Open</button>
           </div>
           <div style="padding-left:24px;font-size:11px;color:var(--text-dim);">
             ${(f.versions || []).map(v => `v${escFunction(v.version || v)}`).join(', ')}
@@ -233,7 +240,7 @@ export async function renderFilesTab(ctx, tab, project) {
           html += `<div style="display:flex;align-items:center;gap:8px;">
             <span style="font-size:14px;">${icon}</span>
             <span style="flex:1;font-size:12px;color:var(--text-dim);">${escFunction(label)}</span>
-            <button class="file-open-btn" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;">Open</button>
+            <button type="button" class="file-open-btn" data-action="file:open" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;">Open</button>
           </div>`;
         });
         html += '</div></div>';
@@ -250,11 +257,19 @@ export async function renderFilesTab(ctx, tab, project) {
 /**
  * Switch project files tab
  */
-export function switchProjectFilesTab(ctx, tab) {
+export async function switchProjectFilesTab(ctx, tab) {
   const tabs = ['all', 'current', 'versions', 'conflicts'];
+  if (!tabs.includes(tab)) return;
+
+  if (typeof window !== 'undefined') {
+    window.currentFilesTab = tab;
+  }
+
   tabs.forEach(t => {
-    const tabEl = document.getElementById(`project-files-tab-${t}`);
-    const panelEl = document.getElementById(`project-files-panel-${t}`);
+    const tabEl =
+      document.getElementById(`project-files-tab-${t}`) ||
+      document.getElementById(`files-tab-${t}`);
+    const panelEl = getProjectFilesPanelEl(t);
     if (tabEl && panelEl) {
       if (t === tab) {
         tabEl.classList.add('active');
@@ -265,6 +280,15 @@ export function switchProjectFilesTab(ctx, tab) {
       }
     }
   });
+
+  const selectedProjectId =
+    ctx?.selectedProjectId ??
+    (typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null);
+  const projects = ctx?.projects || window.Petal?.store?.getState()?.projects || [];
+  const project = findProjectById(projects, selectedProjectId);
+  if (project) {
+    await renderFilesTab(ctx, tab, project);
+  }
 }
 
 /**
@@ -431,7 +455,7 @@ export async function renderProjectFiles(ctx) {
         <div style="display:flex;align-items:center;gap:8px;">
           <span style="font-size:16px;">${icon}</span>
           <span style="flex:1;font-size:13px;color:var(--text);">${escFunction(label)}</span>
-          <button class="file-open-btn" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;">Open</button>
+          <button type="button" class="file-open-btn" data-action="file:open" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:11px;cursor:pointer;">Open</button>
         </div>
       </div>`;
     });
@@ -689,7 +713,7 @@ export function projectHTML(ctx, p, tasksFromStore = null, openProjectsFromStore
         </div>
           </div>
             </div>` : `<div style="margin-top:8px;">
-              <button onclick="toggleAddSubtaskToTask(${t.id})" style="width:100%;padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:11px;cursor:pointer;">+ Add Subtask</button>
+              <button type="button" data-action="task:toggle-add-subtask" data-task-id="${t.id}" style="width:100%;padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:11px;cursor:pointer;">+ Add Subtask</button>
               <div id="add-subtask-to-task-${t.id}" style="display:none;margin-top:8px;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;">
                 <input type="text" id="subtask-title-${t.id}" placeholder="Subtask title..." style="width:100%;margin-bottom:6px;padding:6px;font-size:12px;">
                 <div style="display:flex;gap:6px;">

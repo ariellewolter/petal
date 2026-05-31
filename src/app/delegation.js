@@ -268,17 +268,6 @@ export function setupEventDelegation() {
       return;
     }
     
-    // Switch project files tab
-    if (action === 'switch-project-files-tab') {
-      e.stopPropagation();
-      e.preventDefault();
-      const tab = actionBtn.getAttribute('data-tab');
-      if (tab && window.switchProjectFilesTab) {
-        window.switchProjectFilesTab(tab);
-      }
-      return;
-    }
-    
     // Add file to project
     if (action === 'add-file-to-project') {
       e.stopPropagation();
@@ -664,6 +653,30 @@ export function setupEventDelegation() {
       if (window.addSubtaskToTask) window.addSubtaskToTask();
       return;
     }
+
+    if (action === 'task-drawer:delete-log-entry') {
+      e.stopPropagation();
+      const entryId = actionBtn.getAttribute('data-entry-id');
+      const ctx = window.Petal?.handlers?.createPageContext?.() || window.createPageContext?.() || {};
+      if (entryId && window.Petal?.features?.taskDrawer?.deleteTaskLogEntry) {
+        await window.Petal.features.taskDrawer.deleteTaskLogEntry(ctx, entryId);
+      } else if (entryId && window.deleteTaskLogEntry) {
+        await window.deleteTaskLogEntry(entryId);
+      }
+      return;
+    }
+
+    if (action === 'task-drawer:unlink-file') {
+      e.stopPropagation();
+      const fileId = actionBtn.getAttribute('data-file-id');
+      const ctx = window.Petal?.handlers?.createPageContext?.() || window.createPageContext?.() || {};
+      if (fileId && window.Petal?.features?.taskDrawer?.unlinkFileFromTask) {
+        await window.Petal.features.taskDrawer.unlinkFileFromTask(ctx, fileId);
+      } else if (fileId && window.unlinkFileFromTask) {
+        window.unlinkFileFromTask(fileId);
+      }
+      return;
+    }
     
     // Task toggle (checkbox) — `toggle-task` is legacy markup; prefer `task:toggle`
     if (action === 'task:toggle' || action === 'toggle-task') {
@@ -791,16 +804,16 @@ export function setupEventDelegation() {
       return;
     }
     
-    // Project files tab switching
+    // Project files tab switching (expanded project card / files sidebar)
     if (action === 'project-files:switch-tab' || action === 'switch-project-files-tab') {
       e.stopPropagation();
       e.preventDefault();
       const tab = actionBtn.getAttribute('data-tab');
-      console.log('🔘 Switching project files tab:', { action, tab, hasFunction: !!window.switchProjectFilesTab });
-      if (tab && window.switchProjectFilesTab) {
-        window.switchProjectFilesTab(tab);
-      } else {
-        console.warn('⚠️ switchProjectFilesTab not available');
+      const ctx = window.Petal?.handlers?.createPageContext?.() || window.createPageContext?.() || {};
+      if (tab && window.Petal?.ui?.switchProjectFilesTab) {
+        await window.Petal.ui.switchProjectFilesTab(ctx, tab);
+      } else if (tab && window.switchProjectFilesTab) {
+        await window.switchProjectFilesTab(tab);
       }
       return;
     }
@@ -855,6 +868,31 @@ export function setupEventDelegation() {
       return;
     }
     
+    if (action === 'file:open') {
+      if (actionBtn.closest('#view-files')) {
+        return;
+      }
+      e.stopPropagation();
+      e.preventDefault();
+      const path =
+        actionBtn.getAttribute('data-path') ||
+        actionBtn.closest('.file-open-btn, .file-chip, .file-open-div')?.getAttribute('data-path');
+      if (path) {
+        try {
+          const fileLink = JSON.parse(path);
+          const openFileFn =
+            window.Petal?.features?.fileManagement?.openFile ||
+            window.openFile;
+          if (openFileFn) {
+            await openFileFn(fileLink);
+          }
+        } catch (err) {
+          console.error('Error opening file:', err);
+        }
+      }
+      return;
+    }
+
     // File actions
     if (action === 'file:toggle-note') {
       e.stopPropagation();

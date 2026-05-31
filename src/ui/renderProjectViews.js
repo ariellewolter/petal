@@ -773,7 +773,7 @@ export function renderFileItem(ctx, file, project, type) {
     html += `<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">Linked to ${linkedTasks.length} task${linkedTasks.length > 1 ? 's' : ''}</div>`;
   }
   html += '</div>';
-  html += `<button class="file-open-btn" data-path="${escAttrFunction(JSON.stringify(fileObj))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">Open</button>`;
+  html += `<button type="button" class="file-open-btn" data-action="file:open" data-path="${escAttrFunction(JSON.stringify(fileObj))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">Open</button>`;
   html += '</div>';
   return html;
 }
@@ -806,7 +806,7 @@ function renderFileItemFallback(file, project, type, escFn, escAttrFn, escJsonFo
     html += `<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">Linked to ${linkedTasks.length} task${linkedTasks.length > 1 ? 's' : ''}</div>`;
   }
   html += '</div>';
-  html += `<button class="file-open-btn" data-path="${escAttrFn(JSON.stringify(fileObj))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">Open</button>`;
+  html += `<button type="button" class="file-open-btn" data-action="file:open" data-path="${escAttrFn(JSON.stringify(fileObj))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">Open</button>`;
   html += '</div>';
   return html;
 }

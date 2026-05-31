@@ -386,7 +386,7 @@ function renderActiveFilesSidebar(activeFiles, showActiveFiles, handlers) {
               <div style="font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${icon} ${esc(label)}</div>
               ${file.taskIds && file.taskIds.length > 0 ? `<div style="font-size:9px;color:var(--text-dim);margin-top:2px;">${file.taskIds.length} task${file.taskIds.length > 1 ? 's' : ''}</div>` : ''}
             </div>
-            <button class="file-open-btn" data-path="${escAttr(JSON.stringify(file))}" 
+            <button type="button" class="file-open-btn" data-action="file:open" data-path="${escAttr(JSON.stringify(file))}" 
                     style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;margin-left:8px;">Open</button>
           </div>
         `;
