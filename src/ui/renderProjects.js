@@ -5,6 +5,7 @@
 import { esc } from '../utils/strings.js';
 import { today, parseDate, dueLabel } from '../utils/dates.js';
 import { getAllTasks } from '../domain/models.js';
+import { filterTasksForProject } from '../utils/projectHelpers.js';
 
 /**
  * Render projects view
@@ -259,28 +260,9 @@ function renderProjectCard(project, state, openSet) {
   // Normalize projectId comparison to handle both string and number types
   // Also handle decimal projectIds (e.g., 1771714801103.9167 should match project 1771714801103)
   const allTasks = getAllTasks(tasks || [], state.projects || []);
+  const projectTasks = filterTasksForProject(allTasks, project.id, { excludeDeleted: true });
   const normalizedProjectId = String(project.id).trim();
   const projectIdAsNumber = Number(project.id);
-  
-  const projectTasks = allTasks.filter(t => {
-    if (!t.projectId) return false;
-    
-    // Try exact string match first
-    const taskProjectId = String(t.projectId).trim();
-    if (taskProjectId === normalizedProjectId) return true;
-    
-    // If task projectId is a decimal number, check if the integer part matches
-    // This handles cases where task.projectId = 1771714801103.9167 and project.id = 1771714801103
-    const taskProjectIdNum = Number(t.projectId);
-    if (!isNaN(taskProjectIdNum) && !isNaN(projectIdAsNumber)) {
-      // Compare integer parts (floor both values)
-      if (Math.floor(taskProjectIdNum) === Math.floor(projectIdAsNumber)) {
-        return true;
-      }
-    }
-    
-    return false;
-  });
   
   // Debug logging to help diagnose missing tasks (always log for first project)
   const shouldLog = window.__DEBUG__ || (project.id === (state.projects || [])[0]?.id);
