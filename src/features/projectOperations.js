@@ -177,6 +177,8 @@ export async function addProject(ctx) {
   if (compCheckbox) compCheckbox.checked = false;
   if (writingCheckbox) writingCheckbox.checked = false;
   if (presentationCheckbox) presentationCheckbox.checked = false;
+  if (personalCheckbox) personalCheckbox.checked = false;
+  if (productCheckbox) productCheckbox.checked = false;
   
   // Clear brief fields
   const briefObjective = document.getElementById('pr-brief-objective');
@@ -1063,7 +1065,7 @@ export async function addFileToProject(ctx, projId) {
   if (window.Petal?.store) {
     const state = window.Petal.store.getState();
     const updatedProjects = (state.projects || []).map(proj => {
-      if (proj.id === projId) {
+      if (projectIdsMatch(proj.id, projId)) {
         return { ...proj, files: p.files };
       }
       return proj;
@@ -1256,10 +1258,26 @@ export async function saveArtifactNotes(ctx, artifactId) {
   const notesEl = document.getElementById(`artifact-notes-${artifactId}`);
   if (!notesEl) return;
   
-  artifact.notes = notesEl.value;
-  artifact.updatedAt = Date.now();
-  
-  if (save) await save();
+  const notesValue = notesEl.value;
+  const now = Date.now();
+
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    const updatedProjects = (state.projects || []).map(p => {
+      if (!projectIdsMatch(p.id, selectedProjectId)) return p;
+      return {
+        ...p,
+        artifacts: (p.artifacts || []).map(a =>
+          a.id === artifactId ? { ...a, notes: notesValue, updatedAt: now } : a
+        )
+      };
+    });
+    updateStoreSafely({ projects: updatedProjects });
+  } else {
+    artifact.notes = notesValue;
+    artifact.updatedAt = now;
+    if (save) await save();
+  }
   
   // Re-render artifacts if render function is available
   if (renderArtifactsFn) {
@@ -1357,7 +1375,7 @@ export function openArtifactDetail(ctx, artifactId) {
       }
       html += `</div>`;
       html += `<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">`;
-      html += `<button class="file-open-btn" data-path="${escAttrFunction(JSON.stringify(file))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">Open</button>`;
+      html += `<button type="button" class="file-open-btn" data-action="file:open" data-path="${escAttrFunction(JSON.stringify(file))}" style="padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">Open</button>`;
       html += `<button type="button" data-action="artifact:edit-file-notes" data-file-id="${escAttrFunction(String(file.id))}" style="padding:4px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;font-size:10px;cursor:pointer;color:var(--text-dim);">Notes</button>`;
       html += `</div>`;
       html += `</div></div>`;
@@ -1454,6 +1472,37 @@ export async function openCreateArtifactModal(ctx) {
 }
 
 /**
+ * Persist artifact file link via store
+ */
+function persistArtifactFileUpdate(projectId, artifactId, { fileId, newFile }) {
+  const now = Date.now();
+  const state = window.Petal.store.getState();
+  const updatedProjects = (state.projects || []).map(p => {
+    if (!projectIdsMatch(p.id, projectId)) return p;
+    let files = [...(p.files || [])];
+    if (newFile) {
+      const existingIdx = files.findIndex(f => f.id === fileId);
+      if (existingIdx === -1) {
+        files.push(newFile);
+      } else {
+        files[existingIdx] = { ...files[existingIdx], ...newFile, id: fileId };
+      }
+    }
+    return {
+      ...p,
+      files,
+      artifacts: (p.artifacts || []).map(a => {
+        if (a.id !== artifactId) return a;
+        const fileIds = [...(a.fileIds || [])];
+        if (!fileIds.includes(fileId)) fileIds.push(fileId);
+        return { ...a, fileIds, updatedAt: now };
+      })
+    };
+  });
+  updateStoreSafely({ projects: updatedProjects });
+}
+
+/**
  * Add file to artifact
  */
 export async function addFileToArtifact(ctx, artifactId) {
@@ -1487,13 +1536,12 @@ export async function addFileToArtifact(ctx, artifactId) {
       });
       
       let fileId;
+      let newFile = null;
       if (existingFile) {
         fileId = existingFile.id || Date.now();
-        if (!existingFile.id) existingFile.id = fileId;
       } else {
-        // Create new file entry
         fileId = Date.now();
-        const newFile = {
+        newFile = {
           id: fileId,
           label: fileLink.label || fileLink.name || 'File',
           abs_path: fileLink.abs_path || '',
@@ -1504,17 +1552,24 @@ export async function addFileToArtifact(ctx, artifactId) {
           createdAt: Date.now(),
           updatedAt: Date.now()
         };
-        project.files.push(newFile);
       }
-      
-      // Add to artifact's fileIds if not already there
-      if (!artifact.fileIds) artifact.fileIds = [];
-      if (!artifact.fileIds.includes(fileId)) {
-        artifact.fileIds.push(fileId);
-        artifact.updatedAt = Date.now();
+
+      if (window.Petal?.store) {
+        persistArtifactFileUpdate(selectedProjectId, artifactId, { fileId, newFile });
+      } else {
+        if (newFile) {
+          if (!project.files) project.files = [];
+          project.files.push(newFile);
+        } else if (!existingFile.id) {
+          existingFile.id = fileId;
+        }
+        if (!artifact.fileIds) artifact.fileIds = [];
+        if (!artifact.fileIds.includes(fileId)) {
+          artifact.fileIds.push(fileId);
+          artifact.updatedAt = Date.now();
+        }
+        if (save) await save();
       }
-      
-      if (save) await save();
       
       // Refresh the modal
       if (window.Petal?.features?.projectOperations?.openArtifactDetail) {
@@ -1531,8 +1586,6 @@ export async function addFileToArtifact(ctx, artifactId) {
     const url = prompt('File URL or path:');
     if (!url || !url.trim()) return;
     
-    // Create file entry
-    if (!project.files) project.files = [];
     const fileId = Date.now();
     const newFile = {
       id: fileId,
@@ -1542,18 +1595,20 @@ export async function addFileToArtifact(ctx, artifactId) {
       createdAt: Date.now(),
       updatedAt: Date.now()
     };
-    project.files.push(newFile);
-    
-    // Add to artifact
-    if (!artifact.fileIds) artifact.fileIds = [];
-    artifact.fileIds.push(fileId);
-    artifact.updatedAt = Date.now();
-    
-    if (save) await save();
+
+    if (window.Petal?.store) {
+      persistArtifactFileUpdate(selectedProjectId, artifactId, { fileId, newFile });
+    } else {
+      if (!project.files) project.files = [];
+      project.files.push(newFile);
+      if (!artifact.fileIds) artifact.fileIds = [];
+      artifact.fileIds.push(fileId);
+      artifact.updatedAt = Date.now();
+      if (save) await save();
+    }
     
     // Refresh the modal
     if (window.Petal?.features?.projectOperations?.openArtifactDetail) {
-      const ctx = createPageContext();
       window.Petal.features.projectOperations.openArtifactDetail(ctx, artifactId);
     } else if (typeof window.openArtifactDetail === 'function') {
       window.openArtifactDetail(artifactId);

@@ -289,5 +289,6 @@ function matchesSearch(task, query) {
   const searchTerm = query.toLowerCase().trim();
   const titleMatch = task.title?.toLowerCase().includes(searchTerm);
   const notesMatch = task.notes?.toLowerCase().includes(searchTerm);
-  return titleMatch || notesMatch;
+  const noteMatch = task.note?.toLowerCase().includes(searchTerm);
+  return titleMatch || notesMatch || noteMatch;
 }

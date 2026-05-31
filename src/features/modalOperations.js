@@ -3,6 +3,7 @@
 
 import { getDefaultLaneIds } from '../domain/schema.js';
 import { findProjectById, projectIdsMatch } from '../utils/projectHelpers.js';
+import { refreshWorkflowMatrix } from './matrixOperations.js';
 
 /**
  * Helper: Update store with safety - preserves all state fields
@@ -583,9 +584,7 @@ export async function addTaskToMatrixFromModal(ctx, title, priority, due, lane) 
     console.warn('Store not available in addTaskToMatrixFromModal, task not added');
   }
   
-  if (renderWorkflowMatrix) {
-    renderWorkflowMatrix();
-  }
+  await refreshWorkflowMatrix(ctx);
 }
 
 // ═══════════════════════ FILE MODALS ═══════════════════════
@@ -837,7 +836,7 @@ export async function addFileToProjectFromModal(ctx, projId, filesToAdd) {
   // Ensure files have canonical structure
   if (findOrCreateCanonicalFile) {
     filesToAdd.forEach(fileLink => {
-      findOrCreateCanonicalFile(projId, fileLink);
+      findOrCreateCanonicalFile(projId, fileLink, ctx);
     });
   }
   
@@ -886,7 +885,7 @@ export async function addFileToMatrixFromModal(ctx, filesToAdd) {
   if (window.Petal?.store) {
     const state = window.Petal.store.getState();
     const updatedProjects = (state.projects || []).map(proj => {
-      if (proj.id === selectedProjectId) {
+      if (projectIdsMatch(proj.id, selectedProjectId)) {
         return { ...proj, files: [...(proj.files || []), ...filesToAdd] };
       }
       return proj;
@@ -896,9 +895,7 @@ export async function addFileToMatrixFromModal(ctx, filesToAdd) {
     if (save) await save();
   }
   
-  if (renderWorkflowMatrix) {
-    renderWorkflowMatrix();
-  }
+  await refreshWorkflowMatrix(ctx);
 }
 
 /**

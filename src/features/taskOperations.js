@@ -203,7 +203,7 @@ export async function addTask(ctx, titleOverride = null, statusOverride = null) 
   
   if (projectId && fileLinks && fileLinks.length > 0 && findOrCreateCanonicalFile) {
     fileLinks.forEach(fileLink => {
-      const fileId = findOrCreateCanonicalFile(projectId, fileLink);
+      const fileId = findOrCreateCanonicalFile(projectId, fileLink, ctx);
       if (fileId && !fileIds.includes(fileId)) {
         fileIds.push(fileId);
       }
@@ -532,22 +532,16 @@ export function debounceSaveTaskNote(ctx, taskId, value) {
  */
 export function editSubtask(ctx, projId, subId) {
   const { projects } = ctx;
-  
-  // Handle both string and number IDs
-  const projIdNum = typeof projId === 'string' ? parseInt(projId) : Number(projId);
-  const subIdNum = typeof subId === 'string' ? parseInt(subId) : Number(subId);
-  const p = projects.find(project => {
-    const projIdCheck = Number(project.id);
-    return projIdCheck === projIdNum || project.id === projId || String(project.id) === String(projId);
-  });
+  const p = findProjectById(projects, projId);
   if (!p) {
     alert('Project not found. projId: ' + projId);
     return;
   }
-  const s = (p.subtasks || []).find(subtask => {
-    const subtaskIdCheck = Number(subtask.id);
-    return subtaskIdCheck === subIdNum || subtask.id === subId || String(subtask.id) === String(subId);
-  });
+  const subIdNum = Number(subId);
+  const resolvedSubId = Number.isNaN(subIdNum) ? subId : subIdNum;
+  const s = (p.subtasks || []).find(
+    (subtask) => subtask.id == resolvedSubId || String(subtask.id) === String(subId)
+  );
   if (!s) {
     alert('Subtask not found. subId: ' + subId + ' in project: ' + projId);
     return;

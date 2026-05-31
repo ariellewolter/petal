@@ -67,15 +67,15 @@ export function renderMatrixTaskCard(ctx, task, isSubtaskTask = false, subtaskId
   const isTaskBlockedFunction = isTaskBlockedFn || isTaskBlocked;
   const getAllTasksFunction = getAllTasksFn || getAllTasks;
   const selectedProjectIdValue = selectedProjectId || (typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null);
-  
-  const blocked = isTaskBlockedFunction(task);
+
   const allTasksList = getAllTasksFunction(tasks || []);
+  const blocked = isTaskBlockedFunction(task, allTasksList);
   const depTask = task.dependsOn ? allTasksList.find(d => d.id === task.dependsOn) : null;
   const parentTask = task.parentTaskId ? (tasks || []).find(pt => pt.id === task.parentTaskId) : null;
   const isTaskSubtask = !!task.parentTaskId;
   
   let filesHTML = '';
-  const taskFiles = getTaskFilesFunction(task);
+  const taskFiles = getTaskFilesFunction(task, ctx);
   if (taskFiles?.length) {
     filesHTML = taskFiles.map(f => {
       const label = f.label || f.name || 'File';
@@ -367,9 +367,11 @@ export async function renderWorkflowMatrix(ctx) {
       projectIds: (projects || []).map(p => ({ id: p.id, idType: typeof p.id, name: p.name }))
     });
     if (selectProjectForMatrix) {
-      selectProjectForMatrix(null);
+      await selectProjectForMatrix(ctx, null);
+    } else if (window.Petal?.features?.matrixOperations?.selectProjectForMatrix) {
+      await window.Petal.features.matrixOperations.selectProjectForMatrix(ctx, null);
     } else if (typeof window.selectProjectForMatrix === 'function') {
-      window.selectProjectForMatrix(null);
+      await window.selectProjectForMatrix(null);
     }
     return;
   }

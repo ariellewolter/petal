@@ -8,6 +8,26 @@ function matrixItemMatchesId(item, id) {
   return item && (item.id === id || String(item.id) === String(id));
 }
 
+/** Re-render project matrix with a proper page context. */
+export async function refreshWorkflowMatrix(ctx) {
+  const baseCtx = ctx || window.Petal?.handlers?.createPageContext?.() || {};
+  const context = {
+    ...baseCtx,
+    selectedProjectId:
+      baseCtx.selectedProjectId ??
+      (typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null)
+  };
+  if (typeof context.renderWorkflowMatrix === 'function') {
+    return context.renderWorkflowMatrix(context);
+  }
+  if (window.Petal?.ui?.renderWorkflowMatrix) {
+    return window.Petal.ui.renderWorkflowMatrix(context);
+  }
+  if (typeof window.renderWorkflowMatrix === 'function') {
+    return window.renderWorkflowMatrix(context);
+  }
+}
+
 function stageUpdatesForMatrix(stage) {
   if (stage === 'doing') {
     return { status: 'Doing', stage: 'doing', done: false };
@@ -54,11 +74,7 @@ export async function onMatrixDrop(ctx, event, lane, stage) {
   
   if (!draggedMatrixTaskId) return;
   
-  const renderWorkflowMatrixFunction = renderWorkflowMatrixFn || ((ctx) => {
-    if (typeof window.renderWorkflowMatrix === 'function') {
-      window.renderWorkflowMatrix();
-    }
-  });
+  const renderWorkflowMatrixFunction = renderWorkflowMatrixFn || refreshWorkflowMatrix;
 
   const draggedId = draggedMatrixTaskId;
   const store = window.Petal?.store;
@@ -304,17 +320,9 @@ export async function selectProjectForMatrix(ctx, projectId) {
       // Call the module function directly (not the HTML wrapper)
       // The HTML wrapper calls createPageContext() which has selectedProjectId: undefined
       await window.Petal.ui.renderWorkflowMatrix(contextWithProjectId);
-    } else if (typeof window.renderWorkflowMatrix === 'function') {
-      // Fallback: Ensure window.selectedProjectId is set before calling HTML wrapper
-      // The HTML wrapper will call createPageContext() which reads from window.selectedProjectId
+    } else {
       window.selectedProjectId = resolvedProjectId;
-      console.log('🔍 Setting window.selectedProjectId to:', resolvedProjectId, 'before calling HTML renderWorkflowMatrix');
-      // Also try calling with context if the function accepts it
-      if (window.renderWorkflowMatrix.length > 0) {
-        await window.renderWorkflowMatrix(contextWithProjectId);
-      } else {
-        await window.renderWorkflowMatrix();
-      }
+      await refreshWorkflowMatrix(contextWithProjectId);
     }
   } else {
     showProjectsListHome();
@@ -324,7 +332,7 @@ export async function selectProjectForMatrix(ctx, projectId) {
 /**
  * Open project view (switches to projects view and opens the project)
  */
-export function openProjectView(ctx, projectId) {
+export async function openProjectView(ctx, projectId) {
   if (!projectId) return;
   
   // Switch to projects view
@@ -362,13 +370,8 @@ export function openProjectView(ctx, projectId) {
     window.Petal.features.matrixOperations.selectProjectForMatrix(updatedCtx, projectId);
   } else if (window.selectProjectForMatrix) {
     window.selectProjectForMatrix(projectId);
-  } else if (typeof window.renderWorkflowMatrix === 'function') {
-    // Fallback: call renderWorkflowMatrix with context if available
-    if (window.renderWorkflowMatrix.length > 0) {
-      window.renderWorkflowMatrix(updatedCtx);
-    } else {
-      window.renderWorkflowMatrix();
-    }
+  } else {
+    await refreshWorkflowMatrix(updatedCtx);
   }
 }
 
@@ -416,8 +419,6 @@ export function toggleWorkflowMatrix(ctx) {
         const pageCtx = createPageContextFn ? createPageContextFn() : ctx;
         window.Petal.ui.renderMindMap(pageCtx, project, projectTasks, standaloneTasks, tasksBySubtask, MATRIX_LANES);
       }
-    } else if (typeof window.renderMindMap === 'function') {
-      window.renderMindMap();
     }
   }
 }
@@ -435,11 +436,7 @@ export async function addTaskToMatrix(ctx) {
     return id;
   });
   
-  const renderWorkflowMatrixFunction = renderWorkflowMatrixFn || ((ctx) => {
-    if (typeof window.renderWorkflowMatrix === 'function') {
-      window.renderWorkflowMatrix();
-    }
-  });
+  const renderWorkflowMatrixFunction = renderWorkflowMatrixFn || refreshWorkflowMatrix;
   
   const selectedProjectId = typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null;
   if (!selectedProjectId) return;
@@ -518,11 +515,7 @@ export async function addTaskToSubtask(ctx, projectId, subtaskId) {
     return id;
   });
   
-  const renderWorkflowMatrixFunction = renderWorkflowMatrixFn || ((ctx) => {
-    if (typeof window.renderWorkflowMatrix === 'function') {
-      window.renderWorkflowMatrix();
-    }
-  });
+  const renderWorkflowMatrixFunction = renderWorkflowMatrixFn || refreshWorkflowMatrix;
   
   const selectedProjectId = typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null;
   if (!selectedProjectId || selectedProjectId !== projectId) return;
@@ -586,11 +579,7 @@ export async function addTaskToSubtask(ctx, projectId, subtaskId) {
 export async function moveTaskInSubtask(ctx, taskId, subtaskId, currentOrder, direction) {
   const { tasks, save, renderWorkflowMatrix: renderWorkflowMatrixFn } = ctx;
   
-  const renderWorkflowMatrixFunction = renderWorkflowMatrixFn || ((ctx) => {
-    if (typeof window.renderWorkflowMatrix === 'function') {
-      window.renderWorkflowMatrix();
-    }
-  });
+  const renderWorkflowMatrixFunction = renderWorkflowMatrixFn || refreshWorkflowMatrix;
   
   const task = (tasks || []).find(t => t.id === taskId);
   if (!task || task.subtaskId !== subtaskId) return;
@@ -611,13 +600,23 @@ export async function moveTaskInSubtask(ctx, taskId, subtaskId, currentOrder, di
     return; // Can't move
   }
   
-  // Swap orders
   const otherTask = subtaskTasks[newIndex];
-  const tempOrder = task.subtaskOrder || currentIndex;
-  task.subtaskOrder = otherTask.subtaskOrder || newIndex;
-  otherTask.subtaskOrder = tempOrder;
-  
-  if (save) await save();
+  const tempOrder = task.subtaskOrder ?? currentIndex;
+  const otherOrder = otherTask.subtaskOrder ?? newIndex;
+
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    const updatedTasks = (state.tasks || []).map(t => {
+      if (t.id === taskId) return { ...t, subtaskOrder: otherOrder };
+      if (t.id === otherTask.id) return { ...t, subtaskOrder: tempOrder };
+      return t;
+    });
+    window.Petal.store.setState({ tasks: updatedTasks });
+  } else {
+    task.subtaskOrder = otherOrder;
+    otherTask.subtaskOrder = tempOrder;
+    if (save) await save();
+  }
   await renderWorkflowMatrixFunction(ctx);
 }
 
@@ -627,11 +626,7 @@ export async function moveTaskInSubtask(ctx, taskId, subtaskId, currentOrder, di
 export async function addFileToMatrixProject(ctx) {
   const { projects, getFileLinks, getFileLinksNormalized, save, renderWorkflowMatrix: renderWorkflowMatrixFn, toggleMatrixAddFile } = ctx;
   
-  const renderWorkflowMatrixFunction = renderWorkflowMatrixFn || ((ctx) => {
-    if (typeof window.renderWorkflowMatrix === 'function') {
-      window.renderWorkflowMatrix();
-    }
-  });
+  const renderWorkflowMatrixFunction = renderWorkflowMatrixFn || refreshWorkflowMatrix;
   
   const selectedProjectId = typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null;
   if (!selectedProjectId) return;
@@ -673,11 +668,7 @@ export async function addFileToMatrixProject(ctx) {
 export async function addFileToProjectFromActive(ctx) {
   const { projects, getFileLinks, getFileLinksNormalized, save, renderWorkflowMatrix: renderWorkflowMatrixFn } = ctx;
   
-  const renderWorkflowMatrixFunction = renderWorkflowMatrixFn || ((ctx) => {
-    if (typeof window.renderWorkflowMatrix === 'function') {
-      window.renderWorkflowMatrix();
-    }
-  });
+  const renderWorkflowMatrixFunction = renderWorkflowMatrixFn || refreshWorkflowMatrix;
   
   const selectedProjectId = typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null;
   if (!selectedProjectId) return;

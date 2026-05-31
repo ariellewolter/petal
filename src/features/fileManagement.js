@@ -832,7 +832,8 @@ export async function updateFileStatus(fileKey, status, ctx) {
     file.projects = file.projects.filter(p => projectIds.has(p.id));
     // Add any missing projects
     projectIds.forEach(projectId => {
-      if (!file.findProjectById(projects, projectId)) {
+      const alreadyLinked = (file.projects || []).some(p => projectIdsMatch(p.id, projectId));
+      if (!alreadyLinked) {
         const project = findProjectById(projects, projectId);
         if (project) {
           file.projects.push({

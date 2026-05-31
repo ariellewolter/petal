@@ -242,7 +242,7 @@ export function renderTaskLogEntries(ctx) {
       <div class="task-log-entry">
         <div class="task-log-entry-header">
           <span class="task-log-entry-time">${esc(dateStr)}</span>
-          <button class="task-log-entry-delete" onclick="deleteTaskLogEntry('${escAttr(entry.id)}')" title="Delete">✕</button>
+          <button type="button" class="task-log-entry-delete" data-action="task-drawer:delete-log-entry" data-entry-id="${escAttr(entry.id)}" title="Delete">✕</button>
         </div>
         <div style="font-size:12px;color:var(--text);white-space:pre-wrap;">${esc(entry.text || '')}</div>
       </div>
@@ -321,7 +321,7 @@ export function renderTaskDrawerFiles(ctx) {
   
   // Get task files using file management module
   const getTaskFiles = window.Petal?.features?.fileManagement?.getTaskFiles;
-  const taskFiles = getTaskFiles ? getTaskFiles(task) : [];
+  const taskFiles = getTaskFiles ? getTaskFiles(task, ctx) : [];
   
   if (taskFiles.length === 0) {
     container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-dim);font-size:12px;">No files linked</div>';
@@ -339,8 +339,8 @@ export function renderTaskDrawerFiles(ctx) {
           ${note}
         </div>
         <div class="task-drawer-file-actions">
-          <button class="file-open-btn" data-path="${escAttr(JSON.stringify(file))}" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;">Open</button>
-          <button onclick="unlinkFileFromTask('${escAttr(String(file.id))}')" style="padding:4px 8px;background:none;border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;color:var(--text-dim);">Unlink</button>
+          <button type="button" class="file-open-btn" data-action="file:open" data-path="${escAttr(JSON.stringify(file))}" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;">Open</button>
+          <button type="button" data-action="task-drawer:unlink-file" data-file-id="${escAttr(String(file.id))}" style="padding:4px 8px;background:none;border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;color:var(--text-dim);">Unlink</button>
         </div>
       </div>
     `;
