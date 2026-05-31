@@ -5,7 +5,7 @@ import { esc, escAttr, escJsonForDataAttr, escJsonForAttr, fileIcon } from '../u
 import { parseDate, dueLabel, today } from '../utils/dates.js';
 import { getMatrixStage, isTaskBlocked } from '../domain/models.js';
 import { LANE_STAGES } from '../domain/schema.js';
-import { getWorkflowLanesDisplay } from '../utils/projectHelpers.js';
+import { getWorkflowLanesDisplay, filterTasksForProject } from '../utils/projectHelpers.js';
 import { getTaskSubtasks } from '../features/taskOperations.js';
 import { getTaskFiles } from '../features/fileManagement.js';
 
@@ -306,6 +306,13 @@ export async function renderProjectFilesSidebar(ctx, tab, project) {
 }
 
 /**
+ * Render project brief (legacy alias — same target as header when no brief panel exists).
+ */
+export function renderProjectBrief(ctx, project) {
+  return renderProjectHeader(ctx, project);
+}
+
+/**
  * Render project header
  */
 export function renderProjectHeader(ctx, project) {
@@ -471,8 +478,7 @@ export function projectHTML(ctx, p, tasksFromStore = null, openProjectsFromStore
   const dl = dueLabelFunction(p.due, true);
   const isOpen = openProjectsToUse.has(p.id);
   
-  // Project metrics: tasks in this project (exclude deleted tasks)
-  const projectTasks = tasksToUse.filter(t => String(t.projectId) === String(p.id) && !t.deletedAt);
+  const projectTasks = filterTasksForProject(tasksToUse, p.id, { excludeDeleted: true });
   const totalTasks = projectTasks.length;
   const inProgressTasks = projectTasks.filter(t => t.status === 'Doing' && !t.done).length;
   const doneTasks = projectTasks.filter(t => t.done).length;

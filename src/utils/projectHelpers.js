@@ -50,9 +50,55 @@ export function normalizeListValue(value) {
  * @param {string|number} projectId - Project ID to look up
  * @returns {string} Project name or empty string if not found
  */
+/**
+ * Whether two IDs refer to the same project (string/number and decimal-safe).
+ */
+export function projectIdsMatch(a, b) {
+  if (a === undefined || a === null || a === '' || b === undefined || b === null || b === '') {
+    return false;
+  }
+  const aStr = String(a).trim();
+  const bStr = String(b).trim();
+  if (aStr === bStr) return true;
+  const aNum = Number(a);
+  const bNum = Number(b);
+  if (!Number.isNaN(aNum) && !Number.isNaN(bNum)) {
+    return Math.floor(aNum) === Math.floor(bNum);
+  }
+  return false;
+}
+
+/**
+ * Find a project by id (handles string/number and decimal project ids).
+ */
+export function findProjectById(projects, projectId) {
+  if (!projectId || !projects) return undefined;
+  return projects.find((p) => projectIdsMatch(p.id, projectId));
+}
+
+/**
+ * Whether a task belongs to a project.
+ */
+export function taskBelongsToProject(task, projectId) {
+  if (!task?.projectId) return false;
+  return projectIdsMatch(task.projectId, projectId);
+}
+
+/**
+ * Filter tasks for a project with optional deleted/subtask exclusions.
+ */
+export function filterTasksForProject(tasks, projectId, options = {}) {
+  const { excludeDeleted = true, topLevelOnly = false } = options;
+  return (tasks || []).filter((t) => {
+    if (excludeDeleted && t.deletedAt) return false;
+    if (topLevelOnly && t.parentTaskId) return false;
+    return taskBelongsToProject(t, projectId);
+  });
+}
+
 export function projectNameById(projects, projectId) {
   if (!projectId || !projects) return '';
-  const project = projects.find((p) => String(p.id) === String(projectId));
+  const project = findProjectById(projects, projectId);
   return project ? project.name : '';
 }
 

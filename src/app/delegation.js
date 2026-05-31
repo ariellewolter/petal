@@ -1111,9 +1111,9 @@ export function setupEventDelegation() {
     }
     if (action === 'project:matrix-back') {
       e.stopPropagation();
-      if (window.Petal?.features?.projectOperations?.selectProjectForMatrix) {
+      if (window.Petal?.features?.matrixOperations?.selectProjectForMatrix) {
         const ctx = window.Petal?.handlers?.createPageContext?.() || window.createPageContext?.() || {};
-        window.Petal.features.projectOperations.selectProjectForMatrix(ctx, null);
+        window.Petal.features.matrixOperations.selectProjectForMatrix(ctx, null);
       } else if (window.selectProjectForMatrix) {
         window.selectProjectForMatrix(null);
       }

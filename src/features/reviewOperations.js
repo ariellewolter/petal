@@ -2,6 +2,7 @@
 // Operations for weekly reviews and task analysis
 
 import { parseDate } from '../utils/dates.js';
+import { filterTasksForProject } from '../utils/projectHelpers.js';
 
 /**
  * Start weekly review - analyze tasks and projects for review
@@ -31,7 +32,7 @@ export function startWeeklyReview(ctx) {
   
   // Empty projects
   const emptyProjects = (projects || []).filter(p => {
-    const projectTasks = (tasks || []).filter(t => String(t.projectId) === String(p.id));
+    const projectTasks = filterTasksForProject(tasks || [], p.id, { excludeDeleted: false });
     return projectTasks.length === 0 && ((p.subtasks || []).length === 0);
   });
   

@@ -6,6 +6,14 @@
 import { esc } from '../utils/strings.js';
 import { parseDate } from '../utils/dates.js';
 import { getAllTasks } from '../domain/models.js';
+import { filterTasksForProject, findProjectById } from '../utils/projectHelpers.js';
+
+function projectTasksFor(tasks, projects, projectId) {
+  return filterTasksForProject(tasks || [], projectId, {
+    excludeDeleted: true,
+    topLevelOnly: true
+  });
+}
 
 // ═══════════════════════════════════════════════════════════
 // VIEW SWITCHING
@@ -222,11 +230,11 @@ export function renderWorkflowList() {
   
   if (selectedProjectId) {
     const beforeCount = activeProjects.length;
-    activeProjects = activeProjects.filter(p => p.id === selectedProjectId);
+    activeProjects = activeProjects.filter(p => findProjectById([p], selectedProjectId));
     console.log('renderWorkflowList: Filtered projects:', beforeCount, '->', activeProjects.length);
     if (activeProjects.length > 0) {
       console.log('renderWorkflowList: Filtered project:', activeProjects[0].name);
-      const projectTasks = (tasks || []).filter(t => t.projectId === selectedProjectId && !t.deletedAt && !t.parentTaskId);
+      const projectTasks = projectTasksFor(tasks, projects, selectedProjectId);
       console.log('renderWorkflowList: Tasks for selected project:', projectTasks.length);
     }
   }
@@ -235,7 +243,7 @@ export function renderWorkflowList() {
   const activeFilter = document.querySelector('.wf-filter-chip.on')?.textContent || 'All';
   if (activeFilter === 'Active') {
     activeProjects = activeProjects.filter(p => {
-      const projectTasks = (tasks || []).filter(t => t.projectId === p.id && !t.deletedAt && !t.parentTaskId);
+      const projectTasks = projectTasksFor(tasks, projects, p.id);
       return projectTasks.some(t => !t.done);
     });
   } else if (activeFilter === 'On Hold') {
@@ -255,7 +263,7 @@ export function renderWorkflowList() {
   // Calculate stats - if a single project is selected, show only that project's stats
   const totalProjects = activeProjects.length;
   const activeCount = activeProjects.filter(p => {
-    const projectTasks = (tasks || []).filter(t => t.projectId === p.id && !t.deletedAt && !t.parentTaskId);
+    const projectTasks = projectTasksFor(tasks, projects, p.id);
     return projectTasks.some(t => !t.done);
   }).length;
   
@@ -263,7 +271,7 @@ export function renderWorkflowList() {
   let openTasksCount = 0;
   let allProjectTasks = [];
   activeProjects.forEach(p => {
-    const projectTasks = (tasks || []).filter(t => t.projectId === p.id && !t.deletedAt && !t.parentTaskId);
+    const projectTasks = projectTasksFor(tasks, projects, p.id);
     allProjectTasks = allProjectTasks.concat(projectTasks);
   });
   openTasksCount = allProjectTasks.filter(t => !t.done).length;
@@ -293,7 +301,7 @@ export function renderWorkflowList() {
   let totalProgress = 0;
   let projectsWithTasks = 0;
   activeProjects.forEach(p => {
-    const projectTasks = (tasks || []).filter(t => t.projectId === p.id && !t.deletedAt && !t.parentTaskId);
+    const projectTasks = projectTasksFor(tasks, projects, p.id);
     if (projectTasks.length > 0) {
       const doneCount = projectTasks.filter(t => t.done).length;
       totalProgress += (doneCount / projectTasks.length) * 100;
@@ -345,9 +353,7 @@ export function renderWorkflowList() {
   const shouldAutoExpand = selectedProjectId && activeProjects.length === 1;
   
   tbodyEl.innerHTML = activeProjects.map((project, index) => {
-    const projectTasks = (tasks || []).filter(t => 
-      t.projectId === project.id && !t.deletedAt && !t.parentTaskId
-    );
+    const projectTasks = projectTasksFor(tasks, projects, project.id);
     const doneTasks = projectTasks.filter(t => t.done);
     const openTasks = projectTasks.filter(t => !t.done);
     const progress = projectTasks.length > 0 
@@ -512,7 +518,7 @@ export function buildWorkflowTimeline() {
   // Apply project filter (if a specific project is selected)
   const selectedProjectId = window.workflowSelectedProjectId;
   if (selectedProjectId) {
-    activeProjects = activeProjects.filter(p => p.id === selectedProjectId);
+    activeProjects = activeProjects.filter(p => findProjectById([p], selectedProjectId));
   }
   
   // Generate months (current year, 12 months)
@@ -543,7 +549,7 @@ export function buildWorkflowTimeline() {
   }
   
   activeProjects.forEach((p, pi) => {
-    const projectTasks = (tasks || []).filter(t => t.projectId === p.id && !t.deletedAt && !t.parentTaskId);
+    const projectTasks = projectTasksFor(tasks, projects, p.id);
     const doneTasks = projectTasks.filter(t => t.done);
     const progress = projectTasks.length > 0 
       ? Math.round((doneTasks.length / projectTasks.length) * 100) 

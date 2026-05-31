@@ -112,6 +112,7 @@ export async function initApp() {
     handlers.createPageContext = function() {
       // Create context directly from store (no circular calls)
       const state = appStore.getState();
+      const ui = window.Petal?.ui || {};
       return {
         store: appStore,
         state: state,
@@ -123,7 +124,17 @@ export async function initApp() {
         fileRegistry: window.fileRegistry || {},
         fileHistory: window.fileHistory || {},
         save: handlers.save || (() => {}),
-        render: window.render || (() => {})
+        render: window.render || (() => {}),
+        esc: window.Petal?.esc || esc,
+        dueLabel: window.Petal?.dueLabel || dueLabel,
+        renderTodayTimeline: ui.renderTodayTimeline,
+        renderActiveProtocols: ui.renderActiveProtocols,
+        renderCellLog: ui.renderCellLog,
+        renderCompWindow: ui.renderCompWindow,
+        renderDeadlinesHorizon: ui.renderDeadlinesHorizon,
+        renderProjectTasks: ui.renderProjectTasks,
+        renderTaskItem: ui.renderTaskItem,
+        selectedProjectId: window.selectedProjectId
       };
     };
   }

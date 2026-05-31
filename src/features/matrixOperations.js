@@ -2,6 +2,7 @@
 // Operations for workflow matrix view (drag-drop, task management, etc.)
 
 import { LANE_STAGES } from '../domain/schema.js';
+import { findProjectById, filterTasksForProject } from '../utils/projectHelpers.js';
 
 /**
  * Matrix drag state (module-level variable)
@@ -110,6 +111,40 @@ export async function onMatrixDrop(ctx, event, lane, stage) {
 // ═══════════════════════ MATRIX VIEW NAVIGATION ═══════════════════════
 
 /**
+ * Show the projects home: card list, not the matrix view or project dropdown.
+ */
+export function showProjectsListHome({ rerender = true } = {}) {
+  if (typeof window.selectedProjectId !== 'undefined') {
+    window.selectedProjectId = null;
+  }
+
+  const matrixView = document.getElementById('workflow-matrix-view');
+  const listView = document.getElementById('project-list-view');
+  const createFormSection = document.getElementById('project-selector-create-section');
+  const matrixSelect = document.getElementById('matrix-project-select');
+
+  if (matrixView) {
+    matrixView.style.display = 'none';
+    matrixView.style.visibility = 'hidden';
+  }
+  if (listView) {
+    listView.style.display = 'block';
+    listView.style.visibility = 'visible';
+  }
+  // Dropdown is for legacy matrix navigation; home uses project cards.
+  if (createFormSection) {
+    createFormSection.style.display = 'none';
+  }
+  if (matrixSelect) {
+    matrixSelect.value = '';
+  }
+
+  if (rerender && window.rerenderViewIfActive) {
+    window.rerenderViewIfActive('projects');
+  }
+}
+
+/**
  * Select project for matrix view
  */
 export async function selectProjectForMatrix(ctx, projectId) {
@@ -199,20 +234,7 @@ export async function selectProjectForMatrix(ctx, projectId) {
       }
     }
   } else {
-    const matrixView = document.getElementById('workflow-matrix-view');
-    const listView = document.getElementById('project-list-view');
-    if (matrixView) {
-      matrixView.style.display = 'none';
-    }
-    if (listView) {
-      listView.style.display = 'block';
-    }
-    // Show project creation form when back to project list
-    if (createFormSection) createFormSection.style.display = '';
-    // Re-render projects view
-    if (window.rerenderViewIfActive) {
-      window.rerenderViewIfActive('projects');
-    }
+    showProjectsListHome();
   }
 }
 
@@ -286,15 +308,9 @@ export function toggleWorkflowMatrix(ctx) {
     // Get parameters for renderMindMap
     const selectedProjectId = typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null;
     if (selectedProjectId && window.Petal?.ui?.renderMindMap) {
-      const project = (projects || []).find(p => p.id === selectedProjectId);
+      const project = findProjectById(projects || [], selectedProjectId);
       if (project) {
-        // Normalize projectId comparison to handle both string and number types
-        const normalizedProjectId = String(selectedProjectId).trim();
-        const projectTasks = (tasks || []).filter(t => {
-          if (!t.projectId) return false;
-          const taskProjectId = String(t.projectId).trim();
-          return taskProjectId === normalizedProjectId;
-        });
+        const projectTasks = filterTasksForProject(tasks || [], project.id, { excludeDeleted: true });
         const projectSubtasks = project.subtasks || [];
         const tasksBySubtask = {};
         const standaloneTasks = [];

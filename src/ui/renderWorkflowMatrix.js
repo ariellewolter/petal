@@ -4,6 +4,7 @@
 import { esc, escAttr, escJsonForAttr, fileIcon } from '../utils/strings.js';
 import { parseDate, dueLabel, today } from '../utils/dates.js';
 import { getMatrixStage, isTaskBlocked, getAllTasks } from '../domain/models.js';
+import { findProjectById, filterTasksForProject } from '../utils/projectHelpers.js';
 
 /**
  * Get matrix stage for subtask
@@ -325,13 +326,7 @@ export async function renderWorkflowMatrix(ctx) {
   if (taskToggle) taskToggle.textContent = '▶';
   if (fileToggle) fileToggle.textContent = '▶';
   
-  // Find project - handle both string and number ID types
-  const project = (projects || []).find(p => {
-    // Normalize both to strings for comparison (handles string/number mismatch)
-    const pId = String(p.id).trim();
-    const selectedId = String(selectedProjectIdValue).trim();
-    return pId === selectedId;
-  });
+  const project = findProjectById(projects || [], selectedProjectIdValue);
   
   if (!project) {
     console.warn('⚠️ renderWorkflowMatrix: Project not found', {
@@ -421,15 +416,7 @@ export async function renderWorkflowMatrix(ctx) {
     }
   });
   
-  // Get all tasks for this project (including subtasks - tasks with parentTaskId)
-  // Normalize projectId comparison to handle both string and number types
-  const projectTasks = (tasks || []).filter(t => {
-    if (!t.projectId) return false;
-    // Normalize both to strings for comparison (handles string/number mismatch)
-    const taskProjectId = String(t.projectId).trim();
-    const projectId = String(selectedProjectIdValue).trim();
-    return taskProjectId === projectId;
-  });
+  const projectTasks = filterTasksForProject(tasks || [], project.id, { excludeDeleted: true });
   
   // Update project title - ensure elements exist and are visible
   // First ensure workflow-matrix-view is visible
@@ -628,13 +615,21 @@ export async function renderWorkflowMatrix(ctx) {
     cellLinesEl.style.visibility = 'visible';
   }
   
-  // Render research orchestration dashboard
-  if (renderTodayTimeline) renderTodayTimeline(ctx, project, projectTasks);
-  if (renderActiveProtocols) renderActiveProtocols(ctx, project, projectTasks);
-  if (renderCellLog) renderCellLog(ctx, project);
-  if (renderCompWindow) renderCompWindow(ctx, project, projectTasks);
-  if (renderDeadlinesHorizon) renderDeadlinesHorizon(ctx, project, projectTasks);
-  if (renderProjectTasks) renderProjectTasks(ctx, project, projectTasks);
+  // Render research orchestration dashboard (fall back to Petal.ui when ctx omits render fns)
+  const ui = window.Petal?.ui || {};
+  const renderTodayTimelineFn = renderTodayTimeline || ui.renderTodayTimeline;
+  const renderActiveProtocolsFn = renderActiveProtocols || ui.renderActiveProtocols;
+  const renderCellLogFn = renderCellLog || ui.renderCellLog;
+  const renderCompWindowFn = renderCompWindow || ui.renderCompWindow;
+  const renderDeadlinesHorizonFn = renderDeadlinesHorizon || ui.renderDeadlinesHorizon;
+  const renderProjectTasksFn = renderProjectTasks || ui.renderProjectTasks;
+
+  if (renderTodayTimelineFn) renderTodayTimelineFn(ctx, project, projectTasks);
+  if (renderActiveProtocolsFn) renderActiveProtocolsFn(ctx, project, projectTasks);
+  if (renderCellLogFn) renderCellLogFn(ctx, project);
+  if (renderCompWindowFn) renderCompWindowFn(ctx, project, projectTasks);
+  if (renderDeadlinesHorizonFn) renderDeadlinesHorizonFn(ctx, project, projectTasks);
+  if (renderProjectTasksFn) renderProjectTasksFn(ctx, project, projectTasks);
   
   // Render sidebar
   await renderMatrixSidebarFunction(ctx, project, projectTasks);

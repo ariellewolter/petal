@@ -532,6 +532,37 @@ export async function renderActiveFiles(ctx, project, projectTasks) {
 }
 
 /**
+ * Render Tasks section on the project (workflow matrix) page
+ */
+export function renderProjectTasks(ctx, project, projectTasks) {
+  const contentEl = document.getElementById('project-tasks-content');
+  if (!contentEl) return;
+
+  const escFunction = ctx.esc || esc;
+  const renderTaskItemFn = ctx.renderTaskItem || renderTaskItem;
+
+  const visibleTasks = (projectTasks || []).filter(t => !t.deletedAt && !t.parentTaskId);
+
+  if (visibleTasks.length === 0) {
+    contentEl.innerHTML =
+      '<div style="text-align:center;padding:24px;color:var(--text-dim);font-size:12px;">No tasks yet. Use <strong>+ Task</strong> to add one.</div>';
+    return;
+  }
+
+  const sorted = [...visibleTasks].sort((a, b) => {
+    if (!!a.done !== !!b.done) return a.done ? 1 : -1;
+    return (a.title || '').localeCompare(b.title || '');
+  });
+
+  let html = '<div style="display:flex;flex-direction:column;gap:8px;">';
+  sorted.forEach(task => {
+    html += renderTaskItemFn(ctx, task);
+  });
+  html += '</div>';
+  contentEl.innerHTML = html;
+}
+
+/**
  * Render Progress Momentum view
  */
 export function renderProgressMomentum(ctx, project, projectTasks) {

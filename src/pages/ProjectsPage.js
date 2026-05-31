@@ -88,14 +88,13 @@ function bind(container, features) {
           })
         };
         features.matrixOperations.openProjectView(ctx, projectId);
-      } else if (projectId && features?.projectOperations?.selectProjectForMatrix) {
-        // Fallback: use selectProjectForMatrix which also opens the project
+      } else if (projectId && features?.matrixOperations?.selectProjectForMatrix) {
         const ctx = window.Petal?.handlers?.createPageContext?.() || {
           tasks: currentState.tasks || [],
           projects: currentState.projects || [],
           render: window.render || (() => {})
         };
-        features.projectOperations.selectProjectForMatrix(ctx, projectId);
+        features.matrixOperations.selectProjectForMatrix(ctx, projectId);
       } else if (projectId && window.selectProjectForMatrix) {
         window.selectProjectForMatrix(projectId);
       }
@@ -104,8 +103,9 @@ function bind(container, features) {
     
     if (action === 'select-project-matrix' || btn.textContent.includes('📊')) {
       // Open workflow matrix for project
-      if (projectId && features?.projectOperations?.selectProjectForMatrix) {
-        features.projectOperations.selectProjectForMatrix(projectId);
+      if (projectId && features?.matrixOperations?.selectProjectForMatrix) {
+        const ctx = window.Petal?.handlers?.createPageContext?.() || {};
+        features.matrixOperations.selectProjectForMatrix(ctx, projectId);
       } else if (projectId && window.selectProjectForMatrix) {
         window.selectProjectForMatrix(projectId);
       }
@@ -353,6 +353,11 @@ export function renderProjectsPage(container, state, features) {
     containerId: projectContainer.id,
     parentId: projectContainer.parentElement?.id 
   });
+
+  // Projects home = card list (hide matrix + selector unless a project is open)
+  if (!window.selectedProjectId && window.Petal?.features?.matrixOperations?.showProjectsListHome) {
+    window.Petal.features.matrixOperations.showProjectsListHome({ rerender: false });
+  }
   
   // Ensure the view container is visible - FORCE it
   // Remove any classes that might hide it FIRST
