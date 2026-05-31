@@ -2096,8 +2096,9 @@ function refreshProjectSelects() {
   // Use module version if available
   if (window.Petal?.ui?.refreshProjectSelects) {
     window.Petal.ui.refreshProjectSelects(state);
+  } else if (typeof window.refreshProjectSelects === 'function' && window.refreshProjectSelects !== refreshProjectSelects) {
+    window.refreshProjectSelects();
   } else {
-    // Minimal fallback - just log error
     console.error('refreshProjectSelects module not loaded');
   }
 }
@@ -4114,10 +4115,11 @@ function renderCompWindow(project, projectTasks) {
       const state = window.Petal?.store?.getState() || {};
       project = (state.projects || []).find(p => p.id === selectedProjectId);
       if (!project) return;
+      const matchProject = window.Petal?.utils?.projectHelpers?.taskBelongsToProject
+        || ((task, id) => String(task.projectId) === String(id));
       projectTasks = (state.tasks || []).filter(t => {
         if (t.deletedAt) return false;
-        const taskProjectId = t.projectId ? (typeof t.projectId === 'number' ? t.projectId : parseInt(t.projectId)) : null;
-        return taskProjectId === selectedProjectId;
+        return matchProject(t, selectedProjectId);
       });
     }
     window.Petal.ui.renderCompWindow(ctx, project, projectTasks);
