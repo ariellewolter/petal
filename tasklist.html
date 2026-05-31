@@ -1291,7 +1291,7 @@
   <!-- ═══════════════════════════════════ PROJECTS VIEW ═══ -->
   <div id="view-projects" class="view-projects-hidden" style="display:none;width:100%;max-width:100%;box-sizing:border-box;">
     <!-- Project Selector and Create Form -->
-    <div id="project-selector-create-section" style="display:flex;gap:16px;margin-bottom:24px;align-items:flex-start;">
+    <div id="project-selector-create-section" style="display:none;gap:16px;margin-bottom:24px;align-items:flex-start;">
       <div style="flex:1;">
         <label style="font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-dim);display:block;margin-bottom:6px;">Select Project</label>
         <select id="matrix-project-select" onchange="selectProjectForMatrix(this.value)" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px;font-family:'Jost',sans-serif;cursor:pointer;">
@@ -1529,6 +1529,7 @@
         <button class="filter-chip"        data-action="project:filter" data-filter="active">Active</button>
         <button class="filter-chip"        data-action="project:filter" data-filter="done">Complete</button>
       </div>
+      <button class="btn-export" data-action="review:weekly" style="background:var(--sage-pale);color:var(--sage);border-color:var(--sage);padding:8px 14px;font-size:11px;">📋 Weekly Review</button>
     </div>
     <div id="project-container"></div>
     </div>
@@ -1720,6 +1721,13 @@ function createPageContext() {
     detectFileConflicts: window.Petal?.ui?.detectFileConflicts,
     renderLane: window.Petal?.ui?.renderLane,
     renderUnassignedLane: window.Petal?.ui?.renderUnassignedLane,
+    renderTodayTimeline: window.Petal?.ui?.renderTodayTimeline,
+    renderActiveProtocols: window.Petal?.ui?.renderActiveProtocols,
+    renderCellLog: window.Petal?.ui?.renderCellLog,
+    renderCompWindow: window.Petal?.ui?.renderCompWindow,
+    renderDeadlinesHorizon: window.Petal?.ui?.renderDeadlinesHorizon,
+    renderProjectTasks: window.Petal?.ui?.renderProjectTasks,
+    renderTaskItem: window.Petal?.ui?.renderTaskItem,
     // Utility functions
     esc: window.Petal?.esc || window.esc,
     escAttr: window.Petal?.utils?.strings?.escAttr || window.escAttr,
@@ -6426,12 +6434,12 @@ window.updatePlannerPeriodLabel = updatePlannerPeriodLabel;
 window.buildPlannerSidebar = buildPlannerSidebar;
 window.buildPlannerCalendar = buildPlannerCalendar;
 
-// Event modal functions
-let editingEventId = null;
-let editingRecurringId = null;
+// Event modal functions — window scope so modules and inline scripts stay in sync
+window.editingEventId = window.editingEventId ?? null;
+window.editingRecurringId = window.editingRecurringId ?? null;
 
 function openAddEventModal(dateStr = null) {
-  editingEventId = null;
+  window.editingEventId = null;
   const modal = document.getElementById('event-modal');
   const titleEl = document.getElementById('event-modal-title');
   const deleteBtn = document.getElementById('event-delete-btn');
@@ -6581,7 +6589,7 @@ function closeEventModal() {
     modal.style.display = 'none';
   }
   if (deleteBtn) deleteBtn.style.display = 'none';
-  editingEventId = null;
+  window.editingEventId = null;
 }
 
 async function submitEventModal() {
@@ -6630,7 +6638,7 @@ async function submitEventModal() {
   const linkedTaskId = document.getElementById('event-linked-task')?.value || null;
   
   const event = {
-    id: editingEventId || `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    id: window.editingEventId || `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     title: title,
     date: date,
     startTime: startTime,
@@ -6651,9 +6659,9 @@ async function submitEventModal() {
     const state = window.Petal.store.getState();
     const currentEvents = state.events || [];
     
-    if (editingEventId) {
+    if (window.editingEventId) {
       // Update existing event
-      const index = currentEvents.findIndex(e => e.id === editingEventId);
+      const index = currentEvents.findIndex(e => e.id === window.editingEventId);
       if (index !== -1) {
         updatedEvents = [...currentEvents];
         updatedEvents[index] = event;
@@ -6670,8 +6678,8 @@ async function submitEventModal() {
     window.Petal.store.setState({ events: updatedEvents });
   } else {
     // Fallback: use local variable if store not available (shouldn't happen)
-    if (editingEventId) {
-      const index = events.findIndex(e => e.id === editingEventId);
+    if (window.editingEventId) {
+      const index = events.findIndex(e => e.id === window.editingEventId);
       if (index !== -1) {
         events[index] = event;
         updatedEvents = [...events];
@@ -6688,7 +6696,7 @@ async function submitEventModal() {
   
   // Create task if checkbox is checked
   const createTask = document.getElementById('event-create-task')?.checked;
-  if (createTask && !editingEventId) {
+  if (createTask && !window.editingEventId) {
     const state = window.Petal?.store?.getState();
     if (state) {
       const tasks = state.tasks || [];
@@ -6767,7 +6775,7 @@ function deleteEvent(eventId) {
 
 // Recurring rule modal functions
 function openAddRecurringModal() {
-  editingRecurringId = null;
+  window.editingRecurringId = null;
   const modal = document.getElementById('recurring-modal');
   const titleEl = document.getElementById('recurring-modal-title');
   if (!modal || !titleEl) return;
@@ -6791,7 +6799,7 @@ function openAddRecurringModal() {
 function closeRecurringModal() {
   const modal = document.getElementById('recurring-modal');
   if (modal) modal.style.display = 'none';
-  editingRecurringId = null;
+  window.editingRecurringId = null;
 }
 
 async function submitRecurringModal() {
@@ -6837,7 +6845,7 @@ async function submitRecurringModal() {
   }
   
   const rule = {
-    id: editingRecurringId || `rr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    id: window.editingRecurringId || `rr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     title: title,
     daysOfWeek: daysOfWeek,
     startTime: startTime,
@@ -6859,9 +6867,9 @@ async function submitRecurringModal() {
     const state = window.Petal.store.getState();
     const currentRules = state.recurringRules || [];
     
-    if (editingRecurringId) {
+    if (window.editingRecurringId) {
       // Update existing rule
-      const index = currentRules.findIndex(r => r.id === editingRecurringId);
+      const index = currentRules.findIndex(r => r.id === window.editingRecurringId);
       if (index !== -1) {
         updatedRules = [...currentRules];
         updatedRules[index] = rule;
@@ -6878,8 +6886,8 @@ async function submitRecurringModal() {
     window.Petal.store.setState({ recurringRules: updatedRules });
   } else {
     // Fallback: use local variable if store not available (shouldn't happen)
-    if (editingRecurringId) {
-      const index = recurringRules.findIndex(r => r.id === editingRecurringId);
+    if (window.editingRecurringId) {
+      const index = recurringRules.findIndex(r => r.id === window.editingRecurringId);
       if (index !== -1) {
         recurringRules[index] = rule;
       }

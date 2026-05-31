@@ -356,17 +356,40 @@ export async function softDeleteTask(ctx, taskId) {
  * Soft delete a file from a project
  */
 export async function softDeleteFile(ctx, projectId, fileId) {
+  const store = window.Petal?.store;
+  const deletedAt = new Date().toISOString();
+
+  if (store) {
+    const state = store.getState();
+    const updatedProjects = (state.projects || []).map(p => {
+      if (p.id !== projectId) return p;
+      return {
+        ...p,
+        files: (p.files || []).map(f =>
+          f && f.id === fileId ? { ...f, deletedAt } : f
+        )
+      };
+    });
+    const updatedTasks = (state.tasks || []).map(task => {
+      if (!task.fileIds || !task.fileIds.includes(fileId)) return task;
+      return {
+        ...task,
+        fileIds: task.fileIds.filter(id => id !== fileId)
+      };
+    });
+    store.setState({ projects: updatedProjects, tasks: updatedTasks });
+    return;
+  }
+
+  // Fallback: mutate context directly
   const { tasks, projects } = ctx;
   const project = projects.find(p => p.id === projectId);
   if (!project || !project.files) return;
-  
+
   const file = project.files.find(f => f && f.id === fileId);
   if (!file) return;
-  
-  // Mark file as deleted
-  file.deletedAt = new Date().toISOString();
-  
-  // Remove file links from tasks
+
+  file.deletedAt = deletedAt;
   tasks.forEach(task => {
     if (task.fileIds && task.fileIds.includes(fileId)) {
       task.fileIds = task.fileIds.filter(id => id !== fileId);
@@ -444,13 +467,21 @@ export async function delProject(ctx, id) {
  */
 export async function delTaskSubtask(ctx, taskId, subtaskId) {
   const { tasks, save, render } = ctx;
-  
-  // subtaskId is now a task ID - delete it as a regular task
-  const index = tasks.findIndex(t => t.id === subtaskId);
-  if (index !== -1) {
-    tasks.splice(index, 1);
+
+  const store = window.Petal?.store;
+  if (store) {
+    const state = store.getState();
+    const updatedTasks = (state.tasks || []).filter(t =>
+      t.id !== subtaskId && String(t.id) !== String(subtaskId)
+    );
+    store.setState({ tasks: updatedTasks });
+  } else {
+    const index = tasks.findIndex(t => t.id === subtaskId || String(t.id) === String(subtaskId));
+    if (index !== -1) {
+      tasks.splice(index, 1);
+    }
   }
-  
+
   await save();
   if (render) render();
 }

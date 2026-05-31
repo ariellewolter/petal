@@ -64,7 +64,16 @@ export async function importData(event) {
           tasks: newState.tasks || [],
           projects: newState.projects || [],
           openProjects: Array.isArray(newState.openProjects) ? newState.openProjects : (newState.openProjects instanceof Set ? Array.from(newState.openProjects) : []),
-          settings: newState.settings || {}
+          settings: newState.settings || {},
+          events: newState.events || [],
+          recurringRules: newState.recurringRules || [],
+          habits: newState.habits || [],
+          habitCheckins: newState.habitCheckins || {},
+          routines: newState.routines || [],
+          routineCheckins: newState.routineCheckins || {},
+          files: newState.files || [],
+          workflow: newState.workflow || {},
+          __allowFilesOverwrite: !shouldMerge
         });
         // Note: window.tasks, window.projects, etc. are read-only getters that automatically
         // reflect the store state, so no manual syncing needed

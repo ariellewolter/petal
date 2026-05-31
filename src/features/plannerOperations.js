@@ -20,10 +20,8 @@ export function editRecurringRule(ctx, ruleId) {
   const rule = currentRules.find(r => r.id === ruleId);
   if (!rule) return;
   
-  // Set editing state (global variable for backward compatibility)
-  if (typeof window.editingRecurringId !== 'undefined') {
-    window.editingRecurringId = ruleId;
-  }
+  // Set editing state (shared on window so module and inline scripts stay in sync)
+  window.editingRecurringId = ruleId;
   
   const modal = document.getElementById('recurring-modal');
   const titleEl = document.getElementById('recurring-modal-title');
@@ -103,10 +101,8 @@ export function editEvent(ctx, eventId) {
   const event = currentEvents.find(e => e.id === eventId);
   if (!event) return;
   
-  // Set editing state (global variable for backward compatibility)
-  if (typeof window.editingEventId !== 'undefined') {
-    window.editingEventId = eventId;
-  }
+  // Set editing state (shared on window so module and inline scripts stay in sync)
+  window.editingEventId = eventId;
   
   const modal = document.getElementById('event-modal');
   const titleEl = document.getElementById('event-modal-title');

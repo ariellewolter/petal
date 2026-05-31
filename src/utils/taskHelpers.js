@@ -4,6 +4,15 @@
 import { parseDate, today } from './dates.js';
 import { isTaskBlocked } from '../domain/models.js';
 
+/** Normalize priority to numeric rank (3 = high, 2 = medium, 1 = low) */
+function priorityRank(priority) {
+  if (typeof priority === 'number') return priority;
+  const value = String(priority || '').toLowerCase();
+  if (value === 'high') return 3;
+  if (value === 'low') return 1;
+  return 2;
+}
+
 /**
  * Get all tasks including project subtasks
  * @param {Array} tasks - Array of tasks
@@ -60,7 +69,7 @@ export function getNext3Tasks(activeTasks, allTasks = []) {
   // Get tasks that are: not done, not blocked, due soon OR manually prioritized
   const candidates = (activeTasks || []).filter(t => {
     if (t.done || isTaskBlockedFn(t, allTasks)) return false;
-    if (t.priority === 'high') return true;
+    if (priorityRank(t.priority) === 3) return true;
     if (t.due) {
       const due = parseDateFn(t.due);
       if (due) {
@@ -73,8 +82,9 @@ export function getNext3Tasks(activeTasks, allTasks = []) {
   
   // Sort by priority and due date
   candidates.sort((a, b) => {
-    if (a.priority === 'high' && b.priority !== 'high') return -1;
-    if (b.priority === 'high' && a.priority !== 'high') return 1;
+    const aRank = priorityRank(a.priority);
+    const bRank = priorityRank(b.priority);
+    if (aRank !== bRank) return bRank - aRank;
     if (a.due && b.due) {
       const aDue = parseDateFn(a.due);
       const bDue = parseDateFn(b.due);

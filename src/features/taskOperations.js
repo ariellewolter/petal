@@ -2,6 +2,7 @@
 // Core task management functions
 
 import { esc, normalizePriorityValue, normalizeDueInput } from '../utils/strings.js';
+import { normalizeProjectIdValue } from '../utils/projectHelpers.js';
 
 function isTaskContext(value) {
   return !!value && typeof value === 'object' && !Array.isArray(value) && (
@@ -919,26 +920,15 @@ export async function saveProtocolDailyEntry(ctx) {
     return;
   }
   
-  if (!task.protocol.dailyLog) {
-    task.protocol.dailyLog = [];
-  }
-  
   const entry = {
     id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     at: new Date().toISOString(),
     text: text,
     fileIds: []
   };
-  
-  task.protocol.dailyLog.push(entry);
-  
-  // Update day index if needed
-  if (task.protocol.startAt) {
-    task.protocol.dayIndex = calculateProtocolDayIndex(task.protocol.startAt);
-  }
-  
+
   textarea.value = '';
-  
+
   // Use store if available
   if (window.Petal?.store) {
     const state = window.Petal.store.getState();
@@ -948,8 +938,8 @@ export async function saveProtocolDailyEntry(ctx) {
           ...t,
           protocol: {
             ...t.protocol,
-            dailyLog: [...(t.protocol.dailyLog || []), entry],
-            dayIndex: t.protocol.startAt ? calculateProtocolDayIndex(t.protocol.startAt) : t.protocol.dayIndex
+            dailyLog: [...(t.protocol?.dailyLog || []), entry],
+            dayIndex: t.protocol?.startAt ? calculateProtocolDayIndex(t.protocol.startAt) : t.protocol?.dayIndex
           }
         };
       }
@@ -957,6 +947,13 @@ export async function saveProtocolDailyEntry(ctx) {
     });
     updateStoreSafely({ tasks: updatedTasks });
   } else {
+    if (!task.protocol.dailyLog) {
+      task.protocol.dailyLog = [];
+    }
+    task.protocol.dailyLog.push(entry);
+    if (task.protocol.startAt) {
+      task.protocol.dayIndex = calculateProtocolDayIndex(task.protocol.startAt);
+    }
     await save();
   }
   
@@ -1353,33 +1350,32 @@ export async function toggleProtocolStep(ctx, stepId) {
   if (!task || !task.protocol || !task.protocol.steps) return;
   
   const step = task.protocol.steps.find(s => s.id === stepId);
-  if (step) {
+  if (!step) return;
+
+  // Use store if available
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    const updatedTasks = (state.tasks || []).map(t => {
+      if (t.id === currentDrawerTaskId) {
+        return {
+          ...t,
+          protocol: {
+            ...t.protocol,
+            steps: (t.protocol.steps || []).map(s => s.id === stepId ? { ...s, done: !s.done } : s)
+          }
+        };
+      }
+      return t;
+    });
+    updateStoreSafely({ tasks: updatedTasks });
+  } else {
     step.done = !step.done;
-    
-    // Use store if available
-    if (window.Petal?.store) {
-      const state = window.Petal.store.getState();
-      const updatedTasks = (state.tasks || []).map(t => {
-        if (t.id === currentDrawerTaskId) {
-          return {
-            ...t,
-            protocol: {
-              ...t.protocol,
-              steps: (t.protocol.steps || []).map(s => s.id === stepId ? { ...s, done: !s.done } : s)
-            }
-          };
-        }
-        return t;
-      });
-      updateStoreSafely({ tasks: updatedTasks });
-    } else {
-      if (save) await save();
-    }
-    
-    // Re-render protocol tab
-    if (renderProtocolTab) {
-      renderProtocolTab();
-    }
+    if (save) await save();
+  }
+
+  // Re-render protocol tab
+  if (renderProtocolTab) {
+    renderProtocolTab();
   }
 }
 
@@ -1529,39 +1525,36 @@ export async function addSubtaskToTaskInline(ctx, taskId) {
  */
 export async function toggleTaskSubtask(ctx, taskId, subtaskId) {
   const { tasks, save, render } = ctx;
-  
-  // subtaskId is now a task ID, not a nested subtask
-  const st = (tasks || []).find(t => t.id === subtaskId);
-  if (st) {
+
+  const st = (tasks || []).find(t => t.id === subtaskId || String(t.id) === String(subtaskId));
+  if (!st) return;
+
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    const updatedTasks = (state.tasks || []).map(t => {
+      if (t.id === subtaskId || String(t.id) === String(subtaskId)) {
+        const newDone = !t.done;
+        return {
+          ...t,
+          done: newDone,
+          status: newDone ? 'Done' : (t.status === 'Done' ? 'Todo' : t.status)
+        };
+      }
+      return t;
+    });
+    updateStoreSafely({ tasks: updatedTasks });
+  } else {
     st.done = !st.done;
     if (st.done) {
       st.status = 'Done';
     } else if (st.status === 'Done') {
       st.status = 'Todo';
     }
-    
-    // Use store if available
-    if (window.Petal?.store) {
-      const state = window.Petal.store.getState();
-      const updatedTasks = (state.tasks || []).map(t => {
-        if (t.id === subtaskId) {
-          return {
-            ...t,
-            done: !t.done,
-            status: !t.done ? 'Done' : (t.status === 'Done' ? 'Todo' : t.status)
-          };
-        }
-        return t;
-      });
-      updateStoreSafely({ tasks: updatedTasks });
-    } else {
-      if (save) await save();
-    }
-    
-    // Re-render
-    if (render) {
-      render();
-    }
+    if (save) await save();
+  }
+
+  if (render) {
+    render();
   }
 }
 

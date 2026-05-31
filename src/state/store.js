@@ -146,6 +146,7 @@ class AppStore {
     
     // Merge partial update
     Object.keys(partial).forEach(key => {
+      if (key.startsWith('__')) return;
       if (key === 'openProjects') {
         // Normalize: accept Set or Array, store as Array
         if (partial[key] instanceof Set) {

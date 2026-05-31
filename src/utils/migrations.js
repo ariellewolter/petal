@@ -4,6 +4,8 @@
 // Current schema version
 export const CURRENT_SCHEMA_VERSION = 1;
 
+const DEFAULT_BOARD_COLUMNS = ['Inbox', 'Backlog', 'Todo', 'Doing', 'Done'];
+
 /**
  * Migrate tasks for kanban board structure
  * Ensures all tasks have proper status and boardOrder
@@ -23,9 +25,9 @@ export function migrateTasksForKanban() {
   if (!settings.boards || typeof settings.boards !== 'object') {
     settings.boards = {};
   }
-  const DEFAULT_BOARD_COLUMNS = window.DEFAULT_BOARD_COLUMNS || ['Inbox', 'Backlog', 'Todo', 'Doing', 'Done'];
+  const boardColumns = window.DEFAULT_BOARD_COLUMNS || DEFAULT_BOARD_COLUMNS;
   if (!Array.isArray(settings.boards.defaultColumns) || settings.boards.defaultColumns.length === 0) {
-    settings.boards.defaultColumns = [...DEFAULT_BOARD_COLUMNS];
+    settings.boards.defaultColumns = [...boardColumns];
   }
   
   const getBoardColumns = () => settings.boards.defaultColumns;
