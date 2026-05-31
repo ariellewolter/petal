@@ -2,6 +2,7 @@
 // Helper functions for UI operations and DOM manipulation
 
 import { parseDate, today } from '../utils/dates.js';
+import { findProjectById, filterTasksForProject } from '../utils/projectHelpers.js';
 
 /**
  * Generate group key for task grouping (by due date)
@@ -82,16 +83,10 @@ export function updateCompWindow(ctx) {
   if (!selectedProjectId) return;
   
   const { projects, tasks } = ctx;
-  const project = projects.find(p => p.id === selectedProjectId);
+  const project = findProjectById(projects, selectedProjectId);
   if (!project) return;
   
-  // Normalize projectId comparison to handle both string and number types
-  const normalizedProjectId = String(selectedProjectId).trim();
-  const projectTasks = (tasks || []).filter(t => {
-    if (!t.projectId) return false;
-    const taskProjectId = String(t.projectId).trim();
-    return taskProjectId === normalizedProjectId;
-  });
+  const projectTasks = filterTasksForProject(tasks || [], project.id, { excludeDeleted: true });
   
   // This function may need to call renderCompWindow or similar
   // For now, it's a placeholder that can be extended

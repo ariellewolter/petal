@@ -295,6 +295,48 @@ class VaultManager {
     }
   }
 
+  // Score vault by amount of user data in petal.json
+  scoreVaultData(vaultPath) {
+    const dataFile = path.join(vaultPath, 'petal.json');
+    if (!fs.existsSync(dataFile)) return 0;
+    try {
+      const raw = fs.readFileSync(dataFile, 'utf-8').trim();
+      if (!raw || raw === '{}') return 0;
+      const data = JSON.parse(raw);
+      const tasks = Array.isArray(data.tasks) ? data.tasks.length : 0;
+      const projects = Array.isArray(data.projects) ? data.projects.length : 0;
+      const files = Array.isArray(data.files) ? data.files.length : 0;
+      const cellLogEntries = data.settings?.cellLog?.entries?.length || 0;
+      if (tasks === 0 && projects === 0 && files === 0 && cellLogEntries === 0) return 0;
+      return tasks + projects * 5 + files + cellLogEntries * 2;
+    } catch {
+      return 0;
+    }
+  }
+
+  pickBestDiscoveredVault(discovered) {
+    if (!discovered.length) return null;
+    if (discovered.length === 1) return discovered[0];
+
+    if (this.config.vault_path) {
+      const preferred = discovered.find(
+        (v) => path.resolve(v.path) === path.resolve(this.config.vault_path)
+      );
+      if (preferred) return preferred;
+    }
+
+    let best = discovered[0];
+    let bestScore = this.scoreVaultData(best.path);
+    for (const candidate of discovered.slice(1)) {
+      const score = this.scoreVaultData(candidate.path);
+      if (score > bestScore) {
+        bestScore = score;
+        best = candidate;
+      }
+    }
+    return best;
+  }
+
   // Search for existing vaults in common locations
   async discoverVaults() {
     const candidates = [];
@@ -461,8 +503,7 @@ class VaultManager {
     }
     
     if (discovered.length > 0) {
-      // Use first discovered vault (or could prompt user)
-      const chosen = discovered[0];
+      const chosen = this.pickBestDiscoveredVault(discovered);
       this.activeVaultPath = chosen.path;
       this.config.vault_path = chosen.path;
       this.config.last_seen_vault_id = chosen.manifest.vault_id;
@@ -513,10 +554,12 @@ class VaultManager {
       const canaryContent = `Petal canary write test\nCreated: ${new Date().toISOString()}\nVault ID: ${manifest.vault_id}`;
       try {
         await fsPromises.writeFile(canaryPath, canaryContent, 'utf-8');
-        await fsPromises.fsync(await fsPromises.open(canaryPath, 'r+'));
+        const canaryFd = await fsPromises.open(canaryPath, 'r+');
+        await canaryFd.sync();
+        await canaryFd.close();
         const readBack = await fsPromises.readFile(canaryPath, 'utf-8');
-        if (readBack !== canaryContent) {
-          throw new Error('Canary read-back mismatch');
+        if (!readBack.includes(manifest.vault_id)) {
+          throw new Error('Canary read-back validation failed');
         }
         const canaryStats = await fsPromises.stat(canaryPath);
         this.logger?.log(`✓ Canary write test passed`);

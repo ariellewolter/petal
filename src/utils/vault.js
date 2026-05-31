@@ -13,10 +13,11 @@ export async function updateVaultBadge() {
   try {
     const s = await window.electronAPI.vaultGetStatus();
     if (s?.resolved && s?.activeVaultPath) {
-      // Show shortened path (just folder name)
-      const pathParts = s.activeVaultPath.split(/[/\\]/);
+      const pathParts = s.activeVaultPath.split(/[/\\]/).filter(Boolean);
+      const parent = pathParts[pathParts.length - 2] || '';
       const displayName = pathParts[pathParts.length - 1] || 'Vault';
-      el.textContent = displayName;
+      const label = parent && parent !== displayName ? `${parent}/${displayName}` : displayName;
+      el.textContent = label;
       el.title = `Vault: ${s.activeVaultPath}\nClick to open folder`;
       el.dataset.status = "ok";
       el.style.display = "inline-flex";

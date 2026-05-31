@@ -7,6 +7,7 @@ import { selectWorkflowTasks, selectBottlenecks, selectActiveFiles, selectTasksB
 import { LANES } from '../domain/schema.js';
 import { isTaskBlocked } from '../domain/models.js';
 import { getAllTasks } from '../domain/models.js';
+import { projectNameById } from '../utils/projectHelpers.js';
 
 /**
  * Render workflow view
@@ -271,7 +272,7 @@ function renderTaskCard(task, handlers, allTasksForBlocking = []) {
   // Check if task is blocked (needs full tasks array)
   const blocked = task.done ? false : isTaskBlocked(task, allTasksForBlocking);
   const projectName = task.projectId && handlers._state?.projects 
-    ? handlers._state.projects.find(p => p.id === task.projectId)?.name 
+    ? projectNameById(handlers._state.projects, task.projectId) 
     : null;
   
   // Format due date and add calendar icon for scheduled tasks

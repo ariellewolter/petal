@@ -76,6 +76,11 @@ export function findProjectById(projects, projectId) {
   return projects.find((p) => projectIdsMatch(p.id, projectId));
 }
 
+/** Whether a project object matches the given id. */
+export function projectMatchesId(project, projectId) {
+  return !!project && projectIdsMatch(project.id, projectId);
+}
+
 /**
  * Whether a task belongs to a project.
  */
@@ -306,7 +311,7 @@ export function cancelWorkflowLanesEdit(projectId) {
 export async function saveWorkflowLanes(ctx, projectId) {
   const { projects, tasks, save, rerenderViewIfActive } = ctx;
   
-  const project = projects.find(p => p.id === projectId);
+  const project = findProjectById(projects, projectId);
   if (!project) return;
   
   const workflowLanes = [];
@@ -323,7 +328,7 @@ export async function saveWorkflowLanes(ctx, projectId) {
   project.workflowLanes = workflowLanes.length > 0 ? workflowLanes : null;
   
   // Update any tasks that are assigned to lanes not in the new list
-  (tasks || []).filter(t => String(t.projectId) === String(projectId)).forEach(t => {
+  (tasks || []).filter(t => taskBelongsToProject(t, projectId)).forEach(t => {
     if (t.lane && workflowLanes.length > 0 && !workflowLanes.includes(t.lane)) {
       t.lane = null;
       t.stage = null;

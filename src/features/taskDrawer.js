@@ -2,6 +2,7 @@
 // Handles the task drawer UI for viewing/editing task details, notes, files, and subtasks
 
 import { esc, escAttr, fileIcon } from '../utils/strings.js';
+import { findProjectById } from '../utils/projectHelpers.js';
 
 function isDrawerContext(value) {
   return !!value && typeof value === 'object' && !Array.isArray(value) && (
@@ -102,7 +103,7 @@ export function openTaskDrawer(ctx, taskId) {
   if (task.priority) meta.push(task.priority);
   if (task.status) meta.push(task.status);
   if (task.projectId) {
-    const project = projects.find(p => p.id === task.projectId);
+    const project = findProjectById(projects, task.projectId);
     if (project) meta.push(project.name);
   }
   if (metaEl) metaEl.textContent = meta.join(' • ') || '';
@@ -332,7 +333,7 @@ export async function linkExistingFileToTask(ctx) {
     return;
   }
   
-  const project = projects.find(p => p.id === task.projectId);
+  const project = findProjectById(projects, task.projectId);
   if (!project || !project.files || project.files.length === 0) {
     alert('No files available in this project. Add files to the project first.');
     return;

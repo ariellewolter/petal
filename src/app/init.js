@@ -133,6 +133,13 @@ export async function initApp() {
         renderCompWindow: ui.renderCompWindow,
         renderDeadlinesHorizon: ui.renderDeadlinesHorizon,
         renderProjectTasks: ui.renderProjectTasks,
+        renderProjectOverviewSections: ui.renderProjectOverviewSections,
+        renderProgressMomentum: ui.renderProgressMomentum,
+        renderWorkingLog: ui.renderWorkingLog,
+        renderArtifacts: ui.renderArtifacts,
+        renderProtocolRuns: ui.renderProtocolRuns,
+        renderMilestonesTimeline: ui.renderMilestonesTimeline,
+        renderProjectMilestones: ProjectOperations.renderProjectMilestones,
         renderTaskItem: ui.renderTaskItem,
         selectedProjectId: window.selectedProjectId
       };

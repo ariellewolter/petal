@@ -2,6 +2,7 @@
 // Kanban ordering, drag/drop reorder math
 
 import { calculateFloatOrder } from './models.js';
+import { taskBelongsToProject } from '../utils/projectHelpers.js';
 
 /**
  * Reindex a column with sequential orders
@@ -28,10 +29,8 @@ export function getBoardListForProjectFilter(tasks, status, projectFilter = 'all
     if (t.deletedAt) return false; // Exclude deleted tasks
     if (excludeTaskId && t.id === excludeTaskId) return false;
     if (t.status !== status) return false;
-    if (projectFilter !== 'all') {
-      const taskProjectId = t.projectId ? (typeof t.projectId === 'number' ? t.projectId : parseInt(t.projectId)) : null;
-      const filterProjectId = typeof projectFilter === 'number' ? projectFilter : parseInt(projectFilter);
-      if (taskProjectId !== filterProjectId) return false;
+    if (projectFilter !== 'all' && !taskBelongsToProject(t, projectFilter)) {
+      return false;
     }
     // Apply search filter if provided
     if (searchQuery && searchQuery.trim() && matchesSearchFn) {

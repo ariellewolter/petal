@@ -2,6 +2,7 @@
 // Modal management functions for tasks, files, and related operations
 
 import { getDefaultLaneIds } from '../domain/schema.js';
+import { findProjectById } from '../utils/projectHelpers.js';
 
 /**
  * Helper: Update store with safety - preserves all state fields
@@ -627,7 +628,7 @@ export function openProjectAddFileModal(ctx, projId) {
     window.currentModalContext = 'project';
   }
   
-  const p = projects.find(p => p.id === projId);
+  const p = findProjectById(projects, projId);
   if (!p) return;
   
   const titleEl = document.getElementById('add-file-modal-title');
@@ -677,7 +678,7 @@ export function openMatrixAddFileModal(ctx) {
     window.currentModalContext = 'matrix';
   }
   
-  const p = projects.find(p => p.id === selectedProjectId);
+  const p = findProjectById(projects, selectedProjectId);
   if (!p) return;
   
   const titleEl = document.getElementById('add-file-modal-title');
@@ -802,7 +803,7 @@ export async function submitAddFileModal(ctx) {
 export async function addFileToProjectFromModal(ctx, projId, filesToAdd) {
   const { projects, save, rerenderViewIfActive, findOrCreateCanonicalFile } = ctx;
   
-  const p = projects.find(p => p.id === projId);
+  const p = findProjectById(projects, projId);
   if (!p) return;
   
   if (!p.files) p.files = [];
@@ -843,7 +844,7 @@ export async function addFileToMatrixFromModal(ctx, filesToAdd) {
   
   if (!selectedProjectId) return;
   
-  const p = projects.find(p => p.id === selectedProjectId);
+  const p = findProjectById(projects, selectedProjectId);
   if (!p) return;
   
   if (!p.files) p.files = [];

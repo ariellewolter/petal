@@ -76,6 +76,10 @@ export function setupEventDelegation() {
     if (inTodayView && action === 'quick-add') {
       return;
     }
+    const inSettingsView = !!actionBtn.closest('#view-settings');
+    if (inSettingsView && /^(open-vault-folder|choose-vault-folder|copy-from-vault-folder|refresh-vault-status|export-data|import-data|recover-data)$/.test(action)) {
+      return;
+    }
     
     // Debug logging
     console.log('🔘 Button clicked:', {
@@ -1116,6 +1120,51 @@ export function setupEventDelegation() {
         window.Petal.features.matrixOperations.selectProjectForMatrix(ctx, null);
       } else if (window.selectProjectForMatrix) {
         window.selectProjectForMatrix(null);
+      }
+      return;
+    }
+
+    if (action === 'project:switch-tab') {
+      e.stopPropagation();
+      const tab = actionBtn.getAttribute('data-tab');
+      const ctx = window.Petal?.handlers?.createPageContext?.() || window.createPageContext?.() || {};
+      if (tab && window.Petal?.features?.projectOperations?.switchProjectPageTab) {
+        window.Petal.features.projectOperations.switchProjectPageTab(ctx, tab);
+      } else if (tab && window.switchProjectPageTab) {
+        window.switchProjectPageTab(tab);
+      }
+      return;
+    }
+
+    if (action === 'project:add-log-entry') {
+      e.stopPropagation();
+      const ctx = window.Petal?.handlers?.createPageContext?.() || window.createPageContext?.() || {};
+      if (window.Petal?.features?.projectOperations?.addWorkingLogEntry) {
+        window.Petal.features.projectOperations.addWorkingLogEntry(ctx);
+      } else if (window.addWorkingLogEntry) {
+        window.addWorkingLogEntry();
+      }
+      return;
+    }
+
+    if (action === 'project:create-artifact') {
+      e.stopPropagation();
+      const ctx = window.Petal?.handlers?.createPageContext?.() || window.createPageContext?.() || {};
+      if (window.Petal?.features?.projectOperations?.openCreateArtifactModal) {
+        window.Petal.features.projectOperations.openCreateArtifactModal(ctx);
+      } else if (window.openCreateArtifactModal) {
+        window.openCreateArtifactModal();
+      }
+      return;
+    }
+
+    if (action === 'project:create-protocol-run') {
+      e.stopPropagation();
+      const ctx = window.Petal?.handlers?.createPageContext?.() || window.createPageContext?.() || {};
+      if (window.Petal?.features?.projectOperations?.openCreateProtocolRunModal) {
+        window.Petal.features.projectOperations.openCreateProtocolRunModal(ctx);
+      } else if (window.openCreateProtocolRunModal) {
+        window.openCreateProtocolRunModal();
       }
       return;
     }

@@ -1,6 +1,8 @@
 // ═══════════════════════ DATA MIGRATIONS ═══════════════════════
 // Migration functions for data schema updates
 
+import { findProjectById } from './projectHelpers.js';
+
 // Current schema version
 export const CURRENT_SCHEMA_VERSION = 1;
 
@@ -261,7 +263,7 @@ export function migrateToCanonicalFileRegistry() {
     if (task.files && Array.isArray(task.files) && task.files.length > 0) {
       const projectId = task.projectId;
       if (projectId) {
-        const project = projects.find(p => p.id === projectId);
+        const project = findProjectById(projects, projectId);
         if (project) {
           // Ensure project has files array
           if (!project.files) {

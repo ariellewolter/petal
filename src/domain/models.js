@@ -2,6 +2,7 @@
 // Pure functions for task/project operations - no side effects
 
 import { LANE_STAGES, MATRIX_STAGES } from './schema.js';
+import { projectIdsMatch } from '../utils/projectHelpers.js';
 
 /**
  * Get default stage for a lane based on status
@@ -37,7 +38,7 @@ export function isTaskBlocked(task, tasks) {
   if (!task.dependsOn) return false;
   
   // Find dependency in tasks array
-  const depTask = tasks.find(t => t.id === task.dependsOn);
+  const depTask = tasks.find(t => projectIdsMatch(t.id, task.dependsOn));
   if (!depTask) return false;
   
   return !depTask.done;

@@ -102,11 +102,16 @@ class StorageAdapter {
           projects: JSON.parse(localStorage.getItem('petal-projects') || '[]'),
           openProjects: JSON.parse(localStorage.getItem('petal-open-proj') || '[]'),
           settings: JSON.parse(localStorage.getItem('petal-settings') || '{}'),
-          files: JSON.parse(localStorage.getItem('petal-files') || '[]'), // ✅ Persisted files list
+          files: JSON.parse(localStorage.getItem('petal-files') || '[]'),
           fileHistory: JSON.parse(localStorage.getItem('petal-file-history') || '{}'),
           fileRegistry: JSON.parse(localStorage.getItem('petal-file-registry') || '{}'),
           events: JSON.parse(localStorage.getItem('petal-events') || '[]'),
-          recurringRules: JSON.parse(localStorage.getItem('petal-recurring-rules') || '[]')
+          recurringRules: JSON.parse(localStorage.getItem('petal-recurring-rules') || '[]'),
+          habits: JSON.parse(localStorage.getItem('petal-habits') || '[]'),
+          habitCheckins: JSON.parse(localStorage.getItem('petal-habit-checkins') || '{}'),
+          routines: JSON.parse(localStorage.getItem('petal-routines') || '[]'),
+          routineCheckins: JSON.parse(localStorage.getItem('petal-routine-checkins') || '{}'),
+          workflow: JSON.parse(localStorage.getItem('petal-workflow') || '{}')
         };
       } catch (e) {
         console.error('Error loading state:', e);
@@ -115,11 +120,16 @@ class StorageAdapter {
           projects: [], 
           openProjects: [], 
           settings: {},
-          files: [], // ✅ Persisted files list
+          files: [],
           fileHistory: {},
           fileRegistry: {},
           events: [],
-          recurringRules: []
+          recurringRules: [],
+          habits: [],
+          habitCheckins: {},
+          routines: [],
+          routineCheckins: {},
+          workflow: {}
         };
       }
     }
@@ -191,9 +201,14 @@ class StorageAdapter {
         localStorage.setItem('petal-settings', JSON.stringify(state.settings || {}));
         localStorage.setItem('petal-events', JSON.stringify(state.events || []));
         localStorage.setItem('petal-recurring-rules', JSON.stringify(state.recurringRules || []));
-        localStorage.setItem('petal-files', JSON.stringify(state.files || [])); // ✅ Persisted files list
+        localStorage.setItem('petal-files', JSON.stringify(state.files || []));
         localStorage.setItem('petal-file-history', JSON.stringify(state.fileHistory || {}));
         localStorage.setItem('petal-file-registry', JSON.stringify(state.fileRegistry || {}));
+        localStorage.setItem('petal-habits', JSON.stringify(state.habits || []));
+        localStorage.setItem('petal-habit-checkins', JSON.stringify(state.habitCheckins || {}));
+        localStorage.setItem('petal-routines', JSON.stringify(state.routines || []));
+        localStorage.setItem('petal-routine-checkins', JSON.stringify(state.routineCheckins || {}));
+        localStorage.setItem('petal-workflow', JSON.stringify(state.workflow || {}));
         
         // Notify listeners of changes
         this.listeners.forEach(cb => {

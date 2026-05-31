@@ -1,7 +1,15 @@
 // ═══════════════════════ PROJECT OPERATIONS ═══════════════════════
 // Core project management functions
 
-import { defaultProjectBrief, normalizeListValue, defaultMilestonesFromTemplate } from '../utils/projectHelpers.js';
+import {
+  defaultProjectBrief,
+  normalizeListValue,
+  defaultMilestonesFromTemplate,
+  findProjectById,
+  projectIdsMatch,
+  normalizeProjectIdValue,
+  filterTasksForProject
+} from '../utils/projectHelpers.js';
 import { esc, escAttr, fileIcon } from '../utils/strings.js';
 import { LANE_STAGES } from '../domain/schema.js';
 
@@ -211,12 +219,12 @@ export async function toggleProjectDone(ctx, id) {
   if (window.Petal?.store) {
     const state = window.Petal.store.getState();
     const updatedProjects = (state.projects || []).map(p => 
-      p.id === id ? { ...p, done: !p.done } : p
+      projectIdsMatch(p.id, id) ? { ...p, done: !p.done } : p
     );
     updateStoreSafely({ projects: updatedProjects });
   } else {
     // Fallback
-    const p = projects.find(p => p.id === id);
+    const p = findProjectById(projects, id);
     if (p) {
       p.done = !p.done;
       await save();
@@ -235,33 +243,11 @@ export async function toggleProjectOpen(ctx, id) {
   if (window.Petal?.store) {
     const state = window.Petal.store.getState();
     const open = Array.isArray(state.openProjects) ? state.openProjects : [];
-    // Normalize ID for comparison (handle string/number mismatch)
-    const idStr = String(id).trim();
-    const idNum = Number(id);
-    // Check if ID exists (as string or number, or decimal match)
-    const isOpen = open.some(x => {
-      const xStr = String(x).trim();
-      const xNum = Number(x);
-      // Exact match (string or number)
-      if (xStr === idStr || x === id) return true;
-      // Decimal match (compare integer parts)
-      if (!isNaN(idNum) && !isNaN(xNum)) {
-        return Math.floor(idNum) === Math.floor(xNum);
-      }
-      return false;
-    });
+    const resolvedId = normalizeProjectIdValue(id);
+    const isOpen = open.some(x => projectIdsMatch(x, resolvedId));
     const next = isOpen
-      ? open.filter(x => {
-          const xStr = String(x).trim();
-          const xNum = Number(x);
-          // Remove if exact match or decimal match
-          if (xStr === idStr || x === id) return false;
-          if (!isNaN(idNum) && !isNaN(xNum)) {
-            return Math.floor(idNum) !== Math.floor(xNum);
-          }
-          return true;
-        })
-      : [...open, id];
+      ? open.filter(x => !projectIdsMatch(x, resolvedId))
+      : [...open, resolvedId];
     updateStoreSafely({ openProjects: next });
   } else {
     // Fallback: store not initialized (shouldn't happen in normal flow)
@@ -317,7 +303,7 @@ export function editProjectHeaderField(ctx, field) {
   const selectedProjectId = typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null;
   if (!selectedProjectId) return;
   
-  const project = projects.find(p => p.id === selectedProjectId);
+  const project = findProjectById(projects, selectedProjectId);
   if (!project) return;
   
   const brief = project.brief || defaultProjectBrief();
@@ -338,7 +324,7 @@ export function editProjectHeaderField(ctx, field) {
   if (window.Petal?.store) {
     const state = window.Petal.store.getState();
     const updatedProjects = (state.projects || []).map(p => {
-      if (p.id === selectedProjectId) {
+      if (projectIdsMatch(p.id, selectedProjectId)) {
         return {
           ...p,
           brief: {
@@ -362,7 +348,7 @@ export function editProjectHeaderField(ctx, field) {
 export async function pinFile(ctx, projectId, fileDataAttr) {
   const { projects, save, renderFilesTab } = ctx;
   
-  const project = projects.find(p => p.id === projectId);
+  const project = findProjectById(projects, projectId);
   if (!project) return;
   
   try {
@@ -392,7 +378,7 @@ export async function pinFile(ctx, projectId, fileDataAttr) {
     if (window.Petal?.store) {
       const state = window.Petal.store.getState();
       const updatedProjects = (state.projects || []).map(p => {
-        if (p.id === projectId) {
+        if (projectIdsMatch(p.id, projectId)) {
           return { ...p, files: allFiles };
         }
         return p;
@@ -419,7 +405,7 @@ export async function pinFile(ctx, projectId, fileDataAttr) {
 export async function toggleFilePinned(ctx, projectId, fileDataAttr) {
   const { projects, save, renderFilesTab } = ctx;
   
-  const project = projects.find(p => p.id === projectId);
+  const project = findProjectById(projects, projectId);
   if (!project) return;
   
   try {
@@ -443,7 +429,7 @@ export async function toggleFilePinned(ctx, projectId, fileDataAttr) {
       if (window.Petal?.store) {
         const state = window.Petal.store.getState();
         const updatedProjects = (state.projects || []).map(p => {
-          if (p.id === projectId) {
+          if (projectIdsMatch(p.id, projectId)) {
             return { ...p, files: allFiles };
           }
           return p;
@@ -472,7 +458,7 @@ export async function removePinnedFile(ctx, projectId, fileDataAttr) {
   const { projects, save, renderProjectFiles } = ctx;
   
   try {
-    const project = projects.find(p => p.id === projectId);
+    const project = findProjectById(projects, projectId);
     if (!project) {
       console.warn('removePinnedFile: Project not found:', projectId);
       return;
@@ -505,7 +491,7 @@ export async function removePinnedFile(ctx, projectId, fileDataAttr) {
     if (window.Petal?.store) {
       const state = window.Petal.store.getState();
       const updatedProjects = (state.projects || []).map(p => {
-        if (p.id === projectId) {
+        if (projectIdsMatch(p.id, projectId)) {
           return { 
             ...p, 
             files: project.files,
@@ -528,19 +514,24 @@ export async function removePinnedFile(ctx, projectId, fileDataAttr) {
   }
 }
 
+const PROJECT_PAGE_TAB_IDS = ['workflow', 'milestones', 'artifacts', 'protocols', 'log'];
+
 /**
  * Switch project page tab
  */
-export function switchProjectPageTab(ctx, tab) {
-  const { projects, renderFilesTab, renderProjectFiles, renderProjectMilestones } = ctx;
-  
-  // Update global state
+export async function switchProjectPageTab(ctx, tab) {
+  const { projects, tasks, renderProjectMilestones } = ctx;
+  const ui = window.Petal?.ui || {};
+
+  if (!tab || !PROJECT_PAGE_TAB_IDS.includes(tab)) {
+    tab = 'workflow';
+  }
+
   if (typeof window !== 'undefined') {
     window.currentProjectPageTab = tab;
   }
-  
-  // Update tab buttons
-  ['workflow', 'files', 'milestones'].forEach(t => {
+
+  PROJECT_PAGE_TAB_IDS.forEach((t) => {
     const btn = document.getElementById(`project-page-tab-${t}`);
     const panel = document.getElementById(`project-page-tab-${t}-panel`);
     if (btn) {
@@ -553,28 +544,46 @@ export function switchProjectPageTab(ctx, tab) {
       }
     }
     if (panel) {
-      panel.style.display = t === tab ? '' : 'none';
+      panel.style.display = t === tab ? 'block' : 'none';
     }
   });
-  
-  // Render the selected tab
-  const selectedProjectId = typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null;
+
+  const selectedProjectId =
+    ctx.selectedProjectId ??
+    (typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null);
+  if (!selectedProjectId) return;
+
+  const project = findProjectById(projects, selectedProjectId);
+  if (!project) return;
+
+  const tasksList = tasks || ctx.state?.tasks || window.Petal?.store?.getState()?.tasks || [];
+  const projectTasks = filterTasksForProject(tasksList, project.id, { excludeDeleted: true });
+
   if (tab === 'workflow') {
-    // Files panel is part of workflow view now
-    if (selectedProjectId) {
-      const project = projects.find(p => p.id === selectedProjectId);
-      if (project && renderFilesTab) {
-        const currentFilesTab = typeof window.currentFilesTab !== 'undefined' ? window.currentFilesTab : 'pinned';
-        renderFilesTab(currentFilesTab, project);
-      }
-    }
-  } else if (tab === 'files') {
-    if (renderProjectFiles) {
-      renderProjectFiles();
+    if (ui.renderProjectOverviewSections) {
+      ui.renderProjectOverviewSections(ctx, project, projectTasks);
     }
   } else if (tab === 'milestones') {
+    if (ui.renderMilestonesTimeline) {
+      ui.renderMilestonesTimeline(ctx);
+    }
     if (renderProjectMilestones) {
       renderProjectMilestones(ctx);
+    }
+  } else if (tab === 'artifacts') {
+    if (ui.renderArtifacts) {
+      ui.renderArtifacts(ctx);
+    }
+  } else if (tab === 'protocols') {
+    if (ui.renderProtocolRuns) {
+      ui.renderProtocolRuns(ctx);
+    }
+  } else if (tab === 'log') {
+    if (ui.renderProgressMomentum) {
+      ui.renderProgressMomentum(ctx, project, projectTasks);
+    }
+    if (ui.renderWorkingLog) {
+      ui.renderWorkingLog(ctx, project);
     }
   }
 }
@@ -607,7 +616,7 @@ export function renderProjectMilestones(ctx) {
     return;
   }
   
-  const project = projects.find(p => p.id === projectId);
+  const project = findProjectById(projects, projectId);
   if (!project) {
     const panelEl = document.getElementById('project-milestones-panel-content');
     if (panelEl) {
@@ -680,7 +689,7 @@ export async function addMilestone(ctx) {
     return;
   }
   
-  const project = projects.find(p => p.id === projectId);
+  const project = findProjectById(projects, projectId);
   if (!project) {
     alert('Project not found');
     return;
@@ -702,7 +711,7 @@ export async function addMilestone(ctx) {
   if (window.Petal?.store) {
     const state = window.Petal.store.getState();
     const updatedProjects = (state.projects || []).map(p => {
-      if (p.id === projectId) {
+      if (projectIdsMatch(p.id, projectId)) {
         return {
           ...p,
           milestones: [...(p.milestones || []), newMilestone]
@@ -737,7 +746,7 @@ export async function addMilestone(ctx) {
 export async function toggleMilestone(ctx, projectId, milestoneId) {
   const { projects, save, renderProjectMilestones } = ctx;
   
-  const project = projects.find(p => p.id === projectId);
+  const project = findProjectById(projects, projectId);
   if (!project || !project.milestones) return;
   
   const milestone = project.milestones.find(m => m.id === milestoneId);
@@ -747,7 +756,7 @@ export async function toggleMilestone(ctx, projectId, milestoneId) {
   if (window.Petal?.store) {
     const state = window.Petal.store.getState();
     const updatedProjects = (state.projects || []).map(p => {
-      if (p.id === projectId) {
+      if (projectIdsMatch(p.id, projectId)) {
         return {
           ...p,
           milestones: (p.milestones || []).map(m => 
@@ -774,7 +783,7 @@ export async function toggleMilestone(ctx, projectId, milestoneId) {
 export async function deleteMilestone(ctx, projectId, milestoneId) {
   const { projects, save, renderProjectMilestones } = ctx;
   
-  const project = projects.find(p => p.id === projectId);
+  const project = findProjectById(projects, projectId);
   if (!project || !project.milestones) return;
   
   if (confirm('Delete this milestone?')) {
@@ -782,7 +791,7 @@ export async function deleteMilestone(ctx, projectId, milestoneId) {
     if (window.Petal?.store) {
       const state = window.Petal.store.getState();
       const updatedProjects = (state.projects || []).map(p => {
-        if (p.id === projectId) {
+        if (projectIdsMatch(p.id, projectId)) {
           return {
             ...p,
             milestones: (p.milestones || []).filter(m => m.id !== milestoneId)
@@ -872,7 +881,7 @@ export async function saveCheckpoint(ctx) {
   const selectedProjectId = typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null;
   
   if (!selectedProjectId) return;
-  const project = projects.find(p => p.id === selectedProjectId);
+  const project = findProjectById(projects, selectedProjectId);
   if (!project) return;
   
   const nameInput = document.getElementById('checkpoint-name');
@@ -896,7 +905,7 @@ export async function saveCheckpoint(ctx) {
   if (window.Petal?.store) {
     const state = window.Petal.store.getState();
     const updatedProjects = (state.projects || []).map(p => {
-      if (p.id === selectedProjectId) {
+      if (projectIdsMatch(p.id, selectedProjectId)) {
         return {
           ...p,
           checkpoints: [...(p.checkpoints || []), newCheckpoint]
@@ -940,7 +949,7 @@ export function toggleFileVersionHistory(versionId) {
 export async function addFileVersion(ctx, projectId, fileDataAttr) {
   const { projects, save, renderFilesTab } = ctx;
   
-  const project = projects.find(p => p.id === projectId);
+  const project = findProjectById(projects, projectId);
   if (!project) return;
   
   try {
@@ -978,7 +987,7 @@ export async function addFileVersion(ctx, projectId, fileDataAttr) {
       if (window.Petal?.store) {
         const state = window.Petal.store.getState();
         const updatedProjects = (state.projects || []).map(p => {
-          if (p.id === projectId) {
+          if (projectIdsMatch(p.id, projectId)) {
             return { ...p, files: allFiles };
           }
           return p;
@@ -1009,7 +1018,7 @@ export async function addFileVersion(ctx, projectId, fileDataAttr) {
  */
 export function addProjectCheckpoint(ctx, projectId, name, note) {
   const { projects } = ctx;
-  const project = projects.find(p => p.id === projectId);
+  const project = findProjectById(projects, projectId);
   if (!project) return false;
   
   if (!project.checkpoints) {
@@ -1029,7 +1038,7 @@ export function addProjectCheckpoint(ctx, projectId, name, note) {
   if (window.Petal?.store) {
     const state = window.Petal.store.getState();
     const updatedProjects = (state.projects || []).map(p => {
-      if (p.id === projectId) {
+      if (projectIdsMatch(p.id, projectId)) {
         return { ...p, checkpoints: project.checkpoints };
       }
       return p;
@@ -1046,7 +1055,7 @@ export function addProjectCheckpoint(ctx, projectId, name, note) {
  */
 export function addFileVersionInternal(ctx, projectId, fileId, versionString, note) {
   const { projects } = ctx;
-  const project = projects.find(p => p.id === projectId);
+  const project = findProjectById(projects, projectId);
   if (!project || !project.files) return false;
   
   const file = project.files.find(f => f && f.id === fileId);
@@ -1070,7 +1079,7 @@ export function addFileVersionInternal(ctx, projectId, fileId, versionString, no
   if (window.Petal?.store) {
     const state = window.Petal.store.getState();
     const updatedProjects = (state.projects || []).map(p => {
-      if (p.id === projectId) {
+      if (projectIdsMatch(p.id, projectId)) {
         return { ...p, files: project.files };
       }
       return p;
@@ -1091,7 +1100,7 @@ export async function addFileToProject(ctx, projId) {
   const { projects, getFileLinks, getFileLinksNormalized, save, render } = ctx || {};
   const projectList = Array.isArray(projects) ? projects : [];
 
-  const p = projectList.find(p => p.id === projId);
+  const p = findProjectById(projectList, projId);
   if (!p) return;
 
   const fileOps = window.Petal?.features?.fileOperations || {};
@@ -1141,7 +1150,7 @@ export async function addSubtask(ctx, projId) {
   const { projects, save, render } = ctx;
   const { LANE_STAGES } = await import('../domain/schema.js');
   
-  const p = projects.find(p => p.id === projId);
+  const p = findProjectById(projects, projId);
   if (!p) return;
   
   const title = document.getElementById('sub-title-' + projId)?.value.trim();
@@ -1192,7 +1201,7 @@ export async function addSubtask(ctx, projId) {
 export async function toggleSubtask(ctx, projId, subId) {
   const { projects, save, render } = ctx;
   
-  const p = projects.find(p => p.id === projId);
+  const p = findProjectById(projects, projId);
   if (!p) return;
   
   const s = (p.subtasks || []).find(s => s.id === subId);
@@ -1274,7 +1283,7 @@ export async function saveArtifactNotes(ctx, artifactId) {
   const selectedProjectId = typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null;
   if (!selectedProjectId) return;
   
-  const project = (projects || []).find(p => p.id === selectedProjectId);
+  const project = findProjectById(projects, selectedProjectId);
   if (!project) return;
   
   const artifact = (project.artifacts || []).find(a => a.id === artifactId);
@@ -1309,7 +1318,7 @@ export function openArtifactDetail(ctx, artifactId) {
   
   if (!selectedProjectId) return;
   
-  const project = (projects || []).find(p => p.id === selectedProjectId);
+  const project = findProjectById(projects, selectedProjectId);
   if (!project) return;
   
   const artifact = (project.artifacts || []).find(a => a.id === artifactId);
@@ -1443,7 +1452,7 @@ export async function openCreateArtifactModal(ctx) {
   const description = prompt('Description (optional):') || '';
   
   if (!selectedProjectId) return;
-  const project = (projects || []).find(p => p.id === selectedProjectId);
+  const project = findProjectById(projects, selectedProjectId);
   if (!project) return;
   
   if (!project.artifacts) project.artifacts = [];
@@ -1481,7 +1490,7 @@ export async function addFileToArtifact(ctx, artifactId) {
   const selectedProjectId = selectedProjectIdValue || (typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null);
   if (!selectedProjectId) return;
   
-  const project = (projects || []).find(p => p.id === selectedProjectId);
+  const project = findProjectById(projects, selectedProjectId);
   if (!project) return;
   
   const artifact = (project.artifacts || []).find(a => a.id === artifactId);
@@ -1592,7 +1601,7 @@ export async function openAddCellLogEntry(ctx) {
     return;
   }
   
-  const project = (projects || []).find(p => p.id === selectedProjectId);
+  const project = findProjectById(projects, selectedProjectId);
   if (!project) return;
   
   const line = prompt('Cell line (e.g., MCF10A):');
@@ -1662,7 +1671,7 @@ export function openLinkCellLineModal(ctx, projectId) {
   const escFunction = escFn || esc;
   const escAttrFunction = escAttrFn || escAttr;
   
-  const project = projects.find(p => p.id === projectId);
+  const project = findProjectById(projects, projectId);
   if (!project) return;
   
   // Get available cell lines
@@ -1770,7 +1779,7 @@ export function openLinkCellLineModal(ctx, projectId) {
 export async function linkCellLineToProject(ctx, projectId, cellLine) {
   const { projects, save, renderProjectHeader: renderProjectHeaderFn } = ctx;
   
-  const project = projects.find(p => p.id === projectId);
+  const project = findProjectById(projects, projectId);
   if (!project) return;
   
   if (!project.linkedCellLines) {
@@ -1788,7 +1797,7 @@ export async function linkCellLineToProject(ctx, projectId, cellLine) {
   if (window.Petal?.store) {
     const state = window.Petal.store.getState();
     const updatedProjects = (state.projects || []).map(p => {
-      if (p.id === projectId) {
+      if (projectIdsMatch(p.id, projectId)) {
         return { ...p, linkedCellLines: project.linkedCellLines };
       }
       return p;
@@ -1823,7 +1832,7 @@ export async function linkCellLineToProject(ctx, projectId, cellLine) {
 export async function unlinkCellLineFromProject(ctx, projectId, cellLine) {
   const { projects, save, renderProjectHeader: renderProjectHeaderFn } = ctx;
   
-  const project = projects.find(p => p.id === projectId);
+  const project = findProjectById(projects, projectId);
   if (!project) return;
   
   if (!project.linkedCellLines) {
@@ -1836,7 +1845,7 @@ export async function unlinkCellLineFromProject(ctx, projectId, cellLine) {
   if (window.Petal?.store) {
     const state = window.Petal.store.getState();
     const updatedProjects = (state.projects || []).map(p => {
-      if (p.id === projectId) {
+      if (projectIdsMatch(p.id, projectId)) {
         return { ...p, linkedCellLines: project.linkedCellLines };
       }
       return p;
@@ -1922,7 +1931,7 @@ export function openProtocolRunDetail(ctx, runId) {
   
   if (!selectedProjectId) return;
   
-  const project = (projects || []).find(p => p.id === selectedProjectId);
+  const project = findProjectById(projects, selectedProjectId);
   if (!project) return;
   
   const run = ((project.protocolRuns || []).find(r => r.id === runId));
@@ -2044,7 +2053,7 @@ export async function openCreateProtocolRunModal(ctx) {
   const expectedEndDate = prompt('Expected end date (YYYY-MM-DD, optional):') || '';
   
   if (!selectedProjectId) return;
-  const project = (projects || []).find(p => p.id === selectedProjectId);
+  const project = findProjectById(projects, selectedProjectId);
   if (!project) return;
   
   if (!project.protocolRuns) project.protocolRuns = [];
@@ -2081,7 +2090,7 @@ export async function addProtocolRunLogEntry(ctx, runId) {
   const selectedProjectId = selectedProjectIdValue || (typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null);
   if (!selectedProjectId) return;
   
-  const project = (projects || []).find(p => p.id === selectedProjectId);
+  const project = findProjectById(projects, selectedProjectId);
   if (!project) return;
   
   const run = ((project.protocolRuns || []).find(r => r.id === runId));
@@ -2117,7 +2126,7 @@ export async function editFileNotes(ctx, fileId) {
   const selectedProjectId = selectedProjectIdValue || (typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null);
   if (!selectedProjectId) return;
   
-  const project = (projects || []).find(p => p.id === selectedProjectId);
+  const project = findProjectById(projects, selectedProjectId);
   if (!project) return;
   
   const file = (project.files || []).find(f => f.id === fileId);
@@ -2179,7 +2188,7 @@ export async function addWorkingLogEntry(ctx) {
   const selectedProjectId = selectedProjectIdValue || (typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null);
   if (!selectedProjectId) return;
   
-  const project = (projects || []).find(p => p.id === selectedProjectId);
+  const project = findProjectById(projects, selectedProjectId);
   if (!project) return;
   
   const text = prompt('What did you finish?');
@@ -2200,7 +2209,7 @@ export async function addWorkingLogEntry(ctx) {
   if (window.Petal?.store) {
     const state = window.Petal.store.getState();
     const updatedProjects = (state.projects || []).map(p => 
-      p.id === selectedProjectId ? project : p
+      projectIdsMatch(p.id, selectedProjectId) ? project : p
     );
     window.Petal.store.setState({ projects: updatedProjects });
   } else {
@@ -2209,7 +2218,9 @@ export async function addWorkingLogEntry(ctx) {
   }
   
   if (renderWorkingLog) {
-    renderWorkingLog(project);
+    renderWorkingLog(ctx, project);
+  } else if (window.Petal?.ui?.renderWorkingLog) {
+    window.Petal.ui.renderWorkingLog(ctx, project);
   } else if (typeof window.renderWorkingLog === 'function') {
     window.renderWorkingLog(project);
   }
@@ -2245,7 +2256,7 @@ export async function addTaskToProject(ctx, projId) {
   });
   
   const normalizedProjId = normalizeProjectIdValueFunction(projId);
-  const p = (projects || []).find(p => p.id === normalizedProjId);
+  const p = findProjectById(projects, normalizedProjId);
   if (!p) return;
   
   const title = document.getElementById('proj-task-title-' + projId)?.value.trim();
@@ -2319,7 +2330,7 @@ export async function addCellLineToProject(projectId) {
   const state = window.Petal?.store?.getState();
   if (!state) return;
   
-  const project = (state.projects || []).find(p => p.id === projectId);
+  const project = findProjectById(state.projects, projectId);
   if (!project) return;
   
   const selectEl = document.getElementById('cell-line-link-select');
@@ -2338,7 +2349,7 @@ export async function addCellLineToProject(projectId) {
   
   // Add cell line
   const updatedProjects = (state.projects || []).map(p => {
-    if (p.id === projectId) {
+    if (projectIdsMatch(p.id, projectId)) {
       return {
         ...p,
         linkedCellLines: [...linkedCellLines, cellLine]
@@ -2353,7 +2364,7 @@ export async function addCellLineToProject(projectId) {
   selectEl.value = '';
   
   // Re-render cell log view
-  const updatedProject = updatedProjects.find(p => p.id === projectId);
+  const updatedProject = findProjectById(updatedProjects, projectId);
   if (updatedProject) {
     const updatedState = window.Petal?.store?.getState();
     const ctx = {
@@ -2393,14 +2404,14 @@ export async function removeCellLineFromProject(projectId, cellLineStr) {
     cellLine = cellLineStr;
   }
   
-  const project = (state.projects || []).find(p => p.id === projectId);
+  const project = findProjectById(state.projects, projectId);
   if (!project) return;
   
   const linkedCellLines = Array.isArray(project.linkedCellLines) ? project.linkedCellLines : [];
   const updatedLinkedCellLines = linkedCellLines.filter(line => line !== cellLine);
   
   const updatedProjects = (state.projects || []).map(p => {
-    if (p.id === projectId) {
+    if (projectIdsMatch(p.id, projectId)) {
       return {
         ...p,
         linkedCellLines: updatedLinkedCellLines
@@ -2412,7 +2423,7 @@ export async function removeCellLineFromProject(projectId, cellLineStr) {
   updateStoreSafely({ projects: updatedProjects });
   
   // Re-render cell log view
-  const updatedProject = updatedProjects.find(p => p.id === projectId);
+  const updatedProject = findProjectById(updatedProjects, projectId);
   if (updatedProject) {
     const updatedState = window.Petal?.store?.getState();
     const ctx = {

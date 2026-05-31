@@ -2,7 +2,24 @@
 // Operations for workflow matrix view (drag-drop, task management, etc.)
 
 import { LANE_STAGES } from '../domain/schema.js';
-import { findProjectById, filterTasksForProject } from '../utils/projectHelpers.js';
+import { findProjectById, filterTasksForProject, normalizeProjectIdValue, projectIdsMatch } from '../utils/projectHelpers.js';
+
+function matrixItemMatchesId(item, id) {
+  return item && (item.id === id || String(item.id) === String(id));
+}
+
+function stageUpdatesForMatrix(stage) {
+  if (stage === 'doing') {
+    return { status: 'Doing', stage: 'doing', done: false };
+  }
+  if (stage === 'blocked') {
+    return { stage: 'blocked', done: false };
+  }
+  if (stage === 'ready') {
+    return { done: true };
+  }
+  return { stage: 'planned', status: 'Todo', done: false };
+}
 
 /**
  * Matrix drag state (module-level variable)
@@ -42,8 +59,63 @@ export async function onMatrixDrop(ctx, event, lane, stage) {
       window.renderWorkflowMatrix();
     }
   });
-  
-  const task = (tasks || []).find(t => t.id === draggedMatrixTaskId);
+
+  const draggedId = draggedMatrixTaskId;
+  const store = window.Petal?.store;
+
+  const applyDropToStore = () => {
+    if (!store) return false;
+    const state = store.getState();
+    const task = (state.tasks || []).find(t => matrixItemMatchesId(t, draggedId));
+
+    if (task) {
+      const wasSubtaskTask = task.subtaskId !== null && task.subtaskId !== undefined;
+      const stagePatch = stageUpdatesForMatrix(stage);
+      const updatedTasks = (state.tasks || []).map(t =>
+        matrixItemMatchesId(t, draggedId) ? { ...t, lane, ...stagePatch } : t
+      );
+      let updatedProjects = state.projects;
+      if (wasSubtaskTask && task.subtaskId) {
+        updatedProjects = (state.projects || []).map(p => {
+          if (!projectIdsMatch(p.id, task.projectId)) return p;
+          return {
+            ...p,
+            subtasks: (p.subtasks || []).map(s =>
+              matrixItemMatchesId(s, task.subtaskId) ? { ...s, lane } : s
+            )
+          };
+        });
+      }
+      store.setState({ tasks: updatedTasks, projects: updatedProjects });
+      return true;
+    }
+
+    for (const p of (state.projects || [])) {
+      const subtask = (p.subtasks || []).find(s => matrixItemMatchesId(s, draggedId));
+      if (subtask) {
+        const stagePatch = stageUpdatesForMatrix(stage);
+        const updatedProjects = (state.projects || []).map(proj => {
+          if (proj.id !== p.id && !projectIdsMatch(proj.id, p.id)) return proj;
+          return {
+            ...proj,
+            subtasks: (proj.subtasks || []).map(s =>
+              matrixItemMatchesId(s, draggedId) ? { ...s, lane, ...stagePatch } : s
+            )
+          };
+        });
+        store.setState({ projects: updatedProjects });
+        return true;
+      }
+    }
+    return false;
+  };
+
+  if (applyDropToStore()) {
+    await renderWorkflowMatrixFunction(ctx);
+    return;
+  }
+
+  const task = (tasks || []).find(t => matrixItemMatchesId(t, draggedId));
   if (task) {
     // If task belongs to a subtask, preserve that relationship
     const wasSubtaskTask = task.subtaskId !== null && task.subtaskId !== undefined;
@@ -67,7 +139,7 @@ export async function onMatrixDrop(ctx, event, lane, stage) {
     
     // If moving a subtask task to a different lane, update subtask's lane too
     if (wasSubtaskTask && task.subtaskId) {
-      const project = (projects || []).find(p => p.id === task.projectId);
+      const project = findProjectById(projects, task.projectId);
       if (project) {
         const subtask = (project.subtasks || []).find(s => s.id === task.subtaskId);
         if (subtask) {
@@ -150,15 +222,18 @@ export function showProjectsListHome({ rerender = true } = {}) {
 export async function selectProjectForMatrix(ctx, projectId) {
   const { selectedProjectId: selectedProjectIdValue, renderWorkflowMatrix: renderWorkflowMatrixFn } = ctx;
   
-  // Update global selectedProjectId
+  const resolvedProjectId =
+    projectId !== undefined && projectId !== null && projectId !== ''
+      ? normalizeProjectIdValue(projectId)
+      : null;
+
   if (typeof window.selectedProjectId !== 'undefined') {
-    window.selectedProjectId = projectId ? parseInt(projectId) : null;
+    window.selectedProjectId = resolvedProjectId;
   }
-  
+
   const createFormSection = document.getElementById('project-selector-create-section');
-  const projectIdNum = projectId ? parseInt(projectId) : null;
-  
-  if (projectIdNum) {
+
+  if (resolvedProjectId !== null && resolvedProjectId !== '') {
     // First hide the project list view
     const listView = document.getElementById('project-list-view');
     if (listView) {
@@ -191,7 +266,7 @@ export async function selectProjectForMatrix(ctx, projectId) {
       ...ctxWithoutSelectedId,
       projects: ctx?.projects || state.projects || [],
       tasks: ctx?.tasks || state.tasks || [],
-      selectedProjectId: projectIdNum  // Set explicitly AFTER spreading (so it can't be overwritten)
+      selectedProjectId: resolvedProjectId  // Set explicitly AFTER spreading (so it can't be overwritten)
     };
     
     // Verify it's set correctly
@@ -201,8 +276,8 @@ export async function selectProjectForMatrix(ctx, projectId) {
       hasWindowFn: typeof window.renderWorkflowMatrix === 'function',
       selectedProjectId: verifySelectedId,
       selectedProjectIdType: typeof verifySelectedId,
-      projectIdNum,
-      projectIdNumType: typeof projectIdNum,
+      resolvedProjectId,
+      resolvedProjectIdType: typeof resolvedProjectId,
       contextKeys: Object.keys(contextWithProjectId),
       contextHasSelectedProjectId: 'selectedProjectId' in contextWithProjectId,
       ctxHadSelectedProjectId: ctx ? 'selectedProjectId' in ctx : false,
@@ -212,7 +287,15 @@ export async function selectProjectForMatrix(ctx, projectId) {
     // Double-check: if it's still undefined, force it
     if (contextWithProjectId.selectedProjectId === undefined || contextWithProjectId.selectedProjectId === null) {
       console.warn('⚠️ selectedProjectId is undefined after setting, forcing it');
-      contextWithProjectId.selectedProjectId = projectIdNum;
+      contextWithProjectId.selectedProjectId = resolvedProjectId;
+    }
+
+    const stateForLookup = window.Petal?.store?.getState() || {};
+    const projectsList = contextWithProjectId.projects || stateForLookup.projects || [];
+    if (!findProjectById(projectsList, resolvedProjectId)) {
+      console.warn('⚠️ selectProjectForMatrix: Project not found', resolvedProjectId);
+      showProjectsListHome();
+      return;
     }
     
     if (renderWorkflowMatrixFn) {
@@ -224,8 +307,8 @@ export async function selectProjectForMatrix(ctx, projectId) {
     } else if (typeof window.renderWorkflowMatrix === 'function') {
       // Fallback: Ensure window.selectedProjectId is set before calling HTML wrapper
       // The HTML wrapper will call createPageContext() which reads from window.selectedProjectId
-      window.selectedProjectId = projectIdNum;
-      console.log('🔍 Setting window.selectedProjectId to:', projectIdNum, 'before calling HTML renderWorkflowMatrix');
+      window.selectedProjectId = resolvedProjectId;
+      console.log('🔍 Setting window.selectedProjectId to:', resolvedProjectId, 'before calling HTML renderWorkflowMatrix');
       // Also try calling with context if the function accepts it
       if (window.renderWorkflowMatrix.length > 0) {
         await window.renderWorkflowMatrix(contextWithProjectId);
@@ -251,10 +334,9 @@ export function openProjectView(ctx, projectId) {
     window.switchView('projects');
   }
   
-  // Set the selected project and open the matrix view
-  const projectIdNum = projectId ? parseInt(projectId) : null;
+  const resolvedProjectId = normalizeProjectIdValue(projectId);
   if (typeof window.selectedProjectId !== 'undefined') {
-    window.selectedProjectId = projectIdNum;
+    window.selectedProjectId = resolvedProjectId;
   }
   const matrixView = document.getElementById('workflow-matrix-view');
   const listView = document.getElementById('project-list-view');
@@ -273,7 +355,7 @@ export function openProjectView(ctx, projectId) {
   // Call selectProjectForMatrix to properly render the matrix with context
   const updatedCtx = { 
     ...ctx, 
-    selectedProjectId: projectIdNum
+    selectedProjectId: resolvedProjectId
   };
   
   if (window.Petal?.features?.matrixOperations?.selectProjectForMatrix) {
@@ -396,8 +478,13 @@ export async function addTaskToMatrix(ctx) {
     boardOrder: 1024
   };
   
-  if (tasks) tasks.unshift(newTask);
-  if (save) await save();
+  if (window.Petal?.store) {
+    const state = window.Petal.store.getState();
+    window.Petal.store.setState({ tasks: [newTask, ...(state.tasks || [])] });
+  } else {
+    if (tasks) tasks.unshift(newTask);
+    if (save) await save();
+  }
   await renderWorkflowMatrixFunction(ctx);
   
   // Clear form
@@ -444,7 +531,7 @@ export async function addTaskToSubtask(ctx, projectId, subtaskId) {
   const title = prompt('Enter task title:');
   if (!title) return;
   
-  const project = (projects || []).find(p => p.id === normalizedProjId);
+  const project = findProjectById(projects, normalizedProjId);
   if (!project) return;
   
   const subtask = (project.subtasks || []).find(s => s.id === subtaskId);
@@ -544,7 +631,7 @@ export async function addFileToMatrixProject(ctx) {
   const selectedProjectId = typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null;
   if (!selectedProjectId) return;
   
-  const project = (projects || []).find(p => p.id === selectedProjectId);
+  const project = findProjectById(projects, selectedProjectId);
   if (!project) return;
   
   const files = window.electronAPI 
@@ -590,7 +677,7 @@ export async function addFileToProjectFromActive(ctx) {
   const selectedProjectId = typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null;
   if (!selectedProjectId) return;
   
-  const project = (projects || []).find(p => p.id === selectedProjectId);
+  const project = findProjectById(projects, selectedProjectId);
   if (!project) return;
   
   const files = window.electronAPI 

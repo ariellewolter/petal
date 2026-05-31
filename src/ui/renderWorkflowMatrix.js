@@ -6,6 +6,37 @@ import { parseDate, dueLabel, today } from '../utils/dates.js';
 import { getMatrixStage, isTaskBlocked, getAllTasks } from '../domain/models.js';
 import { findProjectById, filterTasksForProject } from '../utils/projectHelpers.js';
 
+const PROJECT_PAGE_TABS = ['workflow', 'milestones', 'artifacts', 'protocols', 'log'];
+
+/**
+ * Render Overview tab sections (timeline, protocols, tasks, etc.)
+ */
+export function renderProjectOverviewSections(ctx, project, projectTasks) {
+  const ui = window.Petal?.ui || {};
+  const {
+    renderTodayTimeline,
+    renderActiveProtocols,
+    renderCellLog,
+    renderCompWindow,
+    renderDeadlinesHorizon,
+    renderProjectTasks
+  } = ctx;
+
+  const renderTodayTimelineFn = renderTodayTimeline || ui.renderTodayTimeline;
+  const renderActiveProtocolsFn = renderActiveProtocols || ui.renderActiveProtocols;
+  const renderCellLogFn = renderCellLog || ui.renderCellLog;
+  const renderCompWindowFn = renderCompWindow || ui.renderCompWindow;
+  const renderDeadlinesHorizonFn = renderDeadlinesHorizon || ui.renderDeadlinesHorizon;
+  const renderProjectTasksFn = renderProjectTasks || ui.renderProjectTasks;
+
+  if (renderTodayTimelineFn) renderTodayTimelineFn(ctx, project, projectTasks);
+  if (renderActiveProtocolsFn) renderActiveProtocolsFn(ctx, project, projectTasks);
+  if (renderCellLogFn) renderCellLogFn(ctx, project);
+  if (renderCompWindowFn) renderCompWindowFn(ctx, project, projectTasks);
+  if (renderDeadlinesHorizonFn) renderDeadlinesHorizonFn(ctx, project, projectTasks);
+  if (renderProjectTasksFn) renderProjectTasksFn(ctx, project, projectTasks);
+}
+
 /**
  * Get matrix stage for subtask
  */
@@ -615,24 +646,18 @@ export async function renderWorkflowMatrix(ctx) {
     cellLinesEl.style.visibility = 'visible';
   }
   
-  // Render research orchestration dashboard (fall back to Petal.ui when ctx omits render fns)
-  const ui = window.Petal?.ui || {};
-  const renderTodayTimelineFn = renderTodayTimeline || ui.renderTodayTimeline;
-  const renderActiveProtocolsFn = renderActiveProtocols || ui.renderActiveProtocols;
-  const renderCellLogFn = renderCellLog || ui.renderCellLog;
-  const renderCompWindowFn = renderCompWindow || ui.renderCompWindow;
-  const renderDeadlinesHorizonFn = renderDeadlinesHorizon || ui.renderDeadlinesHorizon;
-  const renderProjectTasksFn = renderProjectTasks || ui.renderProjectTasks;
-
-  if (renderTodayTimelineFn) renderTodayTimelineFn(ctx, project, projectTasks);
-  if (renderActiveProtocolsFn) renderActiveProtocolsFn(ctx, project, projectTasks);
-  if (renderCellLogFn) renderCellLogFn(ctx, project);
-  if (renderCompWindowFn) renderCompWindowFn(ctx, project, projectTasks);
-  if (renderDeadlinesHorizonFn) renderDeadlinesHorizonFn(ctx, project, projectTasks);
-  if (renderProjectTasksFn) renderProjectTasksFn(ctx, project, projectTasks);
-  
-  // Render sidebar
   await renderMatrixSidebarFunction(ctx, project, projectTasks);
+
+  const activeTab =
+    (typeof window.currentProjectPageTab !== 'undefined' && window.currentProjectPageTab) ||
+    'workflow';
+  const tabCtx = { ...ctx, projects, tasks, selectedProjectId: project.id };
+
+  if (window.Petal?.features?.projectOperations?.switchProjectPageTab) {
+    await window.Petal.features.projectOperations.switchProjectPageTab(tabCtx, activeTab);
+  } else {
+    renderProjectOverviewSections(tabCtx, project, projectTasks);
+  }
 }
 
 /**

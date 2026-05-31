@@ -3,6 +3,7 @@
 // Takes state as input, returns derived/computed data
 
 import { getAllTasks, isTaskBlocked } from '../../domain/models.js';
+import { taskBelongsToProject } from '../../utils/projectHelpers.js';
 
 /**
  * Get workflow tasks decorated with lane/column placement
@@ -18,13 +19,7 @@ export function selectWorkflowTasks(state) {
   // Filter by project if needed
   let filteredTasks = allTasks;
   if (projectFilter !== 'all') {
-    // Normalize projectId comparison to handle both string and number types
-    const normalizedProjectId = String(projectFilter).trim();
-    filteredTasks = allTasks.filter(t => {
-      if (!t.projectId) return false;
-      const taskProjectId = String(t.projectId).trim();
-      return taskProjectId === normalizedProjectId;
-    });
+    filteredTasks = allTasks.filter(t => taskBelongsToProject(t, projectFilter));
   }
   
   // Decorate tasks with workflow placement

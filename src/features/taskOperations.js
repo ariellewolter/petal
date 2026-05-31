@@ -2,7 +2,7 @@
 // Core task management functions
 
 import { esc, normalizePriorityValue, normalizeDueInput } from '../utils/strings.js';
-import { normalizeProjectIdValue } from '../utils/projectHelpers.js';
+import { normalizeProjectIdValue, findProjectById, projectIdsMatch } from '../utils/projectHelpers.js';
 
 function isTaskContext(value) {
   return !!value && typeof value === 'object' && !Array.isArray(value) && (
@@ -397,7 +397,7 @@ export async function toggleSubtask(ctx, projectId, subtaskId) {
     return;
   }
   // Verify it's actually a subtask for this project
-  if (subtask.parentTaskId || subtask.projectId === projectId) {
+  if (subtask.parentTaskId || projectIdsMatch(subtask.projectId, projectId)) {
     // Valid subtask
   } else {
     console.warn('Subtask ID', subtaskId, 'does not belong to project', projectId);
@@ -782,7 +782,7 @@ export async function saveEditModal(ctx) {
       // Merge with existing fileIds (keep any that aren't in project files)
       const existingFileIds = updatedTask.fileIds || [];
       const projectsArray = state?.projects || projects;
-      const project = projectsArray.find(p => p.id === updatedTask.projectId);
+      const project = findProjectById(projectsArray, updatedTask.projectId);
       const projectFileIds = project && project.files ? project.files.map(f => f && f.id).filter(Boolean) : [];
       
       // Keep existing fileIds that are still valid, add new selections
@@ -1221,18 +1221,12 @@ export async function addProtocolStep(ctx) {
   const title = prompt('Enter step title:');
   if (!title || !title.trim()) return;
   
-  if (!task.protocol.steps) {
-    task.protocol.steps = [];
-  }
-  
   const newStep = {
     id: `step_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     title: title.trim(),
     done: false
   };
-  
-  task.protocol.steps.push(newStep);
-  
+
   // Use store if available
   if (window.Petal?.store) {
     const state = window.Petal.store.getState();
@@ -1242,7 +1236,7 @@ export async function addProtocolStep(ctx) {
           ...t,
           protocol: {
             ...t.protocol,
-            steps: [...(t.protocol.steps || []), newStep]
+            steps: [...(t.protocol?.steps || []), newStep]
           }
         };
       }
@@ -1250,6 +1244,10 @@ export async function addProtocolStep(ctx) {
     });
     updateStoreSafely({ tasks: updatedTasks });
   } else {
+    if (!task.protocol.steps) {
+      task.protocol.steps = [];
+    }
+    task.protocol.steps.push(newStep);
     if (save) await save();
   }
   

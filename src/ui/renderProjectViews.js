@@ -2,6 +2,7 @@
 // UI rendering functions for project view sections (timeline, protocols, cell log, etc.)
 
 import { esc, escAttr, escJsonForDataAttr, fileIcon } from '../utils/strings.js';
+import { findProjectById } from '../utils/projectHelpers.js';
 import { parseDate, dueLabel, today } from '../utils/dates.js';
 import { getMatrixStage, isTaskBlocked } from '../domain/models.js';
 import { calculateProtocolDayIndex } from '../features/taskOperations.js';
@@ -844,7 +845,7 @@ export function renderArtifacts(ctx) {
   const selectedProjectId = selectedProjectIdValue || (typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null);
   if (!selectedProjectId) return;
   
-  const project = (projects || []).find(p => p.id === selectedProjectId);
+  const project = findProjectById(projects, selectedProjectId);
   if (!project) return;
   
   const contentEl = document.getElementById('artifacts-content');
@@ -926,7 +927,7 @@ export function renderProtocolRuns(ctx) {
   const selectedProjectId = selectedProjectIdValue || (typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null);
   if (!selectedProjectId) return;
   
-  const project = (projects || []).find(p => p.id === selectedProjectId);
+  const project = findProjectById(projects, selectedProjectId);
   if (!project) return;
   
   const contentEl = document.getElementById('protocol-runs-content');
@@ -989,7 +990,7 @@ export function renderMilestonesTimeline(ctx) {
   const selectedProjectId = selectedProjectIdValue || (typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null);
   if (!selectedProjectId) return;
   
-  const project = (projects || []).find(p => p.id === selectedProjectId);
+  const project = findProjectById(projects, selectedProjectId);
   if (!project) return;
   
   const timelineEl = document.getElementById('milestones-timeline');

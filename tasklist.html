@@ -1447,7 +1447,17 @@
         <h2 id="project-title-display" style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:400;color:var(--text);margin:0 0 4px 0;display:block !important;visibility:visible !important;opacity:1 !important;"></h2>
         <p id="project-desc-display" style="font-size:13px;color:var(--text-dim);margin:0;display:block;"></p>
       </div>
-      
+
+      <!-- Project page tabs -->
+      <div id="project-page-tabs" style="display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;border-bottom:1px solid var(--border);padding-bottom:12px;">
+        <button type="button" id="project-page-tab-workflow" data-action="project:switch-tab" data-tab="workflow" style="padding:8px 14px;background:var(--rose-pale);color:var(--rose);border:none;border-radius:8px;font-size:11px;font-weight:500;cursor:pointer;letter-spacing:.06em;text-transform:uppercase;">Overview</button>
+        <button type="button" id="project-page-tab-milestones" data-action="project:switch-tab" data-tab="milestones" style="padding:8px 14px;background:transparent;color:var(--text-dim);border:none;border-radius:8px;font-size:11px;font-weight:500;cursor:pointer;letter-spacing:.06em;text-transform:uppercase;">Milestones</button>
+        <button type="button" id="project-page-tab-artifacts" data-action="project:switch-tab" data-tab="artifacts" style="padding:8px 14px;background:transparent;color:var(--text-dim);border:none;border-radius:8px;font-size:11px;font-weight:500;cursor:pointer;letter-spacing:.06em;text-transform:uppercase;">Artifacts</button>
+        <button type="button" id="project-page-tab-protocols" data-action="project:switch-tab" data-tab="protocols" style="padding:8px 14px;background:transparent;color:var(--text-dim);border:none;border-radius:8px;font-size:11px;font-weight:500;cursor:pointer;letter-spacing:.06em;text-transform:uppercase;">Protocols</button>
+        <button type="button" id="project-page-tab-log" data-action="project:switch-tab" data-tab="log" style="padding:8px 14px;background:transparent;color:var(--text-dim);border:none;border-radius:8px;font-size:11px;font-weight:500;cursor:pointer;letter-spacing:.06em;text-transform:uppercase;">Log</button>
+      </div>
+
+      <div id="project-page-tab-workflow-panel">
       <!-- Section 1: Today Timeline -->
       <div id="today-timeline-section" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
@@ -1502,6 +1512,46 @@
           <button data-action="task:add-matrix" style="padding:6px 12px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:11px;cursor:pointer;font-weight:500;">+ Task</button>
         </div>
         <div id="project-tasks-content"></div>
+      </div>
+      </div><!-- /project-page-tab-workflow-panel -->
+
+      <div id="project-page-tab-milestones-panel" style="display:none;">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;">
+          <div id="milestones-timeline"></div>
+          <div id="project-milestones-panel-content" style="margin-top:16px;"></div>
+        </div>
+      </div>
+
+      <div id="project-page-tab-artifacts-panel" style="display:none;">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3 style="font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin:0;font-weight:500;">📦 Artifacts</h3>
+            <button type="button" data-action="project:create-artifact" style="padding:6px 12px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:11px;cursor:pointer;font-weight:500;">+ Artifact</button>
+          </div>
+          <div id="artifacts-content"></div>
+        </div>
+      </div>
+
+      <div id="project-page-tab-protocols-panel" style="display:none;">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3 style="font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin:0;font-weight:500;">🧪 Protocol Runs</h3>
+            <button type="button" data-action="project:create-protocol-run" style="padding:6px 12px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:11px;cursor:pointer;font-weight:500;">+ Protocol Run</button>
+          </div>
+          <div id="protocol-runs-content"></div>
+        </div>
+      </div>
+
+      <div id="project-page-tab-log-panel" style="display:none;">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;">
+          <h3 style="font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin:0 0 16px 0;font-weight:500;">📈 Progress</h3>
+          <div id="progress-momentum-content" style="margin-bottom:24px;"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3 style="font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin:0;font-weight:500;">📝 Working Log</h3>
+            <button type="button" data-action="project:add-log-entry" style="padding:6px 12px;background:var(--rose);color:white;border:none;border-radius:6px;font-size:11px;cursor:pointer;font-weight:500;">+ Entry</button>
+          </div>
+          <div id="working-log-content"></div>
+        </div>
       </div>
       
       <!-- Artifact Detail Modal -->
@@ -1727,6 +1777,13 @@ function createPageContext() {
     renderCompWindow: window.Petal?.ui?.renderCompWindow,
     renderDeadlinesHorizon: window.Petal?.ui?.renderDeadlinesHorizon,
     renderProjectTasks: window.Petal?.ui?.renderProjectTasks,
+    renderProjectOverviewSections: window.Petal?.ui?.renderProjectOverviewSections,
+    renderProgressMomentum: window.Petal?.ui?.renderProgressMomentum,
+    renderWorkingLog: window.Petal?.ui?.renderWorkingLog,
+    renderArtifacts: window.Petal?.ui?.renderArtifacts,
+    renderProtocolRuns: window.Petal?.ui?.renderProtocolRuns,
+    renderMilestonesTimeline: window.Petal?.ui?.renderMilestonesTimeline,
+    renderProjectMilestones: window.Petal?.features?.projectOperations?.renderProjectMilestones,
     renderTaskItem: window.Petal?.ui?.renderTaskItem,
     // Utility functions
     esc: window.Petal?.esc || window.esc,
@@ -2835,9 +2892,22 @@ function handleDeleteTaskAction(event, buttonElement) {
 // Store pending delete in window (used by module)
 window.pendingDelete = null;
 
+function getDeleteHandlerContext() {
+  const store = window.Petal?.store;
+  const state = store?.getState?.() || {};
+  return {
+    store,
+    state,
+    tasks: Array.isArray(state.tasks) ? state.tasks : [],
+    projects: Array.isArray(state.projects) ? state.projects : [],
+    save: window.Petal?.handlers?.save || window.save,
+    render: window.Petal?.handlers?.render || window.render,
+  };
+}
+
 function confirmDeleteTask(taskId, isSubtask, projectId, parentTaskId) {
   if (window.Petal?.features?.deleteHandlers?.confirmDeleteTask) {
-    const ctx = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
+    const ctx = getDeleteHandlerContext();
     window.Petal.features.deleteHandlers.confirmDeleteTask(ctx, taskId, isSubtask, projectId, parentTaskId);
   } else {
     console.error('Delete handlers module not loaded');
@@ -2846,7 +2916,8 @@ function confirmDeleteTask(taskId, isSubtask, projectId, parentTaskId) {
 
 function confirmDeleteFile(projectId, fileId) {
   if (window.Petal?.features?.deleteHandlers?.confirmDeleteFile) {
-    window.Petal.features.deleteHandlers.confirmDeleteFile(projectId, fileId);
+    const ctx = getDeleteHandlerContext();
+    window.Petal.features.deleteHandlers.confirmDeleteFile(ctx, projectId, fileId);
   } else {
     console.error('Delete handlers module not loaded');
   }
@@ -2885,7 +2956,8 @@ async function executeDelete() {
 // Soft delete: mark as deleted instead of removing - delegates to module
 async function softDeleteTask(taskId) {
   if (window.Petal?.features?.deleteHandlers?.softDeleteTask) {
-    await window.Petal.features.deleteHandlers.softDeleteTask(taskId);
+    const ctx = getDeleteHandlerContext();
+    await window.Petal.features.deleteHandlers.softDeleteTask(ctx, taskId);
   } else {
     console.error('Delete handlers module not loaded');
   }
@@ -2893,7 +2965,8 @@ async function softDeleteTask(taskId) {
 
 async function softDeleteFile(projectId, fileId) {
   if (window.Petal?.features?.deleteHandlers?.softDeleteFile) {
-    await window.Petal.features.deleteHandlers.softDeleteFile(projectId, fileId);
+    const ctx = getDeleteHandlerContext();
+    await window.Petal.features.deleteHandlers.softDeleteFile(ctx, projectId, fileId);
   } else {
     console.error('Delete handlers module not loaded');
   }
@@ -2913,7 +2986,8 @@ async function delTask(id) {
 // Delete project - delegates to module
 async function delProject(id) {
   if (window.Petal?.features?.deleteHandlers?.delProject) {
-    await window.Petal.features.deleteHandlers.delProject(id);
+    const ctx = getDeleteHandlerContext();
+    await window.Petal.features.deleteHandlers.delProject(ctx, id);
   } else {
     console.error('Delete handlers module not loaded');
   }
@@ -2922,7 +2996,8 @@ async function delProject(id) {
 // Delete task subtask - delegates to module
 async function delTaskSubtask(taskId, subtaskId) {
   if (window.Petal?.features?.deleteHandlers?.delTaskSubtask) {
-    await window.Petal.features.deleteHandlers.delTaskSubtask(taskId, subtaskId);
+    const ctx = getDeleteHandlerContext();
+    await window.Petal.features.deleteHandlers.delTaskSubtask(ctx, taskId, subtaskId);
   } else {
     console.error('Delete handlers module not loaded');
   }
@@ -2931,7 +3006,8 @@ async function delTaskSubtask(taskId, subtaskId) {
 // Delete project subtask (legacy) - delegates to module
 async function delSubtask(projId, subId) {
   if (window.Petal?.features?.deleteHandlers?.delSubtask) {
-    await window.Petal.features.deleteHandlers.delSubtask(projId, subId);
+    const ctx = getDeleteHandlerContext();
+    await window.Petal.features.deleteHandlers.delSubtask(ctx, projId, subId);
   } else {
     console.error('Delete handlers module not loaded');
   }

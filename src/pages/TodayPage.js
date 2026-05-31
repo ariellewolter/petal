@@ -5,6 +5,7 @@
 import { esc } from '../utils/strings.js';
 import { today, parseDate } from '../utils/dates.js';
 import { getAllTasks } from '../domain/models.js';
+import { projectNameById } from '../utils/projectHelpers.js';
 import { setupEventDelegation } from '../app/delegation.js';
 
 // Helper functions for planner format (matching planner daily view)
@@ -586,17 +587,7 @@ function renderTodayTasks(tasksToday, doneToday, projects) {
     // Normalize projectId comparison to handle decimal projectIds
     let projectName = '';
     if (t.projectId) {
-      const taskProjectIdNum = Number(t.projectId);
-      const project = projects.find(p => {
-        const pId = Number(p.id);
-        if (!isNaN(taskProjectIdNum) && !isNaN(pId)) {
-          // Compare integer parts for decimal projectIds
-          return Math.floor(taskProjectIdNum) === Math.floor(pId);
-        }
-        // Fallback to string comparison
-        return String(p.id) === String(t.projectId);
-      });
-      projectName = project?.name || '';
+      projectName = projectNameById(projects, t.projectId);
     }
     const lane = t.lane || '';
     const tagClass = lane === 'lab' ? 'tag-green' : lane === 'comp' ? 'tag-blue' : 'tag-orange';

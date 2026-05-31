@@ -517,6 +517,193 @@ function getVaultPath() {
   return defaultPath;
 }
 
+/** Read task/project counts from a vault's petal.json */
+function getVaultDataStats(vaultPath) {
+  const empty = { hasData: false, tasks: 0, projects: 0, files: 0, cellLogEntries: 0 };
+  if (!vaultPath || !fs.existsSync(vaultPath)) return empty;
+  const dataFile = path.join(vaultPath, DATA_FILE_NAME);
+  if (!fs.existsSync(dataFile)) return empty;
+  try {
+    const raw = fs.readFileSync(dataFile, 'utf-8').trim();
+    if (!raw || raw === '{}') return empty;
+    const data = JSON.parse(raw);
+    const tasks = Array.isArray(data.tasks) ? data.tasks.length : 0;
+    const projects = Array.isArray(data.projects) ? data.projects.length : 0;
+    const files = Array.isArray(data.files) ? data.files.length : 0;
+    const cellLogEntries = data.settings?.cellLog?.entries?.length || 0;
+    const hasData = tasks > 0 || projects > 0 || files > 0 || cellLogEntries > 0;
+    return { hasData, tasks, projects, files, cellLogEntries };
+  } catch {
+    return empty;
+  }
+}
+
+/** True if petal.json exists and has meaningful user content */
+function vaultHasUserData(vaultPath) {
+  return getVaultDataStats(vaultPath).hasData;
+}
+
+/** Folder picker should open on the active vault, not the platform default (iCloud on Mac). */
+function getVaultDialogDefaultPath() {
+  const active = vaultManager?.getActiveVaultPath?.() || null;
+  if (active && fs.existsSync(active)) return active;
+  const stored = getStoredVaultPath();
+  if (stored && fs.existsSync(stored)) return stored;
+  if (vaultManager?.config?.vault_path && fs.existsSync(vaultManager.config.vault_path)) {
+    return vaultManager.config.vault_path;
+  }
+  return getDefaultVaultPath();
+}
+
+/** Find the vault folder that actually has your data (e.g. iCloud when active vault is empty OneDrive). */
+async function findVaultWithMostData(excludePath) {
+  const candidates = [];
+  const push = (p) => {
+    if (p && fs.existsSync(p) && !candidates.some((c) => path.resolve(c) === path.resolve(p))) {
+      candidates.push(p);
+    }
+  };
+
+  push(getVaultPath());
+  push(getStoredVaultPath());
+  if (vaultManager?.config?.vault_path) push(vaultManager.config.vault_path);
+
+  if (vaultManager) {
+    const discovered = await vaultManager.discoverVaults();
+    for (const v of discovered) push(v.path);
+  }
+
+  if (process.platform === 'darwin') {
+    push(path.join(os.homedir(), 'Library', 'Mobile Documents', 'com~apple~CloudDocs', VAULT_FOLDER_NAME));
+    const cloudStorageDir = path.join(os.homedir(), 'Library', 'CloudStorage');
+    if (fs.existsSync(cloudStorageDir)) {
+      try {
+        for (const entry of fs.readdirSync(cloudStorageDir)) {
+          if (entry.startsWith('OneDrive')) {
+            push(path.join(cloudStorageDir, entry, VAULT_FOLDER_NAME));
+          }
+        }
+      } catch {
+        // ignore scan errors
+      }
+    }
+  }
+
+  let bestPath = null;
+  let bestScore = -1;
+  for (const candidate of candidates) {
+    if (excludePath && path.resolve(candidate) === path.resolve(excludePath)) continue;
+    const stats = getVaultDataStats(candidate);
+    if (!stats.hasData) continue;
+    const score = stats.tasks + stats.projects * 5 + stats.files + stats.cellLogEntries * 2;
+    if (score > bestScore) {
+      bestScore = score;
+      bestPath = candidate;
+    }
+  }
+  return bestPath;
+}
+
+function persistVaultPathChoice(vaultPath, manifest) {
+  storeVaultPath(vaultPath);
+  if (vaultManager) {
+    vaultManager.activeVaultPath = vaultPath;
+    vaultManager.config.vault_path = vaultPath;
+    if (manifest?.vault_id) {
+      vaultManager.config.last_seen_vault_id = manifest.vault_id;
+    }
+    vaultManager.saveConfig();
+  }
+}
+
+/** Copy petal.json (+ attachments) from another folder into the active vault */
+async function handleCopyVaultFromFolder() {
+  if (!vaultManager || !mainWindow) {
+    return { success: false, error: 'VaultManager or window not initialized' };
+  }
+
+  const destPath = getVaultPath();
+  if (!destPath) {
+    return { success: false, error: 'No active vault' };
+  }
+
+  const suggestedSource = await findVaultWithMostData(destPath);
+  const pick = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openDirectory'],
+    title: 'Select folder with your Petal data',
+    message: 'Choose the folder that contains your previous petal.json file.',
+    defaultPath: suggestedSource || getVaultDialogDefaultPath()
+  });
+
+  if (pick.canceled || !pick.filePaths.length) {
+    return { success: false, canceled: true };
+  }
+
+  const sourcePath = pick.filePaths[0];
+  if (path.resolve(sourcePath) === path.resolve(destPath)) {
+    return { success: false, error: 'Source and destination folders are the same' };
+  }
+
+  if (!vaultHasUserData(sourcePath)) {
+    return {
+      success: false,
+      error: 'No Petal data found in that folder (missing or empty petal.json)'
+    };
+  }
+
+  const destHasData = vaultHasUserData(destPath);
+  if (destHasData) {
+    const { response } = await dialog.showMessageBox(mainWindow, {
+      type: 'warning',
+      title: 'Replace current vault data?',
+      message: 'This will overwrite the data in your current vault folder.',
+      detail: `From:\n${sourcePath}\n\nTo:\n${destPath}`,
+      buttons: ['Replace with copied data', 'Cancel'],
+      defaultId: 1,
+      cancelId: 1
+    });
+    if (response === 1) {
+      return { success: false, canceled: true };
+    }
+  }
+
+  await copyVaultContents(sourcePath, destPath);
+  ensureVaultStructure();
+
+  return {
+    success: true,
+    vaultPath: destPath,
+    sourcePath,
+    copied: true
+  };
+}
+
+/** Copy database and attachments from one vault folder to another */
+async function copyVaultContents(fromPath, toPath) {
+  if (!fromPath || !fs.existsSync(fromPath)) {
+    throw new Error('Source vault folder not found');
+  }
+  await fsPromises.mkdir(toPath, { recursive: true });
+
+  for (const name of [DATA_FILE_NAME, BACKUP_FILE_NAME]) {
+    const src = path.join(fromPath, name);
+    if (fs.existsSync(src)) {
+      await fsPromises.copyFile(src, path.join(toPath, name));
+    }
+  }
+
+  for (const dirName of ['attachments', 'exports']) {
+    const srcDir = path.join(fromPath, dirName);
+    const destDir = path.join(toPath, dirName);
+    if (fs.existsSync(srcDir)) {
+      await fsPromises.mkdir(destDir, { recursive: true });
+      await fsPromises.cp(srcDir, destDir, { recursive: true, force: true });
+    }
+  }
+
+  safeLog(`📋 Copied vault data from ${fromPath} → ${toPath}`);
+}
+
 // Get full paths for vault files
 function getVaultPaths() {
   const vaultPath = getVaultPath();
@@ -1123,8 +1310,7 @@ app.whenReady().then(async () => {
       // Try discovery
       const discovered = await vaultManager.discoverVaults();
       if (discovered.length > 0) {
-        // Found vault in new location
-        const foundVault = discovered[0];
+        const foundVault = vaultManager.pickBestDiscoveredVault(discovered);
         safeLog(`✓ Found vault at new location: ${foundVault.path}`);
         vaultResolution = {
           success: true,
@@ -1445,6 +1631,34 @@ ipcMain.handle('storage:getVaultPath', () => {
   return getVaultPath();
 });
 
+ipcMain.handle('vault:getDetails', async () => {
+  const activeVaultPath = getVaultPath();
+  const preferencesVaultPath = getStoredVaultPath();
+  const configVaultPath = vaultManager?.config?.vault_path || null;
+  const dataStats = activeVaultPath ? getVaultDataStats(activeVaultPath) : null;
+  const dataSourceWithContent = await findVaultWithMostData(null);
+
+  const norm = (p) => (p ? path.resolve(p) : null);
+  const activeNorm = norm(activeVaultPath);
+  const pathsAligned =
+    !activeNorm ||
+    ((!preferencesVaultPath || norm(preferencesVaultPath) === activeNorm) &&
+      (!configVaultPath || norm(configVaultPath) === activeNorm));
+
+  return {
+    activeVaultPath,
+    preferencesVaultPath,
+    configVaultPath,
+    pathsAligned,
+    dataStats,
+    dataSourceWithContent:
+      dataSourceWithContent && norm(dataSourceWithContent) !== activeNorm
+        ? { path: dataSourceWithContent, ...getVaultDataStats(dataSourceWithContent) }
+        : null,
+    dialogDefaultPath: getVaultDialogDefaultPath()
+  };
+});
+
 // Recovery: List available backup files
 ipcMain.handle('storage:listBackups', async () => {
   try {
@@ -1578,19 +1792,47 @@ ipcMain.handle('storage:chooseVaultFolder', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openDirectory'],
     title: 'Choose Petal Vault Folder',
-    defaultPath: getDefaultVaultPath()
+    defaultPath: getVaultDialogDefaultPath()
   });
   
   if (!result.canceled && result.filePaths.length > 0) {
     const chosenPath = result.filePaths[0];
+
+    if (vaultManager) {
+      try {
+        if (vaultManager.isVaultPath(chosenPath)) {
+          await vaultManager.setActiveVault(chosenPath);
+        } else {
+          const createResult = await vaultManager.createVault(chosenPath);
+          if (!createResult.success) {
+            safeError('Failed to create vault at chosen path:', createResult.error);
+            return null;
+          }
+        }
+        startWatchingDataFile(chosenPath);
+      } catch (err) {
+        safeError('Error activating chosen vault:', err);
+        return null;
+      }
+    }
+
     storeVaultPath(chosenPath);
     ensureVaultStructure();
     safeLog(`📁 User selected vault folder: ${chosenPath}`);
     safeLog(`  ✓ Vault path saved to preferences`);
     return chosenPath;
   }
-  
+
   return null;
+});
+
+ipcMain.handle('storage:copyVaultFromFolder', async () => {
+  try {
+    return await handleCopyVaultFromFolder();
+  } catch (error) {
+    safeError('Error copying vault from folder:', error);
+    return { success: false, error: error.message };
+  }
 });
 
 ipcMain.handle('onedrive:getRoot', () => {
@@ -2014,53 +2256,130 @@ ipcMain.handle('vault:choose', async () => {
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ['openDirectory', 'createDirectory'],
       title: 'Choose or Create Petal Vault Folder',
-      defaultPath: getDefaultVaultPath(),
+      defaultPath: getVaultDialogDefaultPath(),
       message: 'Select a folder for your Petal vault. If the folder doesn\'t exist, it will be created.'
     });
     
     if (!result.canceled && result.filePaths.length > 0) {
       const chosenPath = result.filePaths[0];
-      
-      // Check if it's already a vault
+      const previousPath = getVaultPath();
+      const isSamePath = path.resolve(chosenPath) === path.resolve(previousPath);
+      const chosenHasData = vaultHasUserData(chosenPath);
+
+      let dataSourcePath = null;
+      if (!isSamePath && !chosenHasData) {
+        if (vaultHasUserData(previousPath)) {
+          dataSourcePath = previousPath;
+        } else {
+          dataSourcePath = await findVaultWithMostData(chosenPath);
+        }
+      }
+
+      let copyFromSource = false;
+      let copySourcePath = null;
+      if (
+        dataSourcePath &&
+        path.resolve(dataSourcePath) !== path.resolve(chosenPath)
+      ) {
+        const sourceStats = getVaultDataStats(dataSourcePath);
+        const { response } = await dialog.showMessageBox(mainWindow, {
+          type: 'question',
+          title: 'Copy your Petal data?',
+          message: 'The folder you selected has no Petal data yet.',
+          detail:
+            `Copy your tasks and projects into this folder?\n\n` +
+            `From (${sourceStats.tasks} tasks, ${sourceStats.projects} projects):\n${dataSourcePath}\n\n` +
+            `To:\n${chosenPath}\n\n` +
+            `Your original folder will not be deleted.`,
+          buttons: ['Copy data', 'Start empty', 'Cancel'],
+          defaultId: 0,
+          cancelId: 2
+        });
+        if (response === 2) {
+          return { success: false, canceled: true };
+        }
+        copyFromSource = response === 0;
+        copySourcePath = dataSourcePath;
+      } else if (vaultHasUserData(previousPath) && chosenHasData && !isSamePath) {
+        const { response } = await dialog.showMessageBox(mainWindow, {
+          type: 'warning',
+          title: 'Switch vault?',
+          message: 'The selected folder already contains Petal data.',
+          detail:
+            `Petal will load data from the new folder, not merge with your current vault.\n\n` +
+            `Current:\n${previousPath}\n\nSelected:\n${chosenPath}`,
+          buttons: ['Use selected folder', 'Cancel'],
+          defaultId: 0,
+          cancelId: 1
+        });
+        if (response === 1) {
+          return { success: false, canceled: true };
+        }
+      }
+
+      // Existing vault with manifest
       if (vaultManager.isVaultPath(chosenPath)) {
         const manifest = await vaultManager.setActiveVault(chosenPath);
-        
-        // Send vault:resolved event to renderer
+        if (copyFromSource && copySourcePath) {
+          await copyVaultContents(copySourcePath, chosenPath);
+        }
+        startWatchingDataFile(chosenPath);
+        persistVaultPathChoice(chosenPath, manifest);
+
         mainWindow.webContents.send('vault:resolved', {
           vaultPath: chosenPath,
           manifest: manifest,
           source: 'user-choice'
         });
-        
+
         return {
           success: true,
           vaultPath: chosenPath,
           wasExisting: true,
-          manifest: manifest
+          manifest: manifest,
+          copiedFromPrevious: copyFromSource,
+          previousVaultPath: copyFromSource ? copySourcePath : undefined
         };
-      } else {
-        // Create new vault
-        const createResult = await vaultManager.createVault(chosenPath);
-        
-        if (createResult.success) {
-          // Start watching the new vault
-          startWatchingDataFile(createResult.vaultPath);
-          
-          // Send vault:resolved event to renderer
-          mainWindow.webContents.send('vault:resolved', {
-            vaultPath: createResult.vaultPath,
-            manifest: createResult.manifest,
-            source: 'user-creation'
-          });
-        }
-        
-        return createResult;
       }
+
+      // New folder or legacy vault (petal.json without manifest)
+      const createResult = await vaultManager.createVault(chosenPath);
+
+      if (createResult.success) {
+        if (copyFromSource && copySourcePath) {
+          await copyVaultContents(copySourcePath, createResult.vaultPath);
+        }
+        startWatchingDataFile(createResult.vaultPath);
+        persistVaultPathChoice(createResult.vaultPath, createResult.manifest);
+
+        mainWindow.webContents.send('vault:resolved', {
+          vaultPath: createResult.vaultPath,
+          manifest: createResult.manifest,
+          source: copyFromSource ? 'user-migration' : 'user-creation'
+        });
+
+        return {
+          ...createResult,
+          copiedFromPrevious: copyFromSource,
+          previousVaultPath: copyFromSource ? copySourcePath : undefined
+        };
+      }
+
+      return createResult;
     }
     
     return { success: false, canceled: true };
   } catch (error) {
     vaultManager.logger?.error('Error choosing vault:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('vault:copyFromFolder', async () => {
+  try {
+    return await handleCopyVaultFromFolder();
+  } catch (error) {
+    vaultManager?.logger?.error('Error copying vault from folder:', error);
     return { success: false, error: error.message };
   }
 });

@@ -5,7 +5,7 @@ import { esc, escAttr, escJsonForDataAttr, escJsonForAttr, fileIcon } from '../u
 import { parseDate, dueLabel, today } from '../utils/dates.js';
 import { getMatrixStage, isTaskBlocked } from '../domain/models.js';
 import { LANE_STAGES } from '../domain/schema.js';
-import { getWorkflowLanesDisplay, filterTasksForProject } from '../utils/projectHelpers.js';
+import { getWorkflowLanesDisplay, filterTasksForProject, findProjectById } from '../utils/projectHelpers.js';
 import { getTaskSubtasks } from '../features/taskOperations.js';
 import { getTaskFiles } from '../features/fileManagement.js';
 
@@ -408,7 +408,7 @@ export async function renderProjectFiles(ctx) {
     return;
   }
   
-  const project = projects.find(p => p.id === selectedProjectId);
+  const project = findProjectById(projects, selectedProjectId);
   if (!project) {
     filesEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-dim);font-size:12px;">Project not found</div>';
     return;

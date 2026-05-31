@@ -2,6 +2,7 @@
 // Settings page with Import/Export and Vault management
 
 import { esc } from '../utils/strings.js';
+import { updateVaultBadge } from '../utils/vault.js';
 
 /**
  * Render Settings page
@@ -15,12 +16,14 @@ export async function renderSettingsPage(containerEl, state, handlers) {
   // Get vault info if in Electron
   let vaultPath = 'Not available (browser mode)';
   let vaultStatus = null;
+  let vaultDetails = null;
   let dataPath = null;
   const isElectron = typeof window.electronAPI !== 'undefined';
 
   if (isElectron) {
     try {
-      vaultPath = await window.electronAPI.getVaultPath() || 'Not set';
+      vaultDetails = await window.electronAPI.vaultGetDetails?.();
+      vaultPath = vaultDetails?.activeVaultPath || (await window.electronAPI.getVaultPath()) || 'Not set';
       vaultStatus = await window.electronAPI.vaultGetStatus();
       dataPath = await window.electronAPI.getDataPath();
     } catch (err) {
@@ -28,6 +31,15 @@ export async function renderSettingsPage(containerEl, state, handlers) {
       vaultPath = 'Error loading path';
     }
   }
+
+  const dataStats = vaultDetails?.dataStats;
+  const otherDataVault = vaultDetails?.dataSourceWithContent;
+  const dataSummary = dataStats
+    ? `${dataStats.tasks} tasks, ${dataStats.projects} projects in this vault`
+    : '';
+  const otherDataSummary = otherDataVault
+    ? `${otherDataVault.tasks} tasks, ${otherDataVault.projects} projects at:\n${otherDataVault.path}`
+    : '';
   
   // Calculate settings stats
   const vaultReady = vaultStatus?.resolved === true;
@@ -42,7 +54,7 @@ export async function renderSettingsPage(containerEl, state, handlers) {
       <!-- VAULT SECTION -->
       <div class="settings-section">
         <h3 class="settings-section-title">Petal Vault</h3>
-        <p class="settings-section-desc">Your data is stored in a vault folder that syncs via iCloud Drive (Mac) or OneDrive (Windows).</p>
+        <p class="settings-section-desc">Your data lives in a vault folder (petal.json). Changing location points the app at a different folder — use <strong>Copy data from another folder</strong> if you moved vaults and your tasks did not come along.</p>
         
         <div class="settings-vault-info">
           <div class="settings-vault-path">
@@ -54,6 +66,7 @@ export async function renderSettingsPage(containerEl, state, handlers) {
           <div class="settings-vault-actions">
             <button class="settings-btn" data-action="open-vault-folder">📁 Open Vault Folder</button>
             <button class="settings-btn" data-action="choose-vault-folder">📂 Change Vault Location</button>
+            <button class="settings-btn" data-action="copy-from-vault-folder">📋 Copy data from another folder</button>
             <button class="settings-btn" data-action="refresh-vault-status">🔄 Refresh Status</button>
           </div>
           ` : `
@@ -75,6 +88,19 @@ export async function renderSettingsPage(containerEl, state, handlers) {
             <span class="settings-status-value">${esc(dataPath)}</span>
           </div>
           ` : ''}
+          ${dataSummary ? `
+          <div class="settings-status-item">
+            <span class="settings-status-label">Data here:</span>
+            <span class="settings-status-value ${dataStats?.hasData ? 'status-ok' : 'status-warning'}">${esc(dataSummary)}</span>
+          </div>
+          ` : ''}
+        </div>
+        ` : ''}
+        ${otherDataVault ? `
+        <div class="settings-info-box" style="margin-top:12px;border-color:var(--rose-soft);background:var(--rose-pale);">
+          <p><strong>Data found in another vault folder.</strong> The active location may be empty or out of date.</p>
+          <p style="font-size:12px;white-space:pre-wrap;margin-top:8px;">${esc(otherDataSummary)}</p>
+          <p style="margin-top:8px;font-size:12px;">Use <strong>Copy data from another folder</strong> and select that path to load it here.</p>
         </div>
         ` : ''}
       </div>
@@ -169,13 +195,65 @@ export async function renderSettingsPage(containerEl, state, handlers) {
         if (isElectron) {
           try {
             const chooseResult = await window.electronAPI.vaultChoose();
+            if (chooseResult?.canceled) {
+              break;
+            }
             if (chooseResult?.success) {
-              alert('Vault location changed. Please restart the app for changes to take effect.');
-              // Re-render to show new path
+              const newPath = chooseResult.vaultPath || await window.electronAPI.getVaultPath();
+              await reloadStateAfterVaultChange(handlers);
+              await updateVaultBadge();
+              if (chooseResult.copiedFromPrevious) {
+                alert(
+                  `Vault location updated and your data was copied.\n\n${newPath}\n\n` +
+                    `Original vault (unchanged):\n${chooseResult.previousVaultPath}`
+                );
+              } else {
+                alert(
+                  `Vault location updated.\n\n${newPath}\n\n` +
+                    `Loaded data from this folder. If it looks empty, use "Copy data from another folder" to pull in your previous petal.json.`
+                );
+              }
               await renderSettingsPage(containerEl, state, handlers);
+            } else {
+              alert(
+                'Could not change vault location' +
+                  (chooseResult?.error ? `:\n\n${chooseResult.error}` : '.')
+              );
             }
           } catch (err) {
             alert('Error choosing vault folder: ' + err.message);
+          }
+        }
+        break;
+      case 'copy-from-vault-folder':
+        if (isElectron) {
+          try {
+            const copyVault =
+              window.electronAPI.copyVaultFromFolder ||
+              window.electronAPI.vaultCopyFromFolder;
+            if (!copyVault) {
+              alert(
+                'Copy vault is not available. Fully quit Petal (Cmd+Q) and reopen the app, then try again.'
+              );
+              break;
+            }
+            const copyResult = await copyVault();
+            if (copyResult?.canceled) break;
+            if (copyResult?.success) {
+              await reloadStateAfterVaultChange(handlers);
+              await updateVaultBadge();
+              alert(
+                `Data copied into your current vault.\n\n${copyResult.vaultPath}\n\nFrom:\n${copyResult.sourcePath}`
+              );
+              await renderSettingsPage(containerEl, state, handlers);
+            } else {
+              alert(
+                'Could not copy vault data' +
+                  (copyResult?.error ? `:\n\n${copyResult.error}` : '.')
+              );
+            }
+          } catch (err) {
+            alert('Error copying vault data: ' + err.message);
           }
         }
         break;
@@ -204,6 +282,43 @@ export async function renderSettingsPage(containerEl, state, handlers) {
       // Re-render after import
       await renderSettingsPage(containerEl, state, handlers);
     };
+  }
+}
+
+/**
+ * Reload app state from the active vault after the user changes vault location.
+ */
+async function reloadStateAfterVaultChange(handlers) {
+  if (!window.storage?.loadState) return;
+
+  const loadResult = await window.storage.loadState();
+  if (loadResult?.ok === false) {
+    throw new Error(loadResult.error || 'Failed to load data from vault');
+  }
+
+  const loadedData = loadResult?.data ?? loadResult;
+  if (!loadedData || !window.Petal?.store) return;
+
+  const current = window.Petal.store.getState();
+  window.Petal.store.setState({
+    tasks: loadedData.tasks || [],
+    projects: loadedData.projects || [],
+    openProjects: Array.isArray(loadedData.openProjects)
+      ? loadedData.openProjects
+      : loadedData.openProjects instanceof Set
+        ? Array.from(loadedData.openProjects)
+        : [],
+    settings: loadedData.settings || {},
+    events: loadedData.events || [],
+    recurringRules: loadedData.recurringRules || [],
+    files: loadedData.files || [],
+    habits: loadedData.habits || current.habits || [],
+    routines: loadedData.routines || current.routines || [],
+    prints3d: loadedData.prints3d || current.prints3d || []
+  });
+
+  if (handlers?.render) {
+    await handlers.render();
   }
 }
 
@@ -270,7 +385,11 @@ async function handleImport(event, state, handlers) {
         window.Petal.store.setState({
           tasks: newState.tasks || [],
           projects: newState.projects || [],
-          openProjects: new Set(newState.openProjects || []),
+          openProjects: Array.isArray(newState.openProjects)
+            ? newState.openProjects
+            : newState.openProjects instanceof Set
+              ? Array.from(newState.openProjects)
+              : [],
           settings: newState.settings || {},
           events: newState.events || [],
           recurringRules: newState.recurringRules || [],
@@ -302,8 +421,13 @@ async function handleImport(event, state, handlers) {
  */
 export async function renderSettingsFallback(containerEl, state) {
   if (!containerEl) return;
-  
-  const isElectron = typeof window.electronAPI !== 'undefined';
+
+  const handlers = window.Petal?.handlers;
+  if (typeof window.electronAPI !== 'undefined') {
+    return renderSettingsPage(containerEl, state, handlers);
+  }
+
+  const isElectron = false;
   let vaultPath = 'Not available (browser mode)';
   
   if (isElectron) {
@@ -335,8 +459,8 @@ export async function renderSettingsFallback(containerEl, state) {
           
           ${isElectron ? `
           <div class="settings-vault-actions">
-            <button class="settings-btn" onclick="if(window.electronAPI)window.electronAPI.vaultOpenFolder('${safeVaultPath.replace(/'/g, "\\'")}')">📁 Open Vault Folder</button>
-            <button class="settings-btn" onclick="alert('Change vault location in desktop app')">📂 Change Vault Location</button>
+            <button class="settings-btn" data-action="open-vault-folder">📁 Open Vault Folder</button>
+            <button class="settings-btn" data-action="choose-vault-folder">📂 Change Vault Location</button>
           </div>
           ` : `
           <div class="settings-info-box">

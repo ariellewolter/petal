@@ -3,6 +3,7 @@
 
 import { esc } from '../utils/strings.js';
 import { getDefaultLaneIds } from '../domain/schema.js';
+import { findProjectById } from '../utils/projectHelpers.js';
 
 /**
  * Normalize project ID value (handles string/number conversion)
@@ -156,7 +157,7 @@ export function updateProjectFilesSelect() {
     return;
   }
   
-  const project = projects.find(p => p.id === projectId);
+  const project = findProjectById(projects, projectId);
   if (!project || !project.files || project.files.length === 0) {
     filesSelectContainer.style.display = 'none';
     filesSelect.innerHTML = '<option value="" disabled>No files in this project yet</option>';

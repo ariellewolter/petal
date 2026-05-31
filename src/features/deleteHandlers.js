@@ -1,6 +1,8 @@
 // ═══════════════════════ DELETE HANDLERS ═══════════════════════
 // Handles deletion confirmation and execution for tasks, files, projects, and subtasks
 
+import { findProjectById, projectIdsMatch } from '../utils/projectHelpers.js';
+
 /**
  * Confirm deletion of a task
  */
@@ -117,7 +119,7 @@ export function confirmDeleteTask(ctx, taskId, isSubtask, projectId, parentTaskI
  */
 export function confirmDeleteFile(ctx, projectId, fileId) {
   const { projects } = ctx;
-  const project = projects.find(p => p.id === projectId);
+  const project = findProjectById(projects, projectId);
   if (!project || !project.files) {
     alert('File not found');
     return;
@@ -145,7 +147,10 @@ export function confirmDeleteFile(ctx, projectId, fileId) {
   
   if (titleEl) titleEl.textContent = 'Remove File';
   if (messageEl) messageEl.textContent = message;
-  if (modal) modal.classList.add('active');
+  if (modal) {
+    modal.classList.add('active');
+    modal.style.display = 'flex';
+  }
 }
 
 /**
@@ -362,7 +367,7 @@ export async function softDeleteFile(ctx, projectId, fileId) {
   if (store) {
     const state = store.getState();
     const updatedProjects = (state.projects || []).map(p => {
-      if (p.id !== projectId) return p;
+      if (!projectIdsMatch(p.id, projectId)) return p;
       return {
         ...p,
         files: (p.files || []).map(f =>
@@ -383,7 +388,7 @@ export async function softDeleteFile(ctx, projectId, fileId) {
 
   // Fallback: mutate context directly
   const { tasks, projects } = ctx;
-  const project = projects.find(p => p.id === projectId);
+  const project = findProjectById(projects, projectId);
   if (!project || !project.files) return;
 
   const file = project.files.find(f => f && f.id === fileId);
@@ -491,13 +496,25 @@ export async function delTaskSubtask(ctx, taskId, subtaskId) {
  */
 export async function delSubtask(ctx, projId, subId) {
   const { projects, save, render } = ctx;
-  
-  const p = projects.find(p => p.id === projId);
-  if (!p) return;
-  
-  if (!p.subtasks) p.subtasks = [];
-  p.subtasks = p.subtasks.filter(s => s.id !== subId);
-  
+
+  const store = window.Petal?.store;
+  if (store) {
+    const state = store.getState();
+    const updatedProjects = (state.projects || []).map(p => {
+      if (!projectIdsMatch(p.id, projId)) return p;
+      return {
+        ...p,
+        subtasks: (p.subtasks || []).filter(s => s.id !== subId && String(s.id) !== String(subId))
+      };
+    });
+    store.setState({ projects: updatedProjects });
+  } else {
+    const p = findProjectById(projects, projId);
+    if (!p) return;
+    if (!p.subtasks) p.subtasks = [];
+    p.subtasks = p.subtasks.filter(s => s.id !== subId);
+  }
+
   await save();
   if (render) render();
 }

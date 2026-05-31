@@ -15,8 +15,11 @@ export function matchesSearch(task, query) {
  * Handle search input - update search query and re-render
  */
 export function handleSearch(query) {
-  // Update global search query
-  if (window.searchQuery !== undefined) {
+  if (window.Petal?.store) {
+    window.Petal.store.setState({ searchQuery: query });
+  } else if (window.Petal?.handlers?.setSearchQuery) {
+    window.Petal.handlers.setSearchQuery(query);
+  } else if (window.searchQuery !== undefined) {
     window.searchQuery = query;
   }
   

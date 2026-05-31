@@ -4,6 +4,7 @@
 
 import { appStore } from '../state/store.js';
 import { createDefaultTask, createDefaultProject } from '../domain/schema.js';
+import { projectIdsMatch, taskBelongsToProject } from '../utils/projectHelpers.js';
 import * as workflowOps from '../features/workflow/workflowOperations.js';
 
 /**
@@ -81,7 +82,7 @@ export const projectHandlers = {
   async updateProject(projectId, updates) {
     const state = appStore.getState();
     const projects = state.projects.map(p => 
-      p.id === projectId ? { ...p, ...updates } : p
+      projectIdsMatch(p.id, projectId) ? { ...p, ...updates } : p
     );
     appStore.setState({ projects });
   },
@@ -89,15 +90,15 @@ export const projectHandlers = {
   async deleteProject(projectId) {
     const state = appStore.getState();
     // Remove project and clear projectId from tasks
-    const projects = state.projects.filter(p => p.id !== projectId);
+    const projects = state.projects.filter(p => !projectIdsMatch(p.id, projectId));
     const tasks = state.tasks.map(t => 
-      String(t.projectId || '') === String(projectId) 
+      taskBelongsToProject(t, projectId)
         ? { ...t, projectId: '' } 
         : t
     );
     // Phase 3 Fix: openProjects is Array, not Set
     const openProjects = Array.isArray(state.openProjects) 
-      ? state.openProjects.filter(id => id !== projectId)
+      ? state.openProjects.filter(id => !projectIdsMatch(id, projectId))
       : [];
     appStore.setState({ projects, tasks, openProjects });
   },
@@ -105,7 +106,7 @@ export const projectHandlers = {
   async toggleProjectDone(projectId) {
     const state = appStore.getState();
     const projects = state.projects.map(p => 
-      p.id === projectId ? { ...p, done: !p.done } : p
+      projectIdsMatch(p.id, projectId) ? { ...p, done: !p.done } : p
     );
     appStore.setState({ projects });
   },
@@ -114,8 +115,9 @@ export const projectHandlers = {
     const state = appStore.getState();
     // Phase 3 Fix: openProjects is Array, not Set
     const open = Array.isArray(state.openProjects) ? state.openProjects : [];
-    const next = open.includes(projectId)
-      ? open.filter(id => id !== projectId)
+    const isOpen = open.some(id => projectIdsMatch(id, projectId));
+    const next = isOpen
+      ? open.filter(id => !projectIdsMatch(id, projectId))
       : [...open, projectId];
     appStore.setState({ openProjects: next });
   },
@@ -123,7 +125,7 @@ export const projectHandlers = {
   async addSubtask(projectId, subtaskData) {
     const state = appStore.getState();
     const projects = state.projects.map(p => {
-      if (p.id === projectId) {
+      if (projectIdsMatch(p.id, projectId)) {
         const subtasks = p.subtasks || [];
         return {
           ...p,
@@ -142,7 +144,7 @@ export const projectHandlers = {
   async toggleSubtask(projectId, subtaskId) {
     const state = appStore.getState();
     const projects = state.projects.map(p => {
-      if (p.id === projectId) {
+      if (projectIdsMatch(p.id, projectId)) {
         const subtasks = (p.subtasks || []).map(s =>
           s.id === subtaskId ? { ...s, done: !s.done } : s
         );
@@ -156,7 +158,7 @@ export const projectHandlers = {
   async deleteSubtask(projectId, subtaskId) {
     const state = appStore.getState();
     const projects = state.projects.map(p => {
-      if (p.id === projectId) {
+      if (projectIdsMatch(p.id, projectId)) {
         const subtasks = (p.subtasks || []).filter(s => s.id !== subtaskId);
         return { ...p, subtasks };
       }

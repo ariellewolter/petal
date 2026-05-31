@@ -3,6 +3,7 @@
 
 import { esc, fileIcon } from '../utils/strings.js';
 import { openFile } from '../utils/fileHelpers.js';
+import { findProjectById, projectIdsMatch } from '../utils/projectHelpers.js';
 
 // File status options
 export const FILE_STATUSES = {
@@ -136,7 +137,7 @@ function buildFileRegistryFull(tasks, projects, existingRegistry, fileHistory) {
             };
           }
           // Rebuild from source: check if this project is already referenced
-          const existingProject = fileRegistry[key].projects.find(p => p.id === project.id);
+          const existingProject = fileRegistry[key].projects.find(p => projectIdsMatch(p.id, project.id));
           if (!existingProject) {
             fileRegistry[key].projects.push({
               id: project.id,
@@ -609,7 +610,7 @@ export function resolveFileIds(projectId, fileIds, ctx) {
     return [];
   }
   
-  const project = projects.find(p => p.id === projectId);
+  const project = findProjectById(projects, projectId);
   if (!project || !project.files) {
     return [];
   }
@@ -649,7 +650,7 @@ export function getTaskFiles(task, ctx) {
  */
 export function findOrCreateCanonicalFile(projectId, fileLink, ctx) {
   const { projects } = ctx;
-  const project = projects.find(p => p.id === projectId);
+  const project = findProjectById(projects, projectId);
   if (!project) {
     console.warn('Project not found:', projectId);
     return null;
@@ -831,8 +832,8 @@ export async function updateFileStatus(fileKey, status, ctx) {
     file.projects = file.projects.filter(p => projectIds.has(p.id));
     // Add any missing projects
     projectIds.forEach(projectId => {
-      if (!file.projects.find(p => p.id === projectId)) {
-        const project = projects.find(p => p.id === projectId);
+      if (!file.findProjectById(projects, projectId)) {
+        const project = findProjectById(projects, projectId);
         if (project) {
           file.projects.push({
             id: project.id,
@@ -942,7 +943,7 @@ export function showFileRelations(fileKey, ctx) {
     html += `<div style="margin-bottom:16px;">
       <div style="font-weight:500;margin-bottom:8px;">Tasks (${file.tasks.length})</div>`;
     file.tasks.forEach(t => {
-      const project = t.projectId ? projects.find(p => String(p.id) === String(t.projectId)) : null;
+      const project = t.projectId ? findProjectById(projects, t.projectId) : null;
       const projName = project ? project.name : '';
       html += `<div style="padding:8px;background:var(--bg2);border-radius:6px;margin-bottom:6px;">
         <div style="font-weight:500;">${esc(t.title)}</div>
@@ -1122,7 +1123,7 @@ export function debounceSaveFileNote(ctx, fileId, projectId, fileIndex, value) {
   
   // Set new timer (750ms debounce)
   fileNoteSaveTimers[timerKey] = setTimeout(async () => {
-    const project = projects.find(p => p.id === projectId);
+    const project = findProjectById(projects, projectId);
     if (project && project.files && project.files[fileIndex]) {
       const file = project.files[fileIndex];
       if (typeof file === 'object') {
@@ -1142,7 +1143,7 @@ export function debounceSaveFileNote(ctx, fileId, projectId, fileIndex, value) {
       if (window.Petal?.store) {
         const state = window.Petal.store.getState();
         const updatedProjects = (state.projects || []).map(p => {
-          if (p.id === projectId && p.files && p.files[fileIndex]) {
+          if (projectIdsMatch(p.id, projectId) && p.files && p.files[fileIndex]) {
             const updatedFiles = [...p.files];
             const file = updatedFiles[fileIndex];
             if (typeof file === 'object') {
@@ -1214,7 +1215,7 @@ export function editFileNote(ctx, fileKey) {
   if (window.Petal?.store) {
     const state = window.Petal.store.getState();
     const updatedProjects = (state.projects || []).map(p => {
-      if (p.id === targetProject.id && p.files && p.files[targetIndex]) {
+      if (projectIdsMatch(p.id, targetProject.id) && p.files && p.files[targetIndex]) {
         const updatedFiles = [...p.files];
         updatedFiles[targetIndex] = { ...p.files[targetIndex], note: newNote || '', noteUpdatedAt: new Date().toISOString() };
         return { ...p, files: updatedFiles };

@@ -3,6 +3,7 @@
 // Takes state and handlers as parameters - no store peeking
 
 import { esc } from '../utils/strings.js';
+import { projectNameById } from '../utils/projectHelpers.js';
 import { today, parseDate } from '../utils/dates.js';
 import { getAllTasks } from '../domain/models.js';
 
@@ -257,14 +258,39 @@ function getCultureAttentionLine(cellLogEntries) {
   return "—";
 }
 
-function renderScheduleCard(state, now, events, recurringRules) {
-  // Get today's events
-  const todayKey = now.toISOString().slice(0, 10);
-  const todayEvents = events.filter(e => {
+function getEventsForDate(date, events, recurringRules) {
+  const dateStr = date.toISOString().split('T')[0];
+  const oneOff = (events || []).filter(e => {
     if (!e.date) return false;
     const eventDate = typeof e.date === 'string' ? e.date.slice(0, 10) : '';
-    return eventDate === todayKey;
+    return eventDate === dateStr;
   });
+
+  const expanded = [];
+  const dayOfWeek = date.getDay();
+  (recurringRules || []).forEach(rule => {
+    if (rule.enabled === false) return;
+    if (rule.daysOfWeek && rule.daysOfWeek.includes(dayOfWeek)) {
+      expanded.push({
+        id: `evt_${rule.id}_${dateStr}`,
+        title: rule.title,
+        date: dateStr,
+        startTime: rule.startTime,
+        durationMin: rule.durationMin,
+        category: rule.category,
+        location: rule.location || null,
+        notes: rule.notes || ''
+      });
+    }
+  });
+
+  return [...oneOff, ...expanded];
+}
+
+function renderScheduleCard(state, now, events, recurringRules) {
+  const todayDate = new Date(now);
+  todayDate.setHours(0, 0, 0, 0);
+  const todayEvents = getEventsForDate(todayDate, events, recurringRules);
 
   // Time slots: 08:00, 09:00, 10:00, 11:00, 12:00, 13:00, 14:00, 16:00, 18:00
   const slotTimes = [8, 9, 10, 11, 12, 13, 14, 16, 18];
@@ -290,8 +316,9 @@ function renderScheduleCard(state, now, events, recurringRules) {
   // Map events to time slots
   const slotEvents = {};
   todayEvents.forEach(event => {
-    if (event.time) {
-      const [h, m] = event.time.split(':').map(Number);
+    const timeStr = event.startTime || event.time;
+    if (timeStr) {
+      const [h, m] = timeStr.split(':').map(Number);
       const eventMinutes = h * 60 + m;
       // Find closest slot
       for (let i = 0; i < slotTimes.length; i++) {
@@ -322,7 +349,7 @@ function renderScheduleCard(state, now, events, recurringRules) {
       eventHtml = `
         <div class="today-slot-event ${colorClass}">
           <div class="today-slot-event-title">${escapeHtml(event.title || 'Event')}</div>
-          <div class="today-slot-event-sub">${escapeHtml(event.location || '')}${event.duration ? ` · ${event.duration} min` : ''}</div>
+          <div class="today-slot-event-sub">${escapeHtml(event.location || '')}${(event.durationMin || event.duration) ? ` · ${event.durationMin || event.duration} min` : ''}</div>
         </div>
       `;
     }
@@ -370,17 +397,7 @@ function renderTodayTasks(tasksToday, doneToday, projects) {
     // Normalize projectId comparison to handle decimal projectIds
     let projectName = '';
     if (t.projectId) {
-      const taskProjectIdNum = Number(t.projectId);
-      const project = projects.find(p => {
-        const pId = Number(p.id);
-        if (!isNaN(taskProjectIdNum) && !isNaN(pId)) {
-          // Compare integer parts for decimal projectIds
-          return Math.floor(taskProjectIdNum) === Math.floor(pId);
-        }
-        // Fallback to string comparison
-        return String(p.id) === String(t.projectId);
-      });
-      projectName = project?.name || '';
+      projectName = projectNameById(projects, t.projectId);
     }
     const lane = t.lane || '';
     const tagClass = lane === 'lab' ? 'tag-green' : lane === 'comp' ? 'tag-blue' : 'tag-orange';
