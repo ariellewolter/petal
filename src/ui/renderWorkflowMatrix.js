@@ -847,13 +847,13 @@ export function renderMindMap(ctx, project, projectTasks, standaloneTasks, tasks
     top:${centerY - 30}px;
     width:120px;
     padding:16px;
-    background:linear-gradient(135deg,#d4a0a0,#c98b8b);
+    background:var(--gradient-accent);
     color:white;
     border-radius:12px;
     text-align:center;
     font-weight:600;
     font-size:14px;
-    box-shadow:0 4px 12px rgba(201,139,139,.3);
+    box-shadow:0 4px 12px rgba(var(--accent-rgb),.3);
     pointer-events:all;
     cursor:pointer;
     z-index:10;

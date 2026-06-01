@@ -114,7 +114,7 @@ if (process.stderr && typeof process.stderr.on === 'function') {
 }
 
 // Now require modules
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, nativeTheme } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const fsPromises = require('fs').promises;
@@ -1227,13 +1227,17 @@ function startWatchingDataFile(vaultPath) {
   safeLog(`✓ Started polling fallback (every ${POLL_INTERVAL_MS}ms)`);
 }
 
+function getInitialWindowBackground() {
+  return nativeTheme.shouldUseDarkColors ? '#0f0c14' : '#faf8f5';
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1000,
     height: 800,
     minWidth: 600,
     minHeight: 500,
-    backgroundColor: '#faf8f5',
+    backgroundColor: getInitialWindowBackground(),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -1642,6 +1646,14 @@ ipcMain.handle('storage:save', async (event, state) => {
 // Track unsaved changes (called from renderer when state changes)
 ipcMain.handle('storage:markDirty', () => {
   hasUnsavedChanges = true;
+  return { ok: true };
+});
+
+ipcMain.handle('window:setBackgroundColor', (event, color) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win && typeof color === 'string') {
+    win.setBackgroundColor(color);
+  }
   return { ok: true };
 });
 

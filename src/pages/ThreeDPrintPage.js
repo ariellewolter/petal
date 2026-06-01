@@ -41,8 +41,8 @@ function injectStyles() {
     #view-3d-print .print3d-tab{background:none;border:none;border-radius:7px;color:var(--text-dim);font-family:'Jost',sans-serif;font-size:11px;font-weight:400;letter-spacing:.12em;text-transform:uppercase;padding:6px 16px;cursor:pointer;transition:all .18s;white-space:nowrap;}
     #view-3d-print .print3d-tab.active{background:var(--rose-pale);color:var(--rose);}
     #view-3d-print .print3d-tab:hover:not(.active){color:var(--text);}
-    #view-3d-print .print3d-add-btn{background:linear-gradient(135deg,#d4a0a0 0%,#c98b8b 100%);border:none;border-radius:8px;color:white;font-family:'Jost',sans-serif;font-size:12px;font-weight:400;letter-spacing:.1em;text-transform:uppercase;padding:8px 18px;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(201,139,139,.2);}
-    #view-3d-print .print3d-add-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(201,139,139,.3);}
+    #view-3d-print .print3d-add-btn{background:var(--gradient-accent);border:none;border-radius:8px;color:white;font-family:'Jost',sans-serif;font-size:12px;font-weight:400;letter-spacing:.1em;text-transform:uppercase;padding:8px 18px;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(var(--accent-rgb),.2);}
+    #view-3d-print .print3d-add-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(var(--accent-rgb),.3);}
 
     #view-3d-print .print3d-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:28px;}
     #view-3d-print .print3d-stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;position:relative;overflow:hidden;}
@@ -62,9 +62,9 @@ function injectStyles() {
     #view-3d-print .print3d-card.prio-med::before{background:var(--rose-soft);}
     #view-3d-print .print3d-card.prio-low::before{background:var(--sage);}
     #view-3d-print .print3d-card.prio-done::before{background:var(--sage);}
-    #view-3d-print .print3d-card.printing{background:linear-gradient(135deg,var(--bg2) 0%,rgba(201,139,139,.05) 100%);border-color:var(--rose-soft);box-shadow:0 0 20px rgba(201,139,139,.08);}
-    #view-3d-print .print3d-card:hover{box-shadow:0 4px 24px rgba(160,110,100,.1);transform:translateY(-2px);}
-    #view-3d-print .print3d-card.selected{border-color:var(--rose);box-shadow:0 0 0 2px var(--rose-pale),0 4px 24px rgba(160,110,100,.15);}
+    #view-3d-print .print3d-card.printing{background:var(--bg2);border-color:var(--rose-soft);box-shadow:0 0 20px var(--accent-08);}
+    #view-3d-print .print3d-card:hover{box-shadow:0 4px 24px var(--hover-shadow);transform:translateY(-2px);}
+    #view-3d-print .print3d-card.selected{border-color:var(--rose);box-shadow:0 0 0 2px var(--rose-pale),0 4px 24px var(--hover-shadow);}
 
     #view-3d-print .print3d-card-top{display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;}
     #view-3d-print .print3d-card-icon{width:48px;height:48px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;}
@@ -98,7 +98,7 @@ function injectStyles() {
     #view-3d-print .print3d-progress-label{display:flex;justify-content:space-between;font-size:9px;color:var(--text-dim);margin-bottom:5px;}
     #view-3d-print .print3d-printing-badge{display:inline-flex;align-items:center;gap:6px;background:var(--rose-pale);border:1px solid var(--rose-soft);padding:3px 10px;border-radius:12px;font-size:9px;color:var(--rose);letter-spacing:.05em;}
     #view-3d-print .print3d-pulse{width:6px;height:6px;border-radius:50%;background:var(--rose);animation:printpulse 1.2s infinite;}
-    @keyframes printpulse{0%,100%{opacity:1;box-shadow:0 0 6px rgba(201,139,139,.6);}50%{opacity:.4;}}
+    @keyframes printpulse{0%,100%{opacity:1;box-shadow:0 0 6px rgba(var(--accent-rgb),.6);}50%{opacity:.4;}}
 
     #view-3d-print .print3d-detail-panel{position:fixed;right:0;top:58px;width:360px;height:calc(100vh - 58px);background:var(--surface);border-left:1px solid var(--border);z-index:200;display:flex;flex-direction:column;transform:translateX(370px);transition:transform .28s cubic-bezier(.16,1,.3,1);overflow:hidden;box-shadow:-4px 0 20px rgba(0,0,0,.1);}
     #view-3d-print .print3d-detail-panel.open{transform:translateX(0);}
@@ -126,7 +126,7 @@ function injectStyles() {
     #view-3d-print .print3d-dp-file-meta{font-size:10px;color:var(--text-dim);margin-top:2px;}
     #view-3d-print .print3d-dp-notes{font-size:12px;color:var(--text-dim);line-height:1.7;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;white-space:pre-wrap;}
 
-    #view-3d-print .print3d-modal-backdrop{position:fixed;inset:0;background:rgba(90,79,74,.6);backdrop-filter:blur(4px);z-index:500;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
+    #view-3d-print .print3d-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);z-index:500;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
     #view-3d-print .print3d-modal-backdrop.open{opacity:1;pointer-events:all;}
     #view-3d-print .print3d-modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:580px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:modalIn .25s ease;}
     @keyframes modalIn{from{opacity:0;transform:scale(.96)translateY(10px);}to{opacity:1;transform:scale(1)translateY(0);}}
@@ -140,14 +140,14 @@ function injectStyles() {
     #view-3d-print .print3d-form-group.full{grid-column:1/3;}
     #view-3d-print .print3d-form-label{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);}
     #view-3d-print .print3d-form-input,#view-3d-print .print3d-form-select{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-family:'Jost',sans-serif;font-size:13px;color:var(--text);outline:none;transition:border-color .15s;width:100%;}
-    #view-3d-print .print3d-form-input:focus,#view-3d-print .print3d-form-select:focus{border-color:var(--rose-soft);box-shadow:0 0 0 3px rgba(201,139,139,.08);}
+    #view-3d-print .print3d-form-input:focus,#view-3d-print .print3d-form-select:focus{border-color:var(--rose-soft);box-shadow:0 0 0 3px var(--focus-ring);}
     #view-3d-print .print3d-form-input::placeholder{color:var(--text-light);}
     #view-3d-print .print3d-modal-foot{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;}
     #view-3d-print .print3d-mfbtn{padding:8px 18px;border-radius:8px;font-family:'Jost',sans-serif;font-size:12px;cursor:pointer;transition:all .15s;}
     #view-3d-print .print3d-mfbtn.cancel{background:var(--bg2);border:1px solid var(--border);color:var(--text);}
     #view-3d-print .print3d-mfbtn.cancel:hover{border-color:var(--border2);background:var(--bg);}
-    #view-3d-print .print3d-mfbtn.save{background:linear-gradient(135deg,#d4a0a0 0%,#c98b8b 100%);border:none;color:white;box-shadow:0 2px 8px rgba(201,139,139,.2);}
-    #view-3d-print .print3d-mfbtn.save:hover{box-shadow:0 4px 12px rgba(201,139,139,.3);transform:translateY(-1px);}
+    #view-3d-print .print3d-mfbtn.save{background:var(--gradient-accent);border:none;color:white;box-shadow:0 2px 8px rgba(var(--accent-rgb),.2);}
+    #view-3d-print .print3d-mfbtn.save:hover{box-shadow:0 4px 12px rgba(var(--accent-rgb),.3);transform:translateY(-1px);}
 
     @media(max-width:768px){
       #view-3d-print .print3d-grid{grid-template-columns:1fr;}

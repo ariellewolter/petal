@@ -323,7 +323,7 @@ function renderTaskCard(task, handlers, allTasksForBlocking = []) {
         <button type="button" class="check-box ${task.done ? 'checked' : ''}"
              data-action="task:toggle" data-task-id="${task.id}"
              onclick="event.stopPropagation()"
-             style="width:16px;height:16px;border:1.5px solid var(--border2);border-radius:50%;cursor:pointer;flex-shrink:0;margin-top:2px;background:white;transition:all .15s;padding:0;${task.done ? 'background:linear-gradient(135deg,#d4a0a0,#c98b8b);border-color:#c98b8b;' : ''}"
+             style="width:16px;height:16px;border:1.5px solid var(--border2);border-radius:50%;cursor:pointer;flex-shrink:0;margin-top:2px;background:var(--surface);transition:all .15s;padding:0;${task.done ? 'background:var(--gradient-accent);border-color:var(--rose);' : ''}"
              title="Toggle task"></button>
         <div style="flex:1;min-width:0;">
           <div style="font-size:13px;font-weight:500;color:var(--text);line-height:1.4;margin-bottom:4px;">${esc(task.title || 'Untitled')}</div>

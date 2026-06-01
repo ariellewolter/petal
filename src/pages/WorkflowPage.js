@@ -602,11 +602,11 @@ export function buildWorkflowTimeline() {
       const tw = Math.max(tx2 - tx1, 16);
       
       html += `<div style="display:contents">`;
-      html += `<div class="wf-tl-task-info" style="padding:8px 14px 8px 36px;border-right:1px solid rgba(232,224,216,.5);border-bottom:1px solid rgba(232,224,216,.5);display:flex;align-items:center;gap:7px;background:var(--bg);grid-column:1">
+      html += `<div class="wf-tl-task-info" style="padding:8px 14px 8px 36px;border-right:1px solid var(--border-faint);border-bottom:1px solid var(--border-faint);display:flex;align-items:center;gap:7px;background:var(--bg);grid-column:1">
         <div class="wf-tl-task-dot" style="width:5px;height:5px;border-radius:50%;flex-shrink:0;background:${t.done?'var(--sage)':'var(--border2)'}"></div>
         <div class="wf-tl-task-name" style="font-size:10px;color:var(--text-dim);${t.done?'text-decoration:line-through':''}">${esc(t.title || 'Untitled')}</div>
       </div>`;
-      html += `<div style="grid-column:2/${months.length+2};border-bottom:1px solid rgba(232,224,216,.5);position:relative;height:36px;background:var(--bg)">`;
+      html += `<div style="grid-column:2/${months.length+2};border-bottom:1px solid var(--border-faint);position:relative;height:36px;background:var(--bg)">`;
       html += `<div class="wf-tl-today-line" style="position:absolute;left:${nowOffset}px;top:0;bottom:0;width:1px;background:var(--overdue);opacity:.3;z-index:10"></div>`;
       html += `<div class="wf-tl-taskbar" style="position:absolute;left:${tx1}px;top:50%;transform:translateY(-50%);height:12px;width:${tw}px;border-radius:3px;background:${color};opacity:${t.done?.7:.5}"></div>`;
       html += '</div>';

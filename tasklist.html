@@ -808,7 +808,7 @@
   <div id="view-files" style="display:none;width:100%;max-width:100%;box-sizing:border-box;">
     <div style="padding:20px;">
       
-      <div style="background:#c98b8b;border-radius:8px;padding:12px 24px;margin-bottom:20px;display:inline-block;cursor:pointer;" data-action="file:add">
+      <div class="btn-submit" style="border-radius:8px;padding:12px 24px;margin-bottom:20px;display:inline-block;cursor:pointer;" data-action="file:add">
         <span style="color:white;font-size:14px;font-weight:bold;">+ Add File</span>
       </div>
       
@@ -904,7 +904,7 @@
       </div>
 
       <!-- ══ WORKFLOW VIEW (Canvas) ══════════════════════════════════════ -->
-      <div id="wf-view-workflow-canvas" class="wf-subview" style="flex:1;position:relative;overflow:hidden;background:var(--bg);background-image:linear-gradient(rgba(232, 224, 216, 0.3) 1px, transparent 1px),linear-gradient(90deg, rgba(232, 224, 216, 0.3) 1px, transparent 1px);background-size: 44px 44px;background-attachment:local;min-height:0;">
+      <div id="wf-view-workflow-canvas" class="wf-subview wf-canvas-view" style="flex:1;position:relative;overflow:hidden;min-height:0;">
         <div class="wf-canvas" id="wfCanvas" style="position:absolute;top:0;left:0;width:3000px;height:3000px;transform-origin:top left;">
           <svg class="wf-svg" id="wfSvg" style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:10;"></svg>
           <!-- Project cards will be inserted here by JS -->
@@ -912,9 +912,9 @@
 
         <!-- WF Controls -->
         <div class="wf-controls" style="position:absolute;bottom:24px;right:24px;display:flex;flex-direction:column;gap:4px;z-index:50;">
-          <button class="wf-btn" id="wfZoomIn" title="Zoom In" style="width:32px;height:32px;background:rgba(255,255,255,0.95);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;backdrop-filter:blur(4px);box-shadow:0 2px 8px rgba(0,0,0,0.08);">+</button>
-          <button class="wf-btn" id="wfZoomOut" title="Zoom Out" style="width:32px;height:32px;background:rgba(255,255,255,0.95);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;backdrop-filter:blur(4px);box-shadow:0 2px 8px rgba(0,0,0,0.08);">−</button>
-          <button class="wf-btn" id="wfFit" title="Fit to View" style="width:32px;height:32px;background:rgba(255,255,255,0.95);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-size:10px;letter-spacing:.04em;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;backdrop-filter:blur(4px);box-shadow:0 2px 8px rgba(0,0,0,0.08);">FIT</button>
+          <button class="wf-btn" id="wfZoomIn" title="Zoom In">+</button>
+          <button class="wf-btn" id="wfZoomOut" title="Zoom Out">−</button>
+          <button class="wf-btn" id="wfFit" title="Fit to View">FIT</button>
         </div>
 
         <div class="wf-legend" style="position:absolute;bottom:24px;left:24px;background:rgba(255,255,255,0.95);border:1px solid var(--border);border-radius:8px;padding:12px 14px;z-index:50;backdrop-filter:blur(4px);box-shadow:0 2px 8px rgba(0,0,0,0.08);">

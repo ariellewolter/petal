@@ -12,6 +12,8 @@ export const THEME_OPTIONS = [
 /** Default for new installs; existing vaults without appearance keep light until changed */
 export const DEFAULT_THEME_PREFERENCE = 'light';
 
+export const THEME_BG = { light: '#faf8f5', dark: '#0f0c14' };
+
 /**
  * @param {'light'|'dark'|'system'|string} preference
  * @returns {'light'|'dark'}
@@ -45,8 +47,11 @@ export function applyTheme(preference) {
 
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) {
-    meta.setAttribute('content', effective === 'dark' ? '#0f0c14' : '#c98b8b');
+    meta.setAttribute('content', effective === 'dark' ? THEME_BG.dark : '#c98b8b');
   }
+
+  const winBg = effective === 'dark' ? THEME_BG.dark : THEME_BG.light;
+  window.electronAPI?.setBackgroundColor?.(winBg);
 
   try {
     localStorage.setItem(THEME_STORAGE_KEY, preference || DEFAULT_THEME_PREFERENCE);

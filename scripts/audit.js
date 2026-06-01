@@ -106,9 +106,9 @@ function checkViewContainers() {
   const registeredPages = [];
   const pageLines = pageMatches[1].split('\n');
   for (const line of pageLines) {
-    const match = line.match(/(['"]?)(\w+|-[\w-]+)\1\s*:/);
+    const match = line.match(/['"]?([\w-]+)['"]?\s*:/);
     if (match) {
-      registeredPages.push(match[2]);
+      registeredPages.push(match[1]);
     }
   }
   
@@ -308,9 +308,39 @@ function checkExports() {
   }
 }
 
-// Check 7: Pages registry matches sidebar
+// Check 7: Release build assets
+function checkReleaseAssets() {
+  log('\n📋 CHECK 7: Release Build Assets', BLUE);
+  const icns = path.join(process.cwd(), 'build/icon.icns');
+  const entitlements = path.join(process.cwd(), 'build/entitlements.mac.plist');
+
+  if (fs.existsSync(icns)) {
+    pass('macOS app icon present (build/icon.icns)');
+  } else {
+    fail(
+      'Release Assets',
+      'Missing build/icon.icns — run npm run build:icons and commit the file (CI releases use the Electron icon without it)',
+      'build/icon.icns'
+    );
+  }
+
+  if (fs.existsSync(entitlements)) {
+    pass('macOS entitlements present (build/entitlements.mac.plist)');
+  } else {
+    warn('Release Assets', 'Missing build/entitlements.mac.plist', 'build/entitlements.mac.plist');
+  }
+
+  const icon512 = path.join(process.cwd(), 'icon-512.png');
+  if (fs.existsSync(icon512)) {
+    pass('App PNG icon present (icon-512.png)');
+  } else {
+    fail('Release Assets', 'Missing icon-512.png', 'icon-512.png');
+  }
+}
+
+// Check 8: Pages registry matches sidebar
 function checkPagesRegistry() {
-  log('\n📋 CHECK 7: Pages Registry vs Sidebar', BLUE);
+  log('\n📋 CHECK 8: Pages Registry vs Sidebar', BLUE);
   const pagesFile = path.join(process.cwd(), 'src/app/pages.js');
   const htmlFile = resolveHtmlEntryFile();
   
@@ -320,7 +350,10 @@ function checkPagesRegistry() {
   }
   
   const pagesContent = fs.readFileSync(pagesFile, 'utf-8');
-  const html = fs.readFileSync(htmlFile, 'utf-8');
+  const viewManagerFile = path.join(process.cwd(), 'src/app/viewManager.js');
+  const viewManagerSource = fs.existsSync(viewManagerFile)
+    ? fs.readFileSync(viewManagerFile, 'utf-8')
+    : fs.readFileSync(htmlFile, 'utf-8');
   
   // Extract registered pages
   const pageMatches = pagesContent.match(/export const PAGES = \{([^}]+)\}/s);
@@ -332,14 +365,14 @@ function checkPagesRegistry() {
   const registeredPages = new Set();
   const pageLines = pageMatches[1].split('\n');
   for (const line of pageLines) {
-    const match = line.match(/(['"]?)(\w+|-[\w-]+)\1\s*:/);
+    const match = line.match(/['"]?([\w-]+)['"]?\s*:/);
     if (match) {
-      registeredPages.add(match[2]);
+      registeredPages.add(match[1]);
     }
   }
   
-  // Extract sidebar nav items
-  const sidebarNavMatches = html.matchAll(/data-view\s*=\s*["'](\w+|-[\w-]+)["']/g);
+  // Sidebar is rendered from viewManager.js (data-nav), not static tasklist.html
+  const sidebarNavMatches = viewManagerSource.matchAll(/data-nav\s*=\s*["']([\w-]+)["']/g);
   const sidebarViews = new Set();
   for (const match of sidebarNavMatches) {
     sidebarViews.add(match[1]);
@@ -354,7 +387,7 @@ function checkPagesRegistry() {
   
   for (const view of sidebarViews) {
     if (!registeredPages.has(view)) {
-      warn('Pages Registry', `Sidebar view ${view} not in pages registry`, path.basename(htmlFile));
+      warn('Pages Registry', `Sidebar view ${view} not in pages registry`, 'src/app/viewManager.js');
     }
   }
   
@@ -375,6 +408,7 @@ function runAudit() {
   checkDuplicateFunctions();
   checkInlineOnclick();
   checkExports();
+  checkReleaseAssets();
   checkPagesRegistry();
   
   // Summary

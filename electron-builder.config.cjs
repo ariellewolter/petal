@@ -36,7 +36,7 @@ module.exports = function (context) {
 
     win: {
       target: "nsis",
-      icon: "build/icon.ico"
+      icon: "icon-512.png"
     }
   };
 };

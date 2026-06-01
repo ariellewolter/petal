@@ -162,7 +162,7 @@ export async function renderFiles(containerEl, state, handlers) {
     c.innerHTML = `<div class="empty-state" style="text-align:center;padding:60px 20px;">
       <div style="font-size:20px;margin-bottom:12px;color:var(--text);">No files yet</div>
       <small style="display:block;margin-bottom:24px;color:var(--text-dim);">Link files to tasks or projects, or add files directly</small>
-      <button data-action="file:add" style="background:linear-gradient(135deg,#d4a0a0 0%,#c98b8b 100%) !important;border:none !important;border-radius:10px !important;color:white !important;font-size:14px !important;padding:12px 24px !important;cursor:pointer !important;display:block !important;margin:0 auto !important;box-shadow:0 4px 14px rgba(201,139,139,.25) !important;">+ Add Your First File</button>
+      <button data-action="file:add" class="btn-submit" style="display:block !important;margin:0 auto !important;border-radius:10px !important;font-size:14px !important;padding:12px 24px !important;">+ Add Your First File</button>
     </div>`;
     return;
   }

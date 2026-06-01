@@ -98,6 +98,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // Platform info
   platform: process.platform,
+
+  setBackgroundColor: (color) => ipcRenderer.invoke('window:setBackgroundColor', color),
   
   // Step 3: Debug IPC - prove which main process we're talking to
   debugPid: () => ipcRenderer.invoke('debug:pid')
