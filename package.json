@@ -9,7 +9,8 @@
     "build": "electron-builder --publish never --config electron-builder.config.cjs",
     "build:mac": "electron-builder --mac --publish never --config electron-builder.config.cjs",
     "build:win": "electron-builder --win --publish never --config electron-builder.config.cjs",
-    "build:all": "electron-builder --mac --win --publish never --config electron-builder.config.cjs"
+    "build:all": "electron-builder --mac --win --publish never --config electron-builder.config.cjs",
+    "build:icons": "node scripts/build-app-icons.js"
   },
   "keywords": ["task", "tracker", "productivity"],
   "author": "Your Name",

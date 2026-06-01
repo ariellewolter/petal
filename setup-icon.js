@@ -125,7 +125,20 @@ Or use the icon-generator.html file in your browser instead.
    - icon-512.png
 
 The app is now configured to use these icons.
+
+Next, build the macOS app icon for releases:
+  npm run build:icons
+
+Then commit build/icon.icns so GitHub releases show the Petal icon in the Dock.
 `);
+    try {
+      require('child_process').execSync('node scripts/build-app-icons.js', {
+        stdio: 'inherit',
+        cwd: __dirname
+      });
+    } catch {
+      console.log('(Skipped build/icon.icns — run npm run build:icons on macOS before a release.)');
+    }
   } else {
     console.error(`
 ❌ Some errors occurred. Please check the output above.

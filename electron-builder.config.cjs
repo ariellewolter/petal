@@ -22,6 +22,7 @@ module.exports = function (context) {
       "src/**/*"
     ],
 
+    // macOS .icns must be committed (npm run build:icons) — PNG alone is not used for the .app bundle
     mac: {
       category: "public.app-category.productivity",
       icon: "build/icon.icns",

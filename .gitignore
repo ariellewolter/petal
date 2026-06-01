@@ -11,7 +11,9 @@ data/
 dist/
 out/
 release/
-build/
+build/*
+!build/icon.icns
+!build/entitlements.mac.plist
 
 # OS/editor
 .DS_Store
