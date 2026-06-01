@@ -266,6 +266,10 @@ function saveState(state) {
     console.log('⏸️ SAVE skipped: isLoading is true');
     return;
   }
+
+  if (typeof window !== 'undefined' && window.electronAPI?.markStateDirty) {
+    window.electronAPI.markStateDirty().catch(() => {});
+  }
   
   console.log('💾 SAVE triggered:', {
     tasksCount: state?.tasks?.length || 0,
@@ -321,6 +325,7 @@ function createImmutableSnapshot(state) {
   
   return {
     schemaVersion: state.schemaVersion,
+    prints3d: state.prints3d ? state.prints3d.map(p => ({ ...p })) : [],
     tasks: state.tasks ? state.tasks.map(t => ({ ...t })) : [],
     projects: state.projects ? state.projects.map(p => ({ ...p })) : [],
     openProjects: state.openProjects ? Array.from(state.openProjects) : [],

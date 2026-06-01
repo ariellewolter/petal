@@ -1429,10 +1429,8 @@ export function setupEventDelegation() {
       appContainer.removeEventListener('change', window._eventDelegationChangeHandler, true);
     }
     window._eventDelegationChangeHandler = async function(e) {
-      const target = e.target;
-      if (!target?.getAttribute?.('data-action')) return;
-      const action = target.getAttribute('data-action');
-      if (action !== 'milestone:toggle') return;
+      const target = e.target.closest?.('[data-action="milestone:toggle"]');
+      if (!target) return;
 
       e.stopPropagation();
       const projectId = target.getAttribute('data-project-id');

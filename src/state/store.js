@@ -3,6 +3,7 @@
 // Uses getState/setState/subscribe pattern for clean separation
 
 import { migrateData, CURRENT_SCHEMA_VERSION, getDefaultWorkflow } from '../utils/migrations.js';
+import { projectIdsMatch } from '../utils/projectHelpers.js';
 
 class AppStore {
   constructor() {
@@ -53,7 +54,10 @@ class AppStore {
       files: [],
       
       // Workflow state (use centralized defaults)
-      workflow: getDefaultWorkflow()
+      workflow: getDefaultWorkflow(),
+
+      // 3D print queue
+      prints3d: []
     };
     
     // Listeners for state changes
@@ -351,8 +355,10 @@ class AppStore {
     
     // Release-Safe: Filter out openProjects IDs that don't exist in projects
     // Prevents stale references from breaking the UI
-    const projectIds = new Set((state.projects || []).map(p => p.id));
-    openProjectsArray = openProjectsArray.filter(id => projectIds.has(id));
+    const projectsList = state.projects || [];
+    openProjectsArray = openProjectsArray.filter(id =>
+      projectsList.some(p => projectIdsMatch(p.id, id))
+    );
     if (openProjectsArray.length !== (state.openProjects?.length || 0)) {
       console.log(`🧹 Cleaned openProjects: removed ${(state.openProjects?.length || 0) - openProjectsArray.length} non-existent project IDs`);
     }
@@ -403,6 +409,7 @@ class AppStore {
       }
     }
     
+    const prevUi = this._state;
     this._state = {
       tasks: uniqueTasks,
       projects: state.projects || [],
@@ -441,7 +448,13 @@ class AppStore {
               showUnassigned: state.workflow.ui.showUnassigned !== undefined ? state.workflow.ui.showUnassigned : getDefaultWorkflow().ui.showUnassigned,
               showActiveFiles: state.workflow.ui.showActiveFiles !== undefined ? state.workflow.ui.showActiveFiles : getDefaultWorkflow().ui.showActiveFiles
             } : getDefaultWorkflow().ui
-          } : getDefaultWorkflow()
+          } : getDefaultWorkflow(),
+      prints3d: Array.isArray(state.prints3d) ? state.prints3d : [],
+      plannerViewDate: state.plannerViewDate != null ? state.plannerViewDate : prevUi.plannerViewDate,
+      currentPlannerView: state.currentPlannerView || prevUi.currentPlannerView || 'daily',
+      plannerWeekOffset: state.plannerWeekOffset != null ? state.plannerWeekOffset : (prevUi.plannerWeekOffset ?? 0),
+      plannerCalYear: state.plannerCalYear != null ? state.plannerCalYear : prevUi.plannerCalYear,
+      plannerCalMonth: state.plannerCalMonth != null ? state.plannerCalMonth : prevUi.plannerCalMonth
         };
         
         // Mark initial load as complete
@@ -502,7 +515,8 @@ class AppStore {
       routines: Array.isArray(this._state.routines) ? this._state.routines : [],
       routineCheckins: this._state.routineCheckins && typeof this._state.routineCheckins === 'object' ? this._state.routineCheckins : {},
       files: Array.isArray(this._state.files) ? this._state.files : [],
-      workflow: this._state.workflow || getDefaultWorkflow()
+      workflow: this._state.workflow || getDefaultWorkflow(),
+      prints3d: Array.isArray(this._state.prints3d) ? this._state.prints3d : []
       // Phase 3 Fix: fileRegistry and fileHistory are derived data, recomputed on load
       // Excluding them prevents noisy saves and reduces file size
       // fileRegistry: this._state.fileRegistry,

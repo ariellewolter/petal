@@ -1385,6 +1385,10 @@ app.whenReady().then(async () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
     }
+    const activeVault = vaultManager?.getActiveVaultPath?.();
+    if (activeVault && !dataFileWatcher && !dataFilePollInterval) {
+      startWatchingDataFile(activeVault);
+    }
   });
 });
 
@@ -1435,8 +1439,20 @@ ipcMain.handle('storage:load', async () => {
   }
 });
 
+function isConflictPathAllowed(conflictFilePath) {
+  if (!conflictFilePath || typeof conflictFilePath !== 'string') return false;
+  const vaultPath = getVaultPath();
+  if (!vaultPath) return false;
+  const resolved = path.resolve(conflictFilePath);
+  const vaultResolved = path.resolve(vaultPath);
+  return resolved.startsWith(vaultResolved + path.sep) || resolved === vaultResolved;
+}
+
 ipcMain.handle('storage:readConflictFile', async (event, conflictFilePath) => {
   try {
+    if (!isConflictPathAllowed(conflictFilePath)) {
+      throw new Error('Conflict file must be inside the active vault');
+    }
     const data = await fsPromises.readFile(conflictFilePath, 'utf-8');
     return JSON.parse(data);
   } catch (error) {
@@ -1449,6 +1465,9 @@ ipcMain.handle('storage:resolveConflict', async (event, action, conflictFilePath
   const paths = getVaultPaths();
   
   try {
+    if (!isConflictPathAllowed(conflictFilePath)) {
+      return { success: false, error: 'Conflict file must be inside the active vault' };
+    }
     const normalizedAction =
       action === 'keep-local' ? 'useMain' :
       action === 'use-remote' ? 'useConflict' :
@@ -2524,6 +2543,7 @@ ipcMain.handle('vault:ensureResolved', async () => {
     
     if (resolution.success && resolution.vaultPath) {
       const manifest = resolution.manifest || vaultManager.readVaultManifest(resolution.vaultPath);
+      startWatchingDataFile(resolution.vaultPath);
       
       // Send event to renderer
       if (mainWindow) {

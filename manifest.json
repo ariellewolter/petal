@@ -4,8 +4,8 @@
   "description": "A beautiful task and project tracker",
   "start_url": "./tasklist.html",
   "display": "standalone",
-  "background_color": "#faf8f5",
-  "theme_color": "#c98b8b",
+  "background_color": "#0f0c14",
+  "theme_color": "#0f0c14",
   "orientation": "portrait-primary",
   "icons": [
     {

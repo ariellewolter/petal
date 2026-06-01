@@ -52,7 +52,7 @@ export function calculateFloatOrder(prevTask, nextTask) {
   const nextOrder = nextTask ? Number(nextTask.boardOrder) : null;
   if (prevOrder !== null && nextOrder !== null) return (prevOrder + nextOrder) / 2;
   if (prevOrder !== null) return prevOrder + 1024;
-  if (nextOrder !== null) return nextOrder - 1024;
+  if (nextOrder !== null) return Math.max(1, nextOrder - 1024);
   return 1024;
 }
 

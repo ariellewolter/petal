@@ -36,7 +36,7 @@ function stageUpdatesForMatrix(stage) {
     return { stage: 'blocked', done: false };
   }
   if (stage === 'ready') {
-    return { done: true };
+    return { status: 'Done', stage: 'ready', done: true };
   }
   return { stage: 'planned', status: 'Todo', done: false };
 }

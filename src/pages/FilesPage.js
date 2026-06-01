@@ -80,9 +80,11 @@ function bind(container, features) {
           case 'show-relations':
             const fileKey = btn.dataset.fileKey;
             if (fileKey && features?.fileManagement?.showFileRelations) {
-              features.fileManagement.showFileRelations(fileKey);
+              const ctx = features.handlers?.createPageContext?.() || window.createPageContext?.() || {};
+              features.fileManagement.showFileRelations(fileKey, ctx);
             } else if (fileKey && window.Petal?.features?.fileManagement?.showFileRelations) {
-              window.Petal.features.fileManagement.showFileRelations(fileKey);
+              const ctx = window.Petal?.handlers?.createPageContext?.() || window.createPageContext?.() || {};
+              window.Petal.features.fileManagement.showFileRelations(fileKey, ctx);
             }
             break;
             

@@ -518,8 +518,10 @@ export function debounceSaveTaskNote(ctx, taskId, value) {
       // Use store if available
       if (window.Petal?.store) {
         const state = window.Petal.store.getState();
-        const updatedTasks = (state.tasks || []).map(t => 
-          t.id === taskId ? { ...t, note: value || '', noteUpdatedAt: new Date().toISOString() } : t
+        const updatedTasks = (state.tasks || []).map(t =>
+          String(t.id) === String(taskId)
+            ? { ...t, note: value || '', noteUpdatedAt: new Date().toISOString() }
+            : t
         );
         updateStoreSafely({ tasks: updatedTasks });
       } else {
@@ -1592,6 +1594,7 @@ export function editTaskSubtask(ctx, taskId, subtaskId) {
   // Show modal
   if (modal) {
     modal.classList.add('active');
+    modal.style.display = 'flex';
     if (titleInput) {
       setTimeout(() => titleInput.focus(), 100);
     }

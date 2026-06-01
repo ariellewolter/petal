@@ -18,6 +18,38 @@ export const FILE_STATUSES = {
   'written': 'Written'
 };
 
+/** Resolve tasks/projects from store when ctx omits them */
+function resolveFileContext(ctx) {
+  const storeState = window.Petal?.store?.getState() || {};
+  return {
+    tasks: ctx?.tasks ?? storeState.tasks ?? [],
+    projects: ctx?.projects ?? storeState.projects ?? [],
+    save: ctx?.save ?? (typeof window.save === 'function' ? window.save : undefined),
+    currentView: ctx?.currentView ?? storeState.currentView,
+    fileRegistry: ctx?.fileRegistry ?? storeState.fileRegistry ?? {}
+  };
+}
+
+/** Persist file registry and optionally tasks/projects (authoritative for save pipeline) */
+function persistFileChanges(fileRegistry, tasks, projects, needsSourceUpdate) {
+  if (!window.Petal?.store) return;
+  const patch = { fileRegistry: { ...fileRegistry } };
+  if (needsSourceUpdate) {
+    patch.tasks = tasks.map(t => ({ ...t, files: t.files ? t.files.map(f => ({ ...f })) : t.files }));
+    patch.projects = projects.map(p => ({
+      ...p,
+      files: p.files ? p.files.map(f => ({ ...f })) : p.files,
+      subtasks: p.subtasks
+        ? p.subtasks.map(st => ({
+            ...st,
+            files: st.files ? st.files.map(f => ({ ...f })) : st.files
+          }))
+        : p.subtasks
+    }));
+  }
+  window.Petal.store.setState(patch);
+}
+
 // Cache for buildFileRegistry to avoid unnecessary rebuilds
 // Uses updatedAt timestamps for bulletproof invalidation
 let lastRegistryBuild = {
@@ -729,7 +761,7 @@ export async function updateFileStatus(fileKey, status, ctx) {
     fileRegistry = {};
   }
   
-  const { tasks = [], projects = [], save, currentView } = ctx || {};
+  const { tasks, projects, save, currentView } = resolveFileContext(ctx);
   
   if (!fileRegistry[fileKey]) {
     if (DEBUG_MODE) {
@@ -846,15 +878,7 @@ export async function updateFileStatus(fileKey, status, ctx) {
     });
   }
   
-  // Update store (use setEphemeralState to prevent save spam)
-  if (typeof window !== 'undefined' && window.Petal?.store) {
-    if (window.Petal.store.setEphemeralState) {
-      window.Petal.store.setEphemeralState({ fileRegistry });
-    } else {
-      // Fallback
-      window.Petal.store.setState({ fileRegistry });
-    }
-  }
+  persistFileChanges(fileRegistry, tasks, projects, needsUpdate);
   
   // Invalidate cache (file status changed)
   lastRegistryBuild.cacheKey = null;
@@ -867,7 +891,7 @@ export async function updateFileStatus(fileKey, status, ctx) {
   }
   
   // Only save if we actually made changes
-  if (needsUpdate) {
+  if (needsUpdate && save) {
     await save();
     // Re-render files view if currently active (use router instead of direct render call)
     if (currentView === 'files') {
@@ -918,32 +942,23 @@ export function ensureRegistryInitialized() {
  * Show file relationships
  */
 export function showFileRelations(fileKey, ctx) {
-  // Defensive defaults: ensure fileRegistry is always an object
-  let fileRegistry = {};
-  if (typeof window !== 'undefined' && window.Petal?.store) {
-    const state = window.Petal.store.getState();
-    fileRegistry = state.fileRegistry || {};
-  }
-  if (ctx?.fileRegistry) {
-    fileRegistry = ctx.fileRegistry;
-  }
-  if (!fileRegistry || typeof fileRegistry !== 'object') {
-    fileRegistry = {};
-  }
-  
-  const { projects } = ctx || {};
+  const resolved = resolveFileContext(ctx || {});
+  const { projects } = resolved;
+  let fileRegistry = resolved.fileRegistry;
   const file = fileRegistry[fileKey];
   if (!file) return;
   
   const label = file.label || file.name || 'File';
+  const linkedTasks = Array.isArray(file.tasks) ? file.tasks : [];
+  const linkedProjects = Array.isArray(file.projects) ? file.projects : [];
   let html = `<div style="padding:20px;">
     <h3 style="font-family:'Cormorant Garamond',serif;font-size:20px;margin-bottom:16px;">${esc(label)}</h3>
     <div style="font-size:12px;color:var(--text-dim);margin-bottom:20px;">All tasks and projects referencing this file</div>`;
   
-  if (file.tasks.length > 0) {
+  if (linkedTasks.length > 0) {
     html += `<div style="margin-bottom:16px;">
-      <div style="font-weight:500;margin-bottom:8px;">Tasks (${file.tasks.length})</div>`;
-    file.tasks.forEach(t => {
+      <div style="font-weight:500;margin-bottom:8px;">Tasks (${linkedTasks.length})</div>`;
+    linkedTasks.forEach(t => {
       const project = t.projectId ? findProjectById(projects, t.projectId) : null;
       const projName = project ? project.name : '';
       html += `<div style="padding:8px;background:var(--bg2);border-radius:6px;margin-bottom:6px;">
@@ -956,10 +971,10 @@ export function showFileRelations(fileKey, ctx) {
     html += `</div>`;
   }
   
-  if (file.projects.length > 0) {
+  if (linkedProjects.length > 0) {
     html += `<div>
-      <div style="font-weight:500;margin-bottom:8px;">Projects (${file.projects.length})</div>`;
-    file.projects.forEach(p => {
+      <div style="font-weight:500;margin-bottom:8px;">Projects (${linkedProjects.length})</div>`;
+    linkedProjects.forEach(p => {
       html += `<div style="padding:8px;background:var(--bg2);border-radius:6px;margin-bottom:6px;">
         <div style="font-weight:500;">${esc(p.name)}</div>
         <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">
@@ -994,7 +1009,7 @@ export async function editSubmissionMeta(fileKey, ctx) {
     fileRegistry = {};
   }
   
-  const { tasks, projects, save, currentView } = ctx || {};
+  const { tasks, projects, save, currentView } = resolveFileContext(ctx);
   const file = fileRegistry[fileKey];
   if (!file) return;
   
@@ -1053,18 +1068,10 @@ export async function editSubmissionMeta(fileKey, ctx) {
     });
   }
   
-  // Update store (use setEphemeralState to prevent save spam)
-  if (typeof window !== 'undefined' && window.Petal?.store) {
-    if (window.Petal.store.setEphemeralState) {
-      window.Petal.store.setEphemeralState({ fileRegistry });
-    } else {
-      // Fallback
-      window.Petal.store.setState({ fileRegistry });
-    }
-  }
+  persistFileChanges(fileRegistry, tasks, projects, needsUpdate);
   
   // Only save if we actually made changes
-  if (needsUpdate) {
+  if (needsUpdate && save) {
     await save();
     // Re-render files view if currently active (use router instead of direct render call)
     if (currentView === 'files') {
@@ -1406,67 +1413,52 @@ export async function locateFile(fileKey, fileLink) {
     
     const newPath = result.path;
     
-    // Get current state
     const state = window.Petal?.store?.getState() || {};
-    const { tasks = [], projects = [], save } = window.Petal?.handlers || {};
-    
-    // Update file in all projects that reference it
+    const projects = state.projects || [];
     let updated = false;
-    for (const project of projects) {
-      if (!project.files) continue;
-      
+    let oneDriveRoot = null;
+    if (window.electronAPI?.getOneDriveRoot) {
+      try {
+        oneDriveRoot = await window.electronAPI.getOneDriveRoot();
+      } catch (e) {
+        // Ignore
+      }
+    }
+
+    const updatedProjects = projects.map(project => {
+      if (!project.files) return project;
       const fileIndex = project.files.findIndex(f => {
         if (!f || typeof f !== 'object') return false;
         const key = f.onedrive_rel || f.abs_path || f.share_url || '';
         return key === fileKey || f.id === fileKey;
       });
-      
-      if (fileIndex >= 0) {
-        const file = project.files[fileIndex];
-        // Update paths - preserve onedrive_rel if new path is in OneDrive
-        const updatedFile = { ...file };
-        
-        // Try to detect if new path is in OneDrive
-        if (window.electronAPI && window.electronAPI.getOneDriveRoot) {
-          try {
-            const oneDriveRoot = await window.electronAPI.getOneDriveRoot();
-            if (oneDriveRoot && newPath.startsWith(oneDriveRoot)) {
-              // Calculate relative path manually (renderer doesn't have path module)
-              const relativePath = newPath.slice(oneDriveRoot.length).replace(/^[\/\\]+/, '').replace(/\\/g, '/');
-              updatedFile.onedrive_rel = relativePath;
-            }
-          } catch (e) {
-            // Ignore
-          }
-        }
-        
-        updatedFile.abs_path = newPath;
-        updatedFile.exists = true;
-        updatedFile.isMissing = false;
-        
-        // Store previous paths
-        if (!updatedFile.previousPaths) {
-          updatedFile.previousPaths = [];
-        }
-        if (file.abs_path && file.abs_path !== newPath) {
-          updatedFile.previousPaths.push({
-            path: file.abs_path,
-            type: 'abs_path',
-            updatedAt: Date.now()
-          });
-        }
-        if (file.onedrive_rel && file.onedrive_rel !== updatedFile.onedrive_rel) {
-          updatedFile.previousPaths.push({
-            path: file.onedrive_rel,
-            type: 'onedrive_rel',
-            updatedAt: Date.now()
-          });
-        }
-        
-        project.files[fileIndex] = updatedFile;
-        updated = true;
+      if (fileIndex < 0) return project;
+
+      const file = project.files[fileIndex];
+      const updatedFile = { ...file };
+
+      if (oneDriveRoot && newPath.startsWith(oneDriveRoot)) {
+        const relativePath = newPath.slice(oneDriveRoot.length).replace(/^[\/\\]+/, '').replace(/\\/g, '/');
+        updatedFile.onedrive_rel = relativePath;
       }
-    }
+
+      updatedFile.abs_path = newPath;
+      updatedFile.exists = true;
+      updatedFile.isMissing = false;
+
+      if (!updatedFile.previousPaths) updatedFile.previousPaths = [];
+      if (file.abs_path && file.abs_path !== newPath) {
+        updatedFile.previousPaths.push({ path: file.abs_path, type: 'abs_path', updatedAt: Date.now() });
+      }
+      if (file.onedrive_rel && file.onedrive_rel !== updatedFile.onedrive_rel) {
+        updatedFile.previousPaths.push({ path: file.onedrive_rel, type: 'onedrive_rel', updatedAt: Date.now() });
+      }
+
+      updated = true;
+      const files = [...project.files];
+      files[fileIndex] = updatedFile;
+      return { ...project, files };
+    });
     
     // Update file registry
     const fileRegistry = state.fileRegistry || {};
@@ -1486,17 +1478,16 @@ export async function locateFile(fileKey, fileLink) {
       fileHistory[fileKey].lastSeenAt = Date.now();
     }
     
-    // Update store
     if (window.Petal?.store) {
       window.Petal.store.setState({
-        projects,
+        projects: updatedProjects,
         fileRegistry,
         fileHistory
       });
     }
     
-    if (updated && save) {
-      await save();
+    if (updated && typeof window.save === 'function') {
+      await window.save();
     }
     
     // Re-validate file existence

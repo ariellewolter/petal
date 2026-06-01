@@ -25,7 +25,10 @@ function getEventsForDate(date, events, recurringRules) {
   const dateStr = date.toISOString().split('T')[0];
   
   // Get one-off events
-  const oneOff = events.filter(e => e.date === dateStr);
+  const oneOff = events.filter(e => {
+    const d = e.date ? String(e.date).slice(0, 10) : '';
+    return d === dateStr;
+  });
   
   // Expand recurring rules for this date
   const expanded = [];
@@ -271,7 +274,8 @@ export async function renderTodayPage(containerEl, state, handlers) {
         handlers?.toggleTask?.(taskId);
       } else {
         // Check if task belongs to a project - if so, open that project on click
-        const task = (state.tasks || []).find(t => String(t.id) === String(taskId));
+        const allTasks = getAllTasks(state.tasks || [], state.projects || []);
+        const task = allTasks.find(t => String(t.id) === String(taskId));
         if (task && task.projectId) {
           // Task belongs to a project - open that project
           if (window.openProjectView) {

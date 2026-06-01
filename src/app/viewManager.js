@@ -56,10 +56,6 @@ export function renderGlobalSidebar(state) {
   const currentView = state.currentView || window.currentView || 'today';
   
   navEl.innerHTML = `
-    <div class="global-sidebar-logo">
-      <div class="global-sidebar-logo-name">Lab<span>OS</span></div>
-      <div class="global-sidebar-logo-sub">Research Management</div>
-    </div>
     <div class="global-sidebar-nav-label">Workspace</div>
     <a class="global-sidebar-nav-item ${currentView === 'today' ? 'active' : ''}" href="#" data-nav="today">
       <span class="global-sidebar-nav-icon">◈</span> Today

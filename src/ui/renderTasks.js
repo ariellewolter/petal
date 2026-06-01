@@ -7,6 +7,15 @@ import { esc } from '../utils/strings.js';
 import { today, parseDate, dueLabel, inRange } from '../utils/dates.js';
 import { getAllTasks } from '../domain/models.js';
 
+function syncTaskFilterChips(currentFilter) {
+  const chips = document.querySelectorAll('#view-tasks .filter-chip');
+  if (!chips.length) return;
+  chips.forEach(chip => {
+    const f = chip.dataset.filter;
+    chip.classList.toggle('active', f === currentFilter || (!f && currentFilter === 'all'));
+  });
+}
+
 /**
  * Render tasks view
  * @param {HTMLElement} containerEl - Container element to render into
@@ -54,10 +63,16 @@ export async function renderTasks(containerEl, state, handlers) {
   }
   
   if (taskMode === 'kanban') {
-    // Kanban rendering would go here
-    // For now, fall back to list view
-    return renderTaskList(containerEl, state, handlers);
+    if (taskContainer) taskContainer.style.display = '';
+    if (kanbanContainer) kanbanContainer.style.display = 'none';
+    if (window.Petal?.store && handlers?.setTaskMode) {
+      handlers.setTaskMode('list');
+    } else if (window.Petal?.store) {
+      window.Petal.store.setState({ taskMode: 'list' });
+    }
   }
+
+  syncTaskFilterChips(currentFilter);
   
   return renderTaskList(containerEl, state, handlers);
 }

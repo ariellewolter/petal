@@ -375,12 +375,13 @@ export function renderDeadlinesHorizon(ctx, project, projectTasks) {
  * Render Active Artifacts Filtered view
  */
 export function renderActiveArtifactsFiltered(ctx, project, projectTasks) {
-  const { esc: escFn } = ctx;
+  const { esc: escFn, escAttr: escAttrFn } = ctx;
   
   const contentEl = document.getElementById('active-artifacts-content');
   if (!contentEl) return;
   
   const escFunction = escFn || esc;
+  const escAttrFunction = escAttrFn || escAttr;
   
   const artifacts = project.artifacts || [];
   const activeArtifacts = artifacts.filter(artifact => {
@@ -409,7 +410,7 @@ export function renderActiveArtifactsFiltered(ctx, project, projectTasks) {
     
     const lastUpdate = artifact.updatedAt ? new Date(artifact.updatedAt) : new Date(artifact.createdAt || 0);
     const daysSinceUpdate = (Date.now() - lastUpdate.getTime()) / (24 * 60 * 60 * 1000);
-    if (daysSinceUpdate > 30) return true;
+    if (daysSinceUpdate <= 30) return true;
     
     return false;
   });
@@ -584,7 +585,7 @@ export function renderProgressMomentum(ctx, project, projectTasks) {
   
   const totalTasks = projectTasks.filter(t => !t.deletedAt).length;
   const doneTasks = projectTasks.filter(t => !t.deletedAt && t.done).length;
-  const activeTasks = projectTasks.filter(t => !t.deletedAt && !t.done && (t.status === 'Doing' || t.stage === 'in_progress')).length;
+  const activeTasks = projectTasks.filter(t => !t.deletedAt && !t.done && (t.status === 'Doing' || t.stage === 'doing' || t.stage === 'in_progress')).length;
   const blockedTasks = projectTasks.filter(t => !t.deletedAt && !t.done && isTaskBlockedFunction(t, ctx.tasks || [])).length;
   const plannedTasks = totalTasks - doneTasks - activeTasks - blockedTasks;
   

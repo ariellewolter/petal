@@ -249,8 +249,11 @@ function bind(container, features) {
             
           case 'open-drawer':
           case 'drawer':
-            if (taskId && features?.taskDrawer?.openDrawer) {
-              features.taskDrawer.openDrawer(taskId); // Already normalized
+            if (taskId && features?.taskDrawer?.openTaskDrawer) {
+              const ctx = features.handlers?.createPageContext?.() || {};
+              features.taskDrawer.openTaskDrawer(ctx, taskId);
+            } else if (taskId && window.Petal?.handlers?.openTaskDrawer) {
+              window.Petal.handlers.openTaskDrawer(taskId);
             }
             break;
             

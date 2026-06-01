@@ -3,6 +3,12 @@
 
 import { esc } from '../utils/strings.js';
 import { updateVaultBadge } from '../utils/vault.js';
+import {
+  THEME_OPTIONS,
+  getThemePreference,
+  getEffectiveTheme,
+  setThemePreference
+} from '../utils/theme.js';
 
 /**
  * Render Settings page
@@ -65,10 +71,34 @@ export async function renderSettingsPage(containerEl, state, handlers) {
   const vaultStatusText = vaultStatus
     ? (vaultReady ? 'ready' : (vaultStatus.lastError || 'not ready'))
     : 'unknown';
+
+  const themePreference = getThemePreference(state.settings);
+  const effectiveTheme = getEffectiveTheme(themePreference);
+  const themeOptionsHtml = THEME_OPTIONS.map(opt => `
+    <button type="button"
+      class="theme-option${themePreference === opt.id ? ' active' : ''}"
+      data-action="set-theme"
+      data-theme-value="${opt.id}"
+      aria-pressed="${themePreference === opt.id}">
+      <span class="theme-option-label">${esc(opt.label)}</span>
+      <span class="theme-option-desc">${esc(opt.desc)}</span>
+      <span class="theme-option-swatch theme-option-swatch--${opt.id}" aria-hidden="true"></span>
+    </button>
+  `).join('');
   
   // Set content first
   containerEl.innerHTML = `
     <div class="settings-page">
+
+      <!-- APPEARANCE -->
+      <div class="settings-section">
+        <h3 class="settings-section-title">Appearance</h3>
+        <p class="settings-section-desc">Choose light or dark mode, or match your system setting. Dark mode uses the magenta and violet palette from the Petal icon.</p>
+        <div class="theme-picker" role="group" aria-label="Color theme">
+          ${themeOptionsHtml}
+        </div>
+        <p class="settings-theme-active">Active: <strong>${esc(effectiveTheme === 'dark' ? 'Dark' : 'Light')}</strong>${themePreference === 'system' ? ' (from system)' : ''}</p>
+      </div>
 
       <!-- VAULT SECTION -->
       <div class="settings-section">
@@ -195,6 +225,14 @@ export async function renderSettingsPage(containerEl, state, handlers) {
     const action = actionEl.getAttribute('data-action');
 
     switch (action) {
+      case 'set-theme': {
+        const theme = actionEl.getAttribute('data-theme-value');
+        if (theme) {
+          setThemePreference(theme);
+          await renderSettingsPage(containerEl, window.Petal?.store?.getState() || state, handlers);
+        }
+        break;
+      }
       case 'export-data':
         await handleExport(state, handlers);
         break;
@@ -318,23 +356,36 @@ async function reloadStateAfterVaultChange(handlers) {
   const loadedData = loadResult?.data ?? loadResult;
   if (!loadedData || !window.Petal?.store) return;
 
-  const current = window.Petal.store.getState();
-  window.Petal.store.setState({
-    tasks: loadedData.tasks || [],
-    projects: loadedData.projects || [],
+  const store = window.Petal.store;
+  const current = store.getState();
+  store.loadState({
+    ...loadedData,
     openProjects: Array.isArray(loadedData.openProjects)
       ? loadedData.openProjects
       : loadedData.openProjects instanceof Set
         ? Array.from(loadedData.openProjects)
         : [],
-    settings: loadedData.settings || {},
-    events: loadedData.events || [],
-    recurringRules: loadedData.recurringRules || [],
-    files: loadedData.files || [],
-    habits: loadedData.habits || current.habits || [],
-    routines: loadedData.routines || current.routines || [],
-    prints3d: loadedData.prints3d || current.prints3d || []
+    prints3d: loadedData.prints3d || [],
+    currentView: current.currentView,
+    currentSort: current.currentSort,
+    currentFilter: current.currentFilter,
+    currentProjFilter: current.currentProjFilter,
+    searchQuery: current.searchQuery,
+    taskMode: current.taskMode,
+    boardProjectFilter: current.boardProjectFilter,
+    currentFileView: current.currentFileView,
+    currentFileProjectFilter: current.currentFileProjectFilter,
+    selectedProjectId: current.selectedProjectId,
+    plannerViewDate: current.plannerViewDate,
+    currentPlannerView: current.currentPlannerView,
+    plannerWeekOffset: current.plannerWeekOffset,
+    plannerCalYear: current.plannerCalYear,
+    plannerCalMonth: current.plannerCalMonth
   });
+
+  if (window.Petal?.utils?.initTheme) {
+    window.Petal.utils.initTheme(loadedData.settings);
+  }
 
   if (handlers?.render) {
     await handlers.render();

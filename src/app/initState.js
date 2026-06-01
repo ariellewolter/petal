@@ -5,7 +5,8 @@ import { setLoading } from '../storage/persistence.js';
 import { render } from './viewManager.js';
 import { updateVaultBadge, waitForVaultResolved, verifySaveLocation, updateFileButtons } from '../utils/vault.js';
 import { migrateTasksForKanban, migrateSubtasksToTasks, migrateNotesFields, migrateToCanonicalFileRegistry } from '../utils/migrations.js';
-import { ensureCellLogSettings } from '../utils/settings.js';
+import { ensureCellLogSettings, ensureAppearanceSettings } from '../utils/settings.js';
+import { initTheme } from '../utils/theme.js';
 import { refreshProjectSelects } from '../ui/selects.js';
 import { showConflictBanner } from '../ui/conflictBanner.js';
 
@@ -70,9 +71,15 @@ export async function initStateInternal() {
         }
       });
 
-      window.electronAPI.onVaultCorruptionRecovered((data) => {
+      window.electronAPI.onVaultCorruptionRecovered(async (data) => {
         console.warn('⚠️ Vault recovered from backup:', data);
         alert('Petal detected a corrupted vault file and recovered from backup.');
+        if (window.electronAPI?.supportReloadExternalChanges) {
+          const result = await window.electronAPI.supportReloadExternalChanges();
+          if (result?.success) {
+            applyIncomingStateToStore(result.data, 'corruption recovery');
+          }
+        }
       });
 
       window.electronAPI.onVaultRelocated((data) => {
@@ -377,14 +384,8 @@ export async function initStateInternal() {
       openProjectsLength: Array.isArray(storeState.openProjects) ? storeState.openProjects.length : (storeState.openProjects?.size || 0)
     });
     
-    // Wire render function to store changes (Step 2b)
-    window.Petal.store.subscribe(() => {
-      if (typeof render === 'function') {
-        render();
-      }
-    });
-    
-    console.log('✓ Store loaded and render subscription wired');
+    // Render subscription is wired once in init.js (avoid double render)
+    console.log('✓ Store loaded');
   } else {
     console.error('❌ ERROR: Store not available!', {
       hasPetal: !!window.Petal,
@@ -414,6 +415,8 @@ export async function initStateInternal() {
   // Run migrations
   migrateTasksForKanban();
   ensureCellLogSettings();
+  ensureAppearanceSettings();
+  initTheme(window.Petal?.store?.getState()?.settings || loadedData.settings);
   const subtasksMigrated = migrateSubtasksToTasks();
   
   // Normalize projects data

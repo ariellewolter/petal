@@ -184,8 +184,10 @@ export const uiHandlers = {
     appStore.setState({ currentFilter: filter });
   },
   
-  setProjFilter(filter) {
+  setProjFilter(filter, btn) {
     appStore.setState({ currentProjFilter: filter });
+    document.querySelectorAll('#view-projects .filter-chip').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
   },
   
   /**
@@ -214,8 +216,7 @@ export const uiHandlers = {
     const state = appStore.getState();
     appStore.setState({ currentFilter: f });
     
-    // Update UI
-    document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('#view-tasks .filter-chip').forEach(b => b.classList.remove('active'));
     if (btn) btn.classList.add('active');
     
     // Trigger render

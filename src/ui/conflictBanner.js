@@ -2,15 +2,23 @@
 // UI for displaying data sync conflicts
 
 /**
+ * Resolve conflict entry to filesystem path (main sends objects with filePath)
+ */
+function conflictEntryPath(conflict) {
+  if (!conflict) return '';
+  if (typeof conflict === 'string') return conflict;
+  return conflict.filePath || conflict.path || '';
+}
+
+/**
  * Show conflict banner when data conflicts are detected
- * @param {Array} conflicts - Array of conflict file paths
- * @param {Array} newerConflicts - Array of newer conflict file paths
+ * @param {Array} conflicts - Array of conflict objects or paths
+ * @param {Array} newerConflicts - Array of newer conflict entries
  */
 export function showConflictBanner(conflicts, newerConflicts) {
   const safeConflicts = Array.isArray(conflicts) ? conflicts : [];
   const safeNewerConflicts = Array.isArray(newerConflicts) ? newerConflicts : [];
 
-  // Store conflicts globally (should be moved to store eventually)
   window.currentConflicts = safeConflicts;
 
   const { banner, details, actions } = ensureConflictBannerElements();
@@ -36,23 +44,24 @@ export function showConflictBanner(conflicts, newerConflicts) {
   actions.innerHTML = '';
 
   const targetConflict = safeConflicts[0];
-  if (targetConflict) {
+  const targetPath = conflictEntryPath(targetConflict);
+  if (targetPath) {
     const keepLocalBtn = document.createElement('button');
     keepLocalBtn.className = 'btn btn-sm';
     keepLocalBtn.textContent = 'Keep Local';
-    keepLocalBtn.onclick = () => resolveConflict('useMain', targetConflict);
+    keepLocalBtn.onclick = () => resolveConflict('useMain', targetPath);
     actions.appendChild(keepLocalBtn);
 
     const useRemoteBtn = document.createElement('button');
     useRemoteBtn.className = 'btn btn-sm';
     useRemoteBtn.textContent = 'Use Remote';
-    useRemoteBtn.onclick = () => resolveConflict('useConflict', targetConflict);
+    useRemoteBtn.onclick = () => resolveConflict('useConflict', targetPath);
     actions.appendChild(useRemoteBtn);
 
     const keepBothBtn = document.createElement('button');
     keepBothBtn.className = 'btn btn-sm';
     keepBothBtn.textContent = 'Keep Both';
-    keepBothBtn.onclick = () => resolveConflict('keepBoth', targetConflict);
+    keepBothBtn.onclick = () => resolveConflict('keepBoth', targetPath);
     actions.appendChild(keepBothBtn);
   }
 
@@ -64,7 +73,6 @@ export function showConflictBanner(conflicts, newerConflicts) {
 
   banner.style.display = 'flex';
   
-  // Scroll to top to show banner
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -89,12 +97,18 @@ export async function resolveConflict(action, filePath) {
     console.error('Electron API not available for conflict resolution');
     return;
   }
+
+  const resolvedPath = conflictEntryPath(filePath) || filePath;
+  if (!resolvedPath || typeof resolvedPath !== 'string') {
+    console.error('Invalid conflict file path:', filePath);
+    alert('Could not resolve conflict: invalid file path.');
+    return;
+  }
   
   try {
     const normalizedAction = normalizeConflictAction(action);
-    const result = await window.electronAPI.resolveConflict(normalizedAction, filePath);
+    const result = await window.electronAPI.resolveConflict(normalizedAction, resolvedPath);
     if (result && result.success) {
-      // Reload state after resolution
       if (window.storage && window.storage.loadState) {
         const loadResult = await window.storage.loadState();
         if (loadResult && loadResult.data) {
@@ -105,19 +119,20 @@ export async function resolveConflict(action, filePath) {
         }
       }
       
-      // Check if there are remaining conflicts
       if (window.currentConflicts && window.currentConflicts.length > 0) {
-        const remaining = window.currentConflicts.filter(c => c !== filePath);
+        const remaining = window.currentConflicts.filter(
+          c => conflictEntryPath(c) !== resolvedPath
+        );
         if (remaining.length === 0) {
           hideConflictBanner();
         } else {
           window.currentConflicts = remaining;
+          showConflictBanner(remaining, []);
         }
       } else {
         hideConflictBanner();
       }
       
-      // Re-render
       if (window.render) {
         window.render();
       }
@@ -167,7 +182,6 @@ function ensureConflictBannerElements() {
   return { banner, details, actions };
 }
 
-// Expose globally for backward compatibility
 window.showConflictBanner = showConflictBanner;
 window.hideConflictBanner = hideConflictBanner;
 window.resolveConflict = resolveConflict;

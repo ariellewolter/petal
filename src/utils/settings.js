@@ -77,6 +77,8 @@ export function getBoardColumns() {
   return settings.boards?.defaultColumns || DEFAULT_BOARD_COLUMNS;
 }
 
+export { ensureAppearanceSettings } from './theme.js';
+
 // Expose globally for backward compatibility
 window.ensureBoardSettings = ensureBoardSettings;
 window.ensureCellLogSettings = ensureCellLogSettings;

@@ -484,6 +484,7 @@ class VaultManager {
       const matchingVault = discovered.find(v => v.manifest.vault_id === this.config.last_seen_vault_id);
       if (matchingVault) {
         // Found vault by ID - it was moved
+        const previousVaultPath = this.config.vault_path;
         this.activeVaultPath = matchingVault.path;
         this.config.vault_path = matchingVault.path;
         this.config.last_seen_vault_id = matchingVault.manifest.vault_id;
@@ -497,7 +498,7 @@ class VaultManager {
           manifest: matchingVault.manifest,
           source: 'relocated',
           wasRelocated: true,
-          oldPath: this.config.vault_path
+          oldPath: previousVaultPath
         };
       }
     }

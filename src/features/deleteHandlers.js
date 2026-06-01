@@ -414,11 +414,11 @@ export async function delProject(ctx, id) {
     const state = store.getState();
     
     // Remove project from array (immutable)
-    const updatedProjects = (state.projects || []).filter(p => p.id !== id);
+    const updatedProjects = (state.projects || []).filter(p => !projectIdsMatch(p.id, id));
     
     // Remove from open projects (Array, not Set)
     const open = Array.isArray(state.openProjects) ? state.openProjects : [];
-    const updatedOpenProjects = open.filter(pid => pid !== id);
+    const updatedOpenProjects = open.filter(pid => !projectIdsMatch(pid, id));
     
     // Clear projectId from tasks (immutable)
     const updatedTasks = (state.tasks || []).map(t => {

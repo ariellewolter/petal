@@ -73,7 +73,7 @@ export function switchWorkflowView(name, btn) {
         const state = window.Petal.store.getState();
         const handlers = window.Petal.handlers || {};
         const containerEl = document.getElementById('wf-view-workflow-canvas');
-        if (containerEl) renderWorkflowCanvas(containerEl, state, handlers);
+        if (containerEl) window.renderWorkflowCanvas(containerEl, state, handlers);
       }
     }, 100);
   } else if (name === 'list') {
@@ -143,7 +143,7 @@ export async function renderWorkflowPage(containerEl, state, handlers) {
     if (window.renderWorkflowCanvas && window.Petal?.store) {
       const state = window.Petal.store.getState();
       const handlers = window.Petal.handlers || {};
-      await renderWorkflowCanvas(workflowViewEl, state, handlers);
+      await window.renderWorkflowCanvas(workflowViewEl, state, handlers);
     }
   }
 }
@@ -195,7 +195,7 @@ export function setWorkflowProjectFilter(projectId) {
         const state = window.Petal.store.getState();
         const handlers = window.Petal.handlers || {};
         const containerEl = document.getElementById('wf-view-workflow-canvas');
-        if (containerEl) renderWorkflowCanvas(containerEl, state, handlers);
+        if (containerEl) window.renderWorkflowCanvas(containerEl, state, handlers);
       }
     }
   } else {

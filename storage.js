@@ -35,6 +35,31 @@ function mergeRecordsById(current = [], imported = []) {
   return [...merged.values(), ...withoutId];
 }
 
+function mergeSettingsForImport(current = {}, imported = {}) {
+  const merged = { ...current, ...imported };
+  if (current.cellLog || imported.cellLog) {
+    const cur = current.cellLog || {};
+    const imp = imported.cellLog || {};
+    const curEntries = Array.isArray(cur.entries) ? cur.entries : [];
+    const impEntries = Array.isArray(imp.entries) ? imp.entries : [];
+    merged.cellLog = {
+      ...cur,
+      ...imp,
+      entries: impEntries.length > 0 ? impEntries : curEntries,
+      cellTypes: Array.isArray(imp.cellTypes) && imp.cellTypes.length > 0
+        ? imp.cellTypes
+        : (cur.cellTypes || []),
+      mediaTypes: Array.isArray(imp.mediaTypes) && imp.mediaTypes.length > 0
+        ? imp.mediaTypes
+        : (cur.mediaTypes || [])
+    };
+  }
+  if (current.board || imported.board) {
+    merged.board = { ...(current.board || {}), ...(imported.board || {}) };
+  }
+  return merged;
+}
+
 class StorageAdapter {
   constructor() {
     this.listeners = [];
@@ -67,7 +92,8 @@ class StorageAdapter {
             habitCheckins: result.data.habitCheckins || {},
             routines: result.data.routines || [],
             routineCheckins: result.data.routineCheckins || {},
-            workflow: result.data.workflow || {}
+            workflow: result.data.workflow || {},
+            prints3d: result.data.prints3d || []
           };
           // Debug: Log what we're passing through
           console.log('📥 storage.js: Data from vault:', {
@@ -188,6 +214,7 @@ class StorageAdapter {
           routineCheckins: state.routineCheckins || {},
           files: state.files || [], // ✅ Persisted files list
           workflow: state.workflow || {},
+          prints3d: state.prints3d || [],
           // Note: fileHistory and fileRegistry are derived data, but including for backward compatibility
           // They will be excluded from exportState() but may be in state object
           fileHistory: state.fileHistory || {},
@@ -277,6 +304,7 @@ class StorageAdapter {
       routineCheckins: state.routineCheckins || {},
       files: state.files || [],
       workflow: state.workflow || {},
+      prints3d: state.prints3d || [],
       fileHistory: state.fileHistory || {},
       fileRegistry: state.fileRegistry || {},
       exportedAt: new Date().toISOString(),
@@ -298,7 +326,8 @@ class StorageAdapter {
           tasks: mergeRecordsById(current.tasks || [], imported.tasks || []),
           projects: mergeRecordsById(current.projects || [], imported.projects || []),
           openProjects: [...new Set([...(current.openProjects || []), ...(imported.openProjects || [])])],
-          settings: { ...(current.settings || {}), ...(imported.settings || {}) },
+          settings: mergeSettingsForImport(current.settings || {}, imported.settings || {}),
+          prints3d: mergeRecordsById(current.prints3d || [], imported.prints3d || []),
           files: mergeRecordsById(current.files || [], imported.files || []),
           events: mergeRecordsById(current.events || [], imported.events || []),
           recurringRules: mergeRecordsById(current.recurringRules || [], imported.recurringRules || []),
@@ -326,6 +355,7 @@ class StorageAdapter {
           routines: imported.routines || [],
           routineCheckins: imported.routineCheckins || {},
           workflow: imported.workflow || {},
+          prints3d: imported.prints3d || [],
           fileHistory: imported.fileHistory || {},
           fileRegistry: imported.fileRegistry || {}
         };

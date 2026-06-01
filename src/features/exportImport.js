@@ -66,7 +66,13 @@ export async function importData(event) {
           tasks: newState.tasks || [],
           projects: newState.projects || [],
           openProjects: Array.isArray(newState.openProjects) ? newState.openProjects : (newState.openProjects instanceof Set ? Array.from(newState.openProjects) : []),
-          settings: newState.settings || {},
+          settings: {
+            ...(newState.settings || {}),
+            appearance: {
+              ...((newState.settings || {}).appearance || {}),
+              theme: (newState.settings || {}).appearance?.theme || 'light'
+            }
+          },
           events: newState.events || [],
           recurringRules: newState.recurringRules || [],
           habits: newState.habits || [],
@@ -75,6 +81,7 @@ export async function importData(event) {
           routineCheckins: newState.routineCheckins || {},
           files: newState.files || [],
           workflow: newState.workflow || {},
+          prints3d: newState.prints3d || [],
           __allowFilesOverwrite: !shouldMerge
         });
         // Note: window.tasks, window.projects, etc. are read-only getters that automatically
@@ -84,9 +91,18 @@ export async function importData(event) {
         console.warn('Store not available during import, data not loaded');
       }
       
-      // Migrate tasks for kanban if needed
-      if (window.migrateTasksForKanban) {
-        window.migrateTasksForKanban();
+      if (window.migrateTasksForKanban) window.migrateTasksForKanban();
+      if (window.ensureCellLogSettings) window.ensureCellLogSettings();
+      if (window.migrateSubtasksToTasks) window.migrateSubtasksToTasks();
+      if (window.migrateNotesFields) window.migrateNotesFields();
+      if (window.migrateToCanonicalFileRegistry) window.migrateToCanonicalFileRegistry();
+      if (window.Petal?.utils?.normalizeProjectsData) {
+        window.Petal.utils.normalizeProjectsData();
+      } else if (window.normalizeProjectsData) {
+        window.normalizeProjectsData();
+      }
+      if (window.Petal?.utils?.initTheme) {
+        window.Petal.utils.initTheme(window.Petal.store.getState().settings);
       }
       
       // Refresh dropdowns AFTER store is updated

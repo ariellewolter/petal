@@ -46,6 +46,7 @@ import * as fileHelpers from '../utils/fileHelpers.js';
 import * as migrations from '../utils/migrations.js';
 import * as vaultUtils from '../utils/vault.js';
 import * as settingsUtils from '../utils/settings.js';
+import * as themeUtils from '../utils/theme.js';
 import * as modals from '../ui/modals.js';
 import * as conflictBanner from '../ui/conflictBanner.js';
 import * as diagnostics from '../ui/diagnostics.js';
@@ -201,10 +202,13 @@ export async function initApp() {
   window.Petal.utils = window.Petal.utils || {};
   Object.assign(window.Petal.utils, projectHelpers);
   Object.assign(window.Petal.utils, taskHelpers);
+  window.Petal.utils.getAllTasks = (tasks, projects) =>
+    getAllTasks(tasks || [], projects || []);
   Object.assign(window.Petal.utils, fileHelpers);
   Object.assign(window.Petal.utils, migrations);
   Object.assign(window.Petal.utils, vaultUtils);
   Object.assign(window.Petal.utils, settingsUtils);
+  Object.assign(window.Petal.utils, themeUtils);
   window.Petal.utils.normalizePriorityValue = normalizePriorityValue;
   window.Petal.utils.getEditOnclick = getEditOnclick;
   window.Petal.utils.normalizeDueInput = normalizeDueInput;

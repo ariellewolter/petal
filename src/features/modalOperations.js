@@ -877,7 +877,7 @@ export async function addFileToMatrixFromModal(ctx, filesToAdd) {
   // Ensure files have canonical structure
   if (findOrCreateCanonicalFile) {
     filesToAdd.forEach(fileLink => {
-      findOrCreateCanonicalFile(selectedProjectId, fileLink);
+      findOrCreateCanonicalFile(selectedProjectId, fileLink, ctx);
     });
   }
   
@@ -909,7 +909,7 @@ export async function linkFilesToTaskFromModal(ctx, taskId, filesToAdd) {
   
   const state = window.Petal.store.getState();
   const tasks = state.tasks || [];
-  const task = tasks.find(t => t.id === taskId && !t.deletedAt);
+  const task = tasks.find(t => String(t.id) === String(taskId) && !t.deletedAt);
   if (!task) return;
   
   if (!task.fileIds) task.fileIds = [];
@@ -922,7 +922,7 @@ export async function linkFilesToTaskFromModal(ctx, taskId, filesToAdd) {
   });
   
   // Update task in store
-  const updatedTasks = tasks.map(t => t.id === taskId ? task : t);
+  const updatedTasks = tasks.map(t => String(t.id) === String(taskId) ? task : t);
   updateStoreSafely({ tasks: updatedTasks });
   
   // Refresh task drawer files if it's open

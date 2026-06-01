@@ -4,7 +4,7 @@
 import { esc, escAttr, escJsonForAttr, fileIcon } from '../utils/strings.js';
 import { parseDate, dueLabel, today } from '../utils/dates.js';
 import { getMatrixStage, isTaskBlocked, getAllTasks } from '../domain/models.js';
-import { findProjectById, filterTasksForProject } from '../utils/projectHelpers.js';
+import { findProjectById, filterTasksForProject, projectIdsMatch } from '../utils/projectHelpers.js';
 
 const PROJECT_PAGE_TABS = ['workflow', 'milestones', 'artifacts', 'protocols', 'log'];
 
@@ -68,9 +68,11 @@ export function renderMatrixTaskCard(ctx, task, isSubtaskTask = false, subtaskId
   const getAllTasksFunction = getAllTasksFn || getAllTasks;
   const selectedProjectIdValue = selectedProjectId || (typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null);
 
-  const allTasksList = getAllTasksFunction(tasks || []);
+  const allTasksList = getAllTasksFunction(tasks || [], projects || []);
   const blocked = isTaskBlockedFunction(task, allTasksList);
-  const depTask = task.dependsOn ? allTasksList.find(d => d.id === task.dependsOn) : null;
+  const depTask = task.dependsOn
+    ? allTasksList.find(d => projectIdsMatch(d.id, task.dependsOn))
+    : null;
   const parentTask = task.parentTaskId ? (tasks || []).find(pt => pt.id === task.parentTaskId) : null;
   const isTaskSubtask = !!task.parentTaskId;
   
@@ -163,7 +165,7 @@ export function renderSubtaskGroup(ctx, subtask, subtaskTasks, laneId, stage) {
  * Render matrix sidebar
  */
 export async function renderMatrixSidebar(ctx, project, projectTasks) {
-  const { getMatrixStage: getMatrixStageFn, isTaskBlocked: isTaskBlockedFn, getAllTasks: getAllTasksFn, fileHistory, esc: escFn, escAttr: escAttrFn, escJsonForAttr: escJsonForAttrFn, fileIcon: fileIconFn } = ctx;
+  const { tasks, projects, getMatrixStage: getMatrixStageFn, isTaskBlocked: isTaskBlockedFn, getAllTasks: getAllTasksFn, fileHistory, esc: escFn, escAttr: escAttrFn, escJsonForAttr: escJsonForAttrFn, fileIcon: fileIconFn } = ctx;
   
   // Helper functions with fallbacks
   const getMatrixStageFunction = getMatrixStageFn || getMatrixStage;
@@ -175,10 +177,12 @@ export async function renderMatrixSidebar(ctx, project, projectTasks) {
   const fileIconFunction = fileIconFn || fileIcon;
   const fileHistoryData = fileHistory || (typeof window.fileHistory !== 'undefined' ? window.fileHistory : {});
   
-  // Active files (files from tasks in "in_progress" stage + project-level files)
+  const allTasksForSidebar = getAllTasksFunction(tasks || [], projects || []);
+
+  // Active files (files from tasks in doing stage + project-level files)
   const doingTasks = projectTasks.filter(t => {
-    const stage = getMatrixStageFunction(t);
-    return (stage === 'in_progress' || stage === 'doing') && !t.done;
+    const stage = getMatrixStageFunction(t, allTasksForSidebar);
+    return stage === 'doing' && !t.done;
   });
   const activeFiles = new Set();
   
@@ -218,10 +222,11 @@ export async function renderMatrixSidebar(ctx, project, projectTasks) {
   if (activeFilesEl) activeFilesEl.innerHTML = activeFilesHTML;
 
   // Blocked tasks
-  const blockedTasks = projectTasks.filter(t => isTaskBlockedFunction(t) && !t.done);
-  const allTasksList = getAllTasksFunction(projectTasks);
+  const blockedTasks = projectTasks.filter(t => isTaskBlockedFunction(t, allTasksForSidebar) && !t.done);
   const blockedHTML = blockedTasks.slice(0, 10).map(t => {
-    const depTask = t.dependsOn ? allTasksList.find(d => d.id === t.dependsOn) : null;
+    const depTask = t.dependsOn
+      ? allTasksForSidebar.find(d => projectIdsMatch(d.id, t.dependsOn))
+      : null;
     return `<div class="matrix-sidebar-item">
       <div class="matrix-sidebar-item-title">${escFunction(t.title)}</div>
       <div class="matrix-sidebar-item-meta">Blocked by: ${depTask ? escFunction(depTask.title) : 'task'}</div>
@@ -863,7 +868,9 @@ export function renderMindMap(ctx, project, projectTasks, standaloneTasks, tasks
     
     const laneColor = laneColors[task.lane] || '#c98b8b';
     const isDone = task.done;
-    const isBlocked = task.dependsOn && (tasks || []).find(t => t.id === task.dependsOn && t.done);
+    const isBlocked = task.dependsOn && (tasks || []).find(
+      t => projectIdsMatch(t.id, task.dependsOn) && !t.done
+    );
     
     const taskNode = document.createElement('div');
     taskNode.className = 'mind-map-node mind-map-task';
