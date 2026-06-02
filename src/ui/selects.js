@@ -27,11 +27,7 @@ export function refreshProjectSelects() {
     }
     
     const state = store.getState();
-    console.log('🔍 DEBUG projects snapshot (refreshProjectSelects):', {
-      storeProjects: state.projects?.length || 0,
-      storeProjectIds: (state.projects || []).map(p => p.id)
-    });
-    
+
     // Phase 3: Read ONLY from store (single source of truth)
     const projectsFromStore = state.projects || [];
     

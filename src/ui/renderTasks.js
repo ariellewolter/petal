@@ -1,7 +1,6 @@
 // ═══════════════════════ RENDER TASKS ═══════════════════════
 // Pure rendering function for tasks view
 // Takes state and handlers as parameters - no store peeking
-console.log("✅ renderTasks.js LOADED — EDITBTN TEST 2026-02-21");
 
 import { esc } from '../utils/strings.js';
 import { today, parseDate, dueLabel, inRange } from '../utils/dates.js';
@@ -86,15 +85,6 @@ export async function renderTasks(containerEl, state, handlers) {
 async function renderTaskList(containerEl, state, handlers) {
   const { tasks, projects, currentFilter, currentSort, searchQuery, boardProjectFilter } = state;
   
-  console.log('🔍 DEBUG renderTaskList:', {
-    tasksCount: tasks?.length || 0,
-    projectsCount: projects?.length || 0,
-    currentFilter,
-    currentSort,
-    searchQuery,
-    containerEl: !!containerEl
-  });
-  
   // Find task-container inside the provided container, or use it directly if it's task-container
   let c = null;
   if (containerEl) {
@@ -117,64 +107,8 @@ async function renderTaskList(containerEl, state, handlers) {
     return;
   }
   
-  // Diagnostic: Check if container is visible and clickable
-  const computedStyle = window.getComputedStyle(c);
-  console.log('🔍 task-container diagnostics:', {
-    display: computedStyle.display,
-    visibility: computedStyle.visibility,
-    pointerEvents: computedStyle.pointerEvents,
-    opacity: computedStyle.opacity,
-    hasContent: c.innerHTML.length > 0,
-  });
-  
   // Get all tasks including project tasks
   const allTasks = getAllTasks(tasks || [], projects || []);
-  
-  // ═══════════════════════ DEBUG: allTasks breakdown ═══════════════════════
-  // Phase 3 Debug: Identify source of task count mismatch
-  const id = (t) => t.id || t.taskId || t.uuid || '(no-id)';
-  const src = (t) => {
-    if (t.isSubtask) return 'project-subtask';
-    if (t.projectId) return 'tasks-array-with-project';
-    return 'tasks-array-standalone';
-  };
-  
-  const storeTasks = tasks || [];
-  const projectSubtasks = (projects || []).flatMap(p => (p.subtasks || []).map(st => ({
-    ...st,
-    projectId: p.id,
-    isSubtask: true
-  })));
-  
-  const duplicates = (() => {
-    const seen = new Set();
-    const dups = [];
-    for (const t of allTasks) {
-      const k = id(t);
-      if (seen.has(k)) dups.push(k);
-      else seen.add(k);
-    }
-    return dups;
-  })();
-  
-  console.log('🔍 DEBUG allTasks breakdown:', {
-    storeTasksCount: storeTasks.length,
-    storeTaskIds: storeTasks.map(id),
-    projectSubtasksCount: projectSubtasks.length,
-    projectSubtaskIds: projectSubtasks.map(id),
-    allTasksCount: allTasks.length,
-    allTaskIds: allTasks.map(id),
-    duplicates: duplicates.length > 0 ? duplicates : 'none',
-    sample: allTasks.slice(0, 5).map(t => ({
-      id: id(t),
-      title: t.title || t.name || '(no title)',
-      projectId: t.projectId,
-      isSubtask: t.isSubtask || false,
-      src: src(t),
-    })),
-  });
-  
-  console.log('🔍 DEBUG: allTasks count:', allTasks.length);
   
   // Filter tasks
   let list = allTasks.filter(t => {
@@ -225,15 +159,11 @@ async function renderTaskList(containerEl, state, handlers) {
     list.sort((a, b) => (b.id || 0) - (a.id || 0));
   }
   
-  // Render
-  console.log('🔍 DEBUG: Filtered list count:', list.length);
   if (!list.length) {
-    console.warn('⚠️ WARNING: No tasks to render after filtering');
     c.innerHTML = '<div class="empty-state">No tasks yet<small>Add a task above to get started</small></div>';
     return;
   }
   
-  console.log('🔍 DEBUG: Rendering', list.length, 'tasks');
   c.innerHTML = list.map(t => renderTaskItem(t, state)).join('');
   
   // Re-hydrate Lucide icons after innerHTML (fixes "halo" issue)
@@ -254,9 +184,6 @@ async function renderTaskList(containerEl, state, handlers) {
  * @param {Object} state - Current app state
  */
 function renderTaskItem(task, state) {
-  // Debug: Log when rendering task item (to confirm new code is running)
-  console.log('🔍 renderTaskItem called for task:', task.id, 'with 3 buttons (Drawer 📝, Edit ✎, Delete ✕)');
-  
   const { projects } = state;
   const dl = dueLabel(task.due, true);
   const project = (projects || []).find(p => String(p.id) === String(task.projectId));

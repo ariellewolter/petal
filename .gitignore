@@ -5,7 +5,11 @@ storage/
 data/
 *.sqlite
 *.db
-*.json
+# Local vault/state JSON only — do not ignore package.json, manifest.json, etc.
+storage/**/*.json
+data/**/*.json
+**/petal.json
+**/.vault_manifest.json
 
 # Electron / build cruft
 dist/

@@ -616,7 +616,7 @@ export function projectHTML(ctx, p, tasksFromStore = null, openProjectsFromStore
               const label = f.label || f.name || 'File';
               const safeLink = escJsonForAttrFunction(fileLink);
               const icon = fileIconFunction(fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url || '');
-              return `<a href="#" class="file-chip" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="font-size:9px;padding:3px 6px;background:var(--bg2);border:1px solid var(--border);border-radius:3px;color:var(--text-dim);text-decoration:none;display:inline-flex;align-items:center;gap:3px;">${icon} ${escFunction(label)}</a>`;
+              return `<a href="#" class="file-chip" data-action="file:open" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="font-size:9px;padding:3px 6px;background:var(--bg2);border:1px solid var(--border);border-radius:3px;color:var(--text-dim);text-decoration:none;display:inline-flex;align-items:center;gap:3px;">${icon} ${escFunction(label)}</a>`;
             }).join('') : '';
             return `<div class="subtask-item ${st.done?'done':''}" style="margin-left:24px;margin-top:6px;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px;">
               <div style="display:flex;align-items:flex-start;gap:8px;">
@@ -649,7 +649,7 @@ export function projectHTML(ctx, p, tasksFromStore = null, openProjectsFromStore
             const label = f.label || f.name || 'File';
             const safeLink = escJsonForAttrFunction(fileLink);
             const icon = fileIconFunction(fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url || '');
-            return `<a href="#" class="file-chip" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="font-size:10px;padding:4px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);text-decoration:none;display:inline-flex;align-items:center;gap:4px;">${icon} ${escFunction(label)}</a>`;
+            return `<a href="#" class="file-chip" data-action="file:open" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="font-size:10px;padding:4px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);text-decoration:none;display:inline-flex;align-items:center;gap:4px;">${icon} ${escFunction(label)}</a>`;
           }).join('') : '';
           
           const tdl = dueLabelFunction(t.due, true, t.done);
@@ -754,7 +754,7 @@ export function projectHTML(ctx, p, tasksFromStore = null, openProjectsFromStore
         const fileNote = f.note || '';
         return `<div class="file-entry" style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px;">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:${fileNote ? '6px' : '0'};">
-            <a href="#" class="file-chip" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="flex:1;display:flex;align-items:center;gap:6px;text-decoration:none;">${icon} ${escFunction(label)}</a>
+            <a href="#" class="file-chip" data-action="file:open" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="flex:1;display:flex;align-items:center;gap:6px;text-decoration:none;">${icon} ${escFunction(label)}</a>
             ${fileNote ? `<span class="file-note-icon" title="Has note">📝</span>` : ''}
             <button type="button" class="file-note-toggle-btn" data-action="file:toggle-note" data-file-id="${fileId}" style="padding:4px 8px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:10px;cursor:pointer;">${fileNote ? '📝 Note' : '📝 Add note'}</button>
           </div>

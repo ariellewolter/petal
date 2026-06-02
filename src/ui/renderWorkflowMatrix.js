@@ -84,7 +84,7 @@ export function renderMatrixTaskCard(ctx, task, isSubtaskTask = false, subtaskId
       const fileLink = typeof f === 'string' ? { abs_path: f } : f;
       const safeLink = escJsonForAttrFunction(fileLink);
       const icon = fileIconFunction(fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url || '');
-      return `<a href="#" class="file-chip" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="font-size:9px;color:var(--text-dim);">${icon}</a>`;
+      return `<a href="#" class="file-chip" data-action="file:open" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="font-size:9px;color:var(--text-dim);">${icon}</a>`;
     }).join('');
   }
   
@@ -863,7 +863,6 @@ export function renderMindMap(ctx, project, projectTasks, standaloneTasks, tasks
     doneBtn.dataset.taskId = String(task.id);
     doneBtn.title = 'Toggle task';
     doneBtn.style.cssText = 'flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;margin-top:1px;';
-    doneBtn.onclick = (e) => e.stopPropagation();
     titleRow.appendChild(doneBtn);
 
     const title = document.createElement('div');
@@ -901,13 +900,11 @@ export function renderMindMap(ctx, project, projectTasks, standaloneTasks, tasks
     }
     
     taskNode.appendChild(meta);
-    
-    // Add click handlers
-    taskNode.onclick = (e) => {
-      e.stopPropagation();
-      editTaskFunction(task.id);
-    };
-    
+
+    taskNode.dataset.action = 'edit-task';
+    taskNode.dataset.taskId = String(task.id);
+    if (project?.id != null) taskNode.dataset.projectId = String(project.id);
+
     nodesContainer.appendChild(taskNode);
   });
 }

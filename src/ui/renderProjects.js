@@ -23,15 +23,6 @@ export function renderProjects(containerEl, state, handlers) {
         ? state.openProjects
         : new Set(Array.isArray(state.openProjects) ? state.openProjects : []);
 
-    // Diagnostic logging: capture input shapes to catch nondeterministic failures
-    console.log('DEBUG renderProjects:', {
-      projectsType: Array.isArray(state.projects) ? 'array' : typeof state.projects,
-      projectsCount: state.projects?.length,
-      openProjectsType: state.openProjects instanceof Set ? 'Set' : Array.isArray(state.openProjects) ? 'Array' : typeof state.openProjects,
-      openProjectsValue: state.openProjects instanceof Set ? Array.from(state.openProjects) : state.openProjects,
-      currentProjFilter: state.currentProjFilter
-    });
-    
     const { projects, currentProjFilter } = state;
     
     // CONTAINER-FIRST: Never use global fallback - container must be provided
@@ -41,16 +32,6 @@ export function renderProjects(containerEl, state, handlers) {
     }
     
     const c = containerEl;
-    
-    // Diagnostic: Check if container is visible and clickable
-    const computedStyle = window.getComputedStyle(c);
-    console.log('🔍 project-container diagnostics:', {
-      display: computedStyle.display,
-      visibility: computedStyle.visibility,
-      pointerEvents: computedStyle.pointerEvents,
-      opacity: computedStyle.opacity,
-      hasContent: c.innerHTML.length > 0,
-    });
     
     // Filter projects
     let list = (projects || []).filter(p => {
@@ -76,20 +57,6 @@ export function renderProjects(containerEl, state, handlers) {
       window.lucide.createIcons();
     }
     
-    // DEBUG: Prove clicks reach the project container
-    if (!c.__clickProbeInstalled) {
-      c.__clickProbeInstalled = true;
-      c.addEventListener('click', (e) => {
-        const btn = e.target.closest?.('button');
-        console.log('🧪 project container click probe:', {
-          target: e.target?.tagName,
-          buttonClass: btn?.className || null,
-          buttonText: btn?.textContent?.trim() || null,
-          hasDataAction: btn?.getAttribute('data-action') || null,
-        });
-      }, true); // capture=true to beat overlays/bubbling issues
-    }
-    
     // Install event delegation for project task actions (delete, edit, etc.)
     if (!c.__projectTaskActionsInstalled) {
       c.__projectTaskActionsInstalled = true;
@@ -104,12 +71,9 @@ export function renderProjects(containerEl, state, handlers) {
         const action = btn.getAttribute('data-action');
         const taskId = btn.getAttribute('data-id') || btn.getAttribute('data-task-id');
         
-        console.log('🧨 project task action click:', { action, taskId, button: btn });
-        
         if (action === 'delete' || action === 'delete-task') {
           // Guard: prevent double handling if another handler already processed this
           if (e.__petalDeleteHandled) {
-            console.log('🛡️ Delete event already handled, skipping');
             return;
           }
           e.__petalDeleteHandled = true;
@@ -221,29 +185,6 @@ function renderProjectCard(project, state, openSet) {
   const projectIdForLookup = String(project.id).trim();
   const projectIdNum = Number(project.id);
   
-  // Debug: Log openSet contents for this project
-  if (project.id === 1771714801103 || window.__DEBUG__) {
-    const openSetArray = Array.from(openSet);
-    console.log(`🔍 isOpen check for project ${project.id}:`);
-    console.log(`  Project ID: ${project.id} (${typeof project.id})`);
-    console.log(`  Project ID as string: "${projectIdForLookup}"`);
-    console.log(`  Project ID as number: ${projectIdNum}`);
-    console.log(`  OpenSet size: ${openSet.size}`);
-    console.log(`  OpenSet contents:`, openSetArray);
-    console.log(`  OpenSet types:`, openSetArray.map(id => ({ id, type: typeof id, str: String(id) })));
-    console.log(`  hasExact (project.id): ${openSet.has(project.id)}`);
-    console.log(`  hasString (projectIdForLookup): ${openSet.has(projectIdForLookup)}`);
-    const decimalMatch = !isNaN(projectIdNum) && Array.from(openSet).some(id => {
-      const openIdNum = Number(id);
-      const matches = !isNaN(openIdNum) && Math.floor(openIdNum) === Math.floor(projectIdNum);
-      if (matches) {
-        console.log(`  Decimal match found: ${id} (${typeof id}) matches ${project.id}`);
-      }
-      return matches;
-    });
-    console.log(`  decimalMatch: ${decimalMatch}`);
-  }
-  
   // Check if project.id (as string or number) exists in openSet
   const isOpen = openSet.has(project.id) || 
                  openSet.has(projectIdForLookup) ||
@@ -252,102 +193,12 @@ function renderProjectCard(project, state, openSet) {
                    return !isNaN(openIdNum) && Math.floor(openIdNum) === Math.floor(projectIdNum);
                  }));
   
-  if (project.id === 1771714801103 || window.__DEBUG__) {
-    console.log(`  ✅ Final isOpen result: ${isOpen}`);
-  }
-  
   // Project metrics: tasks in this project (use getAllTasks to include project subtasks)
   // Normalize projectId comparison to handle both string and number types
   // Also handle decimal projectIds (e.g., 1771714801103.9167 should match project 1771714801103)
   const allTasks = getAllTasks(tasks || [], state.projects || []);
   const projectTasks = filterTasksForProject(allTasks, project.id, { excludeDeleted: true });
-  const normalizedProjectId = String(project.id).trim();
-  const projectIdAsNumber = Number(project.id);
-  
-  // Debug logging to help diagnose missing tasks (always log for first project)
-  const shouldLog = window.__DEBUG__ || (project.id === (state.projects || [])[0]?.id);
-  if (shouldLog) {
-    const tasksWithAnyProjectId = allTasks.filter(t => t.projectId);
-    const projectIdAsNumber = Number(project.id);
-    
-    // Log basic info first
-    console.log(`🔍 renderProjectCard [${project.name}]:`);
-    console.log(`  Project ID: ${project.id} (${typeof project.id})`);
-    console.log(`  Normalized: "${normalizedProjectId}"`);
-    console.log(`  As Number: ${projectIdAsNumber}`);
-    console.log(`  All tasks: ${allTasks.length}`);
-    console.log(`  Tasks with projectId: ${tasksWithAnyProjectId.length}`);
-    console.log(`  ✅ Matched tasks: ${projectTasks.length}`);
-    
-    // Show sample tasks with detailed matching info
-    const sampleTasks = tasksWithAnyProjectId.slice(0, 5).map(t => {
-      const taskProjectId = String(t.projectId).trim();
-      const taskProjectIdNum = Number(t.projectId);
-      const exactMatch = taskProjectId === normalizedProjectId;
-      const intMatch = !isNaN(taskProjectIdNum) && !isNaN(projectIdAsNumber) && 
-                       Math.floor(taskProjectIdNum) === Math.floor(projectIdAsNumber);
-      const matches = exactMatch || intMatch;
-      
-      return {
-        taskId: t.id,
-        title: t.title?.substring(0, 30),
-        projectId: t.projectId,
-        projectIdType: typeof t.projectId,
-        normalized: taskProjectId,
-        projectIdNum: taskProjectIdNum,
-        exactMatch: exactMatch,
-        intMatch: intMatch,
-        matches: matches
-      };
-    });
-    
-    console.log(`  Sample tasks:`, sampleTasks);
-    
-    // Show detailed matching info for each sample task
-    sampleTasks.forEach((task, idx) => {
-      console.log(`    Task ${idx + 1}:`, {
-        taskId: task.taskId,
-        title: task.title,
-        projectId: task.projectId,
-        projectIdType: task.projectIdType,
-        normalized: task.normalized,
-        projectIdNum: task.projectIdNum,
-        exactMatch: task.exactMatch,
-        intMatch: task.intMatch,
-        matches: task.matches,
-        shouldShow: task.matches ? 'YES' : 'NO'
-      });
-    });
-    
-    // If no matches, show all tasks with projectId
-    if (projectTasks.length === 0 && tasksWithAnyProjectId.length > 0) {
-      console.warn(`⚠️ No tasks matched for project ${project.name}!`);
-      const allTasksWithProjectId = allTasks.filter(t => t.projectId);
-      console.log(`  All ${allTasksWithProjectId.length} tasks with projectId:`, 
-        allTasksWithProjectId.map(t => ({
-          taskId: t.id,
-          title: t.title?.substring(0, 40),
-          projectId: t.projectId,
-          projectIdType: typeof t.projectId,
-          projectIdString: String(t.projectId),
-          projectIdFloor: Math.floor(Number(t.projectId) || 0)
-        }))
-      );
-    }
-  }
-  
   const totalTasks = projectTasks.length;
-  
-  // Debug: Log task rendering info
-  if (project.id === 1771714801103 || window.__DEBUG__) {
-    console.log(`🔍 renderProjectCard [${project.name}]: Rendering ${totalTasks} tasks`, {
-      projectId: project.id,
-      projectTasksCount: totalTasks,
-      isOpen: isOpen,
-      willRenderTasks: isOpen && totalTasks > 0,
-      sampleTaskIds: projectTasks.slice(0, 3).map(t => t.id)
-    });
-  }
   const inProgressTasks = projectTasks.filter(t => t.status === 'Doing' && !t.done).length;
   const doneTasks = projectTasks.filter(t => t.done).length;
   const donePct = totalTasks ? Math.round(doneTasks / totalTasks * 100) : 0;

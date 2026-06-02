@@ -116,7 +116,7 @@ export async function renderLane(ctx, laneName, allTasks) {
         const fileLink = typeof f === 'string' ? { abs_path: f } : f;
         const safeLink = escJsonForAttrFunction(fileLink);
         const icon = fileIconFunction(fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url || '');
-        return `<a href="#" class="file-chip" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="font-size:10px;padding:2px 6px;">${icon} ${escFunction(label)}</a>`;
+        return `<a href="#" class="file-chip" data-action="file:open" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="font-size:10px;padding:2px 6px;">${icon} ${escFunction(label)}</a>`;
       }));
       filesHtml = `<div class="task-files" style="margin-top:6px;">${fileHtmls.join('')}</div>`;
     }
@@ -230,7 +230,7 @@ export async function renderUnassignedLane(ctx, allTasks) {
         const fileLink = typeof f === 'string' ? { abs_path: f } : f;
         const safeLink = escJsonForAttrFunction(fileLink);
         const icon = fileIconFunction(fileLink.abs_path || fileLink.onedrive_rel || fileLink.share_url || '');
-        return `<a href="#" class="file-chip" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="font-size:10px;padding:2px 6px;">${icon} ${escFunction(label)}</a>`;
+        return `<a href="#" class="file-chip" data-action="file:open" data-path="${escAttrFunction(JSON.stringify(fileLink))}" style="font-size:10px;padding:2px 6px;">${icon} ${escFunction(label)}</a>`;
       }));
       filesHtml = `<div class="task-files" style="margin-top:6px;">${fileHtmls.join('')}</div>`;
     }

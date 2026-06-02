@@ -281,22 +281,6 @@ export async function initStateInternal() {
     loadedData = loadResult;
   }
   
-  // DEBUG: Log what was loaded
-  console.log('🔍 DEBUG: Loaded data from vault:', {
-    tasksCount: loadedData.tasks?.length || 0,
-    projectsCount: loadedData.projects?.length || 0,
-    filesCount: loadedData.files?.length || 0,
-    eventsCount: loadedData.events?.length || 0,
-    openProjects: loadedData.openProjects || [],
-    hasSettings: !!loadedData.settings,
-    hasCellLog: !!(loadedData.settings?.cellLog),
-    cellLogEntries: loadedData.settings?.cellLog?.entries?.length || 0,
-    cellLogCellTypes: loadedData.settings?.cellLog?.cellTypes?.length || 0,
-    cellLogMediaTypes: loadedData.settings?.cellLog?.mediaTypes?.length || 0,
-    habitsCount: loadedData.habits?.length || 0,
-    routinesCount: loadedData.routines?.length || 0
-  });
-  
   // Load data into store (Step 2: Wire store)
   // Wait for module to load if needed (module scripts are deferred)
   if (!window.Petal || !window.Petal.store) {
@@ -355,19 +339,6 @@ export async function initStateInternal() {
     // Also set window.currentView to ensure it's in sync
     window.currentView = currentView;
     
-    // Phase 3 Fix: Debug log to prove files are being loaded
-    console.log('🧪 loaded snapshot', { 
-      files: (loadedData.files || []).length, 
-      first: (loadedData.files || [])[0]?.name 
-    });
-    
-    console.log('🔍 DEBUG: Loading into store:', {
-      tasksCount: stateToLoad.tasks.length,
-      projectsCount: stateToLoad.projects.length,
-      openProjectsCount: stateToLoad.openProjects.length,
-      filesCount: stateToLoad.files.length
-    });
-    
     window.Petal.store.loadState(stateToLoad);
     
     // GUARANTEE: Ensure registry is always initialized (defensive check)
@@ -385,24 +356,6 @@ export async function initStateInternal() {
     window.fileHistory = storeState.fileHistory || {};
     
     // Step 3: Test debug IPC to verify we're talking to the right main process
-    if (window.electronAPI?.debugPid) {
-      try {
-        const debugInfo = await window.electronAPI.debugPid();
-        console.log('🔍 debugPid result:', debugInfo);
-      } catch (e) {
-        console.error('❌ debugPid failed:', e);
-      }
-    }
-    
-    // Phase 3 Fix: Invariant logging after load (exact types)
-    console.log('INVARIANT after load:', {
-      projectsCount: storeState.projects?.length || 0,
-      tasksCount: storeState.tasks?.length || 0,
-      openProjectsType: storeState.openProjects instanceof Set ? 'Set' : Array.isArray(storeState.openProjects) ? 'Array' : typeof storeState.openProjects,
-      openProjectsValue: storeState.openProjects instanceof Set ? Array.from(storeState.openProjects) : storeState.openProjects,
-      openProjectsLength: Array.isArray(storeState.openProjects) ? storeState.openProjects.length : (storeState.openProjects?.size || 0)
-    });
-    
     // Render subscription is wired once in init.js (avoid double render)
     console.log('✓ Store loaded');
   } else {
@@ -419,14 +372,7 @@ export async function initStateInternal() {
   // NOTE: window.tasks, window.projects, etc. are now read-only getters
   // They automatically read from store, so no assignment needed
   
-  console.log('✓ Globals synced from store:', {
-    tasksCount: loadedState.tasks?.length || 0,
-    projectsCount: loadedState.projects?.length || 0,
-    windowTasksCount: window.tasks?.length,
-    eventsCount: loadedState.events?.length || 0
-  });
-  
-  // DEBUG: Verify data is actually there
+  // Verify data is actually there
   if ((loadedState.tasks?.length || 0) === 0 && (loadedState.projects?.length || 0) === 0) {
     console.error('❌ WARNING: No tasks or projects loaded! Check data file.');
   }
@@ -485,8 +431,6 @@ export async function initStateInternal() {
   }
   window.currentView = currentView;
   
-  console.log('🔍 Initial render setup:', { currentView, hasStore: !!window.Petal?.store, hasSwitchView: !!window.switchView });
-  
   // Render sidebar first (always render sidebar)
   if (typeof window.renderGlobalSidebar === 'function') {
     window.renderGlobalSidebar(finalState);
@@ -496,7 +440,6 @@ export async function initStateInternal() {
   
   // Switch to initial view (this will also render the view)
   if (window.switchView) {
-    console.log('🔍 Switching to initial view:', currentView);
     window.switchView(currentView).catch(err => {
       console.error('❌ Error switching to initial view:', err);
       // Fallback: manually show the view

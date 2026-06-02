@@ -5901,7 +5901,7 @@ document.addEventListener('click', (e) => {
   
   // Handle file-chip links (for file chips in tasks/projects)
   const chip = e.target.closest('.file-chip');
-  if (chip) {
+  if (chip && !chip.hasAttribute('data-action')) {
     e.preventDefault();
     const path = chip.dataset.path;
     if (path) {

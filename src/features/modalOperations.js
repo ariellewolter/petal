@@ -28,8 +28,7 @@ function updateStoreSafely(updates, fallbackFn) {
  * Open Add Task Modal for a specific project
  */
 export function openProjectAddTaskModal(ctx, projId) {
-  console.log('🔘 openProjectAddTaskModal called:', { projId, projectsCount: ctx.projects?.length });
-  const { projects } = ctx;
+const { projects } = ctx;
   
   // Update global modal state
   if (typeof window !== 'undefined') {
@@ -38,27 +37,13 @@ export function openProjectAddTaskModal(ctx, projId) {
   }
   
   const p = findProjectById(projects, projId);
-  
-  console.log('🔘 Project lookup:', { 
-    projId, 
-    projectFound: !!p, 
-    projectName: p?.name,
-    projectIds: projects?.slice(0, 3).map(p => ({ id: p.id, type: typeof p.id }))
-  });
-  
-  if (!p) {
+if (!p) {
     console.warn('⚠️ Project not found for ID:', projId);
     return;
   }
   
   const titleEl = document.getElementById('add-task-modal-title');
-  console.log('🔘 Modal elements:', {
-    hasTitleEl: !!titleEl,
-    hasModal: !!document.getElementById('add-task-modal'),
-    hasTitleInput: !!document.getElementById('modal-task-title')
-  });
-  
-  if (titleEl) titleEl.textContent = `Add Task to ${p.name}`;
+if (titleEl) titleEl.textContent = `Add Task to ${p.name}`;
   
   // Setup lane options
   const laneField = document.getElementById('modal-task-lane-field');
@@ -87,21 +72,13 @@ export function openProjectAddTaskModal(ctx, projId) {
   
   // Show modal
   const modal = document.getElementById('add-task-modal');
-  console.log('🔘 Showing modal:', { 
-    hasModal: !!modal, 
-    modalDisplay: modal ? window.getComputedStyle(modal).display : 'N/A',
-    modalVisibility: modal ? window.getComputedStyle(modal).visibility : 'N/A',
-    modalZIndex: modal ? window.getComputedStyle(modal).zIndex : 'N/A'
-  });
-  
-  if (modal) {
+if (modal) {
     modal.style.display = 'flex';
     modal.style.setProperty('display', 'flex', 'important');
     modal.style.setProperty('visibility', 'visible', 'important');
     modal.style.setProperty('opacity', '1', 'important');
     modal.style.setProperty('z-index', '10000', 'important');
-    console.log('✅ Modal display set to flex');
-    if (titleInput) {
+if (titleInput) {
       setTimeout(() => titleInput.focus(), 100);
     }
   } else {
@@ -113,23 +90,10 @@ export function openProjectAddTaskModal(ctx, projId) {
  * Open Add Task Modal for Matrix view
  */
 export function openMatrixAddTaskModal(ctx) {
-  console.log('🔘 openMatrixAddTaskModal called:', { 
-    hasCtx: !!ctx, 
-    ctxSelectedProjectId: ctx?.selectedProjectId,
-    windowSelectedProjectId: typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null,
-    projectsCount: ctx?.projects?.length 
-  });
-  
-  const { projects } = ctx;
+const { projects } = ctx;
   // Get projectId from context first, then fallback to window.selectedProjectId
   const selectedProjectId = ctx?.selectedProjectId || (typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null);
-  
-  console.log('🔘 Project ID lookup:', { 
-    selectedProjectId, 
-    projectIds: projects?.slice(0, 3).map(p => ({ id: p.id, type: typeof p.id }))
-  });
-  
-  if (!selectedProjectId) {
+if (!selectedProjectId) {
     console.warn('⚠️ No selectedProjectId in openMatrixAddTaskModal');
     return;
   }
@@ -141,14 +105,7 @@ export function openMatrixAddTaskModal(ctx) {
   }
   
   const p = findProjectById(projects, selectedProjectId);
-  
-  console.log('🔘 Matrix project lookup:', { 
-    selectedProjectId, 
-    projectFound: !!p, 
-    projectName: p?.name 
-  });
-  
-  if (!p) {
+if (!p) {
     console.warn('⚠️ Project not found for ID:', selectedProjectId);
     return;
   }
@@ -183,21 +140,13 @@ export function openMatrixAddTaskModal(ctx) {
   
   // Show modal and focus
   const modal = document.getElementById('add-task-modal');
-  console.log('🔘 Showing matrix modal:', { 
-    hasModal: !!modal, 
-    modalDisplay: modal ? window.getComputedStyle(modal).display : 'N/A',
-    modalVisibility: modal ? window.getComputedStyle(modal).visibility : 'N/A',
-    modalZIndex: modal ? window.getComputedStyle(modal).zIndex : 'N/A'
-  });
-  
-  if (modal) {
+if (modal) {
     modal.style.display = 'flex';
     modal.style.setProperty('display', 'flex', 'important');
     modal.style.setProperty('visibility', 'visible', 'important');
     modal.style.setProperty('opacity', '1', 'important');
     modal.style.setProperty('z-index', '10000', 'important');
-    console.log('✅ Matrix modal display set to flex');
-    modal.focus();
+modal.focus();
     setTimeout(() => {
       if (titleInput) titleInput.focus();
     }, 100);
@@ -260,14 +209,7 @@ export function closeAddTaskModal() {
  * Submit Add Task Modal
  */
 export async function submitAddTaskModal(ctx) {
-  console.log('🔘 submitAddTaskModal called:', {
-    hasCtx: !!ctx,
-    ctxKeys: ctx ? Object.keys(ctx) : [],
-    currentModalContext: typeof window.currentModalContext !== 'undefined' ? window.currentModalContext : null,
-    currentModalProjectId: typeof window.currentModalProjectId !== 'undefined' ? window.currentModalProjectId : null
-  });
-  
-  // Get functions from features namespace (more reliable than context)
+// Get functions from features namespace (more reliable than context)
   const addTaskToProjectFromModal = window.Petal?.features?.modalOperations?.addTaskToProjectFromModal;
   const addTaskToMatrixFromModal = window.Petal?.features?.modalOperations?.addTaskToMatrixFromModal;
   const addTaskFromModal = window.Petal?.features?.modalOperations?.addTaskFromModal;
@@ -304,46 +246,24 @@ export async function submitAddTaskModal(ctx) {
   
   const currentModalContext = typeof window.currentModalContext !== 'undefined' ? window.currentModalContext : null;
   const currentModalProjectId = typeof window.currentModalProjectId !== 'undefined' ? window.currentModalProjectId : null;
-  
-  console.log('🔘 submitAddTaskModal: Routing to handler:', {
-    currentModalContext,
-    currentModalProjectId,
-    hasAddTaskToProjectFromModal: !!finalAddTaskToProjectFromModal,
-    hasAddTaskToMatrixFromModal: !!finalAddTaskToMatrixFromModal,
-    hasAddTaskFromModal: !!finalAddTaskFromModal,
-    fromFeatures: {
-      addTaskToProjectFromModal: !!addTaskToProjectFromModal,
-      addTaskToMatrixFromModal: !!addTaskToMatrixFromModal,
-      addTaskFromModal: !!addTaskFromModal
-    },
-    fromContext: {
-      addTaskToProjectFromModal: !!ctxAddTaskToProjectFromModal,
-      addTaskToMatrixFromModal: !!ctxAddTaskToMatrixFromModal,
-      addTaskFromModal: !!ctxAddTaskFromModal
-    }
-  });
-  
-  // Ensure we have a context for the functions that need it
+// Ensure we have a context for the functions that need it
   const finalCtx = ctx || window.Petal?.handlers?.createPageContext?.() || {};
   
   if (currentModalContext === 'project' && currentModalProjectId) {
     if (finalAddTaskToProjectFromModal) {
-      console.log('✅ Calling addTaskToProjectFromModal');
-      await finalAddTaskToProjectFromModal(finalCtx, currentModalProjectId, title, priority, due, lane);
+await finalAddTaskToProjectFromModal(finalCtx, currentModalProjectId, title, priority, due, lane);
     } else {
       console.warn('⚠️ addTaskToProjectFromModal not available');
     }
   } else if (currentModalContext === 'matrix' && currentModalProjectId) {
     if (finalAddTaskToMatrixFromModal) {
-      console.log('✅ Calling addTaskToMatrixFromModal');
-      await finalAddTaskToMatrixFromModal(finalCtx, title, priority, due, lane);
+await finalAddTaskToMatrixFromModal(finalCtx, title, priority, due, lane);
     } else {
       console.warn('⚠️ addTaskToMatrixFromModal not available');
     }
   } else if (currentModalContext === 'general') {
     if (finalAddTaskFromModal) {
-      console.log('✅ Calling addTaskFromModal');
-      await finalAddTaskFromModal(finalCtx, title, priority, due, lane);
+await finalAddTaskFromModal(finalCtx, title, priority, due, lane);
     } else {
       console.warn('⚠️ addTaskFromModal not available');
     }
@@ -430,27 +350,10 @@ export async function addTaskFromModal(ctx, title, priority, due, lane) {
  */
 export async function addTaskToProjectFromModal(ctx, projId, title, priority, due, lane) {
   const { save, rerenderViewIfActive, normalizeProjectIdValue } = ctx || {};
-  
-  console.log('🔘 addTaskToProjectFromModal called:', {
-    projId,
-    title,
-    hasStore: !!window.Petal?.store,
-    hasCtx: !!ctx,
-    ctxProjectsCount: ctx?.projects?.length || 0
-  });
-  
-  // Get projects from store (more reliable than context)
+// Get projects from store (more reliable than context)
   const state = window.Petal?.store?.getState();
   const projects = state?.projects || ctx?.projects || [];
-  
-  console.log('🔘 addTaskToProjectFromModal: Project lookup:', {
-    projId,
-    projIdType: typeof projId,
-    projectsCount: projects.length,
-    projectIds: projects.map(p => ({ id: p.id, type: typeof p.id })).slice(0, 3)
-  });
-  
-  const normalizedProjId = normalizeProjectIdValue ? normalizeProjectIdValue(projId) : projId;
+const normalizedProjId = normalizeProjectIdValue ? normalizeProjectIdValue(projId) : projId;
   const p = findProjectById(projects, normalizedProjId);
   
   if (!p) {
@@ -461,10 +364,7 @@ export async function addTaskToProjectFromModal(ctx, projId, title, priority, du
     });
     return;
   }
-  
-  console.log('✅ addTaskToProjectFromModal: Project found:', p.name);
-  
-  // Convert priority string to number if needed
+// Convert priority string to number if needed
   const priorityMap = { low: 1, medium: 2, high: 3 };
   const priorityNum = typeof priority === 'string' ? (priorityMap[priority] || 2) : (priority || 2);
   
@@ -484,22 +384,14 @@ export async function addTaskToProjectFromModal(ctx, projId, title, priority, du
   if (window.Petal?.store) {
     const state = window.Petal.store.getState();
     const currentTasksCount = state.tasks?.length || 0;
-    console.log('🔘 addTaskToProjectFromModal: Updating store:', {
-      taskId: newTask.id,
-      currentTasksCount
-    });
-    
-    updateStoreSafely({
+updateStoreSafely({
       tasks: [...(state.tasks || []), newTask]
     });
     
     // Verify the task was added
     const updatedState = window.Petal.store.getState();
     const taskWasAdded = updatedState.tasks?.some(t => t.id === newTask.id);
-    console.log('✅ addTaskToProjectFromModal: Store updated, task added:', taskWasAdded, {
-      tasksInStore: updatedState.tasks?.length || 0
-    });
-  } else {
+} else {
     // Fallback: store not initialized yet, log warning
     console.warn('Store not available in addTaskToProjectFromModal, task not added');
   }
@@ -516,15 +408,7 @@ export async function addTaskToProjectFromModal(ctx, projId, title, priority, du
 export async function addTaskToMatrixFromModal(ctx, title, priority, due, lane) {
   const { save, renderWorkflowMatrix, normalizeProjectIdValue } = ctx || {};
   const selectedProjectId = typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null;
-  
-  console.log('🔘 addTaskToMatrixFromModal called:', {
-    selectedProjectId,
-    title,
-    hasStore: !!window.Petal?.store,
-    hasCtx: !!ctx
-  });
-  
-  if (!selectedProjectId) {
+if (!selectedProjectId) {
     console.warn('⚠️ addTaskToMatrixFromModal: No selectedProjectId');
     return;
   }
@@ -564,22 +448,14 @@ export async function addTaskToMatrixFromModal(ctx, title, priority, due, lane) 
   if (window.Petal?.store) {
     const state = window.Petal.store.getState();
     const currentTasksCount = state.tasks?.length || 0;
-    console.log('🔘 addTaskToMatrixFromModal: Updating store:', {
-      taskId: newTask.id,
-      currentTasksCount
-    });
-    
-    updateStoreSafely({
+updateStoreSafely({
       tasks: [...(state.tasks || []), newTask]
     });
     
     // Verify the task was added
     const updatedState = window.Petal.store.getState();
     const taskWasAdded = updatedState.tasks?.some(t => t.id === newTask.id);
-    console.log('✅ addTaskToMatrixFromModal: Store updated, task added:', taskWasAdded, {
-      tasksInStore: updatedState.tasks?.length || 0
-    });
-  } else {
+} else {
     // Fallback: store not initialized yet, log warning
     console.warn('Store not available in addTaskToMatrixFromModal, task not added');
   }
