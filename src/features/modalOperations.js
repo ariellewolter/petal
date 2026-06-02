@@ -1185,7 +1185,7 @@ export async function onModalFileDrop(event, ctx) {
         <input type="text" placeholder="Label" id="${prefix}fn-${id}" value="${escFn(fileLink.label)}">
         <input type="text" placeholder="File path" id="${prefix}fu-${id}" value="${escFn(fileLink.abs_path || '')}" readonly style="background:var(--bg2);">
         <input type="hidden" id="${prefix}fl-${id}" value="${escFn(JSON.stringify(fileLink))}">
-        <button class="btn-remove" onclick="this.parentElement.remove()">✕</button>`;
+        <button type="button" class="btn-remove" data-action="ui:remove-row">✕</button>`;
     } else {
       // Browser: use file name and create blob URL
       const fileLink = {
@@ -1203,7 +1203,7 @@ export async function onModalFileDrop(event, ctx) {
         <input type="text" placeholder="Label" id="${prefix}fn-${id}" value="${escFn(fileLink.label)}">
         <input type="text" placeholder="File" id="${prefix}fu-${id}" value="${escFn(file.name)}" readonly style="background:var(--bg2);">
         <input type="hidden" id="${prefix}fl-${id}" value="${escFn(JSON.stringify(fileLink))}">
-        <button class="btn-remove" onclick="this.parentElement.remove()">✕</button>`;
+        <button type="button" class="btn-remove" data-action="ui:remove-row">✕</button>`;
     }
     
     const c = document.getElementById(containerId);

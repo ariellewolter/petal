@@ -539,7 +539,7 @@ export function projectHTML(ctx, p, tasksFromStore = null, openProjectsFromStore
           ${overdueTasks > 0 ? `<span class="metric-item" style="color:var(--overdue);"><span class="metric-value">${overdueTasks}</span> overdue</span>` : ''}
         </div>` : ''}
       </button>
-      <div class="project-meta" onclick="event.stopPropagation()">
+      <div class="project-meta" data-action="ui:stop-propagation">
         ${dl?`<span class="project-due ${dl.cls}"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${escFunction(dl.text)}</span>`:''}
         ${p.files?.length?`<span style="font-size:11px;color:var(--text-dim);">📎 ${p.files.length}</span>`:''}
         <div class="project-progress-wrap">

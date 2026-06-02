@@ -28,21 +28,17 @@ export async function addFileRow(containerId, prefix, subtaskProjId, subtaskId) 
   
   if (window.electronAPI && window.electronAPI.chooseFile) {
     try {
-      console.log('Opening file picker for container:', containerId);
-      console.log('Electron API available:', !!window.electronAPI);
       const fileLink = await window.electronAPI.chooseFile();
-      console.log('File picker result:', fileLink);
       if (fileLink) {
         row.innerHTML = `
           <input type="text" placeholder="Label" id="${prefix}fn-${id}" value="${esc(fileLink.label)}">
           <input type="text" placeholder="File path" id="${prefix}fu-${id}" value="${esc(fileLink.abs_path || '')}" readonly style="background:var(--bg2);">
           <input type="hidden" id="${prefix}fl-${id}" value="${esc(JSON.stringify(fileLink))}">
-          <button class="btn-remove" onclick="this.parentElement.remove()">✕</button>`;
+          <button type="button" class="btn-remove" data-action="ui:remove-row">✕</button>`;
         c.appendChild(row);
         return;
       }
       // User cancelled file picker - don't add row
-      console.log('File picker was cancelled');
       return;
     } catch (e) {
       console.error('File picker error:', e);
@@ -51,14 +47,13 @@ export async function addFileRow(containerId, prefix, subtaskProjId, subtaskId) 
       return;
     }
   } else {
-    console.log('Electron API not available, using manual input');
   }
   
   // Fallback: manual input (only if not in Electron)
   row.innerHTML = `
     <input type="text" placeholder="Label" id="${prefix}fn-${id}">
     <input type="url"  placeholder="URL or file path" id="${prefix}fu-${id}">
-    <button class="btn-remove" onclick="this.parentElement.remove()">✕</button>`;
+    <button type="button" class="btn-remove" data-action="ui:remove-row">✕</button>`;
   c.appendChild(row);
 }
 

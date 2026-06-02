@@ -1252,7 +1252,7 @@ export async function linkFileToProtocolEntry() {
   }).join('');
 
   modal.innerHTML = `
-    <div class="quick-capture-box" style="max-width:500px;background:var(--surface);border-radius:12px;padding:24px;" onclick="event.stopPropagation()">
+    <div class="quick-capture-box" style="max-width:500px;background:var(--surface);border-radius:12px;padding:24px;">
       <h3 style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;color:var(--rose);margin:0 0 16px;">Attach Files to Protocol</h3>
       <div style="max-height:400px;overflow-y:auto;margin-bottom:20px;border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--bg);">
         ${checkboxes}
@@ -1539,15 +1539,7 @@ export function getProtocolBadge(task) {
     badgeText = `Protocol Day ${dayIndex}`;
   }
   
-  // Use global openTaskDrawer if available, otherwise use window.Petal
-  const openDrawerFn = typeof openTaskDrawer === 'function' 
-    ? `openTaskDrawer(${task.id})` 
-    : `window.Petal?.features?.taskDrawer?.openTaskDrawer?.({ tasks: window.tasks || [], projects: window.projects || [] }, ${task.id})`;
-  const switchTabFn = typeof switchTaskDrawerTab === 'function'
-    ? `switchTaskDrawerTab('protocol')`
-    : `window.Petal?.features?.taskDrawer?.switchTaskDrawerTab?.('protocol')`;
-  
-  return `<span class="protocol-badge" style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:var(--sage-pale);color:var(--sage);border-radius:12px;font-size:10px;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;" onclick="event.stopPropagation();${openDrawerFn};${switchTabFn};" title="Click to view protocol">⚗️ ${badgeText}</span>`;
+  return `<span class="protocol-badge" data-action="task:open-protocol-drawer" data-task-id="${String(task.id)}" role="button" tabindex="0" style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:var(--sage-pale);color:var(--sage);border-radius:12px;font-size:10px;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;" title="Click to view protocol">⚗️ ${badgeText}</span>`;
 }
 
 // ═══════════════════════ TASK SUBTASK OPERATIONS ═══════════════════════

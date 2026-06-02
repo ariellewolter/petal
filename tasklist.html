@@ -232,8 +232,8 @@
   </div>
 
   <!-- ═══════════════════════════════════ EDIT MODAL ═══ -->
-  <div class="quick-capture-modal" id="edit-modal" style="display:none;" onclick="if(event.target===this)closeEditModal()">
-    <div class="quick-capture-box" style="max-width:520px;" onclick="event.stopPropagation()">
+  <div class="quick-capture-modal" id="edit-modal" data-action="modal:close-backdrop" data-modal-id="edit" style="display:none;">
+    <div class="quick-capture-box" style="max-width:520px;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
         <h3 id="edit-modal-title" style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;font-style:italic;color:var(--rose);margin:0;">Edit Task</h3>
         <button data-action="modal:close-edit" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
@@ -335,8 +335,8 @@
   </div>
 
   <!-- ═══════════════════════════════════ DELETE CONFIRMATION MODAL ═══ -->
-  <div class="quick-capture-modal" id="delete-confirm-modal" style="display:none;" onclick="if(event.target===this)closeDeleteConfirmModal()">
-    <div class="quick-capture-box" style="max-width:420px;" onclick="event.stopPropagation()">
+  <div class="quick-capture-modal" id="delete-confirm-modal" data-action="modal:close-backdrop" data-modal-id="delete-confirm" style="display:none;">
+    <div class="quick-capture-box" style="max-width:420px;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
         <h3 id="delete-confirm-title" style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;font-style:italic;color:var(--rose);margin:0;">Confirm Delete</h3>
         <button data-action="modal:close-delete" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
@@ -354,8 +354,8 @@
   </div>
 
   <!-- ═══════════════════════════════════ DIAGNOSTICS MODAL ═══ -->
-  <div class="quick-capture-modal" id="diagnostics-modal" style="display:none;" onclick="if(event.target===this)closeDiagnosticsModal()">
-    <div class="quick-capture-box" style="max-width:600px;max-height:80vh;overflow-y:auto;" onclick="event.stopPropagation()">
+  <div class="quick-capture-modal" id="diagnostics-modal" data-action="modal:close-backdrop" data-modal-id="diagnostics" style="display:none;">
+    <div class="quick-capture-box" style="max-width:600px;max-height:80vh;overflow-y:auto;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
         <h3 style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;font-style:italic;color:var(--rose);margin:0;">Diagnostics</h3>
         <button data-action="modal:close-diagnostics" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
@@ -376,8 +376,8 @@
   </div>
 
   <!-- ═══════════════════════════════════ ADD TASK MODAL ═══ -->
-  <div class="quick-capture-modal" id="add-task-modal" style="display:none;" onclick="if(event.target===this)closeAddTaskModal()" onkeydown="if(event.key==='Escape')closeAddTaskModal()" tabindex="-1">
-    <div class="quick-capture-box" style="max-width:520px;" onclick="event.stopPropagation()">
+  <div class="quick-capture-modal" id="add-task-modal" data-action="modal:close-backdrop" data-modal-id="add-task" style="display:none;" onkeydown="if(event.key==='Escape')closeAddTaskModal()" tabindex="-1">
+    <div class="quick-capture-box" style="max-width:520px;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
         <h3 id="add-task-modal-title" style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;font-style:italic;color:var(--rose);margin:0;">Add Task</h3>
         <button data-action="modal:close-add-task" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
@@ -418,8 +418,8 @@
   </div>
 
   <!-- ═══════════════════════════════════ ADD FILE MODAL ═══ -->
-  <div class="quick-capture-modal" id="add-file-modal" style="display:none;" onclick="if(event.target===this)closeAddFileModal()" onkeydown="if(event.key==='Escape')closeAddFileModal()" tabindex="-1">
-    <div class="quick-capture-box" style="max-width:520px;" onclick="event.stopPropagation()">
+  <div class="quick-capture-modal" id="add-file-modal" data-action="modal:close-backdrop" data-modal-id="add-file" style="display:none;" onkeydown="if(event.key==='Escape')closeAddFileModal()" tabindex="-1">
+    <div class="quick-capture-box" style="max-width:520px;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
         <h3 id="add-file-modal-title" style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;font-style:italic;color:var(--rose);margin:0;">Add File</h3>
         <button data-action="modal:close-add-file" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
@@ -450,8 +450,8 @@
   </div>
 
   <!-- ═══════════════════════════════════ FILE NOTES MODAL ═══ -->
-  <div class="quick-capture-modal" id="file-notes-modal" style="display:none;" onclick="if(event.target===this)closeFileNotesModal()" onkeydown="if(event.key==='Escape')closeFileNotesModal()" tabindex="-1">
-    <div class="quick-capture-box" style="max-width:600px;" onclick="event.stopPropagation()">
+  <div class="quick-capture-modal" id="file-notes-modal" data-action="modal:close-backdrop" data-modal-id="file-notes" style="display:none;" onkeydown="if(event.key==='Escape')closeFileNotesModal()" tabindex="-1">
+    <div class="quick-capture-box" style="max-width:600px;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
         <h3 id="file-notes-modal-title" style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;font-style:italic;color:var(--rose);margin:0;">File Notes</h3>
         <button data-action="modal:close-file-notes" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
@@ -470,8 +470,8 @@
   </div>
 
   <!-- ═══════════════════════════════════ EVENT MODAL ═══ -->
-  <div class="quick-capture-modal" id="event-modal" style="display:none;" onclick="if(event.target===this)closeEventModal()" onkeydown="if(event.key==='Escape')closeEventModal()" tabindex="-1">
-    <div class="quick-capture-box" style="max-width:520px;" onclick="event.stopPropagation()">
+  <div class="quick-capture-modal" id="event-modal" data-action="modal:close-backdrop" data-modal-id="event" style="display:none;" onkeydown="if(event.key==='Escape')closeEventModal()" tabindex="-1">
+    <div class="quick-capture-box" style="max-width:520px;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
         <h3 id="event-modal-title" style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;font-style:italic;color:var(--rose);margin:0;">Add Event</h3>
         <button data-action="modal:close-event" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
@@ -610,8 +610,8 @@
   </div>
 
   <!-- ═══════════════════════════════════ RECURRING RULE MODAL ═══ -->
-  <div class="quick-capture-modal" id="recurring-modal" style="display:none;" onclick="if(event.target===this)closeRecurringModal()" onkeydown="if(event.key==='Escape')closeRecurringModal()" tabindex="-1">
-    <div class="quick-capture-box" style="max-width:520px;" onclick="event.stopPropagation()">
+  <div class="quick-capture-modal" id="recurring-modal" data-action="modal:close-backdrop" data-modal-id="recurring" style="display:none;" onkeydown="if(event.key==='Escape')closeRecurringModal()" tabindex="-1">
+    <div class="quick-capture-box" style="max-width:520px;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
         <h3 id="recurring-modal-title" style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;font-style:italic;color:var(--rose);margin:0;">Add Recurring Event</h3>
         <button data-action="modal:close-recurring" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
@@ -706,8 +706,8 @@
   </div>
 
   <!-- ═══════════════════════════════════ TASK DRAWER ═══ -->
-  <div class="quick-capture-modal" id="task-drawer" style="display:none;" onclick="if(event.target===this)closeTaskDrawer()" onkeydown="if(event.key==='Escape')closeTaskDrawer()" tabindex="-1">
-    <div class="quick-capture-box" style="max-width:680px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;" onclick="event.stopPropagation()">
+  <div class="quick-capture-modal" id="task-drawer" data-action="modal:close-backdrop" data-modal-id="task-drawer" style="display:none;" onkeydown="if(event.key==='Escape')closeTaskDrawer()" tabindex="-1">
+    <div class="quick-capture-box" style="max-width:680px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;flex-shrink:0;">
         <div style="display:flex;align-items:flex-start;gap:12px;flex:1;min-width:0;">
           <button type="button" id="task-drawer-done-toggle" class="check-box" data-action="task:toggle" title="Mark as done" style="flex-shrink:0;margin-top:6px;background:none;border:none;padding:0;cursor:pointer;"></button>
@@ -1038,8 +1038,8 @@
   </div>
 
   <!-- ═══════════════════════ HABIT MODAL ═══════════════════════ -->
-  <div class="quick-capture-modal" id="habit-modal" style="display:none;" onclick="if(event.target===this)closeHabitModal()" onkeydown="if(event.key==='Escape')closeHabitModal()" tabindex="-1">
-    <div class="quick-capture-box" style="max-width:420px;" onclick="event.stopPropagation()">
+  <div class="quick-capture-modal" id="habit-modal" data-action="modal:close-backdrop" data-modal-id="habit" style="display:none;" onkeydown="if(event.key==='Escape')closeHabitModal()" tabindex="-1">
+    <div class="quick-capture-box" style="max-width:420px;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
         <h3 id="habit-modal-title" style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;font-style:italic;color:var(--rose);margin:0;">Add Habit</h3>
         <button data-action="modal:close-habit" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
@@ -1101,8 +1101,8 @@
   </div>
 
   <!-- ═══════════════════════ ROUTINE MODAL ═══════════════════════ -->
-  <div class="quick-capture-modal" id="routine-modal" style="display:none;" onclick="if(event.target===this)closeRoutineModal()" onkeydown="if(event.key==='Escape')closeRoutineModal()" tabindex="-1">
-    <div class="quick-capture-box" style="max-width:420px;" onclick="event.stopPropagation()">
+  <div class="quick-capture-modal" id="routine-modal" data-action="modal:close-backdrop" data-modal-id="routine" style="display:none;" onkeydown="if(event.key==='Escape')closeRoutineModal()" tabindex="-1">
+    <div class="quick-capture-box" style="max-width:420px;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
         <h3 id="routine-modal-title" style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;font-style:italic;color:var(--rose);margin:0;">Add Routine</h3>
         <button data-action="modal:close-routine" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>

@@ -105,7 +105,7 @@ export function renderMatrixTaskCard(ctx, task, isSubtaskTask = false, subtaskId
     ondragstart="onMatrixDragStart(event, ${task.id})"
     ondragend="onMatrixDragEnd(event)">
     <div class="matrix-task-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-      <button type="button" class="check-box ${task.done ? 'checked' : ''}" data-action="task:toggle" data-task-id="${task.id}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;" title="Toggle task" onclick="event.stopPropagation()"></button>
+      <button type="button" class="check-box ${task.done ? 'checked' : ''}" data-action="task:toggle" data-task-id="${task.id}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;" title="Toggle task"></button>
       <div style="flex:1;min-width:0;">
         ${isTaskSubtask && parentTask ? `<span style="opacity:0.6;font-size:9px;color:var(--text-dim);">↳ ${escFunction(parentTask.title)} → </span>` : ''}
         ${escFunction(task.title)}

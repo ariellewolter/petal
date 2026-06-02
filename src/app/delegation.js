@@ -296,6 +296,72 @@ export function setupEventDelegation() {
       return;
     }
     
+    if (action === 'modal:close-backdrop') {
+      if (e.target !== actionBtn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const modalKey =
+        actionBtn.getAttribute('data-modal-id') ||
+        (actionBtn.id || '').replace(/-modal$/, '');
+      const closeByKey = {
+        edit: () => window.closeEditModal?.(),
+        'delete-confirm': () => window.closeDeleteConfirmModal?.(),
+        diagnostics: () => window.closeDiagnosticsModal?.(),
+        'add-task': () => window.closeAddTaskModal?.(),
+        'add-file': () => window.closeAddFileModal?.(),
+        'file-notes': () => window.closeFileNotesModal?.(),
+        event: () => window.closeEventModal?.(),
+        recurring: () => window.closeRecurringModal?.(),
+        'task-drawer': () => window.closeTaskDrawer?.(),
+        habit: () => window.closeHabitModal?.(),
+        routine: () => window.closeRoutineModal?.()
+      };
+      if (closeByKey[modalKey]) {
+        closeByKey[modalKey]();
+      } else if (actionBtn.classList.contains('quick-capture-modal')) {
+        actionBtn.style.display = 'none';
+      }
+      return;
+    }
+
+    if (action === 'ui:remove-row') {
+      e.stopPropagation();
+      actionBtn.parentElement?.remove();
+      return;
+    }
+
+    if (action === 'ui:remove-closest-modal') {
+      e.stopPropagation();
+      actionBtn.closest('.quick-capture-modal')?.remove();
+      return;
+    }
+
+    if (action === 'ui:stop-propagation') {
+      e.stopPropagation();
+      return;
+    }
+
+    if (action === 'task:open-protocol-drawer') {
+      e.stopPropagation();
+      e.preventDefault();
+      const taskId = actionBtn.getAttribute('data-task-id');
+      if (!taskId) return;
+      const state = window.Petal?.store?.getState?.() || {};
+      const drawerCtx = {
+        tasks: Array.isArray(state.tasks) ? state.tasks : [],
+        projects: Array.isArray(state.projects) ? state.projects : [],
+        save: window.Petal?.handlers?.save || (() => Promise.resolve()),
+        render: window.Petal?.handlers?.render || (() => {})
+      };
+      if (window.Petal?.features?.taskDrawer?.openTaskDrawer) {
+        window.Petal.features.taskDrawer.openTaskDrawer(drawerCtx, taskId);
+      } else if (window.openTaskDrawer) {
+        window.openTaskDrawer(taskId);
+      }
+      if (window.switchTaskDrawerTab) window.switchTaskDrawerTab('protocol');
+      return;
+    }
+
     // Specific modal handlers (check these FIRST before generic handler)
     const modalHandlers = {
       'modal:close-edit': () => {

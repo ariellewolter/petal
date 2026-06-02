@@ -467,7 +467,7 @@ function render3DPrints() {
         </div>
         <div class="print3d-card-footer">
           <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
-            ${print.url ? `<a class="print3d-file-link" href="${escapeHtml(print.url)}" target="_blank" onclick="event.stopPropagation()">🔗 ${escapeHtml((print.urlDisplay || print.url).substring(0, 30))}${(print.urlDisplay || print.url).length > 30 ? '…' : ''}</a>` : ''}
+            ${print.url ? `<a class="print3d-file-link" href="${escapeHtml(print.url)}" target="_blank" data-action="ui:stop-propagation">🔗 ${escapeHtml((print.urlDisplay || print.url).substring(0, 30))}${(print.urlDisplay || print.url).length > 30 ? '…' : ''}</a>` : ''}
             ${fileName && fileLink ? `<span class="print3d-file-link" data-action="open-file" data-file="${escAttr(JSON.stringify(fileLink))}" title="Open linked file">📁 ${escapeHtml(fileName)}</span>` : ''}
           </div>
           <div class="print3d-card-date">${print.dateAdded || ''}</div>

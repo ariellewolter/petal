@@ -443,16 +443,16 @@ export async function linkExistingFileToTask(ctx) {
   }).join('');
   
   modal.innerHTML = `
-    <div class="quick-capture-box" style="max-width:500px;background:var(--surface);border-radius:12px;padding:24px;" onclick="event.stopPropagation()">
+    <div class="quick-capture-box" style="max-width:500px;background:var(--surface);border-radius:12px;padding:24px;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
         <h3 style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;color:var(--rose);margin:0;">Link Files to Task</h3>
-        <button onclick="this.closest('.quick-capture-modal').remove()" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
+        <button type="button" data-action="ui:remove-closest-modal" style="background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .15s;line-height:1;" onmouseover="this.style.background='var(--bg2)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-dim)'" title="Close">✕</button>
       </div>
       <div style="max-height:400px;overflow-y:auto;margin-bottom:20px;border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--bg);">
         ${checkboxes}
       </div>
       <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:8px;border-top:1px solid var(--border);">
-        <button onclick="this.closest('.quick-capture-modal').remove()" class="btn-secondary">Cancel</button>
+        <button type="button" data-action="ui:remove-closest-modal" class="btn-secondary">Cancel</button>
         <button class="btn-submit" id="link-files-submit">Link Selected</button>
       </div>
     </div>
