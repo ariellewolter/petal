@@ -701,6 +701,11 @@ function exposeWindowFunctions() {
       await window.Petal.features.modalOperations.saveFileNotes();
     };
   }
+  if (typeof window.openFileNotesModal === 'undefined' && window.Petal?.features?.modalOperations?.openFileNotesModal) {
+    window.openFileNotesModal = (fileId) => {
+      window.Petal.features.modalOperations.openFileNotesModal(fileId);
+    };
+  }
    if (typeof window.closeAddTaskModal === 'undefined' && window.Petal?.features?.modalOperations?.closeAddTaskModal) {
      window.closeAddTaskModal = window.Petal.features.modalOperations.closeAddTaskModal;
    }

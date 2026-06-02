@@ -175,15 +175,17 @@ function getProjectCellLogEntries(project, settings) {
 
   for (const entry of legacy) {
     const key = entry.id != null ? String(entry.id) : null;
-    if (key && seen.has(`legacy:${key}`)) continue;
-    if (key) seen.add(`legacy:${key}`);
+    if (key) {
+      if (seen.has(key)) continue;
+      seen.add(key);
+    }
     merged.push({ ...entry, _source: 'legacy' });
   }
 
   for (const entry of global) {
     const key = entry.id != null ? String(entry.id) : null;
-    if (key && seen.has(`global:${key}`)) continue;
-    if (key) seen.add(`global:${key}`);
+    if (key && seen.has(key)) continue;
+    if (key) seen.add(key);
     merged.push({
       ...entry,
       date: entry.dayDone || entry.date,
@@ -236,7 +238,7 @@ export function renderCellLog(ctx, project) {
   // Add cell line dropdown and button
   html += '<div style="display:flex;gap:8px;margin-bottom:12px;align-items:flex-end;">';
   html += '<div style="flex:1;">';
-  html += '<select id="cell-line-link-select" style="width:100%;padding:6px 8px;background:var(--surface);border:1px solid var(--border);border-radius:4px;font-size:12px;color:var(--text);">';
+  html += `<select data-cell-line-select="${escAttrFunction(String(project.id))}" class="cell-line-link-select" style="width:100%;padding:6px 8px;background:var(--surface);border:1px solid var(--border);border-radius:4px;font-size:12px;color:var(--text);">`;
   html += '<option value="">Select a cell line...</option>';
   availableCellLines.forEach(cellLine => {
     if (!linkedCellLines.includes(cellLine)) {

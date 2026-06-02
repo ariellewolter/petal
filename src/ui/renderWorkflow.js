@@ -1,4 +1,6 @@
 // ═══════════════════════ RENDER WORKFLOW ═══════════════════════
+// DEPRECATED: Lane-based kanban UI - not used by the router (see WorkflowPage.js + tasklist.html).
+// Kept for bottleneck helpers and migration reference. List/timeline/canvas are the live views.
 // Pure rendering function for workflow view
 // Takes state and handlers as parameters - no store peeking, no store writes
 
@@ -474,9 +476,13 @@ function setupDragDrop(handlers) {
   });
 }
 
-// Global helper for scrolling to bottlenecks
+// Global helper for scrolling to bottlenecks (delegates to WorkflowPage list view)
 if (typeof window !== 'undefined') {
   window.scrollToBottleneck = function(type) {
+    if (typeof window.scrollToWorkflowBottleneck === 'function') {
+      window.scrollToWorkflowBottleneck(type);
+      return;
+    }
     let containers = [];
     
     if (type === 'blocked') {

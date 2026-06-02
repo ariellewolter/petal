@@ -27,12 +27,85 @@ function ensureCellLogSettings(settings) {
  * @param {Object} state - App state
  * @param {Object} handlers - Event handlers
  */
+function stableLegacyCellLogId(projectId, legacy, index) {
+  if (legacy.id != null) return String(legacy.id);
+  const fingerprint = [
+    projectId,
+    legacy.date || legacy.dayDone || '',
+    legacy.line || legacy.cellType || '',
+    legacy.passage ?? '',
+    legacy.taskPerformed || '',
+    legacy.notes || '',
+    index
+  ].join('|');
+  let hash = 0;
+  for (let i = 0; i < fingerprint.length; i++) {
+    hash = ((hash << 5) - hash + fingerprint.charCodeAt(i)) | 0;
+  }
+  return `legacy_${projectId}_${Math.abs(hash).toString(36)}`;
+}
+
+/**
+ * One-way sync: copy legacy project.cellLog[] into settings.cellLog.entries, then clear legacy arrays.
+ */
+function syncLegacyCellLogEntriesToGlobal(state) {
+  if (!window.Petal?.store) return;
+  const settings = state.settings || {};
+  ensureCellLogSettings(settings);
+  const entries = [...(settings.cellLog.entries || [])];
+  const seen = new Set(entries.filter(e => e?.id != null).map(e => String(e.id)));
+
+  let changed = false;
+  let clearedLegacy = false;
+  const projects = (state.projects || []).map(project => {
+    if (!Array.isArray(project.cellLog) || project.cellLog.length === 0) {
+      return project;
+    }
+    project.cellLog.forEach((legacy, index) => {
+      const id = stableLegacyCellLogId(project.id, legacy, index);
+      if (seen.has(id)) return;
+      entries.push({
+        id,
+        projectId: project.id,
+        dayDone: legacy.date || legacy.dayDone,
+        cellType: legacy.line || legacy.cellType,
+        passage: legacy.passage,
+        seededDensity: legacy.seededDensity,
+        location: legacy.location,
+        taskPerformed: legacy.taskPerformed,
+        notes: legacy.notes,
+        isFrozen: legacy.isFrozen,
+        vialsCount: legacy.vialsCount
+      });
+      seen.add(id);
+      changed = true;
+    });
+    clearedLegacy = true;
+    return { ...project, cellLog: [] };
+  });
+
+  if (changed || clearedLegacy) {
+    window.Petal.store.setState({
+      settings: {
+        ...settings,
+        cellLog: { ...settings.cellLog, entries }
+      },
+      projects
+    });
+  }
+}
+
 export async function renderCellLogPage(containerEl, state, handlers) {
   if (!containerEl) {
     console.error('❌ renderCellLogPage: containerEl is required');
     return;
   }
-  
+
+  syncLegacyCellLogEntriesToGlobal(state);
+  if (window.Petal?.store) {
+    state = window.Petal.store.getState();
+  }
+
   // Create or find header - must be first element
   let cellLogHeader = containerEl.querySelector('.cell-log-header');
   if (!cellLogHeader) {

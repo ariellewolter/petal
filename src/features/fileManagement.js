@@ -1241,6 +1241,56 @@ export function editFileNote(ctx, fileKey) {
   }
 }
 
+function normalizeLinkedTaskIds(linkedTasks, allTasks) {
+  return (linkedTasks || []).map(t => {
+    if (typeof t === 'string' || typeof t === 'number') return String(t);
+    if (t?.id != null) return String(t.id);
+    if (t?.title && Array.isArray(allTasks)) {
+      const found = allTasks.find(task => task.title === t.title);
+      if (found?.id != null) return String(found.id);
+    }
+    return null;
+  }).filter(Boolean);
+}
+
+function normalizeLinkedProjectIds(linkedProjects) {
+  return (linkedProjects || []).map(p => {
+    if (typeof p === 'string' || typeof p === 'number') return String(p);
+    if (p?.id != null) return String(p.id);
+    return null;
+  }).filter(Boolean);
+}
+
+function applyNavigationHighlights({ taskIds = [], projectIds = [] } = {}) {
+  const run = () => {
+    taskIds.forEach((id, i) => {
+      const sel = typeof CSS !== 'undefined' && CSS.escape
+        ? `.task-card[data-id="${CSS.escape(String(id))}"]`
+        : `.task-card[data-id="${String(id)}"]`;
+      const el = document.querySelector(sel);
+      if (!el) return;
+      el.classList.add('petal-link-highlight');
+      if (i === 0) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    projectIds.forEach((id, i) => {
+      const el = document.getElementById(`proj-${id}`);
+      if (!el) return;
+      el.classList.add('petal-link-highlight');
+      if (i === 0 && taskIds.length === 0) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+    if (taskIds.length || projectIds.length) {
+      setTimeout(() => {
+        document.querySelectorAll('.petal-link-highlight').forEach(n => {
+          n.classList.remove('petal-link-highlight');
+        });
+      }, 8000);
+    }
+  };
+  requestAnimationFrame(() => setTimeout(run, 150));
+}
+
 /**
  * Show tasks linked to a file
  * @param {Object|string} ctxOrFileKey - Context object or fileKey (for backward compatibility)
@@ -1267,6 +1317,23 @@ export function showFileLinkedTasks(ctxOrFileKey, fileKeyOrOptions) {
   }
   
   const { tasks, projects, openTaskDrawer, routerSwitchView } = ctx;
+
+  const openLinkedTaskDrawer = (taskId) => {
+    if (!taskId) return;
+    const drawerCtx = {
+      tasks: tasks || [],
+      projects: projects || [],
+      save: window.Petal?.handlers?.save || (() => Promise.resolve()),
+      render: window.Petal?.handlers?.render || (() => {})
+    };
+    if (typeof openTaskDrawer === 'function') {
+      openTaskDrawer(drawerCtx, taskId);
+    } else if (window.Petal?.features?.taskDrawer?.openTaskDrawer) {
+      window.Petal.features.taskDrawer.openTaskDrawer(drawerCtx, taskId);
+    } else if (typeof window.openTaskDrawer === 'function') {
+      window.openTaskDrawer(taskId);
+    }
+  };
   
   // Get file registry to find file
   let fileRegistry = {};
@@ -1294,20 +1361,21 @@ export function showFileLinkedTasks(ctxOrFileKey, fileKeyOrOptions) {
     }
     
     if (options.navigate && routerSwitchView) {
-      // Navigate to tasks view with file filter
+      const taskIds = normalizeLinkedTaskIds(linkedTasks, tasks);
       routerSwitchView('tasks', { force: true }).then(() => {
-        // TODO: Apply filter to highlight tasks
-        if (linkedTasks.length === 1 && openTaskDrawer) {
-          openTaskDrawer(linkedTasks[0].id);
+        applyNavigationHighlights({ taskIds });
+        if (linkedTasks.length === 1) {
+          const firstId = taskIds[0] || linkedTasks[0]?.id;
+          if (firstId) openLinkedTaskDrawer(firstId);
         }
       });
       return;
     }
-    
-    const taskList = linkedTasks.map(t => `• ${t.title}`).join('\n');
+
+    const taskList = linkedTasks.map(t => `• ${t.title || t.id}`).join('\n');
     const choice = confirm(`Tasks linked to this file:\n\n${taskList}\n\nOpen first task?`);
-    if (choice && linkedTasks[0] && openTaskDrawer) {
-      openTaskDrawer(linkedTasks[0].id);
+    if (choice && linkedTasks[0]) {
+      openLinkedTaskDrawer(linkedTasks[0].id);
     }
     return;
   }
@@ -1321,13 +1389,16 @@ export function showFileLinkedTasks(ctxOrFileKey, fileKeyOrOptions) {
   }
   
   if (options.navigate && routerSwitchView) {
-    // Navigate to tasks view
+    const taskIds = normalizeLinkedTaskIds(linkedTasks, tasks);
     routerSwitchView('tasks', { force: true }).then(() => {
-      // TODO: Apply filter to highlight tasks
-      if (linkedTasks.length === 1 && openTaskDrawer) {
-        const task = tasks.find(t => t.id === linkedTasks[0].id);
-        if (task) {
-          openTaskDrawer(task.id);
+      applyNavigationHighlights({ taskIds });
+      if (linkedTasks.length === 1) {
+        const firstId = taskIds[0] || linkedTasks[0]?.id;
+        if (firstId) {
+          openLinkedTaskDrawer(firstId);
+        } else {
+          const task = tasks.find(t => t.id === linkedTasks[0].id);
+          if (task) openLinkedTaskDrawer(task.id);
         }
       }
     });
@@ -1336,11 +1407,9 @@ export function showFileLinkedTasks(ctxOrFileKey, fileKeyOrOptions) {
   
   const taskList = linkedTasks.map(t => `• ${t.title || t.id}`).join('\n');
   const choice = confirm(`Tasks linked to this file:\n\n${taskList}\n\nOpen first task?`);
-  if (choice && linkedTasks[0] && openTaskDrawer) {
+  if (choice && linkedTasks[0]) {
     const task = tasks.find(t => t.id === linkedTasks[0].id);
-    if (task) {
-      openTaskDrawer(task.id);
-    }
+    if (task) openLinkedTaskDrawer(task.id);
   }
 }
 
@@ -1376,11 +1445,24 @@ export function showFileLinkedProjects(fileKey, options = {}) {
   }
   
   if (options.navigate && ctx.routerSwitchView) {
-    // Navigate to projects view
+    const projectIds = normalizeLinkedProjectIds(linkedProjects);
     ctx.routerSwitchView('projects', { force: true }).then(() => {
-      // TODO: Apply filter to highlight projects
-      if (linkedProjects.length === 1) {
-        // Could scroll to or highlight the project
+      applyNavigationHighlights({ projectIds });
+      if (projectIds.length === 1) {
+        const projectId = projectIds[0];
+        if (window.Petal?.features?.matrixOperations?.openProjectView) {
+          const state = window.Petal?.store?.getState() || {};
+          const matrixCtx = {
+            tasks: state.tasks || [],
+            projects: state.projects || [],
+            selectedProjectId: projectId,
+            save: window.Petal?.handlers?.save || (() => Promise.resolve()),
+            render: window.Petal?.handlers?.render || (() => {})
+          };
+          window.Petal.features.matrixOperations.openProjectView(matrixCtx, projectId);
+        } else if (typeof window.openProjectView === 'function') {
+          window.openProjectView(projectIds[0]);
+        }
       }
     });
     return;

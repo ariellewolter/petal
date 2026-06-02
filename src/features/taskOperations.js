@@ -931,11 +931,12 @@ export async function saveProtocolDailyEntry(ctx) {
     return;
   }
   
+  const attachedFileIds = Array.isArray(task.protocol.fileIds) ? [...task.protocol.fileIds] : [];
   const entry = {
     id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     at: new Date().toISOString(),
     text: text,
-    fileIds: []
+    fileIds: attachedFileIds
   };
 
   textarea.value = '';
@@ -1203,9 +1204,104 @@ export function editTask(ctx, id) {
 export async function linkFileToProtocolEntry() {
   const currentDrawerTaskId = typeof window.currentDrawerTaskId !== 'undefined' ? window.currentDrawerTaskId : null;
   if (!currentDrawerTaskId) return;
-  
-  // For now, just show a message - file linking to protocol entries can be enhanced later
-  alert('File attachment to protocol entries coming soon. For now, you can link files to the task itself in the Files tab.');
+
+  const state = window.Petal?.store?.getState() || {};
+  const tasks = state.tasks || [];
+  const projects = state.projects || [];
+  const task = findActiveTask(tasks, currentDrawerTaskId);
+  if (!task || !task.protocol?.enabled) return;
+
+  if (!task.projectId) {
+    alert('Task must be in a project to attach files.');
+    return;
+  }
+
+  const project = findProjectById(projects, task.projectId);
+  if (!project?.files?.length) {
+    alert('No files in this project. Add files to the project first.');
+    return;
+  }
+
+  const escFn = esc || ((s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+  const linkedIds = new Set([
+    ...(task.protocol.fileIds || []),
+    ...(task.fileIds || [])
+  ]);
+
+  const availableFiles = project.files.filter(f => f?.id && !linkedIds.has(f.id));
+  if (availableFiles.length === 0) {
+    alert('All project files are already linked to this protocol.');
+    return;
+  }
+
+  const modal = document.createElement('div');
+  modal.className = 'quick-capture-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:10000;';
+  modal.onclick = (e) => {
+    if (e.target === modal) document.body.removeChild(modal);
+  };
+
+  const checkboxes = availableFiles.map(file => {
+    const label = file.label || file.name || 'File';
+    return `
+      <label style="display:flex;align-items:center;gap:8px;padding:8px;cursor:pointer;border-radius:4px;">
+        <input type="checkbox" value="${escFn(String(file.id))}" style="cursor:pointer;">
+        <span>${escFn(label)}</span>
+      </label>
+    `;
+  }).join('');
+
+  modal.innerHTML = `
+    <div class="quick-capture-box" style="max-width:500px;background:var(--surface);border-radius:12px;padding:24px;" onclick="event.stopPropagation()">
+      <h3 style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;color:var(--rose);margin:0 0 16px;">Attach Files to Protocol</h3>
+      <div style="max-height:400px;overflow-y:auto;margin-bottom:20px;border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--bg);">
+        ${checkboxes}
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button type="button" class="btn-secondary" id="protocol-link-cancel">Cancel</button>
+        <button type="button" class="btn-submit" id="protocol-link-submit">Attach Selected</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  modal.querySelector('#protocol-link-cancel').onclick = () => document.body.removeChild(modal);
+  modal.querySelector('#protocol-link-submit').onclick = async () => {
+    const selected = Array.from(modal.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+    if (selected.length === 0) {
+      alert('Select at least one file.');
+      return;
+    }
+
+    const updatedTasks = (window.Petal.store.getState().tasks || []).map(t => {
+      if (t.id !== currentDrawerTaskId) return t;
+      const protocolFileIds = [...(t.protocol?.fileIds || [])];
+      const taskFileIds = [...(t.fileIds || [])];
+      selected.forEach(fileId => {
+        if (!protocolFileIds.includes(fileId)) protocolFileIds.push(fileId);
+        if (!taskFileIds.includes(fileId)) taskFileIds.push(fileId);
+      });
+      return {
+        ...t,
+        fileIds: taskFileIds,
+        protocol: { ...t.protocol, fileIds: protocolFileIds }
+      };
+    });
+
+    updateStoreSafely({ tasks: updatedTasks });
+    document.body.removeChild(modal);
+
+    const ctx = {
+      tasks: updatedTasks,
+      projects,
+      esc: escFn,
+      save: window.Petal?.handlers?.save || (() => Promise.resolve())
+    };
+    if (window.Petal?.features?.taskOperations?.renderProtocolTab) {
+      window.Petal.features.taskOperations.renderProtocolTab(ctx);
+    }
+  };
 }
 
 /**
@@ -1311,20 +1407,55 @@ export function renderProtocolTab(ctx) {
       logEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-dim);font-size:12px;">No entries yet</div>';
     } else {
       const escFn = esc || ((s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'));
+      const storeState = window.Petal?.store?.getState() || {};
+      const project = task.projectId
+        ? (storeState.projects || []).find(p => String(p.id) === String(task.projectId))
+        : null;
+      const projectFiles = project?.files || [];
       logEl.innerHTML = dailyLog.slice().reverse().map(entry => {
         const date = new Date(entry.at);
+        const fileIds = Array.isArray(entry.fileIds) ? entry.fileIds : [];
+        const filesHtml = fileIds.length
+          ? `<div style="margin-top:8px;font-size:11px;color:var(--text-dim);">${fileIds.map(fid => {
+              const file = projectFiles.find(f => String(f.id) === String(fid));
+              const label = file?.label || file?.name || fid;
+              return `📎 ${escFn(label)}`;
+            }).join(' · ')}</div>`
+          : '';
         return `
           <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;">
             <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
               <div style="font-size:11px;color:var(--text-dim);">${date.toLocaleDateString()} ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
             </div>
             <div style="font-size:13px;color:var(--text);line-height:1.6;white-space:pre-wrap;">${escFn(entry.text)}</div>
+            ${filesHtml}
           </div>
         `;
       }).join('');
     }
   }
   
+  const protocolFilesEl = document.getElementById('protocol-attached-files');
+  if (protocolFilesEl) {
+    const escFn = esc || ((s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+    const fileIds = task.protocol.fileIds || [];
+    const state = window.Petal?.store?.getState() || {};
+    const project = task.projectId
+      ? (state.projects || []).find(p => String(p.id) === String(task.projectId))
+      : null;
+    const projectFiles = project?.files || [];
+
+    if (fileIds.length === 0) {
+      protocolFilesEl.innerHTML = '<div style="font-size:11px;color:var(--text-dim);">No files attached</div>';
+    } else {
+      protocolFilesEl.innerHTML = fileIds.map(fileId => {
+        const file = projectFiles.find(f => String(f.id) === String(fileId));
+        const label = file?.label || file?.name || fileId;
+        return `<div style="font-size:12px;padding:6px 8px;background:var(--bg2);border-radius:4px;margin-bottom:4px;">📎 ${escFn(label)}</div>`;
+      }).join('');
+    }
+  }
+
   // Render steps
   const stepsEl = document.getElementById('protocol-steps-list');
   if (stepsEl) {

@@ -185,11 +185,6 @@ export async function renderTodayPage(containerEl, state, handlers) {
             <div class="today-stat-value">${getActiveCellLinesCount(cellLogEntries)}</div>
             <div class="today-stat-sub">${escapeHtml(getCultureAttentionLine(cellLogEntries))}</div>
           </div>
-          <div class="today-stat-card c4" title="Time logging coming later">
-            <div class="today-stat-label">Hours Logged</div>
-            <div class="today-stat-value">—</div>
-            <div class="today-stat-sub">time log not enabled</div>
-          </div>
         </div>
 
         <!-- PLANNER -->
@@ -739,8 +734,13 @@ function renderCellLogEntries(entries) {
       ? (viability >= 90 ? 'var(--sage)' : viability >= 70 ? 'var(--soon)' : 'var(--overdue)')
       : 'var(--border2)';
     
+    const entryId = entry.id != null && entry.id !== '' ? String(entry.id) : '';
+    const entryAttrs = entryId
+      ? `class="today-cell-entry" data-cell-id="${escapeHtml(entryId)}" role="button" tabindex="0" style="cursor:pointer"`
+      : `class="today-cell-entry" style="cursor:default"`;
+
     return `
-      <div class="today-cell-entry" data-cell-id="${escapeHtml(String(entry.id || ''))}">
+      <div ${entryAttrs}>
         <div class="today-cell-entry-header">
           <span class="today-cell-name">${escapeHtml(entry.cellType || 'Unknown')}</span>
           ${entry.passage !== null && entry.passage !== undefined && entry.passage !== '' ? `<span class="today-cell-passage">P${escapeHtml(String(entry.passage))}</span>` : ''}

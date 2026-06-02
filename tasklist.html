@@ -65,7 +65,7 @@
       <!-- Will be populated by JS -->
     </nav>
     <div class="global-sidebar-bottom">
-      <a class="global-sidebar-nav-item" href="#" data-nav="settings" data-action="nav:settings">
+      <a class="global-sidebar-nav-item" href="#" data-nav="settings">
         <span class="global-sidebar-nav-icon">◯</span> Settings
       </a>
       <div id="vaultBadge" class="vault-badge" title="Vault location" style="display:none;margin-top:12px;width:100%;justify-content:flex-start;"></div>
@@ -766,6 +766,11 @@
           </div>
           
           <div style="margin-bottom:20px;">
+            <label style="display:block;font-size:12px;color:var(--text-dim);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em;">Attached Files</label>
+            <div id="protocol-attached-files" style="margin-bottom:12px;"></div>
+          </div>
+
+          <div style="margin-bottom:20px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
               <label style="display:block;font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;">Daily Log</label>
               <button data-action="task-drawer:toggle-protocol-steps" style="padding:4px 8px;background:var(--bg2);color:var(--text-dim);border:1px solid var(--border);border-radius:4px;font-size:10px;cursor:pointer;">Steps</button>
@@ -838,7 +843,7 @@
     <!-- Header with view toggle and filters -->
     <div class="wf-header" style="background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-shrink:0;height:58px;">
       <div style="display:flex;align-items:center;gap:20px;">
-        <div class="wf-page-title" style="font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:400;letter-spacing:-.3px;color:var(--text);">Workflow</div>
+        <div class="wf-page-title" style="font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:400;letter-spacing:-.3px;color:var(--text);display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">Workflow<span id="wf-header-status" style="font-family:'Jost',sans-serif;font-size:10px;color:var(--text-dim);letter-spacing:.04em;"></span></div>
         <div class="wf-view-toggle" style="display:flex;background:var(--bg2);border:1px solid var(--border);border-radius:7px;overflow:hidden;padding:3px;gap:2px;">
           <button class="wf-view-btn active" id="wf-btn-list" data-action="workflow:switch-view" data-view="list" style="padding:4px 14px;font-size:10px;font-family:'Jost',sans-serif;color:var(--text-dim);cursor:pointer;transition:all .15s;border:none;background:transparent;letter-spacing:.06em;border-radius:5px;">List</button>
           <button class="wf-view-btn" id="wf-btn-timeline" data-action="workflow:switch-view" data-view="timeline" style="padding:4px 14px;font-size:10px;font-family:'Jost',sans-serif;color:var(--text-dim);cursor:pointer;transition:all .15s;border:none;background:transparent;letter-spacing:.06em;border-radius:5px;">Timeline</button>
@@ -868,6 +873,7 @@
         <div class="wf-list-stats" id="wfListStats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:1px solid var(--border);">
           <!-- Will be populated by JS -->
         </div>
+        <div id="workflow-bottlenecks" style="display:flex;gap:12px;padding:12px 28px;border-bottom:1px solid var(--border);background:var(--bg);"></div>
 
         <!-- Toolbar -->
         <div class="wf-list-toolbar" style="display:flex;align-items:center;justify-content:space-between;padding:14px 28px;border-bottom:1px solid var(--border);gap:12px;">

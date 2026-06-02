@@ -363,7 +363,7 @@ function renderProjectCard(project, state, openSet) {
       <div class="project-title-row">
         <h3 class="project-name" data-action="open-project" data-project-id="${project.id}" style="cursor:pointer;">${esc(project.name || 'Untitled Project')}</h3>
         <div class="project-actions">
-          <button data-action="toggle-project" data-project-id="${project.id}" class="btn-icon" title="${isOpen ? 'Collapse' : 'Expand'}">${isOpen ? '▼' : '▶'}</button>
+          <button data-action="project:toggle-open" data-project-id="${project.id}" class="btn-icon" title="${isOpen ? 'Collapse' : 'Expand'}">${isOpen ? '▼' : '▶'}</button>
         </div>
       </div>
       ${project.description ? `<p class="project-desc">${esc(project.description)}</p>` : ''}

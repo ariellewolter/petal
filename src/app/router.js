@@ -7,6 +7,7 @@ import { resetGlobalScroll, resetAllViews, resetScroll } from '../utils/scroll.j
 import { cleanupFilesPage } from '../pages/FilesPage.js';
 import { cleanupProjectsPage } from '../pages/ProjectsPage.js';
 import { cleanupThreeDPrintPage } from '../pages/ThreeDPrintPage.js';
+import { cleanupTasksPage } from '../pages/TasksPage.js';
 
 function cleanupViewBindings(viewName) {
   switch (viewName) {
@@ -16,6 +17,11 @@ function cleanupViewBindings(viewName) {
     case 'projects':
       cleanupProjectsPage();
       break;
+    case 'tasks': {
+      const tasksEl = document.getElementById('view-tasks');
+      if (tasksEl) cleanupTasksPage(tasksEl);
+      break;
+    }
     case '3d-print':
       cleanupThreeDPrintPage();
       break;

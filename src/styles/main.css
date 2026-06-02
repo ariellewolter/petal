@@ -1182,6 +1182,8 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 .today-cell-entries{padding:4px 0;}
 .today-cell-entry{padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;}
 .cell-log-entry-highlight{outline:2px solid var(--rose-soft);outline-offset:2px;background:var(--rose-pale)!important;transition:outline-color .3s,background .3s;}
+.petal-link-highlight{outline:2px solid var(--rose-soft);outline-offset:2px;box-shadow:0 0 0 3px var(--rose-pale);transition:outline-color .3s,box-shadow .3s;}
+.project-card.petal-link-highlight,.task-card.petal-link-highlight{background:var(--rose-pale)!important;}
 #view-cell-log .cell-log-entry-card.cell-log-entry-highlight{border-color:var(--rose-soft)!important;box-shadow:0 0 0 2px var(--rose-pale);}
 .today-cell-entry:last-child{border-bottom:none;}
 .today-cell-entry:hover{background:var(--bg2);}

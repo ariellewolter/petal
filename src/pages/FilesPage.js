@@ -131,8 +131,10 @@ function bind(container, features) {
           case 'notes':
           case 'open-notes':
             const fileId = btn.dataset.fileId;
-            if (fileId && features?.fileManagement?.openFileNotesModal) {
-              features.fileManagement.openFileNotesModal(fileId);
+            if (fileId && features?.modalOperations?.openFileNotesModal) {
+              features.modalOperations.openFileNotesModal(fileId);
+            } else if (fileId && window.Petal?.features?.modalOperations?.openFileNotesModal) {
+              window.Petal.features.modalOperations.openFileNotesModal(fileId);
             } else if (fileId && window.openFileNotesModal) {
               window.openFileNotesModal(fileId);
             }

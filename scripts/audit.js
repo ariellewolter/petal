@@ -234,7 +234,7 @@ function checkDuplicateFunctions() {
   }
   
   // Common render functions that might be duplicated
-  const criticalFunctions = ['renderTasks', 'renderProjects', 'renderFiles', 'renderWorkflow', 'renderToday'];
+  const criticalFunctions = ['renderTasks', 'renderProjects', 'renderFiles', 'renderTodayPage'];
   for (const dup of duplicates) {
     if (criticalFunctions.includes(dup.name)) {
       fail('Duplicate Functions', `Critical function ${dup.name} defined in multiple files`, dup.files.join(', '));

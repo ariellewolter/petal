@@ -4,6 +4,6 @@
 
 export { renderTasks } from './renderTasks.js';
 export { renderProjects } from './renderProjects.js';
-export { renderWorkflow } from './renderWorkflow.js';
+// Legacy lane kanban: see renderWorkflow.js (not exported; WorkflowPage + tasklist.html are canonical)
 export { renderFiles } from './renderFiles.js';
 // renderToday moved to src/pages/TodayPage.js

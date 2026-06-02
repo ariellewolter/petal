@@ -7,6 +7,7 @@ import { esc, escAttr } from '../utils/strings.js';
 import { parseDate } from '../utils/dates.js';
 import { getAllTasks } from '../domain/models.js';
 import { filterTasksForProject, findProjectById } from '../utils/projectHelpers.js';
+import { selectBottlenecks } from '../features/workflow/selectors.js';
 
 function projectTasksFor(tasks, projects, projectId) {
   return filterTasksForProject(tasks || [], projectId, {
@@ -15,13 +16,101 @@ function projectTasksFor(tasks, projects, projectId) {
   });
 }
 
+function renderWorkflowBottlenecks(state) {
+  const bottleneckEl = document.getElementById('workflow-bottlenecks');
+  if (!bottleneckEl) return;
+
+  const { blocked, stale, next } = selectBottlenecks(state);
+
+  bottleneckEl.innerHTML = `
+    <div data-action="workflow:scroll-bottleneck" data-bottleneck-type="blocked" role="button" tabindex="0" style="flex:1;padding:12px;background:${blocked.length > 0 ? 'var(--rose-pale)' : 'var(--bg2)'};border-radius:6px;border-left:3px solid var(--rose);cursor:pointer;">
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;letter-spacing:.05em;text-transform:uppercase;">BLOCKED</div>
+      <div style="font-size:20px;font-weight:600;color:var(--text);">${blocked.length}</div>
+      ${blocked.length > 0 ? `<div style="font-size:10px;color:var(--text-dim);margin-top:6px;line-height:1.4;">${blocked.slice(0, 3).map(t => esc(t.title || 'Untitled')).join(', ')}</div>` : '<div style="font-size:10px;color:var(--text-dim);margin-top:6px;">None</div>'}
+    </div>
+    <div data-action="workflow:scroll-bottleneck" data-bottleneck-type="stale" role="button" tabindex="0" style="flex:1;padding:12px;background:${stale.length > 0 ? 'var(--sage-pale)' : 'var(--bg2)'};border-radius:6px;border-left:3px solid var(--sage);cursor:pointer;">
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;letter-spacing:.05em;text-transform:uppercase;">STALE (&gt;7d)</div>
+      <div style="font-size:20px;font-weight:600;color:var(--text);">${stale.length}</div>
+      ${stale.length > 0 ? `<div style="font-size:10px;color:var(--text-dim);margin-top:6px;line-height:1.4;">${stale.slice(0, 3).map(t => esc(t.title || 'Untitled')).join(', ')}</div>` : '<div style="font-size:10px;color:var(--text-dim);margin-top:6px;">None</div>'}
+    </div>
+    <div data-action="workflow:scroll-bottleneck" data-bottleneck-type="next" role="button" tabindex="0" style="flex:1;padding:12px;background:${next.length > 0 ? 'var(--mauve-pale)' : 'var(--bg2)'};border-radius:6px;border-left:3px solid var(--mauve);cursor:pointer;">
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;letter-spacing:.05em;text-transform:uppercase;">NEXT UP</div>
+      <div style="font-size:20px;font-weight:600;color:var(--text);">${next.length}</div>
+      ${next.length > 0 ? `<div style="font-size:10px;color:var(--text-dim);margin-top:6px;line-height:1.4;">${next.slice(0, 3).map(t => esc(t.title || 'Untitled')).join(', ')}</div>` : '<div style="font-size:10px;color:var(--text-dim);margin-top:6px;">None</div>'}
+    </div>
+  `;
+}
+
+function highlightWorkflowTaskEl(taskEl) {
+  if (!taskEl) return;
+  taskEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  taskEl.style.outline = '2px solid var(--rose-soft)';
+  setTimeout(() => { taskEl.style.outline = ''; }, 2000);
+}
+
+export function scrollToWorkflowBottleneck(type) {
+  const state = window.Petal?.store?.getState();
+  if (!state) return;
+
+  const { blocked, stale, next } = selectBottlenecks(state);
+  const tasks = type === 'blocked' ? blocked : type === 'stale' ? stale : next;
+  const first = tasks[0];
+  if (!first) return;
+
+  const listView = document.getElementById('wf-view-list');
+  if (listView && !listView.classList.contains('active')) {
+    const listBtn = document.getElementById('wf-btn-list');
+    if (window.switchWorkflowView) window.switchWorkflowView('list', listBtn);
+  }
+
+  const taskSel =
+    typeof CSS !== 'undefined' && CSS.escape
+      ? `.wf-etask[data-task-id="${CSS.escape(String(first.id))}"]`
+      : `.wf-etask[data-task-id="${first.id}"]`;
+
+  const projectId = first.projectId;
+  if (!projectId) {
+    const taskEl = document.querySelector(taskSel);
+    if (taskEl) {
+      highlightWorkflowTaskEl(taskEl);
+      return;
+    }
+    const label = first.title || 'Untitled';
+    if (window.routerSwitchView) {
+      window.routerSwitchView('tasks', { force: true }).then(() => {
+        const card = document.querySelector(`.task-card[data-id="${first.id}"]`);
+        if (card) {
+          card.classList.add('petal-link-highlight');
+          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          setTimeout(() => card.classList.remove('petal-link-highlight'), 8000);
+        }
+      });
+    } else {
+      alert(`"${label}" is not assigned to a project. Open the Tasks view to find it.`);
+    }
+    return;
+  }
+
+  const row = document.getElementById(`wf-row-${projectId}`);
+  if (!row) return;
+
+  const expand = document.getElementById(`wf-expand-${projectId}`);
+  if (expand && !expand.classList.contains('open') && window.toggleWorkflowExpand) {
+    window.toggleWorkflowExpand(projectId);
+  }
+
+  row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+  setTimeout(() => {
+    highlightWorkflowTaskEl(document.querySelector(taskSel));
+  }, 250);
+}
+
 // ═══════════════════════════════════════════════════════════
 // VIEW SWITCHING
 // ═══════════════════════════════════════════════════════════
 
 export function switchWorkflowView(name, btn) {
-  console.log('switchWorkflowView called with:', name);
-  
   document.querySelectorAll('.wf-subview').forEach(v => {
     v.classList.remove('active');
     v.style.display = 'none'; // Explicitly hide all views
@@ -36,15 +125,12 @@ export function switchWorkflowView(name, btn) {
     viewId = 'wf-view-' + name;
   }
   
-  console.log('Looking for view element with ID:', viewId);
   const viewEl = document.getElementById(viewId);
-  console.log('Found view element:', viewEl);
-  
+
   if (viewEl) {
     viewEl.classList.add('active');
     // For timeline and workflow, ensure proper display style
     if (name === 'timeline') {
-      console.log('Setting timeline view to display:flex');
       viewEl.style.display = 'flex';
       viewEl.style.flexDirection = 'column';
       viewEl.style.height = '100%';
@@ -54,15 +140,10 @@ export function switchWorkflowView(name, btn) {
     } else {
       viewEl.style.display = 'block';
     }
-    console.log('View element display style:', viewEl.style.display);
-    console.log('View element computed display:', window.getComputedStyle(viewEl).display);
-  } else {
-    console.error('View element not found for ID:', viewId);
   }
   if (btn) btn.classList.add('active');
   
   if (name === 'timeline') {
-    console.log('Calling buildWorkflowTimeline');
     // Small delay to ensure DOM is updated
     setTimeout(() => {
       buildWorkflowTimeline();
@@ -211,45 +292,25 @@ export async function workflowNewProject() {
 // MAIN RENDER FUNCTION
 // ═══════════════════════════════════════════════════════════
 
-export async function renderWorkflowPage(containerEl, state, handlers) {
-  if (!containerEl) return;
-  
-  // Create or find header - must be first element
-  let workflowHeader = containerEl.querySelector('.workflow-header');
-  if (!workflowHeader) {
-    workflowHeader = document.createElement('header');
-    workflowHeader.className = 'workflow-header';
-    // Insert at the very beginning of the container, before any existing content
-    const firstChild = containerEl.firstChild;
-    if (firstChild && firstChild.nodeType === 1) { // Element node
-      containerEl.insertBefore(workflowHeader, firstChild);
-    } else {
-      containerEl.insertBefore(workflowHeader, containerEl.firstChild);
-    }
-  }
-  
-  // Calculate workflow stats
+function updateWorkflowHeaderStatus(state) {
+  const statusEl = document.getElementById('wf-header-status');
+  if (!statusEl || !state) return;
   const projects = Array.isArray(state.projects) ? state.projects : [];
   const tasks = Array.isArray(state.tasks) ? state.tasks : [];
   const activeProjects = projects.filter(p => p && !p.done);
   const activeTasks = tasks.filter(t => t && !t.done && !t.deletedAt && !t.parentTaskId);
-  
-  // Render header
-  workflowHeader.innerHTML = `
-    <div class="workflow-header-title">
-      <span class="workflow-header-name">Workflow</span>
-    </div>
-    <div class="workflow-header-right">
-      <div style="display:flex;align-items:center;gap:6px">
-        <span class="workflow-header-status">${activeProjects.length} project${activeProjects.length !== 1 ? 's' : ''} · ${activeTasks.length} active task${activeTasks.length !== 1 ? 's' : ''}</span>
-      </div>
-    </div>
-  `;
-  
-  // Populate project filter dropdown
+  statusEl.textContent = `${activeProjects.length} project${activeProjects.length !== 1 ? 's' : ''} · ${activeTasks.length} active task${activeTasks.length !== 1 ? 's' : ''}`;
+}
+
+export async function renderWorkflowPage(containerEl, state, handlers) {
+  if (!containerEl) return;
+
+  // Remove duplicate header injected by older WorkflowPage versions
+  const staleHeader = containerEl.querySelector('.workflow-header');
+  if (staleHeader) staleHeader.remove();
+
   populateWorkflowProjectFilter(state);
-  
-  // Render list view by default
+  updateWorkflowHeaderStatus(state);
   renderWorkflowList();
   
   // If workflow canvas view is active, render it
@@ -287,25 +348,16 @@ function populateWorkflowProjectFilter(state) {
 }
 
 export function setWorkflowProjectFilter(projectId) {
-  console.log('setWorkflowProjectFilter called with:', projectId);
-  
-  // Store the selected project ID
   window.workflowSelectedProjectId = projectId === 'all' ? null : projectId;
-  console.log('workflowSelectedProjectId set to:', window.workflowSelectedProjectId);
-  
-  // Re-render current view
+
   const activeView = document.querySelector('.wf-subview.active');
-  console.log('Active view:', activeView?.id);
-  
+
   if (activeView) {
     if (activeView.id === 'wf-view-list') {
-      console.log('Rendering list view with project filter');
       renderWorkflowList();
     } else if (activeView.id === 'wf-view-timeline') {
-      console.log('Rendering timeline view with project filter');
       buildWorkflowTimeline();
     } else if (activeView.id === 'wf-view-workflow-canvas') {
-      console.log('Rendering workflow canvas view with project filter');
       if (window.renderWorkflowCanvas && window.Petal?.store) {
         const state = window.Petal.store.getState();
         const handlers = window.Petal.handlers || {};
@@ -314,7 +366,6 @@ export function setWorkflowProjectFilter(projectId) {
       }
     }
   } else {
-    console.warn('No active view found, rendering list view');
     renderWorkflowList();
   }
 }
@@ -324,34 +375,18 @@ export function setWorkflowProjectFilter(projectId) {
 // ═══════════════════════════════════════════════════════════
 
 export function renderWorkflowList() {
-  if (!window.Petal?.store) {
-    console.warn('renderWorkflowList: Petal store not available');
-    return;
-  }
-  
+  if (!window.Petal?.store) return;
+
   const state = window.Petal.store.getState();
   const { tasks, projects } = state;
-  
-  console.log('renderWorkflowList: Total projects:', (projects || []).length);
-  console.log('renderWorkflowList: Total tasks:', (tasks || []).length);
-  
-  // Get active projects
+
+  updateWorkflowHeaderStatus(state);
+
   let activeProjects = (projects || []).filter(p => !p.done);
-  console.log('renderWorkflowList: Active projects before filter:', activeProjects.length);
-  
-  // Apply project filter (if a specific project is selected)
   const selectedProjectId = window.workflowSelectedProjectId;
-  console.log('renderWorkflowList: Selected project ID:', selectedProjectId);
-  
+
   if (selectedProjectId) {
-    const beforeCount = activeProjects.length;
     activeProjects = activeProjects.filter(p => findProjectById([p], selectedProjectId));
-    console.log('renderWorkflowList: Filtered projects:', beforeCount, '->', activeProjects.length);
-    if (activeProjects.length > 0) {
-      console.log('renderWorkflowList: Filtered project:', activeProjects[0].name);
-      const projectTasks = projectTasksFor(tasks, projects, selectedProjectId);
-      console.log('renderWorkflowList: Tasks for selected project:', projectTasks.length);
-    }
   }
   
   // Apply status filter
@@ -458,6 +493,8 @@ export function renderWorkflowList() {
       </div>
     `;
   }
+
+  renderWorkflowBottlenecks(state);
   
   activeProjects = sortWorkflowProjects(activeProjects, tasks, projects);
   updateWorkflowListToolbarLabels();
@@ -538,7 +575,7 @@ export function renderWorkflowList() {
             <div class="wf-expand-section-title">${selectedProjectId ? 'All Tasks' : 'Open Tasks'}</div>
             <div class="wf-expand-tasks">
               ${(selectedProjectId ? projectTasks : projectTasks.slice(0, 5)).map(t => `
-                <div class="wf-etask ${t.done ? 'done-t' : ''}">
+                <div class="wf-etask ${t.done ? 'done-t' : ''}" data-task-id="${t.id}">
                   <button type="button" class="wf-etask-check ${t.done ? 'done' : ''}" data-action="task:toggle" data-task-id="${t.id}" title="Toggle task" style="background:none;border:none;padding:0;cursor:pointer;"></button>
                   <span class="wf-etask-label">${esc(t.title || 'Untitled')}</span>
                 </div>
@@ -768,6 +805,7 @@ if (typeof window !== 'undefined') {
   window.toggleWorkflowListGroup = toggleWorkflowListGroup;
   window.exportWorkflowList = exportWorkflowList;
   window.workflowNewProject = workflowNewProject;
+  window.scrollToBottleneck = scrollToWorkflowBottleneck;
   window.workflowSelectedProjectId = null;
   if (typeof window.workflowListSort === 'undefined') window.workflowListSort = 'deadline';
   if (typeof window.workflowListSortAsc === 'undefined') window.workflowListSortAsc = true;

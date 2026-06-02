@@ -1644,7 +1644,11 @@ export async function openAddCellLogEntry(ctx) {
     dateEl.value = new Date().toISOString().split('T')[0];
   }
 
-  document.getElementById('cell-log-task')?.focus();
+  requestAnimationFrame(() => {
+    const anchor = document.getElementById('cell-log-date') || document.getElementById('cell-log-task');
+    anchor?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById('cell-log-task')?.focus();
+  });
 }
 
 /**
@@ -2356,8 +2360,21 @@ export async function addCellLineToProject(projectId) {
   const project = findProjectById(state.projects, projectId);
   if (!project) return;
   
-  const selectEl = document.getElementById('cell-line-link-select');
-  if (!selectEl) return;
+  const selectEl =
+    document.querySelector(`[data-cell-line-select="${projectId}"]`) ||
+    document.getElementById('cell-line-link-select');
+  if (!selectEl) {
+    const baseCtx = window.Petal?.handlers?.createPageContext?.() || {};
+    const ctx = {
+      ...baseCtx,
+      tasks: state.tasks || [],
+      projects: state.projects || [],
+      save: window.Petal?.handlers?.save || (() => Promise.resolve()),
+      render: window.Petal?.handlers?.render || (() => {})
+    };
+    openLinkCellLineModal(ctx, projectId);
+    return;
+  }
   
   const cellLine = selectEl.value.trim();
   if (!cellLine) {

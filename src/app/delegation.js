@@ -78,19 +78,9 @@ export function setupEventDelegation() {
       return;
     }
     const inSettingsView = !!actionBtn.closest('#view-settings');
-    if (inSettingsView && /^(open-vault-folder|choose-vault-folder|copy-from-vault-folder|refresh-vault-status|export-data|import-data|recover-data)$/.test(action)) {
+    if (inSettingsView && /^(set-theme|open-vault-folder|choose-vault-folder|copy-from-vault-folder|refresh-vault-status|export-data|import-data|recover-data)$/.test(action)) {
       return;
     }
-    
-    // Debug logging
-    console.log('🔘 Button clicked:', {
-      action,
-      target: e.target?.tagName,
-      button: actionBtn.tagName,
-      projectId: actionBtn.getAttribute('data-project-id'),
-      taskId: actionBtn.getAttribute('data-task-id'),
-      hasFeatures: !!window.Petal?.features
-    });
     
     // Edit task - use helper function
     if (action === 'edit-task') {
@@ -897,6 +887,17 @@ export function setupEventDelegation() {
     }
 
     // File actions
+    if (action === 'file:notes') {
+      e.stopPropagation();
+      e.preventDefault();
+      const fileId = actionBtn.getAttribute('data-file-id');
+      if (fileId && window.Petal?.features?.modalOperations?.openFileNotesModal) {
+        window.Petal.features.modalOperations.openFileNotesModal(fileId);
+      } else if (fileId && window.openFileNotesModal) {
+        window.openFileNotesModal(fileId);
+      }
+      return;
+    }
     if (action === 'file:toggle-note') {
       e.stopPropagation();
       e.preventDefault();
@@ -1234,18 +1235,14 @@ export function setupEventDelegation() {
     
     // Add project task
     if (action === 'add-project-task') {
-      console.log('🔘 Add project task handler reached');
       e.stopPropagation();
       e.preventDefault();
-      // Get projectId from button's data attribute first, then fallback to window.selectedProjectId
       const projectId = actionBtn.getAttribute('data-project-id') || window.selectedProjectId;
-      console.log('🔘 Add project task:', { projectId, hasModalOps: !!window.Petal?.features?.modalOperations });
       if (!projectId) {
         alert('Please select a project first');
         return;
       }
-      
-      // Build context and call function with both ctx and projId
+
       const state = window.Petal?.store?.getState() || {};
       const ctx = {
         tasks: state.tasks || [],
@@ -1253,24 +1250,18 @@ export function setupEventDelegation() {
         save: window.Petal?.handlers?.save || (() => Promise.resolve()),
         render: window.Petal?.handlers?.render || (() => {})
       };
-      
+
       if (window.Petal?.features?.modalOperations?.openProjectAddTaskModal) {
-        console.log('✅ Calling openProjectAddTaskModal with projectId:', projectId);
         window.Petal.features.modalOperations.openProjectAddTaskModal(ctx, projectId);
       } else if (window.openProjectAddTaskModal) {
-        console.log('✅ Calling window.openProjectAddTaskModal with projectId:', projectId);
-        // Try calling with context if function accepts it
         if (window.openProjectAddTaskModal.length === 2) {
           window.openProjectAddTaskModal(ctx, projectId);
         } else {
-          // Fallback: set window.selectedProjectId and call with just projectId
           if (typeof window.selectedProjectId !== 'undefined') {
             window.selectedProjectId = projectId;
           }
           window.openProjectAddTaskModal(projectId);
         }
-      } else {
-        console.warn('⚠️ openProjectAddTaskModal not available');
       }
       return;
     }
@@ -1540,9 +1531,26 @@ export function setupEventDelegation() {
 
     if (action === 'cell-log:link-cell-line') {
       e.stopPropagation();
+      e.preventDefault();
       const projectId = actionBtn.getAttribute('data-project-id');
-      if (projectId && window.Petal?.features?.projectOperations?.addCellLineToProject) {
+      if (!projectId) return;
+      const selectEl = document.querySelector(`[data-cell-line-select="${projectId}"]`);
+      const cellLine = selectEl?.value?.trim();
+      if (cellLine && window.Petal?.features?.projectOperations?.addCellLineToProject) {
         await window.Petal.features.projectOperations.addCellLineToProject(projectId);
+        return;
+      }
+      const state = window.Petal?.store?.getState() || {};
+      const baseCtx = window.Petal?.handlers?.createPageContext?.() || {};
+      const ctx = {
+        ...baseCtx,
+        tasks: state.tasks || [],
+        projects: state.projects || [],
+        save: window.Petal?.handlers?.save || (() => Promise.resolve()),
+        render: window.Petal?.handlers?.render || (() => {})
+      };
+      if (window.Petal?.features?.projectOperations?.openLinkCellLineModal) {
+        window.Petal.features.projectOperations.openLinkCellLineModal(ctx, projectId);
       }
       return;
     }
@@ -1551,8 +1559,77 @@ export function setupEventDelegation() {
       e.stopPropagation();
       const projectId = actionBtn.getAttribute('data-project-id');
       const cellLine = actionBtn.getAttribute('data-cell-line');
-      if (projectId && cellLine != null && window.Petal?.features?.projectOperations?.removeCellLineFromProject) {
-        await window.Petal.features.projectOperations.removeCellLineFromProject(projectId, cellLine);
+      if (projectId && cellLine != null) {
+        const state = window.Petal?.store?.getState() || {};
+        const ctx = {
+          tasks: state.tasks || [],
+          projects: state.projects || [],
+          save: window.Petal?.handlers?.save || (() => Promise.resolve()),
+          render: window.Petal?.handlers?.render || (() => {})
+        };
+        if (window.Petal?.features?.projectOperations?.unlinkCellLineFromProject) {
+          await window.Petal.features.projectOperations.unlinkCellLineFromProject(ctx, projectId, cellLine);
+        } else if (window.Petal?.features?.projectOperations?.removeCellLineFromProject) {
+          await window.Petal.features.projectOperations.removeCellLineFromProject(projectId, cellLine);
+        }
+      }
+      return;
+    }
+
+    // Planner habits & routines (sidebar)
+    if (action === 'planner:add-habit') {
+      e.stopPropagation();
+      if (window.Petal?.features?.plannerOperations?.openAddHabitModal) {
+        window.Petal.features.plannerOperations.openAddHabitModal();
+      } else if (typeof window.openAddHabitModal === 'function') {
+        window.openAddHabitModal();
+      }
+      return;
+    }
+    if (action === 'planner:toggle-habit') {
+      e.stopPropagation();
+      const habitId = actionBtn.getAttribute('data-habit-id');
+      const dateStr = actionBtn.getAttribute('data-date');
+      if (habitId && window.Petal?.features?.habits?.toggleHabit) {
+        window.Petal.features.habits.toggleHabit(habitId, dateStr ? new Date(dateStr) : new Date());
+        if (typeof window.buildPlannerSidebar === 'function') window.buildPlannerSidebar();
+      }
+      return;
+    }
+    if (action === 'planner:delete-habit') {
+      e.stopPropagation();
+      const habitId = actionBtn.getAttribute('data-habit-id');
+      if (habitId && confirm('Delete this habit?') && window.Petal?.features?.habits?.archiveHabit) {
+        window.Petal.features.habits.archiveHabit(habitId);
+        if (typeof window.buildPlannerSidebar === 'function') window.buildPlannerSidebar();
+      }
+      return;
+    }
+    if (action === 'planner:add-routine') {
+      e.stopPropagation();
+      if (window.Petal?.features?.plannerOperations?.openAddRoutineModal) {
+        window.Petal.features.plannerOperations.openAddRoutineModal();
+      } else if (typeof window.openAddRoutineModal === 'function') {
+        window.openAddRoutineModal();
+      }
+      return;
+    }
+    if (action === 'planner:toggle-routine') {
+      e.stopPropagation();
+      const routineId = actionBtn.getAttribute('data-routine-id');
+      const dateStr = actionBtn.getAttribute('data-date');
+      if (routineId && window.Petal?.features?.routines?.toggleRoutine) {
+        window.Petal.features.routines.toggleRoutine(routineId, dateStr ? new Date(dateStr) : new Date());
+        if (typeof window.buildPlannerSidebar === 'function') window.buildPlannerSidebar();
+      }
+      return;
+    }
+    if (action === 'planner:delete-routine') {
+      e.stopPropagation();
+      const routineId = actionBtn.getAttribute('data-routine-id');
+      if (routineId && confirm('Delete this routine?') && window.Petal?.features?.routines?.archiveRoutine) {
+        window.Petal.features.routines.archiveRoutine(routineId);
+        if (typeof window.buildPlannerSidebar === 'function') window.buildPlannerSidebar();
       }
       return;
     }
