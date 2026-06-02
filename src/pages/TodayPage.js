@@ -108,17 +108,8 @@ export async function renderTodayPage(containerEl, state, handlers) {
     };
   });
   
-  console.log('🔍 TodayPage: Tasks breakdown', {
-    allTasksCount: allTasks.length,
-    tasksWithProjectId: tasksWithProjectId.length,
-    tasksTodayCount: tasksToday.length,
-    todayKey,
-    sampleTasks: sampleTasks
-  });
-  
   if (tasksToday.length === 0 && tasksWithProjectId.length > 0) {
-    console.warn('⚠️ No tasks due today, but tasks exist with projectId');
-    console.log('Sample tasks:', sampleTasks);
+    console.warn('⚠️ TodayPage: No tasks due today, but tasks exist with projectId');
   }
 
   const doneToday = allTasks.filter(t => {

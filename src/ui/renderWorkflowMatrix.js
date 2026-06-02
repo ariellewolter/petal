@@ -294,26 +294,15 @@ export async function renderWorkflowMatrix(ctx) {
   // Get selectedProjectId BEFORE destructuring - access it directly first
   // The property exists in the object but might be undefined when destructured
   let selectedProjectIdValue = ctx.selectedProjectId;
-  
-  console.log('🔍 renderWorkflowMatrix: Checking selectedProjectId', {
-    directAccess: ctx.selectedProjectId,
-    hasProperty: 'selectedProjectId' in ctx,
-    type: typeof ctx.selectedProjectId,
-    value: ctx.selectedProjectId
-  });
-  
-  // If it's undefined or null, try window
+
   if (!selectedProjectIdValue && selectedProjectIdValue !== 0 && typeof window.selectedProjectId !== 'undefined') {
     selectedProjectIdValue = window.selectedProjectId;
-    console.log('📌 Got selectedProjectId from window:', selectedProjectIdValue);
   }
-  
-  // Also try to get it from the project selector dropdown
+
   if (!selectedProjectIdValue && selectedProjectIdValue !== 0) {
     const selector = document.getElementById('matrix-project-select');
     if (selector && selector.value) {
       selectedProjectIdValue = selector.value;
-      console.log('📌 Got selectedProjectId from dropdown:', selectedProjectIdValue);
     }
   }
   
@@ -344,8 +333,6 @@ export async function renderWorkflowMatrix(ctx) {
     });
     return;
   }
-  
-  console.log('✅ renderWorkflowMatrix: Using selectedProjectId:', selectedProjectIdValue, 'from context:', ctx?.selectedProjectId === selectedProjectIdValue);
   
   // Ensure forms are hidden by default
   const taskSection = document.getElementById('matrix-add-task-section');
@@ -381,8 +368,6 @@ export async function renderWorkflowMatrix(ctx) {
     }
     return;
   }
-  
-  console.log('✅ renderWorkflowMatrix: Found project', { id: project.id, name: project.name });
   
   // Update file button hint for matrix view
   const fileHint = document.getElementById('file-hint-matrix');
@@ -440,7 +425,6 @@ export async function renderWorkflowMatrix(ctx) {
       }
       selector.appendChild(opt);
     });
-    console.log('✅ Updated matrix-project-select with', (projects || []).filter(p => !p.done || currentProjFilterValue === 'all').length, 'projects');
   } else {
     console.warn('⚠️ matrix-project-select not found in renderWorkflowMatrix');
   }
@@ -451,7 +435,6 @@ export async function renderWorkflowMatrix(ctx) {
   addTaskButtons.forEach(btn => {
     if (selectedProjectIdValue) {
       btn.setAttribute('data-project-id', selectedProjectIdValue);
-      console.log('✅ Updated Add Task button with projectId:', selectedProjectIdValue);
     }
   });
   
@@ -483,14 +466,6 @@ export async function renderWorkflowMatrix(ctx) {
   if (!descEl && matrixView) {
     descEl = matrixView.querySelector('p#project-desc-display');
   }
-  
-  console.log('🔍 renderWorkflowMatrix: Title element check', {
-    titleElExists: !!titleEl,
-    descElExists: !!descEl,
-    matrixViewExists: !!matrixView,
-    projectName: project.name,
-    projectId: project.id
-  });
   
   if (!titleEl) {
     console.error('❌ project-title-display element not found anywhere');
@@ -529,11 +504,10 @@ export async function renderWorkflowMatrix(ctx) {
             firstChild.insertBefore(titleContainer, firstChild.firstChild);
           }
         }
-        console.log('✅ Created title element');
       }
     }
   }
-  
+
   if (titleEl) {
     // Set the title text - use innerHTML to ensure it's set
     const projectName = project.name || 'Untitled Project';
@@ -550,16 +524,6 @@ export async function renderWorkflowMatrix(ctx) {
     titleEl.style.setProperty('margin', '0 0 4px 0', 'important');
     titleEl.style.setProperty('font-family', "'Cormorant Garamond',serif", 'important');
     
-    console.log('✅ Updated project title:', {
-      name: project.name,
-      textContent: titleEl.textContent,
-      innerHTML: titleEl.innerHTML,
-      display: window.getComputedStyle(titleEl).display,
-      visibility: window.getComputedStyle(titleEl).visibility,
-      opacity: window.getComputedStyle(titleEl).opacity,
-      color: window.getComputedStyle(titleEl).color
-    });
-    
     // Ensure the parent container is visible
     const titleContainer = titleEl.parentElement;
     if (titleContainer) {
@@ -568,10 +532,6 @@ export async function renderWorkflowMatrix(ctx) {
       titleContainer.style.setProperty('opacity', '1', 'important');
       titleContainer.style.setProperty('margin-top', '24px', 'important');
       titleContainer.style.setProperty('margin-bottom', '16px', 'important');
-      console.log('✅ Title container styled:', {
-        display: window.getComputedStyle(titleContainer).display,
-        visibility: window.getComputedStyle(titleContainer).visibility
-      });
     }
   } else {
     console.error('❌ Title element still not found after all attempts');

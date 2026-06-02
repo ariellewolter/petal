@@ -819,6 +819,13 @@ export function cancelEdit() {
   return cancelEditCellLogEntry();
 }
 
+/** Clear transient UI state when leaving the Cell Log view */
+export function cleanupCellLogPage() {
+  if (typeof window.cellLogHighlightEntryId !== 'undefined') {
+    window.cellLogHighlightEntryId = null;
+  }
+}
+
 /** Backward-compat aliases (legacy tasklist / delegation fallbacks) */
 export function setTab(cellType) {
   return setCellLogTab(cellType);

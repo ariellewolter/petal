@@ -747,5 +747,10 @@ function buildPlannerCalendar() {
   }
 }
 
+/** Clear transient UI state when leaving the Planner view */
+export function cleanupPlannerPage() {
+  // Planner uses global delegation; no per-container listeners yet.
+}
+
 // Export for use in other modules
 export { renderPlanner, renderWeeklyPlanner, renderDailyPlanner };

@@ -8,6 +8,8 @@ import { cleanupFilesPage } from '../pages/FilesPage.js';
 import { cleanupProjectsPage } from '../pages/ProjectsPage.js';
 import { cleanupThreeDPrintPage } from '../pages/ThreeDPrintPage.js';
 import { cleanupTasksPage } from '../pages/TasksPage.js';
+import { cleanupPlannerPage } from '../pages/PlannerPage.js';
+import { cleanupCellLogPage } from '../pages/CellLogPage.js';
 
 function cleanupViewBindings(viewName) {
   switch (viewName) {
@@ -24,6 +26,12 @@ function cleanupViewBindings(viewName) {
     }
     case '3d-print':
       cleanupThreeDPrintPage();
+      break;
+    case 'planner':
+      cleanupPlannerPage();
+      break;
+    case 'cell-log':
+      cleanupCellLogPage();
       break;
     default:
       break;
@@ -70,8 +78,6 @@ function resetActiveViewPosition(viewName) {
  * @param {Object} options.features - Features/handlers (defaults to window.Petal?.features)
  */
 export async function switchView(viewName, options = {}) {
-  console.log('🔍 DEBUG: router.switchView called with:', viewName);
-  
   // RE-ENTRY GUARD: Prevent multiple simultaneous router calls
   // BUT: Allow force re-render if explicitly requested (for data updates)
   const force = options.force === true;
@@ -85,13 +91,11 @@ export async function switchView(viewName, options = {}) {
   if (!force && viewName === currentView && !routerInProgress) {
     // Already on this view and not forcing - skip to prevent unnecessary re-renders
     // But allow force re-renders when data changes
-    console.log('⏭️ router.switchView: Already on this view, skipping (use force: true to re-render):', viewName);
     return;
   }
   
   if (routerInProgress && !force) {
     if (viewName === currentView) {
-      console.log('⏭️ router.switchView: Already switching or already on this view, ignoring:', viewName);
       return;
     }
     console.warn('⚠️ router.switchView: Router already in progress, queuing:', viewName);
@@ -146,16 +150,6 @@ export async function switchView(viewName, options = {}) {
       parentClass: containerParent?.className
     });
   }
-  
-  // Log container location for debugging
-  console.log('🔍 router.switchView: Container location', {
-    viewName,
-    containerId: container.id,
-    parentId: containerParent?.id,
-    parentTag: containerParent?.tagName,
-    parentClass: containerParent?.className,
-    isInApp: container.closest('.app') !== null
-  });
   
   // Hide all views first - FORCE hide with !important
   document.querySelectorAll('[id^="view-"]').forEach(el => {
@@ -236,12 +230,6 @@ export async function switchView(viewName, options = {}) {
     container.style.setProperty('visibility', 'visible', 'important');
     container.style.setProperty('opacity', '1', 'important');
     resetScroll(container);
-    
-    console.log('🔍 router.switchView: 3d-print view styled', {
-      display: container.style.display,
-      computedDisplay: window.getComputedStyle(container).display,
-      hasContent: container.innerHTML.length > 0
-    });
   }
   
   // Reset positioning
@@ -270,8 +258,7 @@ export async function switchView(viewName, options = {}) {
     // Render
     try {
     const currentState = store.getState();
-    console.log('🔍 router.switchView: About to render', { viewName, hasRenderer: !!renderer, currentViewInState: currentState.currentView });
-    
+
     // DEV ASSERTION: Prevent renderers from touching shell elements
     // Capture initial state of shell elements
     const sidebarBefore = document.querySelector('.global-sidebar');
@@ -308,8 +295,6 @@ export async function switchView(viewName, options = {}) {
       }
     }
     
-    console.log('✅ router.switchView: Render completed', { viewName });
-    
     // Update sidebar to reflect the new view
     if (typeof window.renderGlobalSidebar === 'function') {
       window.renderGlobalSidebar(currentState);
@@ -342,63 +327,22 @@ export async function switchView(viewName, options = {}) {
     container.style.setProperty('float', 'none', 'important');
     container.style.setProperty('clear', 'none', 'important');
     
-    // Verify grid is working - log diagnostic info
     const appEl = container.closest('.app');
     if (appEl) {
-      const appComputed = window.getComputedStyle(appEl);
-      const containerComputed = window.getComputedStyle(container);
       const sidebarEl = document.querySelector('.global-sidebar');
-      const sidebarComputed = sidebarEl ? window.getComputedStyle(sidebarEl) : null;
-      
-      console.log('🔍 Grid diagnostic:', {
-        viewName,
-        appDisplay: appComputed.display,
-        appGridTemplateColumns: appComputed.gridTemplateColumns,
-        appGridTemplateRows: appComputed.gridTemplateRows,
-        sidebarGridColumn: sidebarComputed?.gridColumn,
-        sidebarGridRow: sidebarComputed?.gridRow,
-        containerGridColumn: containerComputed.gridColumn,
-        containerGridRow: containerComputed.gridRow,
-        containerDisplay: containerComputed.display,
-        containerPosition: containerComputed.position,
-        containerWidth: containerComputed.width,
-        containerMarginLeft: containerComputed.marginLeft,
-        containerMarginTop: containerComputed.marginTop,
-        containerParent: container.parentElement?.className,
-        isDirectChild: container.parentElement === appEl,
-        containerOffsetTop: container.offsetTop,
-        containerOffsetLeft: container.offsetLeft,
-        sidebarOffsetTop: sidebarEl?.offsetTop,
-        sidebarOffsetLeft: sidebarEl?.offsetLeft
-      });
-      
-      // If views are appearing below sidebar, force them to grid position
       if (container.offsetTop > 0 && sidebarEl && container.offsetTop >= sidebarEl.offsetTop + sidebarEl.offsetHeight) {
-        console.warn('⚠️ View is appearing below sidebar! Forcing grid position...');
-        // Force reflow
+        console.warn('⚠️ router.switchView: View appears below sidebar; forcing grid reflow');
         appEl.style.display = 'none';
-        appEl.offsetHeight; // Trigger reflow
+        appEl.offsetHeight;
         appEl.style.display = 'grid';
       }
     }
-    
-    // Special handling for 3d-print: ensure it's positioned correctly after render
+
     if (viewName === '3d-print') {
       container.style.setProperty('padding-top', '52px', 'important');
       container.style.setProperty('width', '100%', 'important');
       container.style.setProperty('max-width', '100%', 'important');
       resetScroll(container);
-      
-      // Final check
-      const computedStyle = window.getComputedStyle(container);
-      console.log('✅ router.switchView: 3d-print after render', {
-        display: computedStyle.display,
-        visibility: computedStyle.visibility,
-        opacity: computedStyle.opacity,
-        width: computedStyle.width,
-        height: computedStyle.height,
-        hasContent: container.innerHTML.length > 0
-      });
     }
     } catch (error) {
       console.error(`❌ router.switchView: Error rendering ${viewName}:`, error);
@@ -440,12 +384,10 @@ export async function switchView(viewName, options = {}) {
     // Use a longer delay to ensure render() doesn't interfere
     setTimeout(() => {
       window.__routerJustSwitched = false;
-      console.log('✅ router.switchView: Flag cleared, normal render() can run');
-      
+
       routerInProgress = false;
       if (pendingViewSwitchQueue.length > 0) {
         const queue = pendingViewSwitchQueue.splice(0);
-        console.log('🔄 router.switchView: Processing pending switches:', queue.map(q => q.viewName));
         setTimeout(async () => {
           for (const pending of queue) {
             try {

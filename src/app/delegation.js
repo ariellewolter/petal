@@ -10,7 +10,6 @@ import { canEditPlannerEventById } from '../utils/ids.js';
 export function setupEventDelegation() {
   // Guard: prevent multiple simultaneous calls that could cause stack overflow
   if (window._eventDelegationSettingUp) {
-    console.log('⏭️ setupEventDelegation: Already setting up, skipping');
     return;
   }
   
@@ -361,9 +360,7 @@ export function setupEventDelegation() {
         }
       },
       'modal:submit-add-task': () => {
-        console.log('🔘 modal:submit-add-task handler called');
         if (window.submitAddTaskModal) {
-          console.log('✅ Calling window.submitAddTaskModal');
           window.submitAddTaskModal();
         } else {
           console.warn('⚠️ submitAddTaskModal not found');
@@ -698,7 +695,6 @@ export function setupEventDelegation() {
       e.stopPropagation();
       e.preventDefault();
       const projectId = actionBtn.getAttribute('data-project-id');
-      console.log('🔘 Open project:', { projectId, hasFeatures: !!window.Petal?.features?.matrixOperations });
       if (projectId) {
         // Set selectedProjectId before calling openProjectView
         if (typeof window.selectedProjectId !== 'undefined') {
@@ -726,7 +722,6 @@ export function setupEventDelegation() {
       e.stopPropagation();
       e.preventDefault();
       const projectId = actionBtn.getAttribute('data-project-id');
-      console.log('🔘 Toggle project done:', { projectId, hasFeatures: !!window.Petal?.features?.projectOperations });
       if (projectId) {
         const state = window.Petal?.store?.getState() || {};
         const ctx = {
@@ -1026,8 +1021,7 @@ export function setupEventDelegation() {
       e.preventDefault();
       e.stopPropagation();
       const viewName = action.substring(4); // Remove 'nav:' prefix
-      console.log('🔍 Navigation action:', viewName);
-      
+
       if (window.routerSwitchView) {
         window.routerSwitchView(viewName).catch(err => {
           console.error('Router error:', err);
@@ -1136,12 +1130,9 @@ export function setupEventDelegation() {
     // Cell log actions
     if (action === 'cell-log:add-entry') {
       e.stopPropagation();
-      console.log('🔘 cell-log:add-entry handler called');
       if (window.Petal?.pages?.cellLog?.addCellLogEntry) {
-        console.log('✅ Calling addCellLogEntry');
         window.Petal.pages.cellLog.addCellLogEntry();
       } else if (window.Petal?.pages?.cellLog?.addEntry) {
-        console.log('✅ Calling addEntry (fallback)');
         window.Petal.pages.cellLog.addEntry();
       } else {
         console.warn('⚠️ cell-log:add-entry: No handler available', {
@@ -1478,12 +1469,7 @@ export function setupEventDelegation() {
       e.preventDefault();
       // Get projectId from button's data attribute, or fallback to window.selectedProjectId
       const projectId = actionBtn.getAttribute('data-project-id') || window.selectedProjectId;
-      console.log('🔘 Add task to matrix:', { 
-        projectId, 
-        windowSelectedProjectId: window.selectedProjectId,
-        hasModalOps: !!window.Petal?.features?.modalOperations 
-      });
-      
+
       if (!projectId) {
         console.warn('⚠️ No projectId available for task:add-matrix');
         alert('Please select a project first');
@@ -1505,7 +1491,6 @@ export function setupEventDelegation() {
       };
       
       if (window.Petal?.features?.modalOperations?.openMatrixAddTaskModal) {
-        console.log('✅ Calling openMatrixAddTaskModal with projectId:', projectId);
         window.Petal.features.modalOperations.openMatrixAddTaskModal(ctx);
       } else if (window.openMatrixAddTaskModal) {
         window.openMatrixAddTaskModal();
@@ -1657,7 +1642,6 @@ export function setupEventDelegation() {
     };
     appContainer.addEventListener('change', window._eventDelegationChangeHandler, true);
     
-    console.log('✅ Event delegation set up');
   } finally {
     // Clear the guard flag
     window._eventDelegationSettingUp = false;
