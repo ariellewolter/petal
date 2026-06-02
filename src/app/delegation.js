@@ -978,6 +978,31 @@ export function setupEventDelegation() {
       if (window.closeWfDetail) window.closeWfDetail();
       return;
     }
+    if (action === 'workflow:open-detail') {
+      e.stopPropagation();
+      const projectId = actionBtn.getAttribute('data-project-id');
+      if (projectId != null && window.openWorkflowDetail) {
+        window.openWorkflowDetail(projectId);
+      }
+      return;
+    }
+    if (action === 'workflow:canvas-zoom') {
+      e.stopPropagation();
+      const zoom = actionBtn.getAttribute('data-zoom');
+      if (zoom && window.workflowCanvasZoom) window.workflowCanvasZoom(zoom);
+      return;
+    }
+    if (action === 'vault:reload') {
+      e.stopPropagation();
+      actionBtn.closest('div')?.remove();
+      location.reload();
+      return;
+    }
+    if (action === 'vault:dismiss-banner') {
+      e.stopPropagation();
+      actionBtn.closest('div')?.remove();
+      return;
+    }
     if (action === 'workflow:export-list') {
       e.stopPropagation();
       if (window.exportWorkflowList) window.exportWorkflowList();
@@ -1080,7 +1105,25 @@ export function setupEventDelegation() {
       if (window.openAddEventModal) window.openAddEventModal(dateStr);
       return;
     }
-    
+    if (action === 'planner:pick-day') {
+      e.stopPropagation();
+      const year = actionBtn.getAttribute('data-year');
+      const month = actionBtn.getAttribute('data-month');
+      const day = actionBtn.getAttribute('data-day');
+      if (year != null && month != null && day != null && window.plannerPickCalendarDay) {
+        window.plannerPickCalendarDay(year, month, day);
+      }
+      return;
+    }
+    if (action === 'planner:pick-event-day') {
+      e.stopPropagation();
+      const dateStr = actionBtn.getAttribute('data-date');
+      if (dateStr && window.plannerPickEventDay) {
+        window.plannerPickEventDay(dateStr);
+      }
+      return;
+    }
+
     // Projects view actions
     if (action === 'projects:toggle-create-form') {
       e.stopPropagation();

@@ -1,4 +1,4 @@
-name: Release (macOS)
+name: Release
 
 on:
   push:
@@ -10,7 +10,6 @@ jobs:
     runs-on: macos-latest
     permissions:
       contents: write
-    # Align with GitHub Actions migration to Node.js 24 (see GitHub changelog 2025-09-19).
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -30,16 +29,6 @@ jobs:
       - name: Verify release icon assets
         run: npm run verify:icons
 
-      - name: Debug notarize env (safe)
-        run: |
-          echo "APPLE_ID is set? -> $([[ -n '${APPLE_ID}' ]] && echo yes || echo no)"
-          echo "APPLE_TEAM_ID length -> ${#APPLE_TEAM_ID}"
-          echo "CSC_KEY_PASSWORD length -> ${#CSC_KEY_PASSWORD}"
-        env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-
       - name: Build mac artifacts (signed + notarized)
         run: npm run build:mac
         env:
@@ -49,15 +38,73 @@ jobs:
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
-      - name: Verify dist contents
-        run: ls -la dist
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-dist
+          path: |
+            dist/*.dmg
+            dist/*.zip
+            dist/*.blockmap
+          if-no-files-found: error
+
+  build-win:
+    runs-on: windows-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify release icon assets
+        run: npm run verify:icons
+
+      - name: Build Windows installer
+        run: npm run build:win
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: win-dist
+          path: |
+            dist/*.exe
+            dist/*.msi
+          if-no-files-found: warn
+
+  release:
+    needs: [build-mac, build-win]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: mac-dist
+          path: dist/mac
+
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: win-dist
+          path: dist/win
 
       - name: Create GitHub Release and upload artifacts
         uses: softprops/action-gh-release@v3
         with:
           files: |
-            dist/*.dmg
-            dist/*.zip
-            dist/*.blockmap
+            dist/mac/*
+            dist/win/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

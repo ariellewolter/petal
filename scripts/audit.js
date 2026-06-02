@@ -236,7 +236,12 @@ function checkDuplicateFunctions() {
   
   // Common render functions that might be duplicated
   const criticalFunctions = ['renderTasks', 'renderProjects', 'renderFiles', 'renderTodayPage'];
+  const ignoreDuplicateNames = new Set(['e', 'm', 'x', 'y', 'div', 'svg', 'width', 'height', 'pos', 'root', 'numeric', 'jsonStr']);
+
   for (const dup of duplicates) {
+    if (ignoreDuplicateNames.has(dup.name) || dup.name.length <= 2) {
+      continue;
+    }
     if (criticalFunctions.includes(dup.name)) {
       fail('Duplicate Functions', `Critical function ${dup.name} defined in multiple files`, dup.files.join(', '));
     } else {

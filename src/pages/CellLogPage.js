@@ -27,6 +27,40 @@ function ensureCellLogSettings(settings) {
  * @param {Object} state - App state
  * @param {Object} handlers - Event handlers
  */
+function cellLogEntryFingerprint(entry) {
+  if (!entry) return '';
+  return [
+    entry.projectId ?? '',
+    entry.dayDone || entry.date || '',
+    entry.cellType || entry.line || '',
+    entry.passage ?? '',
+    entry.taskPerformed || '',
+    entry.notes || ''
+  ].join('|');
+}
+
+/** Remove duplicate global entries (e.g. from legacy Date.now() ids). */
+function dedupeGlobalCellLogEntries(entries) {
+  const byId = new Set();
+  const byFingerprint = new Set();
+  const deduped = [];
+
+  for (const entry of entries) {
+    if (!entry) continue;
+    const id = entry.id != null ? String(entry.id) : null;
+    if (id) {
+      if (byId.has(id)) continue;
+      byId.add(id);
+    }
+    const fp = cellLogEntryFingerprint(entry);
+    if (fp && byFingerprint.has(fp)) continue;
+    if (fp) byFingerprint.add(fp);
+    deduped.push(entry);
+  }
+
+  return deduped;
+}
+
 function stableLegacyCellLogId(projectId, legacy, index) {
   if (legacy.id != null) return String(legacy.id);
   const fingerprint = [
@@ -84,11 +118,14 @@ function syncLegacyCellLogEntriesToGlobal(state) {
     return { ...project, cellLog: [] };
   });
 
-  if (changed || clearedLegacy) {
+  const dedupedEntries = dedupeGlobalCellLogEntries(entries);
+  const dedupeChanged = dedupedEntries.length !== entries.length;
+
+  if (changed || clearedLegacy || dedupeChanged) {
     window.Petal.store.setState({
       settings: {
         ...settings,
-        cellLog: { ...settings.cellLog, entries }
+        cellLog: { ...settings.cellLog, entries: dedupedEntries }
       },
       projects
     });

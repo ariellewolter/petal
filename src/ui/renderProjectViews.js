@@ -170,28 +170,43 @@ function getProjectCellLogEntries(project, settings) {
         e => e && String(e.projectId) === String(project.id)
       )
     : [];
-  const seen = new Set();
+  const seenIds = new Set();
+  const seenFingerprints = new Set();
   const merged = [];
 
+  const fingerprint = (entry) =>
+    [
+      project.id,
+      entry.dayDone || entry.date || '',
+      entry.cellType || entry.line || '',
+      entry.passage ?? '',
+      entry.taskPerformed || '',
+      entry.notes || ''
+    ].join('|');
+
+  const tryAdd = (entry, source) => {
+    const id = entry.id != null ? String(entry.id) : null;
+    if (id && seenIds.has(id)) return;
+    const fp = fingerprint(entry);
+    if (fp && seenFingerprints.has(fp)) return;
+    if (id) seenIds.add(id);
+    if (fp) seenFingerprints.add(fp);
+    merged.push({ ...entry, _source: source });
+  };
+
   for (const entry of legacy) {
-    const key = entry.id != null ? String(entry.id) : null;
-    if (key) {
-      if (seen.has(key)) continue;
-      seen.add(key);
-    }
-    merged.push({ ...entry, _source: 'legacy' });
+    tryAdd(entry, 'legacy');
   }
 
   for (const entry of global) {
-    const key = entry.id != null ? String(entry.id) : null;
-    if (key && seen.has(key)) continue;
-    if (key) seen.add(key);
-    merged.push({
+    tryAdd(
+      {
       ...entry,
-      date: entry.dayDone || entry.date,
-      line: entry.cellType || entry.line,
-      _source: 'global'
-    });
+        date: entry.dayDone || entry.date,
+        line: entry.cellType || entry.line
+      },
+      'global'
+    );
   }
 
   return merged.sort((a, b) => cellLogEntryTimestamp(b) - cellLogEntryTimestamp(a));
