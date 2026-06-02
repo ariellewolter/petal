@@ -96,35 +96,6 @@ export function renderGlobalSidebar(state) {
     </a>
   `;
   
-  console.log('✅ renderGlobalSidebar: Navigation rendered', { navItemCount: navEl.children.length });
-  
-  // Add event delegation for sidebar clicks
-  navEl.onclick = (e) => {
-    const navItem = e.target.closest('[data-nav]');
-    if (navItem) {
-      e.preventDefault();
-      const view = navItem.getAttribute('data-nav');
-      console.log('🔍 Sidebar click:', { view, hasRouter: !!window.routerSwitchView, hasSwitchView: !!window.switchView });
-      // Use router if available (preferred), fallback to old switchView
-      if (window.routerSwitchView) {
-        console.log('🔍 Using router to switch to:', view);
-        window.routerSwitchView(view).catch(err => {
-          console.error('❌ Error switching view via router:', err);
-          // Fallback to old switchView if router fails
-          if (window.switchView) {
-            console.log('🔍 Falling back to old switchView');
-            window.switchView(view);
-          }
-        });
-      } else if (window.switchView) {
-        console.log('🔍 Using old switchView to switch to:', view);
-        window.switchView(view);
-      } else {
-        console.error('❌ No view switching function available');
-      }
-    }
-  };
-  
   // Also handle settings link in sidebar bottom and update its active state
   const sidebarBottom = document.querySelector('.global-sidebar-bottom');
   if (sidebarBottom) {
@@ -137,25 +108,6 @@ export function renderGlobalSidebar(state) {
         settingsLink.classList.remove('active');
       }
     }
-    
-    // Add click handler
-    sidebarBottom.onclick = (e) => {
-      const navItem = e.target.closest('[data-nav]');
-      if (navItem) {
-        e.preventDefault();
-        const view = navItem.getAttribute('data-nav');
-        if (window.routerSwitchView) {
-          window.routerSwitchView(view).catch(err => {
-            console.error('❌ Error switching to settings via router:', err);
-            if (window.switchView) window.switchView(view);
-          });
-        } else if (window.switchView) {
-          window.switchView(view);
-        } else {
-          console.error('❌ No view switching function available');
-        }
-      }
-    };
   }
 }
 

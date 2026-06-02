@@ -2,7 +2,7 @@
 // Set up event delegation on stable root container for all action buttons
 
 import { handleEditTaskAction, handleDeleteTaskAction } from '../ui/buttonHandlers.js';
-import { canEditPlannerEventById } from '../utils/ids.js';
+import { canEditPlannerEventById, isExpandedRecurringEvent } from '../utils/ids.js';
 
 /**
  * Set up event delegation for app-wide click handling
@@ -54,6 +54,25 @@ export function setupEventDelegation() {
     }
     
     if (!actionBtn) {
+      const navEl = e.target?.closest?.('[data-nav]');
+      if (navEl) {
+        e.preventDefault();
+        const view = navEl.getAttribute('data-nav');
+        if (view) {
+          if (window.routerSwitchView) {
+            window.routerSwitchView(view).catch(err => {
+              console.error('Router error:', err);
+              if (window.switchView) window.switchView(view);
+            });
+          } else if (window.switchView) {
+            window.switchView(view);
+          }
+        }
+        return;
+      }
+      if (window.Petal?.pages?.today?.handleDelegatedClick?.(e)) {
+        return;
+      }
       return;
     }
     
@@ -72,13 +91,10 @@ export function setupEventDelegation() {
     if (inFilesView && /^(file:|view:|add-file|addFileToRegistry)/.test(action)) {
       return;
     }
-    const inTodayView = !!actionBtn.closest('#view-today');
-    if (inTodayView && action === 'quick-add') {
-      return;
-    }
     const inSettingsView = !!actionBtn.closest('#view-settings');
     if (inSettingsView && /^(set-theme|open-vault-folder|choose-vault-folder|copy-from-vault-folder|refresh-vault-status|export-data|import-data|recover-data)$/.test(action)) {
-      return;
+      const handled = await window.Petal?.pages?.settings?.handleAction?.(action, actionBtn, e);
+      if (handled !== false) return;
     }
     
     // Edit task - use helper function
@@ -296,6 +312,67 @@ export function setupEventDelegation() {
       return;
     }
     
+    if (action === 'modal:dismiss-overlay') {
+      if (e.target !== actionBtn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      actionBtn.remove();
+      return;
+    }
+
+    if (action === 'conflict:resolve') {
+      e.stopPropagation();
+      const mode = actionBtn.getAttribute('data-mode');
+      const path = actionBtn.getAttribute('data-path');
+      if (mode && path && window.resolveConflict) {
+        window.resolveConflict(mode, path);
+      }
+      return;
+    }
+    if (action === 'conflict:dismiss') {
+      e.stopPropagation();
+      if (window.hideConflictBanner) window.hideConflictBanner();
+      return;
+    }
+
+    if (action === 'vault:open-folder') {
+      e.stopPropagation();
+      const path = actionBtn.getAttribute('data-vault-path');
+      if (path && window.electronAPI?.vaultOpenFolder) {
+        window.electronAPI.vaultOpenFolder(path).catch(err => {
+          console.error('Error opening vault folder:', err);
+        });
+      }
+      return;
+    }
+    if (action === 'vault:open-path') {
+      e.stopPropagation();
+      const path = actionBtn.getAttribute('data-vault-path');
+      if (path && window.electronAPI?.openFile) {
+        window.electronAPI.openFile(path).catch(err => {
+          alert(`Vault location:\n${path}`);
+        });
+      }
+      return;
+    }
+
+    if (action === 'task:link-files-submit') {
+      e.stopPropagation();
+      const modal = actionBtn.closest('.quick-capture-modal');
+      if (modal && window.Petal?.features?.taskDrawer?.submitLinkFilesModal) {
+        await window.Petal.features.taskDrawer.submitLinkFilesModal(modal);
+      }
+      return;
+    }
+    if (action === 'task:protocol-link-submit') {
+      e.stopPropagation();
+      const modal = actionBtn.closest('.quick-capture-modal');
+      if (modal && window.Petal?.features?.taskOperations?.submitProtocolLinkModal) {
+        await window.Petal.features.taskOperations.submitProtocolLinkModal(modal);
+      }
+      return;
+    }
+
     if (action === 'modal:close-backdrop') {
       if (e.target !== actionBtn) return;
       e.preventDefault();
@@ -1170,6 +1247,50 @@ export function setupEventDelegation() {
       e.stopPropagation();
       const dateStr = actionBtn.getAttribute('data-date') || null;
       if (window.openAddEventModal) window.openAddEventModal(dateStr);
+      const hourAttr = actionBtn.getAttribute('data-hour');
+      if (hourAttr != null && hourAttr !== '') {
+        const hour = parseInt(hourAttr, 10);
+        if (!Number.isNaN(hour)) {
+          const hh = String(hour).padStart(2, '0');
+          const startInput = document.getElementById('event-start-time');
+          if (startInput) startInput.value = `${hh}:00`;
+          const durationInput = document.getElementById('event-duration');
+          if (durationInput) durationInput.value = '60';
+        }
+      }
+      return;
+    }
+    if (action === 'planner:edit-event') {
+      e.stopPropagation();
+      const eventId = actionBtn.getAttribute('data-event-id');
+      if (!eventId) return;
+      if (window.Petal?.features?.plannerOperations?.editEvent) {
+        const ctx = window.Petal?.handlers?.createPageContext?.() || {};
+        window.Petal.features.plannerOperations.editEvent(ctx, eventId);
+      } else if (typeof window.editEvent === 'function') {
+        window.editEvent(eventId);
+      }
+      return;
+    }
+    if (action === 'planner:open-week-event') {
+      e.stopPropagation();
+      const dateStr = actionBtn.getAttribute('data-date');
+      const eventId = actionBtn.getAttribute('data-event-id');
+      if (dateStr && window.plannerPickEventDay) {
+        window.plannerPickEventDay(dateStr);
+      }
+      if (eventId) {
+        const events = window.Petal?.store?.getState()?.events || [];
+        const evt = events.find(ev => String(ev.id) === String(eventId));
+        if (evt && !isExpandedRecurringEvent(evt)) {
+          if (window.Petal?.features?.plannerOperations?.editEvent) {
+            const ctx = window.Petal?.handlers?.createPageContext?.() || {};
+            window.Petal.features.plannerOperations.editEvent(ctx, eventId);
+          } else if (typeof window.editEvent === 'function') {
+            window.editEvent(eventId);
+          }
+        }
+      }
       return;
     }
     if (action === 'planner:pick-day') {

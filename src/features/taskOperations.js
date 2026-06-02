@@ -1236,10 +1236,8 @@ export async function linkFileToProtocolEntry() {
 
   const modal = document.createElement('div');
   modal.className = 'quick-capture-modal';
+  modal.setAttribute('data-action', 'modal:dismiss-overlay');
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:10000;';
-  modal.onclick = (e) => {
-    if (e.target === modal) document.body.removeChild(modal);
-  };
 
   const checkboxes = availableFiles.map(file => {
     const label = file.label || file.name || 'File';
@@ -1258,50 +1256,59 @@ export async function linkFileToProtocolEntry() {
         ${checkboxes}
       </div>
       <div style="display:flex;gap:10px;justify-content:flex-end;">
-        <button type="button" class="btn-secondary" id="protocol-link-cancel">Cancel</button>
-        <button type="button" class="btn-submit" id="protocol-link-submit">Attach Selected</button>
+        <button type="button" class="btn-secondary" data-action="ui:remove-closest-modal">Cancel</button>
+        <button type="button" class="btn-submit" data-action="task:protocol-link-submit">Attach Selected</button>
       </div>
     </div>
   `;
 
   document.body.appendChild(modal);
+}
 
-  modal.querySelector('#protocol-link-cancel').onclick = () => document.body.removeChild(modal);
-  modal.querySelector('#protocol-link-submit').onclick = async () => {
-    const selected = Array.from(modal.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
-    if (selected.length === 0) {
-      alert('Select at least one file.');
-      return;
-    }
+/**
+ * Submit the protocol link-files modal (delegated click handler).
+ */
+export async function submitProtocolLinkModal(modal) {
+  const currentDrawerTaskId = typeof window.currentDrawerTaskId !== 'undefined' ? window.currentDrawerTaskId : null;
+  if (!currentDrawerTaskId) return;
 
-    const updatedTasks = (window.Petal.store.getState().tasks || []).map(t => {
-      if (t.id !== currentDrawerTaskId) return t;
-      const protocolFileIds = [...(t.protocol?.fileIds || [])];
-      const taskFileIds = [...(t.fileIds || [])];
-      selected.forEach(fileId => {
-        if (!protocolFileIds.includes(fileId)) protocolFileIds.push(fileId);
-        if (!taskFileIds.includes(fileId)) taskFileIds.push(fileId);
-      });
-      return {
-        ...t,
-        fileIds: taskFileIds,
-        protocol: { ...t.protocol, fileIds: protocolFileIds }
-      };
+  const state = window.Petal?.store?.getState() || {};
+  const projects = state.projects || [];
+  const escFn = esc || ((s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+
+  const selected = Array.from(modal.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+  if (selected.length === 0) {
+    alert('Select at least one file.');
+    return;
+  }
+
+  const updatedTasks = (window.Petal.store.getState().tasks || []).map(t => {
+    if (t.id !== currentDrawerTaskId) return t;
+    const protocolFileIds = [...(t.protocol?.fileIds || [])];
+    const taskFileIds = [...(t.fileIds || [])];
+    selected.forEach(fileId => {
+      if (!protocolFileIds.includes(fileId)) protocolFileIds.push(fileId);
+      if (!taskFileIds.includes(fileId)) taskFileIds.push(fileId);
     });
-
-    updateStoreSafely({ tasks: updatedTasks });
-    document.body.removeChild(modal);
-
-    const ctx = {
-      tasks: updatedTasks,
-      projects,
-      esc: escFn,
-      save: window.Petal?.handlers?.save || (() => Promise.resolve())
+    return {
+      ...t,
+      fileIds: taskFileIds,
+      protocol: { ...t.protocol, fileIds: protocolFileIds }
     };
-    if (window.Petal?.features?.taskOperations?.renderProtocolTab) {
-      window.Petal.features.taskOperations.renderProtocolTab(ctx);
-    }
+  });
+
+  updateStoreSafely({ tasks: updatedTasks });
+  modal.remove();
+
+  const ctx = {
+    tasks: updatedTasks,
+    projects,
+    esc: escFn,
+    save: window.Petal?.handlers?.save || (() => Promise.resolve())
   };
+  if (window.Petal?.features?.taskOperations?.renderProtocolTab) {
+    window.Petal.features.taskOperations.renderProtocolTab(ctx);
+  }
 }
 
 /**

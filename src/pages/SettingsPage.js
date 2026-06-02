@@ -218,118 +218,11 @@ export async function renderSettingsPage(containerEl, state, handlers) {
     </div>
   `;
 
-  // Event delegation
-  containerEl.onclick = async (e) => {
-    const actionEl = e.target.closest('[data-action]');
-    if (!actionEl) return;
-
-    const action = actionEl.getAttribute('data-action');
-
-    switch (action) {
-      case 'set-theme': {
-        const theme = actionEl.getAttribute('data-theme-value');
-        if (theme) {
-          setThemePreference(theme);
-          await renderSettingsPage(containerEl, window.Petal?.store?.getState() || state, handlers);
-        }
-        break;
-      }
-      case 'export-data':
-        await handleExport(state, handlers);
-        break;
-      case 'import-data':
-        document.getElementById('settings-import-input')?.click();
-        break;
-      case 'open-vault-folder':
-        if (isElectron) {
-          try {
-            await window.electronAPI.vaultOpenFolder(vaultPath);
-          } catch (err) {
-            alert('Error opening vault folder: ' + err.message);
-          }
-        }
-        break;
-      case 'choose-vault-folder':
-        if (isElectron) {
-          try {
-            const chooseResult = await window.electronAPI.vaultChoose();
-            if (chooseResult?.canceled) {
-              break;
-            }
-            if (chooseResult?.success) {
-              const newPath = chooseResult.vaultPath || await window.electronAPI.getVaultPath();
-              await reloadStateAfterVaultChange(handlers);
-              await updateVaultBadge();
-              if (chooseResult.copiedFromPrevious) {
-                alert(
-                  `Vault location updated and your data was copied.\n\n${newPath}\n\n` +
-                    `Original vault (unchanged):\n${chooseResult.previousVaultPath}`
-                );
-              } else {
-                alert(
-                  `Vault location updated.\n\n${newPath}\n\n` +
-                    `Loaded data from this folder. If it looks empty, use "Copy data from another folder" to pull in your previous petal.json.`
-                );
-              }
-              await renderSettingsPage(containerEl, state, handlers);
-            } else {
-              alert(
-                'Could not change vault location' +
-                  (chooseResult?.error ? `:\n\n${chooseResult.error}` : '.')
-              );
-            }
-          } catch (err) {
-            alert('Error choosing vault folder: ' + err.message);
-          }
-        }
-        break;
-      case 'copy-from-vault-folder':
-        if (isElectron) {
-          try {
-            const copyVault =
-              window.electronAPI.copyVaultFromFolder ||
-              window.electronAPI.vaultCopyFromFolder;
-            if (!copyVault) {
-              alert(
-                'Copy vault is not available. Fully quit Petal (Cmd+Q) and reopen the app, then try again.'
-              );
-              break;
-            }
-            const copyResult = await copyVault();
-            if (copyResult?.canceled) break;
-            if (copyResult?.success) {
-              await reloadStateAfterVaultChange(handlers);
-              await updateVaultBadge();
-              alert(
-                `Data copied into your current vault.\n\n${copyResult.vaultPath}\n\nFrom:\n${copyResult.sourcePath}`
-              );
-              await renderSettingsPage(containerEl, state, handlers);
-            } else {
-              alert(
-                'Could not copy vault data' +
-                  (copyResult?.error ? `:\n\n${copyResult.error}` : '.')
-              );
-            }
-          } catch (err) {
-            alert('Error copying vault data: ' + err.message);
-          }
-        }
-        break;
-      case 'refresh-vault-status':
-        if (isElectron) {
-          await renderSettingsPage(containerEl, state, handlers);
-        }
-        break;
-      case 'recover-data':
-        if (isElectron && window.recoverData) {
-          await window.recoverData();
-          // Re-render after recovery attempt
-          await renderSettingsPage(containerEl, state, handlers);
-        } else {
-          alert('Recovery function not available. Please use the console: window.recoverData()');
-        }
-        break;
-    }
+  window.Petal = window.Petal || {};
+  window.Petal.pages = window.Petal.pages || {};
+  window.Petal.pages.settings = {
+    handleAction: (action, actionEl) =>
+      handleSettingsAction(action, actionEl, containerEl, state, handlers, { isElectron, vaultPath })
   };
 
   // Handle file import
@@ -341,6 +234,119 @@ export async function renderSettingsPage(containerEl, state, handlers) {
       await renderSettingsPage(containerEl, state, handlers);
     };
   }
+}
+
+/**
+ * Handle settings data-action clicks (via global delegation).
+ */
+export async function handleSettingsAction(action, actionEl, containerEl, state, handlers, ctx) {
+  const { isElectron, vaultPath } = ctx;
+
+  switch (action) {
+    case 'set-theme': {
+      const theme = actionEl.getAttribute('data-theme-value');
+      if (theme) {
+        setThemePreference(theme);
+        await renderSettingsPage(containerEl, window.Petal?.store?.getState() || state, handlers);
+      }
+      break;
+    }
+    case 'export-data':
+      await handleExport(state, handlers);
+      break;
+    case 'import-data':
+      document.getElementById('settings-import-input')?.click();
+      break;
+    case 'open-vault-folder':
+      if (isElectron) {
+        try {
+          await window.electronAPI.vaultOpenFolder(vaultPath);
+        } catch (err) {
+          alert('Error opening vault folder: ' + err.message);
+        }
+      }
+      break;
+    case 'choose-vault-folder':
+      if (isElectron) {
+        try {
+          const chooseResult = await window.electronAPI.vaultChoose();
+          if (chooseResult?.canceled) break;
+          if (chooseResult?.success) {
+            const newPath = chooseResult.vaultPath || await window.electronAPI.getVaultPath();
+            await reloadStateAfterVaultChange(handlers);
+            await updateVaultBadge();
+            if (chooseResult.copiedFromPrevious) {
+              alert(
+                `Vault location updated and your data was copied.\n\n${newPath}\n\n` +
+                  `Original vault (unchanged):\n${chooseResult.previousVaultPath}`
+              );
+            } else {
+              alert(
+                `Vault location updated.\n\n${newPath}\n\n` +
+                  `Loaded data from this folder. If it looks empty, use "Copy data from another folder" to pull in your previous petal.json.`
+              );
+            }
+            await renderSettingsPage(containerEl, state, handlers);
+          } else {
+            alert(
+              'Could not change vault location' +
+                (chooseResult?.error ? `:\n\n${chooseResult.error}` : '.')
+            );
+          }
+        } catch (err) {
+          alert('Error choosing vault folder: ' + err.message);
+        }
+      }
+      break;
+    case 'copy-from-vault-folder':
+      if (isElectron) {
+        try {
+          const copyVault =
+            window.electronAPI.copyVaultFromFolder ||
+            window.electronAPI.vaultCopyFromFolder;
+          if (!copyVault) {
+            alert(
+              'Copy vault is not available. Fully quit Petal (Cmd+Q) and reopen the app, then try again.'
+            );
+            break;
+          }
+          const copyResult = await copyVault();
+          if (copyResult?.canceled) break;
+          if (copyResult?.success) {
+            await reloadStateAfterVaultChange(handlers);
+            await updateVaultBadge();
+            alert(
+              `Data copied into your current vault.\n\n${copyResult.vaultPath}\n\nFrom:\n${copyResult.sourcePath}`
+            );
+            await renderSettingsPage(containerEl, state, handlers);
+          } else {
+            alert(
+              'Could not copy vault data' +
+                (copyResult?.error ? `:\n\n${copyResult.error}` : '.')
+            );
+          }
+        } catch (err) {
+          alert('Error copying vault data: ' + err.message);
+        }
+      }
+      break;
+    case 'refresh-vault-status':
+      if (isElectron) {
+        await renderSettingsPage(containerEl, state, handlers);
+      }
+      break;
+    case 'recover-data':
+      if (isElectron && window.recoverData) {
+        await window.recoverData();
+        await renderSettingsPage(containerEl, state, handlers);
+      } else {
+        alert('Recovery function not available. Please use the console: window.recoverData()');
+      }
+      break;
+    default:
+      return false;
+  }
+  return true;
 }
 
 /**
@@ -558,17 +564,13 @@ export async function renderSettingsFallback(containerEl, state) {
       </div>
     </div>
   `;
-  // Browser fallback: same data-action wiring as the main settings page
-  containerEl.onclick = async (e) => {
-    const actionEl = e.target.closest('[data-action]');
-    if (!actionEl) return;
-    const action = actionEl.getAttribute('data-action');
-    if (action === 'export-data') {
-      await handleExport(state, handlers);
-    } else if (action === 'import-data') {
-      document.getElementById('settings-import-input')?.click();
-    }
+  window.Petal = window.Petal || {};
+  window.Petal.pages = window.Petal.pages || {};
+  window.Petal.pages.settings = {
+    handleAction: (action, actionEl) =>
+      handleSettingsAction(action, actionEl, containerEl, state, handlers, { isElectron: false, vaultPath: '' })
   };
+
   const importInput = document.getElementById('settings-import-input');
   if (importInput) {
     importInput.onchange = async (event) => {

@@ -274,94 +274,9 @@ export async function renderTodayPage(containerEl, state, handlers) {
     <button class="today-quick-add" title="Quick Add" data-action="quick-add">+</button>
   `;
 
-  // Delegated clicks (one listener)
-  containerEl.onclick = (e) => {
-    const nav = e.target.closest("[data-nav]");
-    if (nav) {
-      e.preventDefault();
-      const view = nav.getAttribute("data-nav");
-      handlers?.switchView?.(view);
-      return;
-    }
-
-    const actionEl = e.target.closest("[data-action]");
-    if (actionEl) {
-      const action = actionEl.getAttribute("data-action");
-      if (action === "quick-add") {
-        handlers?.quickAdd?.();
-        return;
-      }
-      if (action === "today:open-event") {
-        e.preventDefault();
-        e.stopPropagation();
-        openTodayScheduleEvent(actionEl.getAttribute("data-event-id"), handlers);
-        return;
-      }
-    }
-
-    const eventBlock = e.target.closest(".t-block[data-event-id]");
-    if (eventBlock) {
-      e.preventDefault();
-      openTodayScheduleEvent(eventBlock.getAttribute("data-event-id"), handlers);
-      return;
-    }
-
-    const taskRow = e.target.closest(".today-task-item[data-task-id]");
-    if (taskRow) {
-      const taskId = taskRow.getAttribute("data-task-id");
-      if (e.target.closest(".today-task-check")) {
-        handlers?.toggleTask?.(taskId);
-      } else {
-        // Check if task belongs to a project - if so, open that project on click
-        const allTasks = getAllTasks(state.tasks || [], state.projects || []);
-        const task = allTasks.find(t => String(t.id) === String(taskId));
-        if (task && task.projectId) {
-          // Task belongs to a project - open that project
-          if (window.openProjectView) {
-            window.openProjectView(task.projectId);
-          } else if (window.selectProjectForMatrix) {
-            handlers?.switchView?.('projects');
-            window.selectProjectForMatrix(task.projectId);
-          } else {
-            // Fallback: just edit the task
-            handlers?.editTask?.(taskId);
-          }
-        } else {
-          // Task has no project - edit it normally
-          handlers?.editTask?.(taskId);
-        }
-      }
-      return;
-    }
-
-    const projectRow = e.target.closest(".today-project-item[data-project-id]");
-    if (projectRow) {
-      const projectId = projectRow.getAttribute("data-project-id");
-      // Open the project view
-      if (window.openProjectView) {
-        window.openProjectView(projectId);
-      } else if (window.selectProjectForMatrix) {
-        // Fallback: use selectProjectForMatrix
-        handlers?.switchView?.('projects');
-        window.selectProjectForMatrix(projectId);
-      } else {
-        // Last resort: just switch to projects view
-        handlers?.switchView?.('projects');
-      }
-      return;
-    }
-
-    const cellEntry = e.target.closest(".today-cell-entry[data-cell-id]");
-    if (cellEntry) {
-      const cellId = cellEntry.getAttribute("data-cell-id");
-      if (cellId && window.Petal?.pages?.cellLog?.openCellLogEntry) {
-        window.Petal.pages.cellLog.openCellLogEntry(cellId, handlers);
-      } else {
-        handlers?.switchView?.("cell-log");
-      }
-      return;
-    }
-  };
+  window.Petal = window.Petal || {};
+  window.Petal.pages = window.Petal.pages || {};
+  window.Petal.pages.today = { handleDelegatedClick: (e) => handleTodayDelegatedClick(e, state, handlers) };
 
   // Keyboard: stat cards and nav actions
   containerEl.onkeydown = (e) => {
@@ -398,21 +313,78 @@ export async function renderTodayPage(containerEl, state, handlers) {
         ghost.textContent = '+ Add block';
         ghost.setAttribute('data-action', 'planner:open-add-event');
         ghost.setAttribute('data-date', todayDateStr);
-        ghost.setAttribute('data-hour', index);
-        ghost.onclick = (e) => {
-          e.stopPropagation();
-          if (typeof window.openAddEventModal === 'function') {
-            window.openAddEventModal(todayDateStr);
-            const startInput = document.getElementById('event-start-time');
-            if (startInput) startInput.value = formatTime(index * 60);
-            const durationInput = document.getElementById('event-duration');
-            if (durationInput) durationInput.value = '60';
-          }
-        };
+        ghost.setAttribute('data-hour', String(index));
+        ghost.type = 'button';
         slot.appendChild(ghost);
       });
     }
   }, 0);
+}
+
+/**
+ * Today view clicks without data-action (tasks, projects, schedule blocks, cell log).
+ * @returns {boolean} true if handled
+ */
+export function handleTodayDelegatedClick(e, state, handlers) {
+  if (!e.target?.closest?.('#view-today')) return false;
+
+  const eventBlock = e.target.closest('.t-block[data-event-id]');
+  if (eventBlock) {
+    e.preventDefault();
+    openTodayScheduleEvent(eventBlock.getAttribute('data-event-id'), handlers);
+    return true;
+  }
+
+  const taskRow = e.target.closest('.today-task-item[data-task-id]');
+  if (taskRow) {
+    const taskId = taskRow.getAttribute('data-task-id');
+    if (e.target.closest('.today-task-check')) {
+      handlers?.toggleTask?.(taskId);
+    } else {
+      const allTasks = getAllTasks(state.tasks || [], state.projects || []);
+      const task = allTasks.find(t => String(t.id) === String(taskId));
+      if (task?.projectId) {
+        if (window.openProjectView) {
+          window.openProjectView(task.projectId);
+        } else if (window.selectProjectForMatrix) {
+          handlers?.switchView?.('projects');
+          window.selectProjectForMatrix(task.projectId);
+        } else {
+          handlers?.editTask?.(taskId);
+        }
+      } else {
+        handlers?.editTask?.(taskId);
+      }
+    }
+    return true;
+  }
+
+  const projectRow = e.target.closest('.today-project-item[data-project-id]');
+  if (projectRow) {
+    const projectId = projectRow.getAttribute('data-project-id');
+    if (window.openProjectView) {
+      window.openProjectView(projectId);
+    } else if (window.selectProjectForMatrix) {
+      handlers?.switchView?.('projects');
+      window.selectProjectForMatrix(projectId);
+    } else {
+      handlers?.switchView?.('projects');
+    }
+    return true;
+  }
+
+  const cellEntry = e.target.closest('.today-cell-entry[data-cell-id]');
+  if (cellEntry) {
+    const cellId = cellEntry.getAttribute('data-cell-id');
+    if (cellId && window.Petal?.pages?.cellLog?.openCellLogEntry) {
+      window.Petal.pages.cellLog.openCellLogEntry(cellId, handlers);
+    } else {
+      handlers?.switchView?.('cell-log');
+    }
+    return true;
+  }
+
+  return false;
 }
 
 // --- helpers ---

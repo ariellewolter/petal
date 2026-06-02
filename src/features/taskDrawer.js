@@ -417,12 +417,8 @@ export async function linkExistingFileToTask(ctx) {
   // Create a modal for file selection
   const modal = document.createElement('div');
   modal.className = 'quick-capture-modal';
+  modal.setAttribute('data-action', 'modal:dismiss-overlay');
   modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:10000;';
-  modal.onclick = (e) => {
-    if (e.target === modal) {
-      document.body.removeChild(modal);
-    }
-  };
   
   const existingFileIds = task.fileIds || [];
   const availableFiles = project.files.filter(f => f.id && !existingFileIds.includes(f.id));
@@ -453,47 +449,54 @@ export async function linkExistingFileToTask(ctx) {
       </div>
       <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:8px;border-top:1px solid var(--border);">
         <button type="button" data-action="ui:remove-closest-modal" class="btn-secondary">Cancel</button>
-        <button class="btn-submit" id="link-files-submit">Link Selected</button>
+        <button type="button" class="btn-submit" data-action="task:link-files-submit">Link Selected</button>
       </div>
     </div>
   `;
   
   document.body.appendChild(modal);
-  
-  // Handle submit
-  const submitBtn = modal.querySelector('#link-files-submit');
-  submitBtn.onclick = async () => {
-    const selected = Array.from(modal.querySelectorAll('input[type="checkbox"]:checked'))
-      .map(cb => cb.value);
-    
-    if (selected.length === 0) {
-      alert('Please select at least one file');
-      return;
-    }
-    
-    if (persistTaskUpdate(window.currentDrawerTaskId, (t) => {
-      const fileIds = [...(t.fileIds || [])];
-      selected.forEach(fileId => {
-        if (!fileIds.includes(fileId)) fileIds.push(fileId);
-      });
-      return { ...t, fileIds };
-    })) {
-      renderTaskDrawerFiles(ctx);
-      document.body.removeChild(modal);
-      return;
-    }
+}
 
-    if (!task.fileIds) task.fileIds = [];
+/**
+ * Submit the link-files modal (delegated click handler).
+ */
+export async function submitLinkFilesModal(modal) {
+  if (!window.currentDrawerTaskId) return;
+  const ctx = createDrawerContext();
+  const { tasks, projects, save } = ctx;
+  const task = findActiveTask(tasks, window.currentDrawerTaskId);
+  if (!task) return;
+
+  const selected = Array.from(modal.querySelectorAll('input[type="checkbox"]:checked'))
+    .map(cb => cb.value);
+
+  if (selected.length === 0) {
+    alert('Please select at least one file');
+    return;
+  }
+
+  if (persistTaskUpdate(window.currentDrawerTaskId, (t) => {
+    const fileIds = [...(t.fileIds || [])];
     selected.forEach(fileId => {
-      if (!task.fileIds.includes(fileId)) {
-        task.fileIds.push(fileId);
-      }
+      if (!fileIds.includes(fileId)) fileIds.push(fileId);
     });
-    
-    await save();
+    return { ...t, fileIds };
+  })) {
     renderTaskDrawerFiles(ctx);
-    document.body.removeChild(modal);
-  };
+    modal.remove();
+    return;
+  }
+
+  if (!task.fileIds) task.fileIds = [];
+  selected.forEach(fileId => {
+    if (!task.fileIds.includes(fileId)) {
+      task.fileIds.push(fileId);
+    }
+  });
+
+  await save();
+  renderTaskDrawerFiles(ctx);
+  modal.remove();
 }
 
 /**

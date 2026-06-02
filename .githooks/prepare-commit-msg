@@ -1,0 +1,5 @@
+#!/bin/sh
+# Strip Cursor Co-authored-by / Made-with trailers before the commit is created.
+ROOT="$(git rev-parse --show-toplevel)"
+MSG_FILE="$1"
+python3 "$ROOT/scripts/strip-cursor-commit-msg.py" < "$MSG_FILE" > "$MSG_FILE.tmp" && mv "$MSG_FILE.tmp" "$MSG_FILE"

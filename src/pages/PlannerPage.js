@@ -4,7 +4,6 @@
 import { renderPlannerHabits } from '../ui/renderPlannerHabits.js';
 import { renderPlannerRoutines } from '../ui/renderPlannerRoutines.js';
 import { parseTime, formatTime, localDateKey } from '../utils/dates.js';
-import { isExpandedRecurringEvent } from '../utils/ids.js';
 import { esc } from '../utils/strings.js';
 
 /**
@@ -379,14 +378,9 @@ async function renderWeeklyPlanner(containerEl, state, handlers) {
     if (d.toDateString() === plannerViewDate.toDateString()) col.classList.add('is-selected');
     const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
     col.innerHTML = `<div class="wch-name">${dayNames[d.getDay()]}</div><div class="wch-num">${d.getDate()}</div><div class="wch-dots">${dots}</div>`;
-    col.onclick = () => {
-      if (handlers?.setPlannerViewDate) {
-        handlers.setPlannerViewDate(new Date(d));
-      }
-      if (handlers?.setPlannerView) {
-        handlers.setPlannerView('daily', containerEl);
-      }
-    };
+    col.setAttribute('data-action', 'planner:pick-event-day');
+    col.setAttribute('data-date', localDateKey(d));
+    col.style.cursor = 'pointer';
     wch.appendChild(col);
   });
   
@@ -436,6 +430,10 @@ async function renderWeeklyPlanner(containerEl, state, handlers) {
       const categoryColors = {personal: 'yellow', lab: 'red', equipment: 'green', travel: 'muted', writing: 'blue', comp: 'green'};
       const color = categoryColors[e.category] || 'muted';
       ev.className = `w-event ${color}`;
+      ev.setAttribute('data-action', 'planner:open-week-event');
+      ev.setAttribute('data-date', localDateKey(d));
+      ev.setAttribute('data-event-id', String(e.id));
+      ev.style.cursor = 'pointer';
       const startMins = parseTime(e.startTime);
       // Calculate top position: startMins in pixels (1px per minute)
       // Hour cells are 60px high, so 1px per minute
@@ -465,24 +463,6 @@ async function renderWeeklyPlanner(containerEl, state, handlers) {
         <span style="font-size:7.5px;color:var(--text-dim);font-weight:400;white-space:nowrap;flex-shrink:0;">${timeStr}</span>
       </div>
       ${linkedInfo ? `<div class="w-event-time" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:2px;">${linkedInfo}</div>` : ''}`;
-      ev.onclick = evt => {
-        evt.stopPropagation();
-        if (handlers?.setPlannerViewDate) {
-          handlers.setPlannerViewDate(new Date(d));
-        }
-        if (handlers?.setPlannerView) {
-          handlers.setPlannerView('daily', containerEl);
-        }
-        const eventId = e.id;
-        if (!isExpandedRecurringEvent(e)) {
-          if (window.Petal?.features?.plannerOperations?.editEvent) {
-            const ctx = window.Petal?.handlers?.createPageContext?.() || {};
-            window.Petal.features.plannerOperations.editEvent(ctx, eventId);
-          } else if (typeof window.editEvent === 'function') {
-            window.editEvent(eventId);
-          }
-        }
-      };
       col.appendChild(ev);
     });
     
@@ -597,18 +577,11 @@ async function renderDailyPlanner(containerEl, state, handlers) {
     // Add ghost button for this hour
     const ghost = document.createElement('button');
     ghost.className = 't-ghost';
+    ghost.type = 'button';
     ghost.textContent = '+ Add block';
-    ghost.onclick = () => {
-      // Note: openAddEventModal is still a global function during migration
-      // This will be moved to handlers in a future refactor
-      if (typeof window.openAddEventModal === 'function') {
-        window.openAddEventModal(dateStr);
-        const startInput = document.getElementById('event-start-time');
-        if (startInput) startInput.value = formatTime(h * 60);
-        const endInput = document.getElementById('event-duration');
-        if (endInput) endInput.value = '60';
-      }
-    };
+    ghost.setAttribute('data-action', 'planner:open-add-event');
+    ghost.setAttribute('data-date', dateStr);
+    ghost.setAttribute('data-hour', String(h));
     slot.appendChild(ghost);
     
     row.appendChild(lbl);
@@ -645,6 +618,9 @@ async function renderDailyPlanner(containerEl, state, handlers) {
     const categoryColors = {personal: 'yellow', lab: 'red', equipment: 'green', travel: 'muted', writing: 'blue', comp: 'green'};
     const color = categoryColors[e.category] || 'muted';
     blk.className = `t-block ${color}`;
+    blk.setAttribute('data-action', 'planner:edit-event');
+    blk.setAttribute('data-event-id', String(e.id));
+    blk.style.cursor = 'pointer';
     blk.style.position = 'absolute';
     // Position at exact start time (S_HOUR is 0, so just use startMins)
     blk.style.top = (startMins * PIXELS_PER_MINUTE) + 'px';
@@ -681,14 +657,6 @@ async function renderDailyPlanner(containerEl, state, handlers) {
       <div class="t-block-footer">
         <span class="t-block-dur">${Math.round(e.durationMin / 60 * 10) / 10}h</span>
       </div>`;
-    blk.onclick = (evt) => {
-      evt.stopPropagation();
-      // Note: editEvent is still a global function during migration
-      // This will be moved to handlers in a future refactor
-      if (typeof window.editEvent === 'function') {
-        window.editEvent(e.id);
-      }
-    };
     timeline.appendChild(blk);
   });
   

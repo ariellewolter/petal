@@ -214,15 +214,8 @@ export async function initStateInternal() {
         pathEl.title = `Vault: ${vaultPath}\nData file: ${dataPath}\n\nClick to open in Finder`;
         pathEl.style.cursor = 'pointer';
         pathEl.style.display = 'block';
-        pathEl.onclick = async () => {
-          // Open vault folder in Finder/Explorer
-          if (window.electronAPI && window.electronAPI.openFile) {
-            await window.electronAPI.openFile(vaultPath);
-          } else {
-            // Fallback: show path
-            alert(`Vault location:\n${vaultPath}\n\nData file:\n${dataPath}`);
-          }
-        };
+        pathEl.setAttribute('data-action', 'vault:open-path');
+        pathEl.setAttribute('data-vault-path', vaultPath);
         // Right-click or Ctrl+Click to open diagnostics
         pathEl.oncontextmenu = (e) => {
           e.preventDefault();

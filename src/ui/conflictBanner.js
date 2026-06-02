@@ -47,28 +47,38 @@ export function showConflictBanner(conflicts, newerConflicts) {
   const targetPath = conflictEntryPath(targetConflict);
   if (targetPath) {
     const keepLocalBtn = document.createElement('button');
+    keepLocalBtn.type = 'button';
     keepLocalBtn.className = 'btn btn-sm';
     keepLocalBtn.textContent = 'Keep Local';
-    keepLocalBtn.onclick = () => resolveConflict('useMain', targetPath);
+    keepLocalBtn.setAttribute('data-action', 'conflict:resolve');
+    keepLocalBtn.setAttribute('data-mode', 'useMain');
+    keepLocalBtn.setAttribute('data-path', targetPath);
     actions.appendChild(keepLocalBtn);
 
     const useRemoteBtn = document.createElement('button');
+    useRemoteBtn.type = 'button';
     useRemoteBtn.className = 'btn btn-sm';
     useRemoteBtn.textContent = 'Use Remote';
-    useRemoteBtn.onclick = () => resolveConflict('useConflict', targetPath);
+    useRemoteBtn.setAttribute('data-action', 'conflict:resolve');
+    useRemoteBtn.setAttribute('data-mode', 'useConflict');
+    useRemoteBtn.setAttribute('data-path', targetPath);
     actions.appendChild(useRemoteBtn);
 
     const keepBothBtn = document.createElement('button');
+    keepBothBtn.type = 'button';
     keepBothBtn.className = 'btn btn-sm';
     keepBothBtn.textContent = 'Keep Both';
-    keepBothBtn.onclick = () => resolveConflict('keepBoth', targetPath);
+    keepBothBtn.setAttribute('data-action', 'conflict:resolve');
+    keepBothBtn.setAttribute('data-mode', 'keepBoth');
+    keepBothBtn.setAttribute('data-path', targetPath);
     actions.appendChild(keepBothBtn);
   }
 
   const dismissBtn = document.createElement('button');
+  dismissBtn.type = 'button';
   dismissBtn.className = 'btn btn-sm';
   dismissBtn.textContent = 'Dismiss';
-  dismissBtn.onclick = hideConflictBanner;
+  dismissBtn.setAttribute('data-action', 'conflict:dismiss');
   actions.appendChild(dismissBtn);
 
   banner.style.display = 'flex';

@@ -21,19 +21,15 @@ export async function updateVaultBadge() {
       el.title = `Vault: ${s.activeVaultPath}\nClick to open folder`;
       el.dataset.status = "ok";
       el.style.display = "inline-flex";
-      
-      // Add click handler to open folder
-      el.onclick = async () => {
-        if (s.activeVaultPath) {
-          await window.electronAPI.vaultOpenFolder(s.activeVaultPath);
-        }
-      };
+      el.setAttribute('data-action', 'vault:open-folder');
+      el.setAttribute('data-vault-path', s.activeVaultPath);
     } else {
       el.textContent = "Vault: Not resolved";
       el.title = "Vault not resolved";
       el.dataset.status = "bad";
       el.style.display = "inline-flex";
-      el.onclick = null;
+      el.removeAttribute('data-action');
+      el.removeAttribute('data-vault-path');
     }
   } catch (e) {
     console.error("Error updating vault badge:", e);
