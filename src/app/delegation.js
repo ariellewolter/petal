@@ -982,6 +982,30 @@ export function setupEventDelegation() {
       if (window.closeWfDetail) window.closeWfDetail();
       return;
     }
+    if (action === 'workflow:export-list') {
+      e.stopPropagation();
+      if (window.exportWorkflowList) window.exportWorkflowList();
+      return;
+    }
+    if (action === 'workflow:new-project') {
+      e.stopPropagation();
+      if (window.workflowNewProject) {
+        window.workflowNewProject();
+      } else if (window.routerSwitchView) {
+        window.routerSwitchView('projects');
+      }
+      return;
+    }
+    if (action === 'workflow:toggle-sort') {
+      e.stopPropagation();
+      if (window.toggleWorkflowListSort) window.toggleWorkflowListSort();
+      return;
+    }
+    if (action === 'workflow:toggle-group') {
+      e.stopPropagation();
+      if (window.toggleWorkflowListGroup) window.toggleWorkflowListGroup();
+      return;
+    }
     
     // Planner actions
     if (action === 'planner:nav') {
@@ -1180,6 +1204,17 @@ export function setupEventDelegation() {
         if (window.Petal?.pages?.cellLog?.deleteEntry) {
           window.Petal.pages.cellLog.deleteEntry(entryId);
         }
+      }
+      return;
+    }
+    if (action === 'cell-log:open-entry') {
+      e.stopPropagation();
+      const entryId = actionBtn.getAttribute('data-entry-id');
+      if (entryId && window.Petal?.pages?.cellLog?.openCellLogEntry) {
+        await window.Petal.pages.cellLog.openCellLogEntry(
+          entryId,
+          window.Petal?.handlers
+        );
       }
       return;
     }
@@ -1494,9 +1529,9 @@ export function setupEventDelegation() {
       e.stopPropagation();
       const ctx = window.Petal?.handlers?.createPageContext?.() || window.createPageContext?.() || {};
       if (window.Petal?.features?.projectOperations?.openAddCellLogEntry) {
-        window.Petal.features.projectOperations.openAddCellLogEntry(ctx);
+        await window.Petal.features.projectOperations.openAddCellLogEntry(ctx);
       } else if (window.openAddCellLogEntry) {
-        window.openAddCellLogEntry();
+        await window.openAddCellLogEntry();
       } else {
         console.warn('⚠️ log:add-cell: No handler available');
       }

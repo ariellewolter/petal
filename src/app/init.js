@@ -13,7 +13,21 @@ import { renderRegistry } from './renderRegistry.js';
 import * as CellLogPage from '../pages/CellLogPage.js';
 import { renderSettingsPage, renderSettingsFallback } from '../pages/SettingsPage.js';
 import { renderTodayPage } from '../pages/TodayPage.js';
-import { renderWorkflowPage, switchWorkflowView, toggleWorkflowFilter, filterWorkflowProjects, setWorkflowProjectFilter, toggleWorkflowExpand, buildWorkflowTimeline, toggleTlExpand, renderWorkflowList } from '../pages/WorkflowPage.js';
+import {
+  renderWorkflowPage,
+  switchWorkflowView,
+  toggleWorkflowFilter,
+  filterWorkflowProjects,
+  setWorkflowProjectFilter,
+  toggleWorkflowExpand,
+  buildWorkflowTimeline,
+  toggleTlExpand,
+  renderWorkflowList,
+  toggleWorkflowListSort,
+  toggleWorkflowListGroup,
+  exportWorkflowList,
+  workflowNewProject
+} from '../pages/WorkflowPage.js';
 import { renderPlannerPage } from '../pages/PlannerPage.js';
 import { renderProjectsPage } from '../pages/ProjectsPage.js';
 import { renderTasksPage } from '../pages/TasksPage.js';
@@ -454,6 +468,10 @@ function exposePageRenderers() {
   window.buildWorkflowTimeline = buildWorkflowTimeline;
   window.toggleTlExpand = toggleTlExpand;
   window.renderWorkflowList = renderWorkflowList;
+  window.toggleWorkflowListSort = toggleWorkflowListSort;
+  window.toggleWorkflowListGroup = toggleWorkflowListGroup;
+  window.exportWorkflowList = exportWorkflowList;
+  window.workflowNewProject = workflowNewProject;
   
   // Expose planner handlers to window for event delegation
   if (handlers?.navigatePlannerDate) {

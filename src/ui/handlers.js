@@ -418,13 +418,13 @@ export const handlers = {
   
   // Today view specific handlers
   switchView(view) {
-    if (window.switchView) {
-      window.switchView(view);
-    } else {
-      uiHandlers.setCurrentView(view);
-      if (window.render) {
-        window.render();
-      }
+    const switchFn = window.routerSwitchView || window.switchView;
+    if (switchFn) {
+      return switchFn(view);
+    }
+    uiHandlers.setCurrentView(view);
+    if (window.render) {
+      window.render();
     }
   },
   

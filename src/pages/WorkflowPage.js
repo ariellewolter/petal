@@ -92,6 +92,121 @@ export function filterWorkflowProjects() {
   renderWorkflowList();
 }
 
+function projectStatusRank(tasks, projects, project) {
+  const projectTasks = projectTasksFor(tasks, projects, project.id);
+  const openTasks = projectTasks.filter(t => !t.done);
+  if (openTasks.length > 0) return 0;
+  if (projectTasks.length > 0 && projectTasks.every(t => t.done)) return 2;
+  return 1;
+}
+
+function sortWorkflowProjects(activeProjects, tasks, projects) {
+  const sortMode = window.workflowListSort || 'deadline';
+  const sortAsc = window.workflowListSortAsc !== false;
+  const groupByStatus = !!window.workflowListGroupByStatus;
+
+  return [...activeProjects].sort((a, b) => {
+    if (groupByStatus) {
+      const statusDiff =
+        projectStatusRank(tasks, projects, a) - projectStatusRank(tasks, projects, b);
+      if (statusDiff !== 0) return statusDiff;
+    }
+    if (sortMode === 'name') {
+      const cmp = (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' });
+      return sortAsc ? cmp : -cmp;
+    }
+    const da = a.due ? new Date(a.due).getTime() : Number.POSITIVE_INFINITY;
+    const db = b.due ? new Date(b.due).getTime() : Number.POSITIVE_INFINITY;
+    const cmp = da - db;
+    return sortAsc ? cmp : -cmp;
+  });
+}
+
+function updateWorkflowListToolbarLabels() {
+  const sortBtn = document.getElementById('wf-sort-deadline-btn');
+  if (sortBtn) {
+    const mode = window.workflowListSort || 'deadline';
+    const asc = window.workflowListSortAsc !== false;
+    const arrow = asc ? '↑' : '↓';
+    const label = mode === 'name' ? 'Name' : 'Deadline';
+    sortBtn.textContent = `Sort: ${label} ${arrow}`;
+  }
+  const groupBtn = document.getElementById('wf-group-status-btn');
+  if (groupBtn) {
+    groupBtn.textContent = window.workflowListGroupByStatus
+      ? 'Group by: Status ✓'
+      : 'Group by: Status';
+    groupBtn.style.borderColor = window.workflowListGroupByStatus ? 'var(--rose-soft)' : '';
+    groupBtn.style.color = window.workflowListGroupByStatus ? 'var(--rose)' : '';
+  }
+}
+
+export function toggleWorkflowListSort() {
+  const mode = window.workflowListSort || 'deadline';
+  const asc = window.workflowListSortAsc !== false;
+  if (mode === 'deadline' && asc) {
+    window.workflowListSortAsc = false;
+  } else if (mode === 'deadline' && !asc) {
+    window.workflowListSort = 'name';
+    window.workflowListSortAsc = true;
+  } else if (mode === 'name' && asc) {
+    window.workflowListSortAsc = false;
+  } else {
+    window.workflowListSort = 'deadline';
+    window.workflowListSortAsc = true;
+  }
+  updateWorkflowListToolbarLabels();
+  renderWorkflowList();
+}
+
+export function toggleWorkflowListGroup() {
+  window.workflowListGroupByStatus = !window.workflowListGroupByStatus;
+  updateWorkflowListToolbarLabels();
+  renderWorkflowList();
+}
+
+export function exportWorkflowList() {
+  if (!window.Petal?.store) return;
+  const state = window.Petal.store.getState();
+  const { tasks, projects } = state;
+  let activeProjects = (projects || []).filter(p => !p.done);
+  const selectedProjectId = window.workflowSelectedProjectId;
+  if (selectedProjectId) {
+    activeProjects = activeProjects.filter(p => findProjectById([p], selectedProjectId));
+  }
+  activeProjects = sortWorkflowProjects(activeProjects, tasks, projects);
+
+  const payload = activeProjects.map(p => {
+    const projectTasks = projectTasksFor(tasks, projects, p.id);
+    return {
+      id: p.id,
+      name: p.name,
+      due: p.due,
+      done: p.done,
+      openTasks: projectTasks.filter(t => !t.done).length,
+      totalTasks: projectTasks.length
+    };
+  });
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `petal-workflow-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function workflowNewProject() {
+  const switchFn = window.routerSwitchView || window.switchView;
+  if (switchFn) {
+    await switchFn('projects');
+  }
+  if (window.toggleCreateProjectForm) {
+    window.toggleCreateProjectForm();
+  }
+}
+
 // ═══════════════════════════════════════════════════════════
 // MAIN RENDER FUNCTION
 // ═══════════════════════════════════════════════════════════
@@ -344,6 +459,9 @@ export function renderWorkflowList() {
     `;
   }
   
+  activeProjects = sortWorkflowProjects(activeProjects, tasks, projects);
+  updateWorkflowListToolbarLabels();
+
   // Render project rows
   const tbodyEl = document.getElementById('wfProjTbody');
   if (!tbodyEl) return;
@@ -646,5 +764,12 @@ if (typeof window !== 'undefined') {
   window.toggleTlExpand = toggleTlExpand;
   window.renderWorkflowList = renderWorkflowList;
   window.buildWorkflowTimeline = buildWorkflowTimeline;
-  window.workflowSelectedProjectId = null; // Initialize project filter
+  window.toggleWorkflowListSort = toggleWorkflowListSort;
+  window.toggleWorkflowListGroup = toggleWorkflowListGroup;
+  window.exportWorkflowList = exportWorkflowList;
+  window.workflowNewProject = workflowNewProject;
+  window.workflowSelectedProjectId = null;
+  if (typeof window.workflowListSort === 'undefined') window.workflowListSort = 'deadline';
+  if (typeof window.workflowListSortAsc === 'undefined') window.workflowListSortAsc = true;
+  if (typeof window.workflowListGroupByStatus === 'undefined') window.workflowListGroupByStatus = false;
 }

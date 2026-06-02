@@ -155,6 +155,46 @@ export function renderActiveProtocols(ctx, project, projectTasks) {
   contentEl.innerHTML = html;
 }
 
+function cellLogEntryTimestamp(entry) {
+  const raw = entry.dayDone || entry.date;
+  if (!raw) return 0;
+  const t = new Date(raw).getTime();
+  return Number.isNaN(t) ? 0 : t;
+}
+
+/** Merge legacy project.cellLog with global settings.cellLog.entries for this project. */
+function getProjectCellLogEntries(project, settings) {
+  const legacy = Array.isArray(project.cellLog) ? project.cellLog : [];
+  const global = Array.isArray(settings?.cellLog?.entries)
+    ? settings.cellLog.entries.filter(
+        e => e && String(e.projectId) === String(project.id)
+      )
+    : [];
+  const seen = new Set();
+  const merged = [];
+
+  for (const entry of legacy) {
+    const key = entry.id != null ? String(entry.id) : null;
+    if (key && seen.has(`legacy:${key}`)) continue;
+    if (key) seen.add(`legacy:${key}`);
+    merged.push({ ...entry, _source: 'legacy' });
+  }
+
+  for (const entry of global) {
+    const key = entry.id != null ? String(entry.id) : null;
+    if (key && seen.has(`global:${key}`)) continue;
+    if (key) seen.add(`global:${key}`);
+    merged.push({
+      ...entry,
+      date: entry.dayDone || entry.date,
+      line: entry.cellType || entry.line,
+      _source: 'global'
+    });
+  }
+
+  return merged.sort((a, b) => cellLogEntryTimestamp(b) - cellLogEntryTimestamp(a));
+}
+
 /**
  * Render Cell Log view
  */
@@ -171,7 +211,17 @@ export function renderCellLog(ctx, project) {
   const state = window.Petal?.store?.getState() || {};
   const settings = state.settings || {};
   const cellLogSettings = settings.cellLog || {};
-  const availableCellLines = Array.isArray(cellLogSettings.cellTypes) ? cellLogSettings.cellTypes : [];
+  const availableCellLinesSet = new Set(
+    Array.isArray(cellLogSettings.cellTypes) ? cellLogSettings.cellTypes : []
+  );
+  if (Array.isArray(cellLogSettings.entries)) {
+    cellLogSettings.entries.forEach(e => {
+      if (e?.cellType) availableCellLinesSet.add(e.cellType);
+    });
+  }
+  const availableCellLines = [...availableCellLinesSet].sort((a, b) =>
+    String(a).localeCompare(String(b))
+  );
   
   // Get linked cell lines for this project
   const linkedCellLines = Array.isArray(project.linkedCellLines) ? project.linkedCellLines : [];
@@ -213,31 +263,35 @@ export function renderCellLog(ctx, project) {
   }
   html += '</div>';
   
-  // Section 2: Recent Cell Log Entries
-  const cellLog = project.cellLog || [];
-  const recentEntries = [...cellLog]
-    .sort((a, b) => {
-      const dateA = a.date ? new Date(a.date).getTime() : 0;
-      const dateB = b.date ? new Date(b.date).getTime() : 0;
-      return dateB - dateA;
-    })
-    .slice(0, 10);
-  
+  // Section 2: Recent Cell Log Entries (global + legacy)
+  const recentEntries = getProjectCellLogEntries(project, settings).slice(0, 10);
+
   if (recentEntries.length > 0) {
     html += '<div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;">Recent Entries</div>';
     html += '<div style="display:flex;flex-direction:column;gap:8px;">';
     recentEntries.forEach(entry => {
-      const date = entry.date ? new Date(entry.date) : new Date();
-      const dateStr = date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' });
-      
+      const rawDate = entry.dayDone || entry.date;
+      const dateStr = rawDate
+        ? new Date(rawDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' })
+        : '—';
+      const lineLabel = entry.cellType || entry.line || 'Unknown';
+      const openEntry =
+        entry.id != null
+          ? `<button type="button" data-action="cell-log:open-entry" data-entry-id="${escAttrFunction(String(entry.id))}" style="margin-left:auto;background:none;border:none;color:var(--rose);font-size:11px;cursor:pointer;">Open</button>`
+          : '';
+
       html += '<div style="padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;">';
-      html += `<div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">${dateStr}</div>`;
+      html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">`;
+      html += `<div style="font-size:11px;color:var(--text-dim);">${dateStr}</div>`;
+      html += openEntry;
+      html += `</div>`;
       html += `<div style="font-size:13px;color:var(--text);">`;
-      if (entry.line) {
-        html += `<strong>${escFunction(entry.line)}</strong>`;
-        if (entry.passage) html += ` P${entry.passage}`;
-        if (entry.seededDensity) html += ` — ${entry.seededDensity}`;
-        if (entry.location) html += ` (${escFunction(entry.location)})`;
+      html += `<strong>${escFunction(lineLabel)}</strong>`;
+      if (entry.passage != null && entry.passage !== '') html += ` P${escFunction(String(entry.passage))}`;
+      if (entry.seededDensity) html += ` — ${escFunction(entry.seededDensity)}`;
+      if (entry.location) html += ` (${escFunction(entry.location)})`;
+      if (entry.taskPerformed) {
+        html += `<div style="margin-top:4px;font-size:12px;color:var(--text-dim);">${escFunction(entry.taskPerformed)}</div>`;
       }
       if (entry.notes) {
         html += `<div style="margin-top:4px;font-size:12px;color:var(--text-dim);">${escFunction(entry.notes)}</div>`;
@@ -246,8 +300,9 @@ export function renderCellLog(ctx, project) {
       html += '</div>';
     });
     html += '</div>';
+    html += `<div style="margin-top:10px;"><button type="button" data-action="nav:cell-log" style="background:none;border:none;color:var(--rose);font-size:11px;cursor:pointer;padding:0;">Open full Cell Log →</button></div>`;
   } else {
-    html += '<div style="text-align:center;padding:20px;color:var(--text-dim);font-size:12px;">No cell log entries yet. Add entries to track cell culture work.</div>';
+    html += '<div style="text-align:center;padding:20px;color:var(--text-dim);font-size:12px;">No cell log entries for this project yet. Use the Cell Log page or + Entry above.</div>';
   }
   
   contentEl.innerHTML = html;

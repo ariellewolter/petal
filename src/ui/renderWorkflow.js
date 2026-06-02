@@ -24,7 +24,8 @@ export async function renderWorkflow(containerEl, state, handlers) {
   handlers._state = state;
   
   // Update project filter dropdown
-  const filterEl = document.getElementById('workflow-project-filter');
+  const filterEl = document.getElementById('wf-project-filter') ||
+    document.getElementById('workflow-project-filter');
   if (filterEl) {
     const current = filterEl.value || activeProjectId;
     filterEl.innerHTML = '<option value="all">All Projects</option>';
@@ -307,7 +308,7 @@ function renderTaskCard(task, handlers, allTasksForBlocking = []) {
       const fileObj = typeof f === 'string' ? { abs_path: f, name: f.split(/[/\\]/).pop() } : f;
       const label = fileObj.label || fileObj.name || 'File';
       const icon = fileIcon(fileObj.abs_path || fileObj.onedrive_rel || fileObj.share_url || '');
-      return `<a href="#" class="file-chip" data-path="${escAttr(JSON.stringify(fileObj))}" style="font-size:9px;padding:2px 4px;background:var(--surface);border:1px solid var(--border);border-radius:4px;text-decoration:none;color:var(--text-dim);display:inline-block;margin-right:4px;">${icon} ${esc(label)}</a>`;
+      return `<a href="#" class="file-chip" data-action="file:open" data-path="${escAttr(JSON.stringify(fileObj))}" style="font-size:9px;padding:2px 4px;background:var(--surface);border:1px solid var(--border);border-radius:4px;text-decoration:none;color:var(--text-dim);display:inline-block;margin-right:4px;">${icon} ${esc(label)}</a>`;
     }).join('');
     filesHtml = `<div style="margin-top:6px;">${fileChips}</div>`;
   }

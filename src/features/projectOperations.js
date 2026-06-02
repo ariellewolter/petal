@@ -1620,46 +1620,31 @@ export async function addFileToArtifact(ctx, artifactId) {
  * Add cell log entry (prompt-based)
  */
 export async function openAddCellLogEntry(ctx) {
-  const { projects, save, selectedProjectId: selectedProjectIdValue, renderCellLog: renderCellLogFn } = ctx;
-  
-  const selectedProjectId = selectedProjectIdValue || (typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null);
+  const selectedProjectId =
+    ctx?.selectedProjectId ||
+    (typeof window.selectedProjectId !== 'undefined' ? window.selectedProjectId : null);
+
   if (!selectedProjectId) {
     alert('Please select a project first');
     return;
   }
-  
-  const project = findProjectById(projects, selectedProjectId);
-  if (!project) return;
-  
-  const line = prompt('Cell line (e.g., MCF10A):');
-  if (!line || !line.trim()) return;
-  
-  const passage = prompt('Passage number (optional):') || '';
-  const seededDensity = prompt('Seeded density (optional, e.g., 50k):') || '';
-  const location = prompt('Location (optional, e.g., T75 flask):') || '';
-  const notes = prompt('Notes (optional):') || '';
-  
-  if (!project.cellLog) {
-    project.cellLog = [];
+
+  const switchFn = window.routerSwitchView || window.switchView;
+  if (switchFn) {
+    await switchFn('cell-log');
   }
-  
-  project.cellLog.push({
-    id: Date.now(),
-    date: new Date().toISOString(),
-    line: line.trim(),
-    passage: passage.trim() || null,
-    seededDensity: seededDensity.trim() || null,
-    location: location.trim() || null,
-    notes: notes.trim() || null
-  });
-  
-  if (save) await save();
-  
-  if (renderCellLogFn) {
-    renderCellLogFn(project);
-  } else if (typeof window.renderCellLog === 'function') {
-    window.renderCellLog(project);
+
+  const selectEl = document.getElementById('cell-log-project-select');
+  if (selectEl) {
+    selectEl.value = String(selectedProjectId);
   }
+
+  const dateEl = document.getElementById('cell-log-date');
+  if (dateEl && !dateEl.value) {
+    dateEl.value = new Date().toISOString().split('T')[0];
+  }
+
+  document.getElementById('cell-log-task')?.focus();
 }
 
 /**
@@ -1672,6 +1657,11 @@ function getAvailableCellLines(ctx) {
   // Get from global cell log settings
   if (settings?.cellLog?.cellTypes) {
     settings.cellLog.cellTypes.forEach(type => cellLines.add(type));
+  }
+  if (settings?.cellLog?.entries) {
+    settings.cellLog.entries.forEach(entry => {
+      if (entry?.cellType) cellLines.add(entry.cellType);
+    });
   }
   
   // Get from all project cell logs
@@ -2370,7 +2360,10 @@ export async function addCellLineToProject(projectId) {
   if (!selectEl) return;
   
   const cellLine = selectEl.value.trim();
-  if (!cellLine) return;
+  if (!cellLine) {
+    alert('Select a cell line from the dropdown first.');
+    return;
+  }
   
   const linkedCellLines = Array.isArray(project.linkedCellLines) ? project.linkedCellLines : [];
   

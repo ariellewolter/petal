@@ -854,8 +854,8 @@
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;">
-        <button class="wf-hbtn" style="background:var(--bg2);border:1px solid var(--border2);color:var(--text-dim);font-family:'Jost',sans-serif;font-size:11px;padding:6px 14px;border-radius:6px;cursor:pointer;transition:all .15s;">↓ Export</button>
-        <button class="wf-hbtn wf-hbtn-primary" style="background:var(--rose-pale);border:1px solid var(--rose-soft);color:var(--rose);font-family:'Jost',sans-serif;font-size:11px;padding:6px 14px;border-radius:6px;cursor:pointer;transition:all .15s;">+ New Project</button>
+        <button type="button" class="wf-hbtn" data-action="workflow:export-list" style="background:var(--bg2);border:1px solid var(--border2);color:var(--text-dim);font-family:'Jost',sans-serif;font-size:11px;padding:6px 14px;border-radius:6px;cursor:pointer;transition:all .15s;">↓ Export</button>
+        <button type="button" class="wf-hbtn wf-hbtn-primary" data-action="workflow:new-project" style="background:var(--rose-pale);border:1px solid var(--rose-soft);color:var(--rose);font-family:'Jost',sans-serif;font-size:11px;padding:6px 14px;border-radius:6px;cursor:pointer;transition:all .15s;">+ New Project</button>
       </div>
     </div>
 
@@ -876,8 +876,8 @@
               <span style="color:var(--text-light);font-size:12px">⌕</span>
               <input type="text" id="wfSearchInput" placeholder="Search projects..." style="background:none;border:none;outline:none;font-family:'Jost',sans-serif;font-size:11px;color:var(--text);width:180px;" oninput="filterWorkflowProjects()">
             </div>
-            <button class="wf-sort-btn" style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:5px;border:1px solid var(--border);font-size:10px;color:var(--text-dim);cursor:pointer;transition:all .15s;background:transparent;font-family:'Jost',sans-serif;">Sort: Deadline ↑</button>
-            <button class="wf-sort-btn" style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:5px;border:1px solid var(--border);font-size:10px;color:var(--text-dim);cursor:pointer;transition:all .15s;background:transparent;font-family:'Jost',sans-serif;">Group by: Status</button>
+            <button type="button" class="wf-sort-btn" id="wf-sort-deadline-btn" data-action="workflow:toggle-sort" style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:5px;border:1px solid var(--border);font-size:10px;color:var(--text-dim);cursor:pointer;transition:all .15s;background:transparent;font-family:'Jost',sans-serif;">Sort: Deadline ↑</button>
+            <button type="button" class="wf-sort-btn" id="wf-group-status-btn" data-action="workflow:toggle-group" style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:5px;border:1px solid var(--border);font-size:10px;color:var(--text-dim);cursor:pointer;transition:all .15s;background:transparent;font-family:'Jost',sans-serif;">Group by: Status</button>
           </div>
         </div>
 

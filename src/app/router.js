@@ -4,6 +4,25 @@
 
 import { PAGES, getPageRenderer, hasPageRenderer } from './pages.js';
 import { resetGlobalScroll, resetAllViews, resetScroll } from '../utils/scroll.js';
+import { cleanupFilesPage } from '../pages/FilesPage.js';
+import { cleanupProjectsPage } from '../pages/ProjectsPage.js';
+import { cleanupThreeDPrintPage } from '../pages/ThreeDPrintPage.js';
+
+function cleanupViewBindings(viewName) {
+  switch (viewName) {
+    case 'files':
+      cleanupFilesPage();
+      break;
+    case 'projects':
+      cleanupProjectsPage();
+      break;
+    case '3d-print':
+      cleanupThreeDPrintPage();
+      break;
+    default:
+      break;
+  }
+}
 
 // Re-entry guard: prevent multiple simultaneous router calls
 let routerInProgress = false;
@@ -51,6 +70,10 @@ export async function switchView(viewName, options = {}) {
   // BUT: Allow force re-render if explicitly requested (for data updates)
   const force = options.force === true;
   const currentView = window.Petal?.store?.getState()?.currentView;
+
+  if (currentView && currentView !== viewName) {
+    cleanupViewBindings(currentView);
+  }
   
   // If already on this view and not forcing, skip (unless force is true)
   if (!force && viewName === currentView && !routerInProgress) {
