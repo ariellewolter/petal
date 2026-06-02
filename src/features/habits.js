@@ -39,6 +39,7 @@ export function addHabit({ name, cadence, daysOfWeek }) {
  * @param {Date} [date] - Date to check off (defaults to today)
  */
 export function toggleHabit(habitId, date = new Date()) {
+  const d = date instanceof Date && !isNaN(date.getTime()) ? date : new Date(date);
   const state = appStore.getState();
   const habit = (state.habits || []).find(h => h.id === habitId && !h.archived);
   
@@ -47,7 +48,7 @@ export function toggleHabit(habitId, date = new Date()) {
     return;
   }
   
-  const periodKey = getPeriodKey(habit.cadence, date);
+  const periodKey = getPeriodKey(habit.cadence, d);
   const checkinKey = `${periodKey}:${habitId}`;
   const habitCheckins = { ...(state.habitCheckins || {}) };
   

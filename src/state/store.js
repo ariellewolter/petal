@@ -369,11 +369,12 @@ class AppStore {
     const seenTaskIds = new Set();
     const uniqueTasks = tasks.filter(task => {
       if (!task || !task.id) return false;
-      if (seenTaskIds.has(task.id)) {
+      const idKey = String(task.id);
+      if (seenTaskIds.has(idKey)) {
         console.warn(`⚠️ Duplicate task detected (ID: ${task.id}, title: "${task.title}") - keeping first occurrence`);
         return false;
       }
-      seenTaskIds.add(task.id);
+      seenTaskIds.add(idKey);
       return true;
     });
     if (uniqueTasks.length !== tasks.length) {
@@ -516,7 +517,23 @@ class AppStore {
       routineCheckins: this._state.routineCheckins && typeof this._state.routineCheckins === 'object' ? this._state.routineCheckins : {},
       files: Array.isArray(this._state.files) ? this._state.files : [],
       workflow: this._state.workflow || getDefaultWorkflow(),
-      prints3d: Array.isArray(this._state.prints3d) ? this._state.prints3d : []
+      prints3d: Array.isArray(this._state.prints3d) ? this._state.prints3d : [],
+      currentView: this._state.currentView || 'today',
+      currentSort: this._state.currentSort || 'all',
+      currentFilter: this._state.currentFilter || 'all',
+      currentProjFilter: this._state.currentProjFilter || 'all',
+      selectedColor: this._state.selectedColor ?? 1,
+      taskMode: this._state.taskMode || 'list',
+      boardProjectFilter: this._state.boardProjectFilter || 'all',
+      searchQuery: this._state.searchQuery || '',
+      currentFileView: this._state.currentFileView || 'all',
+      currentFileProjectFilter: this._state.currentFileProjectFilter || 'all',
+      selectedProjectId: this._state.selectedProjectId ?? null,
+      plannerViewDate: this._state.plannerViewDate ?? null,
+      currentPlannerView: this._state.currentPlannerView || 'daily',
+      plannerWeekOffset: this._state.plannerWeekOffset ?? 0,
+      plannerCalYear: this._state.plannerCalYear ?? null,
+      plannerCalMonth: this._state.plannerCalMonth ?? null
       // Phase 3 Fix: fileRegistry and fileHistory are derived data, recomputed on load
       // Excluding them prevents noisy saves and reduces file size
       // fileRegistry: this._state.fileRegistry,

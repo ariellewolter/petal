@@ -53,6 +53,7 @@ export function renderPlannerRoutines(containerEl, state, viewDate = new Date())
       const routineIdEsc = esc(routine.id);
       const routineNameEsc = esc(routine.name);
       const hasTimeAndDuration = routine.timeOfDay && routine.durationMin;
+      const viewDateIso = today.toISOString();
       
       html += `
         <div class="routine-item routine-draggable" draggable="true" 
@@ -61,12 +62,12 @@ export function renderPlannerRoutines(containerEl, state, viewDate = new Date())
              data-routine-time="${routine.timeOfDay || ''}"
              data-routine-duration="${routine.durationMin || ''}"
              style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:4px;transition:background 0.13s;cursor:grab;" 
-             onclick="if(!event.target.closest('input') && !event.target.closest('button')){if(window.Petal?.features?.routines?.toggleRoutine){window.Petal.features.routines.toggleRoutine('${routineIdEsc}');if(typeof buildPlannerSidebar==='function'){buildPlannerSidebar();}}}"
+             onclick="if(!event.target.closest('input') && !event.target.closest('button')){if(window.Petal?.features?.routines?.toggleRoutine){window.Petal.features.routines.toggleRoutine('${routineIdEsc}', '${viewDateIso}');if(typeof buildPlannerSidebar==='function'){buildPlannerSidebar();}}}"
              ondragstart="handleRoutineDragStart(event)"
              ondragend="handleRoutineDragEnd(event)">
           <input type="checkbox" ${checked ? 'checked' : ''} 
                  style="cursor:pointer;width:16px;height:16px;accent-color:var(--rose);pointer-events:auto;"
-                 onclick="event.stopPropagation();if(window.Petal?.features?.routines?.toggleRoutine){window.Petal.features.routines.toggleRoutine('${routineIdEsc}');if(typeof buildPlannerSidebar==='function'){buildPlannerSidebar();}}"
+                 onclick="event.stopPropagation();if(window.Petal?.features?.routines?.toggleRoutine){window.Petal.features.routines.toggleRoutine('${routineIdEsc}', '${viewDateIso}');if(typeof buildPlannerSidebar==='function'){buildPlannerSidebar();}}"
                  ondragstart="event.stopPropagation();return false;"
                  draggable="false">
           <div style="flex:1;min-width:0;">

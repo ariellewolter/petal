@@ -4,7 +4,7 @@
 
 import { esc } from '../utils/strings.js';
 import { projectNameById } from '../utils/projectHelpers.js';
-import { today, parseDate } from '../utils/dates.js';
+import { today, parseDate, localDateKey } from '../utils/dates.js';
 import { getAllTasks } from '../domain/models.js';
 
 /**
@@ -21,7 +21,7 @@ export function renderToday(containerEl, state, handlers) {
   const fullDate = now.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
 
   // --- tasks for today ---
-  const todayKey = now.toISOString().slice(0, 10); // YYYY-MM-DD
+  const todayKey = localDateKey(now);
   const allTasks = getAllTasks(state.tasks || [], state.projects || []);
 
   const tasksToday = allTasks.filter(t => {

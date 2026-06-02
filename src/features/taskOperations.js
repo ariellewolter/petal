@@ -38,25 +38,12 @@ function createTaskContext(overrides = {}) {
  */
 function updateStoreSafely(updates, fallbackFn) {
   if (window.Petal?.store) {
-    const state = window.Petal.store.getState();
-    // Merge updates with current state to preserve all fields
-    // Phase 3 Fix: openProjects is Array in store, not Set
-    const mergedUpdates = {
-      ...state,
-      ...updates
-    };
-    // Normalize openProjects if it's being updated
-    if ('openProjects' in updates) {
-      if (updates.openProjects instanceof Set) {
-        mergedUpdates.openProjects = Array.from(updates.openProjects);
-      } else if (!Array.isArray(updates.openProjects)) {
-        mergedUpdates.openProjects = state.openProjects || [];
-      }
+    const patch = { ...updates };
+    if ('openProjects' in patch && patch.openProjects instanceof Set) {
+      patch.openProjects = Array.from(patch.openProjects);
     }
-    window.Petal.store.setState(mergedUpdates);
-    // Store auto-saves and auto-renders via subscriptions
+    window.Petal.store.setState(patch);
   } else if (fallbackFn) {
-    // Fallback: old pattern
     fallbackFn();
   }
 }
@@ -349,6 +336,30 @@ export async function toggleTask(ctx, id) {
   
   const t = findActiveTask(tasks, id);
   if (!t) {
+    // Legacy project.subtasks (shown on Today via getAllTasks)
+    if (window.Petal?.store) {
+      const state = window.Petal.store.getState();
+      let found = false;
+      const updatedProjects = (state.projects || []).map(project => {
+        const sub = (project.subtasks || []).find(
+          s => s.id === id || String(s.id) === String(id)
+        );
+        if (!sub) return project;
+        found = true;
+        return {
+          ...project,
+          subtasks: (project.subtasks || []).map(s =>
+            s.id === sub.id || String(s.id) === String(sub.id)
+              ? { ...s, done: !s.done }
+              : s
+          )
+        };
+      });
+      if (found) {
+        updateStoreSafely({ projects: updatedProjects });
+        return;
+      }
+    }
     console.warn('Task not found for ID:', id, {
       tasksCount: tasks?.length,
       taskIds: tasks?.slice(0, 5).map(t => t?.id),

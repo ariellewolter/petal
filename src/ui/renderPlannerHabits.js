@@ -45,18 +45,19 @@ export function renderPlannerHabits(containerEl, state, viewDate = new Date()) {
       const checked = isHabitChecked(habit.id, today);
       const habitIdEsc = esc(habit.id);
       const habitNameEsc = esc(habit.name);
+      const viewDateIso = today.toISOString();
       
       html += `
         <div class="habit-item habit-draggable" draggable="true"
              data-habit-id="${habitIdEsc}"
              data-habit-name="${habitNameEsc}"
              style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:4px;transition:background 0.13s;cursor:grab;" 
-             onclick="if(!event.target.closest('input') && !event.target.closest('button')){if(window.Petal?.features?.habits?.toggleHabit){window.Petal.features.habits.toggleHabit('${habitIdEsc}');if(typeof buildPlannerSidebar==='function'){buildPlannerSidebar();}}}"
+             onclick="if(!event.target.closest('input') && !event.target.closest('button')){if(window.Petal?.features?.habits?.toggleHabit){window.Petal.features.habits.toggleHabit('${habitIdEsc}', '${viewDateIso}');if(typeof buildPlannerSidebar==='function'){buildPlannerSidebar();}}}"
              ondragstart="handleHabitDragStart(event)"
              ondragend="handleHabitDragEnd(event)">
           <input type="checkbox" ${checked ? 'checked' : ''} 
                  style="cursor:pointer;width:16px;height:16px;accent-color:var(--rose);pointer-events:auto;"
-                 onclick="event.stopPropagation();if(window.Petal?.features?.habits?.toggleHabit){window.Petal.features.habits.toggleHabit('${habitIdEsc}');if(typeof buildPlannerSidebar==='function'){buildPlannerSidebar();}}"
+                 onclick="event.stopPropagation();if(window.Petal?.features?.habits?.toggleHabit){window.Petal.features.habits.toggleHabit('${habitIdEsc}', '${viewDateIso}');if(typeof buildPlannerSidebar==='function'){buildPlannerSidebar();}}"
                  ondragstart="event.stopPropagation();return false;"
                  draggable="false">
           <span style="font-size:12px;color:var(--text);flex:1;${checked ? 'text-decoration:line-through;opacity:0.6;' : ''}">${esc(habit.name)}</span>

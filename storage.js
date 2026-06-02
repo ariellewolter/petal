@@ -60,6 +60,26 @@ function mergeSettingsForImport(current = {}, imported = {}) {
   return merged;
 }
 
+const IMPORT_UI_KEYS = [
+  'currentView', 'currentSort', 'currentFilter', 'currentProjFilter',
+  'selectedColor', 'taskMode', 'boardProjectFilter', 'searchQuery',
+  'currentFileView', 'currentFileProjectFilter', 'selectedProjectId',
+  'plannerViewDate', 'currentPlannerView', 'plannerWeekOffset',
+  'plannerCalYear', 'plannerCalMonth'
+];
+
+function pickImportedUiFields(imported, current) {
+  const ui = {};
+  for (const key of IMPORT_UI_KEYS) {
+    if (imported[key] !== undefined && imported[key] !== null) {
+      ui[key] = imported[key];
+    } else if (current && current[key] !== undefined && current[key] !== null) {
+      ui[key] = current[key];
+    }
+  }
+  return ui;
+}
+
 class StorageAdapter {
   constructor() {
     this.listeners = [];
@@ -146,6 +166,7 @@ class StorageAdapter {
     } else {
       // Browser: load from localStorage
       try {
+        const ui = JSON.parse(localStorage.getItem('petal-ui') || '{}');
         return {
           tasks: JSON.parse(localStorage.getItem('petal-tasks') || '[]'),
           projects: JSON.parse(localStorage.getItem('petal-projects') || '[]'),
@@ -160,7 +181,9 @@ class StorageAdapter {
           habitCheckins: JSON.parse(localStorage.getItem('petal-habit-checkins') || '{}'),
           routines: JSON.parse(localStorage.getItem('petal-routines') || '[]'),
           routineCheckins: JSON.parse(localStorage.getItem('petal-routine-checkins') || '{}'),
-          workflow: JSON.parse(localStorage.getItem('petal-workflow') || '{}')
+          workflow: JSON.parse(localStorage.getItem('petal-workflow') || '{}'),
+          prints3d: JSON.parse(localStorage.getItem('petal-prints3d') || '[]'),
+          ...ui
         };
       } catch (e) {
         console.error('Error loading state:', e);
@@ -178,7 +201,8 @@ class StorageAdapter {
           habitCheckins: {},
           routines: [],
           routineCheckins: {},
-          workflow: {}
+          workflow: {},
+          prints3d: []
         };
       }
     }
@@ -215,8 +239,23 @@ class StorageAdapter {
           files: state.files || [], // ✅ Persisted files list
           workflow: state.workflow || {},
           prints3d: state.prints3d || [],
+          currentView: state.currentView || 'today',
+          currentSort: state.currentSort || 'all',
+          currentFilter: state.currentFilter || 'all',
+          currentProjFilter: state.currentProjFilter || 'all',
+          selectedColor: state.selectedColor ?? 1,
+          taskMode: state.taskMode || 'list',
+          boardProjectFilter: state.boardProjectFilter || 'all',
+          searchQuery: state.searchQuery || '',
+          currentFileView: state.currentFileView || 'all',
+          currentFileProjectFilter: state.currentFileProjectFilter || 'all',
+          selectedProjectId: state.selectedProjectId ?? null,
+          plannerViewDate: state.plannerViewDate ?? null,
+          currentPlannerView: state.currentPlannerView || 'daily',
+          plannerWeekOffset: state.plannerWeekOffset ?? 0,
+          plannerCalYear: state.plannerCalYear ?? null,
+          plannerCalMonth: state.plannerCalMonth ?? null,
           // Note: fileHistory and fileRegistry are derived data, but including for backward compatibility
-          // They will be excluded from exportState() but may be in state object
           fileHistory: state.fileHistory || {},
           fileRegistry: state.fileRegistry || {}
         });
@@ -259,6 +298,25 @@ class StorageAdapter {
         localStorage.setItem('petal-routines', JSON.stringify(state.routines || []));
         localStorage.setItem('petal-routine-checkins', JSON.stringify(state.routineCheckins || {}));
         localStorage.setItem('petal-workflow', JSON.stringify(state.workflow || {}));
+        localStorage.setItem('petal-prints3d', JSON.stringify(state.prints3d || []));
+        localStorage.setItem('petal-ui', JSON.stringify({
+          currentView: state.currentView,
+          currentSort: state.currentSort,
+          currentFilter: state.currentFilter,
+          currentProjFilter: state.currentProjFilter,
+          selectedColor: state.selectedColor,
+          taskMode: state.taskMode,
+          boardProjectFilter: state.boardProjectFilter,
+          searchQuery: state.searchQuery,
+          currentFileView: state.currentFileView,
+          currentFileProjectFilter: state.currentFileProjectFilter,
+          selectedProjectId: state.selectedProjectId,
+          plannerViewDate: state.plannerViewDate,
+          currentPlannerView: state.currentPlannerView,
+          plannerWeekOffset: state.plannerWeekOffset,
+          plannerCalYear: state.plannerCalYear,
+          plannerCalMonth: state.plannerCalMonth
+        }));
         
         // Notify listeners of changes
         this.listeners.forEach(cb => {
@@ -337,7 +395,8 @@ class StorageAdapter {
           routineCheckins: { ...(current.routineCheckins || {}), ...(imported.routineCheckins || {}) },
           workflow: { ...(current.workflow || {}), ...(imported.workflow || {}) },
           fileHistory: { ...(current.fileHistory || {}), ...(imported.fileHistory || {}) },
-          fileRegistry: { ...(current.fileRegistry || {}), ...(imported.fileRegistry || {}) }
+          fileRegistry: { ...(current.fileRegistry || {}), ...(imported.fileRegistry || {}) },
+          ...pickImportedUiFields(imported, current)
         };
       } else {
         // Replace: use imported data
@@ -357,7 +416,8 @@ class StorageAdapter {
           workflow: imported.workflow || {},
           prints3d: imported.prints3d || [],
           fileHistory: imported.fileHistory || {},
-          fileRegistry: imported.fileRegistry || {}
+          fileRegistry: imported.fileRegistry || {},
+          ...pickImportedUiFields(imported, null)
         };
       }
     } catch (e) {

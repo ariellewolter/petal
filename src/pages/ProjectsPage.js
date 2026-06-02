@@ -197,15 +197,20 @@ function bind(container, features) {
     }
     
     if (action === 'delete' || action === 'delete-task') {
-      if (taskId && features?.deleteHandlers?.deleteTask) {
-        features.deleteHandlers.deleteTask({ 
-          taskId: String(taskId),
-          projectId: projectId ? String(projectId) : undefined,
-          isSubtask: isSubtask,
-          parentTaskId: parentTaskId ? String(parentTaskId) : undefined
-        });
-      } else if (taskId && window.Petal?.features?.taskOperations?.deleteTask) {
-        window.Petal.features.taskOperations.deleteTask(
+      if (window.handleDeleteTaskAction) {
+        window.handleDeleteTaskAction(e, btn);
+      } else if (taskId && features?.deleteHandlers?.confirmDeleteTask) {
+        const state = window.Petal?.store?.getState() || {};
+        const ctx = {
+          store: window.Petal?.store,
+          state,
+          tasks: state.tasks || [],
+          projects: state.projects || [],
+          save: window.Petal?.handlers?.save || window.save,
+          render: window.Petal?.handlers?.render || window.render
+        };
+        features.deleteHandlers.confirmDeleteTask(
+          ctx,
           String(taskId),
           isSubtask,
           projectId ? String(projectId) : null,
@@ -323,8 +328,9 @@ export function renderProjectsPage(container, state, features) {
       <span class="projects-header-name">Projects</span>
     </div>
     <div class="projects-header-right">
-      <div style="display:flex;align-items:center;gap:6px">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
         <span class="projects-header-status">${activeProjects.length} active${activeProjects.length !== 1 ? '' : ''} · ${doneProjects.length} completed</span>
+        <button type="button" class="btn-export" data-action="review:weekly" style="background:var(--sage-pale);color:var(--sage);border:1px solid var(--sage);padding:8px 14px;font-size:11px;cursor:pointer;border-radius:8px;">📋 Weekly Review</button>
       </div>
     </div>
   `;

@@ -61,8 +61,7 @@ export function calculateFloatOrder(prevTask, nextTask) {
  * Phase 3 Fix: Handles tasks with IDs, subtasks with IDs, and anonymous tasks
  */
 function stableTaskKey(t) {
-  // Prefer explicit ids
-  if (t.id != null) return `task:${t.id}`;
+  if (t.id != null) return `task:${String(t.id)}`;
   if (t.taskId != null) return `task:${t.taskId}`;
   
   // Fallback for subtasks without ids (use project + title as composite key)
@@ -104,7 +103,9 @@ export function getAllTasks(tasks, projects) {
   // Filter out deleted tasks first
   const activeTasks = (tasks || []).filter(t => !t.deletedAt);
   const allTasks = [...activeTasks];
-  const taskIds = new Set(activeTasks.map(t => t.id).filter(id => id != null));
+  const taskIds = new Set(
+    activeTasks.map(t => t.id).filter(id => id != null).map(id => String(id))
+  );
   
   // Add project subtasks, but only if they're not already in tasks array
   (projects || []).forEach(p => {
@@ -114,7 +115,7 @@ export function getAllTasks(tasks, projects) {
       
       // Skip if this subtask is already in the tasks array (by ID)
       // This prevents double-counting when subtasks have been migrated to tasks
-      if (st.id && taskIds.has(st.id)) {
+      if (st.id != null && taskIds.has(String(st.id))) {
         return; // Already in tasks array, skip
       }
       

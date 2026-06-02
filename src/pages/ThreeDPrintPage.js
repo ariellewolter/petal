@@ -2,10 +2,9 @@
 // 3D Printing view page with event delegation
 // Replaces fetch/inject pattern with proper module
 
-import { escapeHtml } from '../utils/strings.js';
+import { escapeHtml, escAttr } from '../utils/strings.js';
 
-// State
-let prints3d = [];
+// State (prints3d always read from store — no module cache)
 let currentPrintTab = 'queue';
 let selectedPrintId = null;
 let stylesInjected = false;
@@ -328,19 +327,24 @@ function getModalTemplate() {
   `;
 }
 
-/**
- * Initialize prints3d from store
- */
-function init3DPrints() {
-  if (window.Petal?.store) {
-    const state = window.Petal.store.getState();
-    prints3d = state.prints3d || [];
-    // Ensure prints3d exists in store if it doesn't
-    if (!state.prints3d) {
-      window.Petal.store.setState({ prints3d: [] });
-    }
-  } else {
-    prints3d = [];
+function printIdsMatch(a, b) {
+  if (a == null || b == null) return false;
+  if (String(a) === String(b) || a === b) return true;
+  const aNum = Number(a);
+  const bNum = Number(b);
+  return !isNaN(aNum) && !isNaN(bNum) && aNum === bNum;
+}
+
+function getPrints3d() {
+  const state = window.Petal?.store?.getState?.();
+  return Array.isArray(state?.prints3d) ? state.prints3d : [];
+}
+
+async function setPrints3d(next) {
+  if (!window.Petal?.store) return;
+  window.Petal.store.setState({ prints3d: next });
+  if (window.Petal?.persistence?.flush) {
+    await window.Petal.persistence.flush();
   }
 }
 
@@ -348,7 +352,7 @@ function init3DPrints() {
  * Render 3D prints
  */
 function render3DPrints() {
-  init3DPrints();
+  const prints3d = getPrints3d();
   const grid = document.getElementById('print3d-grid');
   if (!grid) return;
   
@@ -464,7 +468,7 @@ function render3DPrints() {
         <div class="print3d-card-footer">
           <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
             ${print.url ? `<a class="print3d-file-link" href="${escapeHtml(print.url)}" target="_blank" onclick="event.stopPropagation()">🔗 ${escapeHtml((print.urlDisplay || print.url).substring(0, 30))}${(print.urlDisplay || print.url).length > 30 ? '…' : ''}</a>` : ''}
-            ${fileName ? `<span class="print3d-file-link" onclick="event.stopPropagation()">📁 ${escapeHtml(fileName)}</span>` : ''}
+            ${fileName && fileLink ? `<span class="print3d-file-link" data-action="open-file" data-file="${escAttr(JSON.stringify(fileLink))}" title="Open linked file">📁 ${escapeHtml(fileName)}</span>` : ''}
           </div>
           <div class="print3d-card-date">${print.dateAdded || ''}</div>
         </div>
@@ -487,7 +491,7 @@ function switchPrintTab(tab) {
  * Open print detail panel
  */
 function openPrintDetail(id) {
-  const print = prints3d.find(p => p.id === id);
+  const print = getPrints3d().find(p => printIdsMatch(p.id, id));
   if (!print) return;
   
   selectedPrintId = id;
@@ -606,11 +610,18 @@ function closePrintDetail() {
 /**
  * Open print file
  */
-function openPrintFile(fileJson) {
+async function openPrintFile(fileJson) {
   try {
-    const file = JSON.parse(fileJson);
-    if (window.electronAPI && window.electronAPI.openFile) {
-      window.electronAPI.openFile(file);
+    const file = typeof fileJson === 'string' ? JSON.parse(fileJson) : fileJson;
+    const openFileFn =
+      window.Petal?.features?.fileManagement?.openFile || window.openFile;
+    if (openFileFn) {
+      await openFileFn(file);
+      return;
+    }
+    if (window.electronAPI?.openFile) {
+      const path = file.abs_path || file.path || file;
+      await window.electronAPI.openFile(path);
     } else if (file.share_url) {
       window.open(file.share_url, '_blank');
     } else if (file.abs_path) {
@@ -726,15 +737,7 @@ async function addPrint() {
     icon: '🖨'
   };
   
-  prints3d.push(print);
-  
-  // Save to store
-  if (window.Petal?.store) {
-    window.Petal.store.setState({ prints3d });
-    if (window.Petal?.persistence?.flush) {
-      await window.Petal.persistence.flush();
-    }
-  }
+  await setPrints3d([...getPrints3d(), print]);
   
   closePrintModal();
   render3DPrints();
@@ -775,10 +778,11 @@ function bind(container) {
         closePrintModal();
         break;
         
-      case 'open-detail':
-        const printId = parseInt(btn.dataset.printId);
-        if (printId) openPrintDetail(printId);
+      case 'open-detail': {
+        const printId = btn.dataset.printId;
+        if (printId != null && printId !== '') openPrintDetail(printId);
         break;
+      }
         
       case 'close-detail':
         closePrintDetail();
@@ -821,8 +825,7 @@ export async function renderThreeDPrintPage(container, state, features) {
   // Inject styles (only once)
   injectStyles();
   
-  // Calculate 3D print stats
-  init3DPrints();
+  const prints3d = getPrints3d();
   const queueCount = prints3d.filter(p => p.status === 'queued').length;
   const printingCount = prints3d.filter(p => p.status === 'printing').length;
   const completedCount = prints3d.filter(p => p.status === 'done').length;
@@ -881,8 +884,6 @@ export async function renderThreeDPrintPage(container, state, features) {
   // Bind event handlers (only once)
   bind(container);
   
-  // Initialize and render
-  init3DPrints();
   render3DPrints();
 }
 

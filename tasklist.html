@@ -1823,50 +1823,7 @@ function createPageContext() {
 // Expose to global scope so it can be accessed from non-module scripts
 window.createPageContext = createPageContext;
 
-// Wire up Cell Log page handlers to window for inline onclick handlers
-window.Petal = window.Petal || {};
-window.Petal.pages = window.Petal.pages || {};
-window.Petal.pages.cellLog = {
-  setTab: (cellType) => {
-    CellLogPage.setCellLogTab(cellType, createPageContext());
-  },
-  addCellType: async () => {
-    await CellLogPage.addCellType(createPageContext());
-  },
-  removeCellType: async (cellType) => {
-    await CellLogPage.removeCellType(cellType, createPageContext());
-  },
-  addMediaType: async () => {
-    await CellLogPage.addMediaType(createPageContext());
-  },
-  removeMediaType: async (mediaType) => {
-    await CellLogPage.removeMediaType(mediaType, createPageContext());
-  },
-  addEntry: async () => {
-    await CellLogPage.addCellLogEntry(createPageContext());
-  },
-  editEntry: (entryId) => {
-    CellLogPage.editCellLogEntry(entryId, createPageContext());
-  },
-  deleteEntry: async (entryId) => {
-    await CellLogPage.deleteCellLogEntry(entryId, createPageContext());
-  },
-  cancelEdit: () => {
-    CellLogPage.cancelEditCellLogEntry();
-  },
-  toggleFreeze: () => {
-    CellLogPage.toggleFreezeFields();
-  },
-  render: async () => {
-    await CellLogPage.renderCellLogPage(createPageContext());
-  }
-};
-
-// Export render function for use in main script
-// This will be called after globals are defined
-window.renderCellLogPage = async () => {
-  await CellLogPage.renderCellLogPage(createPageContext());
-};
+// Cell log + renderCellLogPage: wired in src/app/init.js (Petal.pages.cellLog module)
 
 // Wire up Today page handlers to window for inline onclick handlers
 window.Petal = window.Petal || {};
@@ -6760,8 +6717,8 @@ async function submitEventModal() {
     bufferBeforeMin: parseInt(document.getElementById('event-buffer-before').value) || 0,
     bufferAfterMin: parseInt(document.getElementById('event-buffer-after').value) || 0,
     notes: document.getElementById('event-notes').value.trim() || '',
-    linkedProjectId: linkedProjectId ? parseInt(linkedProjectId) : null,
-    linkedTaskId: linkedTaskId ? parseInt(linkedTaskId) : null
+    linkedProjectId: linkedProjectId || null,
+    linkedTaskId: linkedTaskId || null
   };
   
   // CRITICAL: Read events from store, not from local variable
@@ -6773,7 +6730,7 @@ async function submitEventModal() {
     
     if (window.editingEventId) {
       // Update existing event
-      const index = currentEvents.findIndex(e => e.id === window.editingEventId);
+      const index = currentEvents.findIndex(e => e.id == window.editingEventId || String(e.id) === String(window.editingEventId));
       if (index !== -1) {
         updatedEvents = [...currentEvents];
         updatedEvents[index] = event;
@@ -6791,7 +6748,7 @@ async function submitEventModal() {
   } else {
     // Fallback: use local variable if store not available (shouldn't happen)
     if (window.editingEventId) {
-      const index = events.findIndex(e => e.id === window.editingEventId);
+      const index = events.findIndex(e => e.id == window.editingEventId || String(e.id) === String(window.editingEventId));
       if (index !== -1) {
         events[index] = event;
         updatedEvents = [...events];

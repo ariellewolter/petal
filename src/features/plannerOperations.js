@@ -3,6 +3,7 @@
 
 import { parseTime, formatTime } from '../utils/dates.js';
 import { esc } from '../utils/strings.js';
+import { findById } from '../utils/ids.js';
 
 /**
  * Edit recurring rule
@@ -98,7 +99,7 @@ export function editEvent(ctx, eventId) {
   // CRITICAL: Read events from store, not from local variable
   const state = window.Petal?.store?.getState();
   const currentEvents = state?.events || eventsValue || [];
-  const event = currentEvents.find(e => e.id === eventId);
+  const event = findById(currentEvents, eventId);
   if (!event) return;
   
   // Set editing state (shared on window so module and inline scripts stay in sync)

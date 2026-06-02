@@ -146,6 +146,8 @@ export async function onMatrixDrop(ctx, event, lane, stage) {
       task.stage = 'blocked';
       task.done = false;
     } else if (stage === 'ready') {
+      task.status = 'Done';
+      task.stage = 'ready';
       task.done = true;
     } else {
       task.stage = 'planned';

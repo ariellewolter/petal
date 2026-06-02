@@ -9,6 +9,7 @@ import {
   getEffectiveTheme,
   setThemePreference
 } from '../utils/theme.js';
+import { buildImportStorePatch } from '../features/exportImport.js';
 
 /**
  * Render Settings page
@@ -403,17 +404,11 @@ async function handleExport(state, handlers) {
       return;
     }
 
-    const exportData = {
-      tasks: state.tasks || [],
-      projects: state.projects || [],
-      openProjects: Array.from(state.openProjects || []),
-      events: state.events || [],
-      recurringRules: state.recurringRules || [],
-      settings: state.settings || {},
-      files: state.files || []
-    };
+    const exportPayload = window.Petal?.store?.exportState
+      ? window.Petal.store.exportState()
+      : state;
 
-    const data = window.storage.exportState(exportData);
+    const data = window.storage.exportState(exportPayload);
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -450,21 +445,11 @@ async function handleImport(event, state, handlers) {
       const shouldMerge = confirm('Merge with existing data? (Cancel to replace)');
       const newState = await window.storage.importState(e.target.result, shouldMerge);
 
-      // Update store
       if (window.Petal?.store) {
-        window.Petal.store.setState({
-          tasks: newState.tasks || [],
-          projects: newState.projects || [],
-          openProjects: Array.isArray(newState.openProjects)
-            ? newState.openProjects
-            : newState.openProjects instanceof Set
-              ? Array.from(newState.openProjects)
-              : [],
-          settings: newState.settings || {},
-          events: newState.events || [],
-          recurringRules: newState.recurringRules || [],
-          files: newState.files || []
-        });
+        window.Petal.store.setState(buildImportStorePatch(newState, { allowFilesOverwrite: !shouldMerge }));
+        if (newState.currentView) {
+          window.currentView = newState.currentView;
+        }
       }
 
       // Save and render
@@ -549,15 +534,15 @@ export async function renderSettingsFallback(containerEl, state) {
           <div class="settings-export">
             <h4 class="settings-subtitle">Export Data</h4>
             <p class="settings-subtitle-desc">Download all your tasks, projects, and settings as a JSON file.</p>
-            <button class="settings-btn settings-btn-primary" onclick="exportData()">📥 Export Data</button>
+            <button type="button" class="settings-btn settings-btn-primary" data-action="export-data">📥 Export Data</button>
           </div>
           
           <div class="settings-import">
             <h4 class="settings-subtitle">Import Data</h4>
             <p class="settings-subtitle-desc">Import data from a previously exported JSON file.</p>
             <div class="settings-import-controls">
-              <input type="file" id="settings-import-input" accept=".json" style="display:none;" onchange="importData(event)">
-              <button class="settings-btn" onclick="document.getElementById('settings-import-input').click()">📤 Import Data</button>
+              <input type="file" id="settings-import-input" accept=".json" style="display:none;">
+              <button type="button" class="settings-btn" data-action="import-data">📤 Import Data</button>
             </div>
           </div>
         </div>
@@ -573,14 +558,27 @@ export async function renderSettingsFallback(containerEl, state) {
       </div>
     </div>
   `;
+  // Browser fallback: same data-action wiring as the main settings page
+  containerEl.onclick = async (e) => {
+    const actionEl = e.target.closest('[data-action]');
+    if (!actionEl) return;
+    const action = actionEl.getAttribute('data-action');
+    if (action === 'export-data') {
+      await handleExport(state, handlers);
+    } else if (action === 'import-data') {
+      document.getElementById('settings-import-input')?.click();
+    }
+  };
+  const importInput = document.getElementById('settings-import-input');
+  if (importInput) {
+    importInput.onchange = async (event) => {
+      await handleImport(event, state, handlers);
+      await renderSettingsFallback(containerEl, window.Petal?.store?.getState() || state);
+    };
+  }
+
   console.log('🔍 DEBUG: Settings page fallback rendered, innerHTML length:', containerEl.innerHTML.length);
-  // Ensure the view is visible
   containerEl.style.display = '';
   containerEl.style.visibility = 'visible';
   containerEl.style.opacity = '1';
-  console.log('🔍 DEBUG: Settings fallback - visibility set', {
-    display: containerEl.style.display,
-    computedDisplay: window.getComputedStyle(containerEl).display,
-    offsetHeight: containerEl.offsetHeight
-  });
 }

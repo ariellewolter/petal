@@ -44,6 +44,7 @@ export function addRoutine({ name, cadence, timeOfDay, durationMin, daysOfWeek }
  * @param {Date} [date] - Date to check off (defaults to today)
  */
 export function toggleRoutine(routineId, date = new Date()) {
+  const d = date instanceof Date && !isNaN(date.getTime()) ? date : new Date(date);
   const state = appStore.getState();
   const routine = (state.routines || []).find(r => r.id === routineId && !r.archived);
   
@@ -52,7 +53,7 @@ export function toggleRoutine(routineId, date = new Date()) {
     return;
   }
   
-  const periodKey = getPeriodKey(routine.cadence, date);
+  const periodKey = getPeriodKey(routine.cadence, d);
   const checkinKey = `${periodKey}:${routineId}`;
   const routineCheckins = { ...(state.routineCheckins || {}) };
   

@@ -2,6 +2,7 @@
 // Manages view rendering and global sidebar
 
 import { getAllTasks } from '../domain/models.js';
+import { localDateKey } from '../utils/dates.js';
 
 /**
  * Render the global sidebar
@@ -42,7 +43,7 @@ export function renderGlobalSidebar(state) {
   });
   
   const allTasks = getAllTasksFn(state.tasks || [], state.projects || []);
-  const todayKey = new Date().toISOString().slice(0, 10);
+  const todayKey = localDateKey();
   const tasksToday = allTasks.filter(t => {
     if (!t || t.done) return false;
     const dueKey = typeof t.due === "string" ? t.due.slice(0, 10) : "";
@@ -143,11 +144,15 @@ export function renderGlobalSidebar(state) {
       if (navItem) {
         e.preventDefault();
         const view = navItem.getAttribute('data-nav');
-        console.log('🔍 DEBUG: Settings link clicked, view:', view, 'switchView available:', !!window.switchView);
-        if (window.switchView) {
+        if (window.routerSwitchView) {
+          window.routerSwitchView(view).catch(err => {
+            console.error('❌ Error switching to settings via router:', err);
+            if (window.switchView) window.switchView(view);
+          });
+        } else if (window.switchView) {
           window.switchView(view);
         } else {
-          console.error('🔍 DEBUG: window.switchView is not available!');
+          console.error('❌ No view switching function available');
         }
       }
     };

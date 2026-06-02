@@ -1,7 +1,7 @@
 // ═══════════════════════ CELL LOG PAGE ═══════════════════════
 // Self-contained page module for Cell Log tab
 
-import { esc, escJsonForAttr } from '../utils/strings.js';
+import { esc, escAttr, escJsonForAttr } from '../utils/strings.js';
 
 /**
  * Ensure cell log settings exist and are properly initialized
@@ -132,6 +132,65 @@ export function setCellLogTab(cellType) {
 }
 
 /**
+ * Navigate to cell log and focus a specific entry (from Today dashboard, etc.)
+ */
+export async function openCellLogEntry(entryId, handlers) {
+  if (!entryId) return;
+
+  const state = window.Petal?.store?.getState();
+  if (!state) return;
+
+  const settings = state.settings || {};
+  ensureCellLogSettings(settings);
+  const entry = settings.cellLog.entries.find(e => String(e.id) === String(entryId));
+
+  window.cellLogHighlightEntryId = String(entryId);
+  if (entry?.cellType) {
+    window.currentCellLogTab = entry.cellType;
+  }
+
+  const switchViewFn =
+    handlers?.switchView || window.routerSwitchView || window.switchView;
+  if (switchViewFn) {
+    await switchViewFn('cell-log');
+  }
+
+  const containerEl = document.getElementById('view-cell-log');
+  if (containerEl) {
+    await renderCellLogPage(
+      containerEl,
+      window.Petal?.store?.getState() || state,
+      handlers || window.Petal?.handlers
+    );
+  }
+
+  requestAnimationFrame(() => highlightCellLogEntry(entryId));
+}
+
+function escapeSelectorId(value) {
+  const s = String(value);
+  if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
+    return CSS.escape(s);
+  }
+  return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+function highlightCellLogEntry(entryId) {
+  const el = document.querySelector(
+    `[data-cell-log-entry-id="${escapeSelectorId(entryId)}"]`
+  );
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  el.classList.add('cell-log-entry-highlight');
+  setTimeout(() => {
+    el.classList.remove('cell-log-entry-highlight');
+    if (String(window.cellLogHighlightEntryId) === String(entryId)) {
+      window.cellLogHighlightEntryId = null;
+    }
+  }, 2500);
+}
+
+/**
  * Render cell types list
  */
 function renderCellTypesList(settings) {
@@ -147,7 +206,7 @@ function renderCellTypesList(settings) {
   listEl.innerHTML = settings.cellLog.cellTypes.map(type => `
     <span style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid var(--border);border-radius:999px;background:var(--bg2);font-size:11px;color:var(--text);">
       ${esc(type)}
-      <button onclick="window.Petal?.pages?.cellLog?.removeCellType(${escJsonForAttr(type)})" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:12px;line-height:1;padding:0;">✕</button>
+      <button type="button" data-action="cell-log:remove-cell-type" data-cell-type="${escAttr(type)}" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:12px;line-height:1;padding:0;" title="Remove cell type">✕</button>
     </span>
   `).join('');
 }
@@ -168,7 +227,7 @@ function renderMediaTypesList(settings) {
   listEl.innerHTML = settings.cellLog.mediaTypes.map(type => `
     <span style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid var(--border);border-radius:999px;background:var(--bg2);font-size:11px;color:var(--text);">
       ${esc(type)}
-      <button onclick="window.Petal?.pages?.cellLog?.removeMediaType(${escJsonForAttr(type)})" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:12px;line-height:1;padding:0;">✕</button>
+      <button type="button" data-action="cell-log:remove-media-type" data-media-type="${escAttr(type)}" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:12px;line-height:1;padding:0;" title="Remove media type">✕</button>
     </span>
   `).join('');
 }
@@ -176,6 +235,11 @@ function renderMediaTypesList(settings) {
 /**
  * Toggle freeze fields visibility
  */
+/** Alias for inline handlers (tasklist.html freeze checkbox). */
+export function toggleFreeze() {
+  toggleFreezeFields();
+}
+
 export function toggleFreezeFields() {
   const freezeCheckbox = document.getElementById('cell-log-freeze');
   const vialsField = document.getElementById('cell-log-vials-field');
@@ -211,7 +275,7 @@ function renderCellLogEntries(settings, projects, selectedCellType = 'all') {
       const label = cellType === 'all' ? 'All' : esc(cellType);
       const count = cellType === 'all' ? allEntries.length : allEntries.filter(e => e.cellType === cellType).length;
       return `
-        <button onclick="window.Petal?.pages?.cellLog?.setTab(${escJsonForAttr(cellType)})" 
+        <button type="button" data-action="cell-log:set-tab" data-tab="${escAttr(cellType)}"
                 style="background:${isActive ? 'var(--rose-pale)' : 'none'};
                        border:none;
                        border-radius:6px;
@@ -252,13 +316,18 @@ function renderCellLogEntries(settings, projects, selectedCellType = 'all') {
     const wellsText = entry.wellCount !== '' && entry.wellCount !== null && entry.wellCount !== undefined ? `${entry.wellCount} wells` : 'Wells n/a';
     const passageText = entry.passage !== null && entry.passage !== undefined ? `P${entry.passage}` : '';
     const freezeText = entry.isFrozen && entry.vialsCount ? ` • Frozen: ${entry.vialsCount} vial${entry.vialsCount !== 1 ? 's' : ''}` : '';
+    const highlightClass =
+      window.cellLogHighlightEntryId &&
+      String(window.cellLogHighlightEntryId) === String(entry.id)
+        ? ' cell-log-entry-highlight'
+        : '';
     return `
-      <div style="padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);margin-bottom:8px;">
+      <div class="cell-log-entry-card${highlightClass}" data-cell-log-entry-id="${escAttr(String(entry.id))}" style="padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);margin-bottom:8px;">
         <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
           <div style="font-size:12px;color:var(--text-dim);">${day}${project ? ` • ${esc(project.name)}` : ''}</div>
           <div style="display:flex;gap:8px;">
-            <button onclick="window.Petal?.pages?.cellLog?.editEntry(${escJsonForAttr(entry.id)})" style="background:none;border:none;color:var(--rose);cursor:pointer;font-size:12px;">Edit</button>
-            <button onclick="window.Petal?.pages?.cellLog?.deleteEntry(${escJsonForAttr(entry.id)})" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:12px;">Delete</button>
+            <button type="button" data-action="cell-log:edit-entry" data-entry-id="${escAttr(String(entry.id))}" style="background:none;border:none;color:var(--rose);cursor:pointer;font-size:12px;">Edit</button>
+            <button type="button" data-action="cell-log:delete-entry" data-entry-id="${escAttr(String(entry.id))}" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:12px;">Delete</button>
           </div>
         </div>
         <div style="font-size:14px;color:var(--text);margin-top:4px;">${esc(entry.taskPerformed || 'No task description')}</div>
@@ -667,20 +736,21 @@ export async function deleteCellLogEntry(entryId) {
   }
 }
 
-/**
- * Alias for deleteCellLogEntry (for HTML onclick compatibility)
- */
+/** Alias for deleteCellLogEntry */
 export async function deleteEntry(entryId) {
   return deleteCellLogEntry(entryId);
-  
-  // Update store
-  if (window.Petal?.store) {
-    window.Petal.store.setState({ settings });
-  }
-  
-  // Re-render
-  const containerEl = document.getElementById('view-cell-log');
-  if (containerEl) {
-    await renderCellLogPage(containerEl, window.Petal.store.getState(), window.Petal.handlers);
-  }
+}
+
+/** Alias for cancelEditCellLogEntry */
+export function cancelEdit() {
+  return cancelEditCellLogEntry();
+}
+
+/** Backward-compat aliases (legacy tasklist / delegation fallbacks) */
+export function setTab(cellType) {
+  return setCellLogTab(cellType);
+}
+
+export async function addEntry() {
+  return addCellLogEntry();
 }

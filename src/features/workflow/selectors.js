@@ -4,6 +4,8 @@
 
 import { getAllTasks, isTaskBlocked } from '../../domain/models.js';
 import { taskBelongsToProject } from '../../utils/projectHelpers.js';
+import { getPlacementForTask, idsMatch } from '../../utils/ids.js';
+import { getTaskFiles } from '../fileManagement.js';
 
 /**
  * Get workflow tasks decorated with lane/column placement
@@ -24,7 +26,7 @@ export function selectWorkflowTasks(state) {
   
   // Decorate tasks with workflow placement
   return filteredTasks.map(task => {
-    const placementData = placement?.[task.id] || {};
+    const placementData = getPlacementForTask(placement, task.id);
     const lane = placementData.lane || task.lane || null;
     const column = placementData.column || getDefaultColumn(task);
     
@@ -123,18 +125,18 @@ export function selectActiveFiles(state) {
   
   const fileMap = new Map();
   
+  const ctx = { projects: state.projects || [] };
   activeTasks.forEach(task => {
-    if (!task.files || !Array.isArray(task.files)) return;
-    
-    task.files.forEach(fileRef => {
-      // Handle both string paths and file objects
-      const fileObj = typeof fileRef === 'string' 
+    const taskFiles = getTaskFiles(task, ctx);
+    if (!taskFiles.length) return;
+
+    taskFiles.forEach(fileRef => {
+      const fileObj = typeof fileRef === 'string'
         ? { abs_path: fileRef, name: fileRef.split(/[/\\]/).pop() }
         : fileRef;
-      
-      // Create stable key for deduplication
+
       const key = fileObj.abs_path || fileObj.onedrive_rel || fileObj.share_url || fileObj.name || JSON.stringify(fileObj);
-      
+
       if (!fileMap.has(key)) {
         fileMap.set(key, {
           ...fileObj,
@@ -142,10 +144,9 @@ export function selectActiveFiles(state) {
           taskIds: []
         });
       }
-      
-      // Track which tasks reference this file
+
       const file = fileMap.get(key);
-      if (!file.taskIds.includes(task.id)) {
+      if (!file.taskIds.some(id => idsMatch(id, task.id))) {
         file.taskIds.push(task.id);
       }
     });

@@ -1,7 +1,7 @@
 // ═══════════════════════ STATE INITIALIZATION ═══════════════════════
 // Handles vault resolution, state loading, and migrations
 
-import { setLoading } from '../storage/persistence.js';
+import { setLoading, getSaveStatus } from '../storage/persistence.js';
 import { render } from './viewManager.js';
 import { updateVaultBadge, waitForVaultResolved, verifySaveLocation, updateFileButtons } from '../utils/vault.js';
 import { migrateTasksForKanban, migrateSubtasksToTasks, migrateNotesFields, migrateToCanonicalFileRegistry } from '../utils/migrations.js';
@@ -19,6 +19,12 @@ function applyIncomingStateToStore(payload, sourceLabel) {
 
   try {
     store.loadState(incoming);
+    const storeState = store.getState();
+    window.fileRegistry = storeState.fileRegistry || {};
+    window.fileHistory = storeState.fileHistory || {};
+    if (storeState.currentView) {
+      window.currentView = storeState.currentView;
+    }
     if (typeof render === 'function') {
       render();
     }
@@ -90,7 +96,14 @@ export async function initStateInternal() {
         console.warn('⚠️ Vault needs relocation:', data);
       });
 
-      window.electronAPI.onStorageStateChanged((data) => {
+      window.electronAPI.onStorageStateChanged(async (data) => {
+        const hasUnsaved = getSaveStatus()?.hasUnsavedChanges;
+        if (hasUnsaved) {
+          const reload = confirm(
+            'Data on disk was updated (e.g. vault sync or optimize). You have unsaved local changes. Reload from disk and discard local edits?'
+          );
+          if (!reload) return;
+        }
         applyIncomingStateToStore(data, 'storage:stateChanged');
       });
 
@@ -294,8 +307,7 @@ export async function initStateInternal() {
   
   if (window.Petal && window.Petal.store) {
     // Get current UI state from window (these are set before initState is called)
-    // Always load on today page initially
-    const currentView = 'today';
+    const currentView = loadedData.currentView || window.currentView || 'today';
     const currentSort = window.currentSort || loadedData.currentSort || 'all';
     const currentFilter = window.currentFilter || loadedData.currentFilter || 'all';
     const currentProjFilter = window.currentProjFilter || loadedData.currentProjFilter || 'all';
@@ -329,7 +341,12 @@ export async function initStateInternal() {
       boardProjectFilter,
       searchQuery,
       currentFileView,
-      selectedProjectId,
+      selectedProjectId: loadedData.selectedProjectId ?? selectedProjectId,
+      plannerViewDate: loadedData.plannerViewDate ?? null,
+      currentPlannerView: loadedData.currentPlannerView || 'daily',
+      plannerWeekOffset: loadedData.plannerWeekOffset ?? 0,
+      plannerCalYear: loadedData.plannerCalYear ?? null,
+      plannerCalMonth: loadedData.plannerCalMonth ?? null,
       fileRegistry: loadedData.fileRegistry || {},
       fileHistory: loadedData.fileHistory || {},
       files: loadedData.files || [] // Phase 3 Fix: Load persisted files
@@ -364,6 +381,8 @@ export async function initStateInternal() {
     
     // Verify what's in the store after loading
     const storeState = window.Petal.store.getState();
+    window.fileRegistry = storeState.fileRegistry || {};
+    window.fileHistory = storeState.fileHistory || {};
     
     // Step 3: Test debug IPC to verify we're talking to the right main process
     if (window.electronAPI?.debugPid) {

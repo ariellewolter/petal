@@ -345,7 +345,23 @@ function createImmutableSnapshot(state) {
       ui: state.workflow.ui ? { ...state.workflow.ui } : {}
     } : {},
     fileRegistry: state.fileRegistry ? { ...state.fileRegistry } : {},
-    fileHistory: state.fileHistory ? { ...state.fileHistory } : {}
+    fileHistory: state.fileHistory ? { ...state.fileHistory } : {},
+    currentView: state.currentView || 'today',
+    currentSort: state.currentSort || 'all',
+    currentFilter: state.currentFilter || 'all',
+    currentProjFilter: state.currentProjFilter || 'all',
+    selectedColor: state.selectedColor ?? 1,
+    taskMode: state.taskMode || 'list',
+    boardProjectFilter: state.boardProjectFilter || 'all',
+    searchQuery: state.searchQuery || '',
+    currentFileView: state.currentFileView || 'all',
+    currentFileProjectFilter: state.currentFileProjectFilter || 'all',
+    selectedProjectId: state.selectedProjectId ?? null,
+    plannerViewDate: state.plannerViewDate ?? null,
+    currentPlannerView: state.currentPlannerView || 'daily',
+    plannerWeekOffset: state.plannerWeekOffset ?? 0,
+    plannerCalYear: state.plannerCalYear ?? null,
+    plannerCalMonth: state.plannerCalMonth ?? null
   };
 }
 

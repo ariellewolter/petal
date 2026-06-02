@@ -461,5 +461,34 @@ export const handlers = {
     } else {
       console.warn('editTask not available');
     }
+  },
+
+  openProject(projectId) {
+    if (projectId === undefined || projectId === null || projectId === '') return;
+    const id = /^\d+$/.test(String(projectId)) ? Number(projectId) : projectId;
+    const ctx = window.Petal?.handlers?.createPageContext?.() || { tasks: [], projects: [] };
+    if (window.Petal?.features?.matrixOperations?.openProjectView) {
+      window.Petal.features.matrixOperations.openProjectView(ctx, id);
+      return;
+    }
+    if (typeof window.openProjectView === 'function') {
+      window.openProjectView(id);
+      return;
+    }
+    if (window.routerSwitchView) {
+      window.routerSwitchView('projects').then(() => {
+        if (typeof window.selectProjectForMatrix === 'function') {
+          window.selectProjectForMatrix(id);
+        }
+      });
+    }
+  },
+
+  async openFile(fileLink) {
+    const openFileFn =
+      window.Petal?.features?.fileManagement?.openFile || window.openFile;
+    if (openFileFn) {
+      await openFileFn(fileLink);
+    }
   }
 };

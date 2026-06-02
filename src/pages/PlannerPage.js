@@ -3,7 +3,8 @@
 
 import { renderPlannerHabits } from '../ui/renderPlannerHabits.js';
 import { renderPlannerRoutines } from '../ui/renderPlannerRoutines.js';
-import { parseTime, formatTime } from '../utils/dates.js';
+import { parseTime, formatTime, localDateKey } from '../utils/dates.js';
+import { isExpandedRecurringEvent } from '../utils/ids.js';
 import { esc } from '../utils/strings.js';
 
 /**
@@ -33,13 +34,13 @@ function expandRecurringRules(startDate, endDate, recurringRules) {
   const end = new Date(endDate);
   
   recurringRules.forEach(rule => {
-    if (!rule.enabled) return;
+    if (rule.enabled === false) return;
     
     const current = new Date(start);
     while (current <= end) {
       const dayOfWeek = current.getDay(); // 0 = Sunday, 6 = Saturday
       if (rule.daysOfWeek && rule.daysOfWeek.includes(dayOfWeek)) {
-        const eventDate = current.toISOString().split('T')[0];
+        const eventDate = localDateKey(current);
         expanded.push({
           id: `evt_${rule.id}_${eventDate}`,
           title: rule.title,
@@ -71,7 +72,7 @@ function expandRecurringRules(startDate, endDate, recurringRules) {
  * @returns {Array} Sorted events for the date
  */
 function getEventsForDate(date, events, recurringRules) {
-  const dateStr = date.toISOString().split('T')[0];
+  const dateStr = localDateKey(date);
   const oneOff = events.filter(e => e.date === dateStr);
   const expanded = expandRecurringRules(date, date, recurringRules);
   const expandedForDate = expanded.filter(e => e.date === dateStr);
@@ -472,6 +473,15 @@ async function renderWeeklyPlanner(containerEl, state, handlers) {
         if (handlers?.setPlannerView) {
           handlers.setPlannerView('daily', containerEl);
         }
+        const eventId = e.id;
+        if (!isExpandedRecurringEvent(e)) {
+          if (window.Petal?.features?.plannerOperations?.editEvent) {
+            const ctx = window.Petal?.handlers?.createPageContext?.() || {};
+            window.Petal.features.plannerOperations.editEvent(ctx, eventId);
+          } else if (typeof window.editEvent === 'function') {
+            window.editEvent(eventId);
+          }
+        }
       };
       col.appendChild(ev);
     });
@@ -508,7 +518,7 @@ async function renderDailyPlanner(containerEl, state, handlers) {
   const plannerViewDate = plannerState.plannerViewDate || new Date();
   const date = new Date(plannerViewDate);
   date.setHours(0, 0, 0, 0);
-  const dateStr = date.toISOString().split('T')[0];
+  const dateStr = localDateKey(date);
   
   // Get events and recurring rules from state
   const events = state.events || [];

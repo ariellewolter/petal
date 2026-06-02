@@ -4,6 +4,7 @@
 import { esc, fileIcon } from '../utils/strings.js';
 import { openFile } from '../utils/fileHelpers.js';
 import { findProjectById, projectIdsMatch } from '../utils/projectHelpers.js';
+import { idsMatch } from '../utils/ids.js';
 
 // File status options
 export const FILE_STATUSES = {
@@ -648,7 +649,7 @@ export function resolveFileIds(projectId, fileIds, ctx) {
   }
   
   return fileIds
-    .map(fileId => project.files.find(f => f && f.id === fileId))
+    .map(fileId => project.files.find(f => f && f.id != null && idsMatch(f.id, fileId)))
     .filter(f => f !== undefined && !f.deletedAt); // Filter out deleted files
 }
 

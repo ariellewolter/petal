@@ -3,7 +3,7 @@
 // Inspired by LabOS, adapted for Petal with petal styling
 // Takes state and handlers as parameters - no store peeking
 
-import { esc } from '../utils/strings.js';
+import { esc, escAttr } from '../utils/strings.js';
 import { parseDate } from '../utils/dates.js';
 import { getAllTasks } from '../domain/models.js';
 import { filterTasksForProject, findProjectById } from '../utils/projectHelpers.js';
@@ -247,7 +247,11 @@ export function renderWorkflowList() {
       return projectTasks.some(t => !t.done);
     });
   } else if (activeFilter === 'On Hold') {
-    // Filter for projects on hold (you can add a status field later)
+    activeProjects = activeProjects.filter(p => {
+      const projectTasks = projectTasksFor(tasks, projects, p.id);
+      const hasOpen = projectTasks.some(t => !t.done);
+      return !hasOpen && projectTasks.length > 0;
+    });
   }
   
   // Apply search
@@ -387,7 +391,7 @@ export function renderWorkflowList() {
     const projectFiles = project.files || [];
     
     return `
-      <div class="wf-proj-row c${project.color || 1}" id="wf-row-${project.id}" onclick="toggleWorkflowExpand('${project.id}')">
+      <div class="wf-proj-row c${project.color || 1}" id="wf-row-${project.id}" data-action="workflow:toggle-expand" data-project-id="${project.id}" role="button" tabindex="0">
         <div class="wf-proj-cell wf-proj-name-cell">
           <div class="wf-proj-color-dot" style="background:${color}"></div>
           <div>
@@ -408,7 +412,7 @@ export function renderWorkflowList() {
         </div>
         <div class="wf-proj-cell wf-deadline-cell">${deadlineHtml}</div>
         <div class="wf-proj-cell" style="color:var(--text-dim);font-size:11px;">${projectFiles.length} files</div>
-        <div class="wf-proj-cell"><button class="wf-expand-toggle">›</button></div>
+        <div class="wf-proj-cell"><span class="wf-expand-toggle" aria-hidden="true">›</span></div>
       </div>
       <div class="wf-proj-expand" id="wf-expand-${project.id}">
         <div class="wf-expand-grid">
@@ -432,7 +436,7 @@ export function renderWorkflowList() {
                 const fileObj = typeof f === 'string' ? { name: f } : f;
                 const label = fileObj.label || fileObj.name || 'File';
                 return `
-                  <div class="wf-efile" onclick="event.stopPropagation();if(window.Petal?.handlers?.openFile){window.Petal.handlers.openFile(${JSON.stringify(fileObj).replace(/"/g, '&quot;')})}">
+                  <div class="wf-efile" data-action="file:open" data-path="${escAttr(JSON.stringify(fileObj))}" title="Open file">
                     <div class="wf-efile-icon" style="background:var(--rose-pale)">📄</div>
                     ${esc(label)}
                   </div>
@@ -447,7 +451,7 @@ export function renderWorkflowList() {
               <div class="wf-quick-stat"><div class="wf-qs-label">Tasks</div><div class="wf-qs-val">${projectTasks.length} total</div></div>
               <div class="wf-quick-stat"><div class="wf-qs-label">Progress</div><div class="wf-qs-val">${progress}%</div></div>
               <div class="wf-quick-stat"><div class="wf-qs-label">Files</div><div class="wf-qs-val">${projectFiles.length}</div></div>
-              <button class="wf-expand-open-btn" onclick="event.stopPropagation();if(window.Petal?.handlers?.openProject){window.Petal.handlers.openProject(${project.id})}">Open Project →</button>
+              <button type="button" class="wf-expand-open-btn" data-action="workflow:open-project" data-project-id="${project.id}">Open Project →</button>
             </div>
           </div>
         </div>
@@ -566,8 +570,8 @@ export function buildWorkflowTimeline() {
     const endMonth = [endDate.getFullYear(), endDate.getMonth()];
     
     // Project header row
-    html += `<div style="display:contents;cursor:pointer" onclick="toggleTlExpand('tl-${p.id}')">`;
-    html += `<div class="wf-tl-proj-info" style="padding:14px 20px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);display:flex;flex-direction:column;justify-content:center;gap:3px;background:var(--surface);transition:background .15s;grid-column:1">
+    html += `<div style="display:contents">`;
+    html += `<div class="wf-tl-proj-info" data-action="workflow:toggle-timeline" data-timeline-id="tl-${p.id}" role="button" tabindex="0" style="padding:14px 20px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);display:flex;flex-direction:column;justify-content:center;gap:3px;background:var(--surface);transition:background .15s;grid-column:1;cursor:pointer;">
       <div style="display:flex;align-items:center;gap:7px">
         <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></div>
         <div class="wf-tl-proj-name" style="font-size:12px;color:var(--text)">${esc(p.name || 'Untitled')}</div>

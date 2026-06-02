@@ -1,5 +1,62 @@
 // ═══════════════════════ EXPORT/IMPORT ═══════════════════════
 
+const UI_STATE_KEYS = [
+  'currentView',
+  'currentSort',
+  'currentFilter',
+  'currentProjFilter',
+  'selectedColor',
+  'taskMode',
+  'boardProjectFilter',
+  'searchQuery',
+  'currentFileView',
+  'currentFileProjectFilter',
+  'selectedProjectId',
+  'plannerViewDate',
+  'currentPlannerView',
+  'plannerWeekOffset',
+  'plannerCalYear',
+  'plannerCalMonth'
+];
+
+/** Build store patch from imported JSON (data + optional UI persistence fields). */
+export function buildImportStorePatch(newState, { allowFilesOverwrite = false } = {}) {
+  const ui = {};
+  for (const key of UI_STATE_KEYS) {
+    if (newState[key] !== undefined && newState[key] !== null) {
+      ui[key] = newState[key];
+    }
+  }
+
+  return {
+    tasks: newState.tasks || [],
+    projects: newState.projects || [],
+    openProjects: Array.isArray(newState.openProjects)
+      ? newState.openProjects
+      : newState.openProjects instanceof Set
+        ? Array.from(newState.openProjects)
+        : [],
+    settings: {
+      ...(newState.settings || {}),
+      appearance: {
+        ...((newState.settings || {}).appearance || {}),
+        theme: (newState.settings || {}).appearance?.theme || 'light'
+      }
+    },
+    events: newState.events || [],
+    recurringRules: newState.recurringRules || [],
+    habits: newState.habits || [],
+    habitCheckins: newState.habitCheckins || {},
+    routines: newState.routines || [],
+    routineCheckins: newState.routineCheckins || {},
+    files: newState.files || [],
+    workflow: newState.workflow || {},
+    prints3d: newState.prints3d || [],
+    ...ui,
+    __allowFilesOverwrite: allowFilesOverwrite
+  };
+}
+
 /**
  * Export all data to JSON file
  */
@@ -62,28 +119,10 @@ export async function importData(event) {
       
       // Update store (window globals are read-only getters that automatically reflect store state)
       if (window.Petal?.store) {
-        window.Petal.store.setState({
-          tasks: newState.tasks || [],
-          projects: newState.projects || [],
-          openProjects: Array.isArray(newState.openProjects) ? newState.openProjects : (newState.openProjects instanceof Set ? Array.from(newState.openProjects) : []),
-          settings: {
-            ...(newState.settings || {}),
-            appearance: {
-              ...((newState.settings || {}).appearance || {}),
-              theme: (newState.settings || {}).appearance?.theme || 'light'
-            }
-          },
-          events: newState.events || [],
-          recurringRules: newState.recurringRules || [],
-          habits: newState.habits || [],
-          habitCheckins: newState.habitCheckins || {},
-          routines: newState.routines || [],
-          routineCheckins: newState.routineCheckins || {},
-          files: newState.files || [],
-          workflow: newState.workflow || {},
-          prints3d: newState.prints3d || [],
-          __allowFilesOverwrite: !shouldMerge
-        });
+        window.Petal.store.setState(buildImportStorePatch(newState, { allowFilesOverwrite: !shouldMerge }));
+        if (newState.currentView) {
+          window.currentView = newState.currentView;
+        }
         // Note: window.tasks, window.projects, etc. are read-only getters that automatically
         // reflect the store state, so no manual syncing needed
       } else {

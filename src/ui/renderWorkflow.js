@@ -87,23 +87,23 @@ function renderBottleneckStrip(bottlenecks, handlers) {
   const { blocked, stale, next } = bottlenecks;
   
   bottleneckEl.innerHTML = `
-    <div id="bottleneck-blocked" style="flex:1;padding:12px;background:${blocked.length > 0 ? 'var(--rose-pale)' : 'var(--bg2)'};border-radius:6px;border-left:3px solid var(--rose);cursor:pointer;" onclick="scrollToBottleneck('blocked')">
+    <div id="bottleneck-blocked" data-action="workflow:scroll-bottleneck" data-bottleneck-type="blocked" role="button" tabindex="0" style="flex:1;padding:12px;background:${blocked.length > 0 ? 'var(--rose-pale)' : 'var(--bg2)'};border-radius:6px;border-left:3px solid var(--rose);cursor:pointer;">
       <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;letter-spacing:.05em;text-transform:uppercase;">BLOCKED</div>
       <div style="font-size:20px;font-weight:600;color:var(--text);">${blocked.length}</div>
       ${blocked.length > 0 ? `<div style="font-size:10px;color:var(--text-dim);margin-top:6px;line-height:1.4;">${blocked.slice(0, 3).map(t => esc(t.title || 'Untitled')).join(', ')}</div>` : '<div style="font-size:10px;color:var(--text-dim);margin-top:6px;">None</div>'}
-      ${blocked.length > 0 ? '<button onclick="event.stopPropagation();scrollToBottleneck(\'blocked\')" style="margin-top:8px;padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">View Blocked</button>' : ''}
+      ${blocked.length > 0 ? '<button type="button" data-action="workflow:scroll-bottleneck" data-bottleneck-type="blocked" style="margin-top:8px;padding:4px 8px;background:var(--rose);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">View Blocked</button>' : ''}
     </div>
-    <div id="bottleneck-stale" style="flex:1;padding:12px;background:${stale.length > 0 ? 'var(--sage-pale)' : 'var(--bg2)'};border-radius:6px;border-left:3px solid var(--sage);cursor:pointer;" onclick="scrollToBottleneck('stale')">
+    <div id="bottleneck-stale" data-action="workflow:scroll-bottleneck" data-bottleneck-type="stale" role="button" tabindex="0" style="flex:1;padding:12px;background:${stale.length > 0 ? 'var(--sage-pale)' : 'var(--bg2)'};border-radius:6px;border-left:3px solid var(--sage);cursor:pointer;">
       <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;letter-spacing:.05em;text-transform:uppercase;">STALE (>7d)</div>
       <div style="font-size:20px;font-weight:600;color:var(--text);">${stale.length}</div>
       ${stale.length > 0 ? `<div style="font-size:10px;color:var(--text-dim);margin-top:6px;line-height:1.4;">${stale.slice(0, 3).map(t => esc(t.title || 'Untitled')).join(', ')}</div>` : '<div style="font-size:10px;color:var(--text-dim);margin-top:6px;">None</div>'}
-      ${stale.length > 0 ? '<button onclick="event.stopPropagation();scrollToBottleneck(\'stale\')" style="margin-top:8px;padding:4px 8px;background:var(--sage);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">Review Stale</button>' : ''}
+      ${stale.length > 0 ? '<button type="button" data-action="workflow:scroll-bottleneck" data-bottleneck-type="stale" style="margin-top:8px;padding:4px 8px;background:var(--sage);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">Review Stale</button>' : ''}
     </div>
-    <div id="bottleneck-next" style="flex:1;padding:12px;background:${next.length > 0 ? 'var(--mauve-pale)' : 'var(--bg2)'};border-radius:6px;border-left:3px solid var(--mauve);cursor:pointer;" onclick="scrollToBottleneck('next')">
+    <div id="bottleneck-next" data-action="workflow:scroll-bottleneck" data-bottleneck-type="next" role="button" tabindex="0" style="flex:1;padding:12px;background:${next.length > 0 ? 'var(--mauve-pale)' : 'var(--bg2)'};border-radius:6px;border-left:3px solid var(--mauve);cursor:pointer;">
       <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;letter-spacing:.05em;text-transform:uppercase;">NEXT UP</div>
       <div style="font-size:20px;font-weight:600;color:var(--text);">${next.length}</div>
       ${next.length > 0 ? `<div style="font-size:10px;color:var(--text-dim);margin-top:6px;line-height:1.4;">${next.slice(0, 3).map(t => esc(t.title || 'Untitled')).join(', ')}</div>` : '<div style="font-size:10px;color:var(--text-dim);margin-top:6px;">None</div>'}
-      ${next.length > 0 ? '<button onclick="event.stopPropagation();scrollToBottleneck(\'next\')" style="margin-top:8px;padding:4px 8px;background:var(--mauve);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">View Next</button>' : ''}
+      ${next.length > 0 ? '<button type="button" data-action="workflow:scroll-bottleneck" data-bottleneck-type="next" style="margin-top:8px;padding:4px 8px;background:var(--mauve);color:white;border:none;border-radius:4px;font-size:10px;cursor:pointer;">View Next</button>' : ''}
     </div>
   `;
 }

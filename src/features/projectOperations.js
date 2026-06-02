@@ -18,14 +18,12 @@ import { LANE_STAGES } from '../domain/schema.js';
  */
 function updateStoreSafely(updates, fallbackFn) {
   if (window.Petal?.store) {
-    const state = window.Petal.store.getState();
-    window.Petal.store.setState({
-      ...state,
-      ...updates
-    });
-    // Store auto-saves and auto-renders via subscriptions
+    const patch = { ...updates };
+    if ('openProjects' in patch && patch.openProjects instanceof Set) {
+      patch.openProjects = Array.from(patch.openProjects);
+    }
+    window.Petal.store.setState(patch);
   } else if (fallbackFn) {
-    // Fallback: old pattern
     fallbackFn();
   }
 }
@@ -1110,27 +1108,29 @@ export async function addSubtask(ctx, projId) {
   const lane = document.getElementById('sub-lane-' + projId)?.value || '';
   const stage = lane && LANE_STAGES[lane] ? LANE_STAGES[lane][0] : null;
 
-  const newSubtask = {
+  const newTask = {
     id: Date.now(),
     title,
+    notes: '',
+    note: '',
+    noteUpdatedAt: '',
     priority: document.getElementById('sub-pri-' + projId)?.value || 'medium',
     due: document.getElementById('sub-due-' + projId)?.value || '',
     files,
     done: false,
+    status: 'Todo',
+    projectId: projId,
     lane: lane || null,
-    stage: stage || null
+    stage: stage || null,
+    boardOrder: 1024
   };
 
   if (window.Petal?.store) {
     const state = window.Petal.store.getState();
-    const updatedProjects = (state.projects || []).map(project => {
-      if (!projectIdsMatch(project.id, projId)) return project;
-      return { ...project, subtasks: [...(project.subtasks || []), newSubtask] };
-    });
-    updateStoreSafely({ projects: updatedProjects });
+    updateStoreSafely({ tasks: [newTask, ...(state.tasks || [])] });
   } else {
-    if (!p.subtasks) p.subtasks = [];
-    p.subtasks.push(newSubtask);
+    if (!ctx.tasks) ctx.tasks = [];
+    ctx.tasks.unshift(newTask);
     if (save) await save();
   }
 

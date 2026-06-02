@@ -7,7 +7,7 @@ import { resetGlobalScroll, resetAllViews, resetScroll } from '../utils/scroll.j
 
 // Re-entry guard: prevent multiple simultaneous router calls
 let routerInProgress = false;
-let pendingViewSwitch = null;
+const pendingViewSwitchQueue = [];
 
 /**
  * Reset active view positioning and scroll
@@ -66,8 +66,7 @@ export async function switchView(viewName, options = {}) {
       return;
     }
     console.warn('⚠️ router.switchView: Router already in progress, queuing:', viewName);
-    pendingViewSwitch = { viewName, options };
-    // Wait for current switch to complete, then process pending
+    pendingViewSwitchQueue.push({ viewName, options });
     return;
   }
   
@@ -414,17 +413,18 @@ export async function switchView(viewName, options = {}) {
       window.__routerJustSwitched = false;
       console.log('✅ router.switchView: Flag cleared, normal render() can run');
       
-      // Process any pending view switch
       routerInProgress = false;
-      if (pendingViewSwitch) {
-        const pending = pendingViewSwitch;
-        pendingViewSwitch = null;
-        console.log('🔄 router.switchView: Processing pending switch:', pending.viewName);
-        // Use setTimeout to allow current call stack to complete
-        setTimeout(() => {
-          switchView(pending.viewName, pending.options).catch(err => {
-            console.error('❌ router.switchView: Error processing pending switch:', err);
-          });
+      if (pendingViewSwitchQueue.length > 0) {
+        const queue = pendingViewSwitchQueue.splice(0);
+        console.log('🔄 router.switchView: Processing pending switches:', queue.map(q => q.viewName));
+        setTimeout(async () => {
+          for (const pending of queue) {
+            try {
+              await switchView(pending.viewName, pending.options);
+            } catch (err) {
+              console.error('❌ router.switchView: Error processing pending switch:', err);
+            }
+          }
         }, 10);
       }
     }, 100);
@@ -432,15 +432,14 @@ export async function switchView(viewName, options = {}) {
   } catch (error) {
     // Ensure router is marked as not in progress even on error
     routerInProgress = false;
-    pendingViewSwitch = null;
+    pendingViewSwitchQueue.length = 0;
     throw error;
   } finally {
     // Safety: ensure router is marked as not in progress
     // (This will be set again in the setTimeout above, but this is a safety net)
-    if (!pendingViewSwitch) {
-      // Only clear if no pending switch (otherwise let the setTimeout handle it)
+    if (pendingViewSwitchQueue.length === 0) {
       setTimeout(() => {
-        if (!pendingViewSwitch) {
+        if (pendingViewSwitchQueue.length === 0) {
           routerInProgress = false;
         }
       }, 200);

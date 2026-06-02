@@ -2,6 +2,7 @@
 // Set up event delegation on stable root container for all action buttons
 
 import { handleEditTaskAction, handleDeleteTaskAction } from '../ui/buttonHandlers.js';
+import { canEditPlannerEventById } from '../utils/ids.js';
 
 /**
  * Set up event delegation for app-wide click handling
@@ -868,7 +869,7 @@ export function setupEventDelegation() {
       return;
     }
     
-    if (action === 'file:open') {
+    if (action === 'file:open' || action === 'open-file') {
       if (actionBtn.closest('#view-files')) {
         return;
       }
@@ -876,12 +877,14 @@ export function setupEventDelegation() {
       e.preventDefault();
       const path =
         actionBtn.getAttribute('data-path') ||
+        actionBtn.getAttribute('data-file') ||
         actionBtn.closest('.file-open-btn, .file-chip, .file-open-div')?.getAttribute('data-path');
       if (path) {
         try {
           const fileLink = JSON.parse(path);
           const openFileFn =
             window.Petal?.features?.fileManagement?.openFile ||
+            window.Petal?.handlers?.openFile ||
             window.openFile;
           if (openFileFn) {
             await openFileFn(fileLink);
@@ -931,6 +934,38 @@ export function setupEventDelegation() {
     }
     
     // Workflow actions
+    if (action === 'workflow:toggle-expand') {
+      e.stopPropagation();
+      const projectId = actionBtn.getAttribute('data-project-id');
+      if (projectId != null && window.toggleWorkflowExpand) {
+        window.toggleWorkflowExpand(projectId);
+      }
+      return;
+    }
+    if (action === 'workflow:toggle-timeline') {
+      e.stopPropagation();
+      const timelineId = actionBtn.getAttribute('data-timeline-id');
+      if (timelineId && window.toggleTlExpand) {
+        window.toggleTlExpand(timelineId);
+      }
+      return;
+    }
+    if (action === 'workflow:open-project') {
+      e.stopPropagation();
+      const projectId = actionBtn.getAttribute('data-project-id');
+      if (projectId != null && window.Petal?.handlers?.openProject) {
+        window.Petal.handlers.openProject(projectId);
+      }
+      return;
+    }
+    if (action === 'workflow:scroll-bottleneck') {
+      e.stopPropagation();
+      const bottleneckType = actionBtn.getAttribute('data-bottleneck-type');
+      if (bottleneckType && window.scrollToBottleneck) {
+        window.scrollToBottleneck(bottleneckType);
+      }
+      return;
+    }
     if (action === 'workflow:switch-view') {
       e.stopPropagation();
       const view = actionBtn.getAttribute('data-view');
@@ -1048,6 +1083,30 @@ export function setupEventDelegation() {
       }
       return;
     }
+
+    if (action === 'today:open-event') {
+      e.stopPropagation();
+      e.preventDefault();
+      const eventId = actionBtn.getAttribute('data-event-id');
+      const events = window.Petal?.store?.getState()?.events || [];
+      if (canEditPlannerEventById(eventId, events)) {
+        if (window.Petal?.features?.plannerOperations?.editEvent) {
+          const ctx = window.Petal?.handlers?.createPageContext?.() || {};
+          window.Petal.features.plannerOperations.editEvent(ctx, eventId);
+          return;
+        }
+        if (typeof window.editEvent === 'function') {
+          window.editEvent(eventId);
+          return;
+        }
+      }
+      if (window.routerSwitchView) {
+        window.routerSwitchView('planner');
+      } else if (window.switchView) {
+        window.switchView('planner');
+      }
+      return;
+    }
     
     // Cell log actions
     if (action === 'cell-log:add-entry') {
@@ -1080,6 +1139,48 @@ export function setupEventDelegation() {
     if (action === 'cell-log:add-media-type') {
       e.stopPropagation();
       if (window.Petal?.pages?.cellLog?.addMediaType) window.Petal.pages.cellLog.addMediaType();
+      return;
+    }
+    if (action === 'cell-log:set-tab') {
+      e.stopPropagation();
+      const tab = actionBtn.getAttribute('data-tab');
+      if (tab != null && window.Petal?.pages?.cellLog?.setCellLogTab) {
+        window.Petal.pages.cellLog.setCellLogTab(tab);
+      }
+      return;
+    }
+    if (action === 'cell-log:remove-cell-type') {
+      e.stopPropagation();
+      const cellType = actionBtn.getAttribute('data-cell-type');
+      if (cellType && window.Petal?.pages?.cellLog?.removeCellType) {
+        window.Petal.pages.cellLog.removeCellType(cellType);
+      }
+      return;
+    }
+    if (action === 'cell-log:remove-media-type') {
+      e.stopPropagation();
+      const mediaType = actionBtn.getAttribute('data-media-type');
+      if (mediaType && window.Petal?.pages?.cellLog?.removeMediaType) {
+        window.Petal.pages.cellLog.removeMediaType(mediaType);
+      }
+      return;
+    }
+    if (action === 'cell-log:edit-entry') {
+      e.stopPropagation();
+      const entryId = actionBtn.getAttribute('data-entry-id');
+      if (entryId && window.Petal?.pages?.cellLog?.editEntry) {
+        window.Petal.pages.cellLog.editEntry(entryId);
+      }
+      return;
+    }
+    if (action === 'cell-log:delete-entry') {
+      e.stopPropagation();
+      const entryId = actionBtn.getAttribute('data-entry-id');
+      if (entryId && window.confirm('Delete this cell log entry?')) {
+        if (window.Petal?.pages?.cellLog?.deleteEntry) {
+          window.Petal.pages.cellLog.deleteEntry(entryId);
+        }
+      }
       return;
     }
     

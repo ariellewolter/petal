@@ -2,8 +2,13 @@
 // Today view page with LabOS-style dashboard layout
 // Takes state and handlers as parameters - no store peeking
 
-import { esc } from '../utils/strings.js';
-import { today, parseDate } from '../utils/dates.js';
+import { esc, escAttr } from '../utils/strings.js';
+import { today, parseDate, localDateKey } from '../utils/dates.js';
+import { canEditPlannerEventById } from '../utils/ids.js';
+
+function eventDateKey(date) {
+  return localDateKey(date);
+}
 import { getAllTasks } from '../domain/models.js';
 import { projectNameById } from '../utils/projectHelpers.js';
 import { setupEventDelegation } from '../app/delegation.js';
@@ -22,7 +27,7 @@ function formatTime(minutes) {
 
 // Get all events for a specific date (one-off + expanded recurring)
 function getEventsForDate(date, events, recurringRules) {
-  const dateStr = date.toISOString().split('T')[0];
+  const dateStr = eventDateKey(date);
   
   // Get one-off events
   const oneOff = events.filter(e => {
@@ -34,7 +39,7 @@ function getEventsForDate(date, events, recurringRules) {
   const expanded = [];
   const dayOfWeek = date.getDay();
   recurringRules.forEach(rule => {
-    if (!rule.enabled) return;
+    if (rule.enabled === false) return;
     if (rule.daysOfWeek && rule.daysOfWeek.includes(dayOfWeek)) {
       expanded.push({
         id: `evt_${rule.id}_${dateStr}`,
@@ -75,7 +80,7 @@ export async function renderTodayPage(containerEl, state, handlers) {
   const fullDate = now.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
 
   // --- tasks for today ---
-  const todayKey = now.toISOString().slice(0, 10); // YYYY-MM-DD
+  const todayKey = localDateKey(now);
   const allTasks = getAllTasks(state.tasks || [], state.projects || []);
 
   const tasksToday = allTasks.filter(t => {
@@ -139,6 +144,9 @@ export async function renderTodayPage(containerEl, state, handlers) {
     .slice(0, 5);
   const events = Array.isArray(state.events) ? state.events : [];
   const recurringRules = Array.isArray(state.recurringRules) ? state.recurringRules : [];
+  const doingCount = allTasks.filter(t => !t.done && !t.deletedAt && t.status === 'Doing').length;
+  const prints3d = Array.isArray(state.prints3d) ? state.prints3d : [];
+  const printQueueCount = prints3d.filter(p => p && p.status === 'queued').length;
 
   // Build HTML with full layout (sidebar is now global, so we don't include it here)
   containerEl.innerHTML = `
@@ -162,22 +170,22 @@ export async function renderTodayPage(containerEl, state, handlers) {
       <main class="today-main">
         <!-- STATS ROW -->
         <div class="today-stats-row">
-          <div class="today-stat-card c1">
+          <div class="today-stat-card today-stat-card--link c1" data-nav="tasks" role="button" tabindex="0" title="View all tasks">
             <div class="today-stat-label">Tasks Today</div>
             <div class="today-stat-value">${doneToday.length}<span style="font-size:16px;color:var(--text-dim)">/${tasksToday.length + doneToday.length}</span></div>
             <div class="today-stat-sub">${Math.max(0, tasksToday.length)} remaining</div>
           </div>
-          <div class="today-stat-card c2">
+          <div class="today-stat-card today-stat-card--link c2" data-nav="projects" role="button" tabindex="0" title="View projects">
             <div class="today-stat-label">Active Projects</div>
             <div class="today-stat-value">${activeProjects.length}</div>
             <div class="today-stat-sub">${escapeHtml(getProjectDeadlineLine(activeProjects))}</div>
           </div>
-          <div class="today-stat-card c3">
+          <div class="today-stat-card today-stat-card--link c3" data-nav="cell-log" role="button" tabindex="0" title="View cell log">
             <div class="today-stat-label">Cell Cultures</div>
             <div class="today-stat-value">${getActiveCellLinesCount(cellLogEntries)}</div>
             <div class="today-stat-sub">${escapeHtml(getCultureAttentionLine(cellLogEntries))}</div>
           </div>
-          <div class="today-stat-card c4">
+          <div class="today-stat-card c4" title="Time logging coming later">
             <div class="today-stat-label">Hours Logged</div>
             <div class="today-stat-value">—</div>
             <div class="today-stat-sub">time log not enabled</div>
@@ -242,6 +250,38 @@ export async function renderTodayPage(containerEl, state, handlers) {
             ${renderFilesCard(recentFiles)}
           </div>
         </div>
+
+        <!-- WORKFLOW -->
+        <div class="today-card today-workflow-card">
+          <div class="today-card-header">
+            <div class="today-card-title">
+              <span class="today-dot" style="background:var(--rose)"></span>
+              Workflow
+            </div>
+            <span class="today-card-action" data-nav="workflow">Open →</span>
+          </div>
+          <div class="today-mini-summary">
+            ${doingCount > 0
+              ? `<div class="today-mini-stat"><span class="today-mini-value">${doingCount}</span><span class="today-mini-label">in progress</span></div>`
+              : `<div class="today-mini-empty">No tasks in Doing</div>`}
+          </div>
+        </div>
+
+        <!-- 3D PRINTING -->
+        <div class="today-card today-3d-card">
+          <div class="today-card-header">
+            <div class="today-card-title">
+              <span class="today-dot" style="background:var(--taupe)"></span>
+              3D Printing
+            </div>
+            <span class="today-card-action" data-nav="3d-print">Queue →</span>
+          </div>
+          <div class="today-mini-summary">
+            ${printQueueCount > 0
+              ? `<div class="today-mini-stat"><span class="today-mini-value">${printQueueCount}</span><span class="today-mini-label">queued</span></div>`
+              : `<div class="today-mini-empty">Print queue empty</div>`}
+          </div>
+        </div>
       </main>
     </div>
 
@@ -263,7 +303,20 @@ export async function renderTodayPage(containerEl, state, handlers) {
       const action = actionEl.getAttribute("data-action");
       if (action === "quick-add") {
         handlers?.quickAdd?.();
+        return;
       }
+      if (action === "today:open-event") {
+        e.preventDefault();
+        e.stopPropagation();
+        openTodayScheduleEvent(actionEl.getAttribute("data-event-id"), handlers);
+        return;
+      }
+    }
+
+    const eventBlock = e.target.closest(".t-block[data-event-id]");
+    if (eventBlock) {
+      e.preventDefault();
+      openTodayScheduleEvent(eventBlock.getAttribute("data-event-id"), handlers);
       return;
     }
 
@@ -314,8 +367,24 @@ export async function renderTodayPage(containerEl, state, handlers) {
 
     const cellEntry = e.target.closest(".today-cell-entry[data-cell-id]");
     if (cellEntry) {
-      handlers?.switchView?.('cell-log');
+      const cellId = cellEntry.getAttribute("data-cell-id");
+      if (cellId && window.Petal?.pages?.cellLog?.openCellLogEntry) {
+        window.Petal.pages.cellLog.openCellLogEntry(cellId, handlers);
+      } else {
+        handlers?.switchView?.("cell-log");
+      }
+      return;
     }
+  };
+
+  // Keyboard: stat cards and nav actions
+  containerEl.onkeydown = (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const link = e.target.closest('[data-nav][role="button"]');
+    if (!link) return;
+    e.preventDefault();
+    const view = link.getAttribute('data-nav');
+    handlers?.switchView?.(view);
   };
 
   // Set up global event delegation (all hookups start here)
@@ -329,7 +398,7 @@ export async function renderTodayPage(containerEl, state, handlers) {
   setTimeout(() => {
     const scheduleContainer = containerEl.querySelector('.today-time-slots');
     if (scheduleContainer) {
-      const todayDateStr = now.toISOString().split('T')[0];
+      const todayDateStr = localDateKey(now);
       const rows = scheduleContainer.querySelectorAll('.t-row');
       rows.forEach((row, index) => {
         const slot = row.querySelector('.t-slot');
@@ -361,6 +430,39 @@ export async function renderTodayPage(containerEl, state, handlers) {
 }
 
 // --- helpers ---
+
+function buildTodayFileLink(f) {
+  if (f.fileLink && typeof f.fileLink === 'object') return f.fileLink;
+  return {
+    label: f.name || f.label || 'File',
+    name: f.name || f.label,
+    abs_path: f.abs_path || f.path || '',
+    share_url: f.share_url || '',
+    onedrive_rel: f.onedrive_rel || '',
+    key: f.key
+  };
+}
+
+function openTodayScheduleEvent(eventId, handlers) {
+  if (!eventId) {
+    handlers?.switchView?.('planner');
+    return;
+  }
+  const events = window.Petal?.store?.getState()?.events || [];
+  if (canEditPlannerEventById(eventId, events)) {
+    if (window.Petal?.features?.plannerOperations?.editEvent) {
+      const ctx = window.Petal?.handlers?.createPageContext?.() || {};
+      window.Petal.features.plannerOperations.editEvent(ctx, eventId);
+      return;
+    }
+    if (typeof window.editEvent === 'function') {
+      window.editEvent(eventId);
+      return;
+    }
+  }
+  handlers?.switchView?.('planner');
+}
+
 function escapeHtml(s) {
   return String(s ?? "")
     .replaceAll("&", "&amp;")
@@ -533,8 +635,9 @@ function renderScheduleCard(state, now, events, recurringRules) {
     // Height based on exact duration (same as planner)
     const blockHeight = e.durationMin * PIXELS_PER_MINUTE;
     
+    const eventId = String(e.id || '');
     return `
-      <div class="t-block ${color}" style="position:absolute;top:${startMins * PIXELS_PER_MINUTE}px;left:52px;right:0;z-index:2;height:${blockHeight}px;border-radius:10px;padding:10px 14px;border-left:3px solid transparent;cursor:pointer;transition:transform 0.13s,filter 0.13s;overflow:hidden;">
+      <div class="t-block ${color}" data-event-id="${escapeHtml(eventId)}" data-action="today:open-event" role="button" tabindex="0" title="Edit event" style="position:absolute;top:${startMins * PIXELS_PER_MINUTE}px;left:52px;right:0;z-index:2;height:${blockHeight}px;border-radius:10px;padding:10px 14px;border-left:3px solid transparent;cursor:pointer;transition:transform 0.13s,filter 0.13s;overflow:hidden;">
         <div class="t-block-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:'Jost',sans-serif;font-size:11.5px;font-weight:600;color:var(--text);margin-bottom:3px;">
           <span>${escapeHtml(e.title || 'Event')}</span>
           <span style="font-size:9px;color:var(--text-dim);font-weight:400;white-space:nowrap;">${timeStr}</span>
@@ -796,8 +899,9 @@ function renderFilesCard(files) {
       }
     }
     
+    const fileLink = buildTodayFileLink(f);
     return `
-      <div class="today-file-item" data-file-id="${escapeHtml(String(f.id || ''))}" ${f.projectId ? `data-project-id="${f.projectId}"` : ''}>
+      <div class="today-file-item" data-action="file:open" data-path="${escAttr(JSON.stringify(fileLink))}" data-file-id="${escapeHtml(String(f.id || ''))}" ${f.projectId ? `data-project-id="${f.projectId}"` : ''} title="Open file">
         <div class="today-file-icon ${iconClass}">${icon}</div>
         <div>
           <div class="today-file-name">${escapeHtml(name)}</div>

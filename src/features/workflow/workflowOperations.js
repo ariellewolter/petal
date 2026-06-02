@@ -3,6 +3,7 @@
 // All functions use immutable updates via store.setState()
 
 import { appStore } from '../../state/store.js';
+import { idsMatch } from '../../utils/ids.js';
 
 /**
  * Set workflow placement for a task
@@ -16,14 +17,14 @@ export function setWorkflowPlacement(taskId, lane, column) {
   const placement = workflow.placement || {};
   
   // Create immutable update
+  const placementKey = String(taskId);
   const newPlacement = {
     ...placement,
-    [taskId]: { lane, column }
+    [placementKey]: { lane, column }
   };
   
-  // Also update task's lane/stage if needed (for backward compatibility)
   const tasks = state.tasks || [];
-  const taskIndex = tasks.findIndex(t => t.id === taskId);
+  const taskIndex = tasks.findIndex(t => idsMatch(t.id, taskId));
   
   if (taskIndex >= 0) {
     const updatedTasks = [...tasks];
