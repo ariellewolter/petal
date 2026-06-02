@@ -6,10 +6,11 @@
   "scripts": {
     "start": "electron .",
     "audit": "node scripts/audit.js",
-    "build": "electron-builder --publish never --config electron-builder.config.cjs",
-    "build:mac": "electron-builder --mac --publish never --config electron-builder.config.cjs",
-    "build:win": "electron-builder --win --publish never --config electron-builder.config.cjs",
-    "build:all": "electron-builder --mac --win --publish never --config electron-builder.config.cjs",
+    "verify:icons": "node scripts/verify-release-icons.js",
+    "build": "npm run verify:icons && electron-builder --publish never --config electron-builder.config.cjs",
+    "build:mac": "npm run verify:icons && electron-builder --mac --publish never --config electron-builder.config.cjs",
+    "build:win": "npm run verify:icons && electron-builder --win --publish never --config electron-builder.config.cjs",
+    "build:all": "npm run verify:icons && electron-builder --mac --win --publish never --config electron-builder.config.cjs",
     "build:icons": "node scripts/build-app-icons.js"
   },
   "keywords": ["task", "tracker", "productivity"],
@@ -32,6 +33,7 @@
       "tasklist.html",
       "storage.js",
       "manifest.json",
+      "service-worker.js",
       "icon-192.png",
       "icon-512.png",
       "src/**/*"

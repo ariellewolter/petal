@@ -4,6 +4,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
 const FAILURES = [];
 const WARNINGS = [];
@@ -330,11 +331,29 @@ function checkReleaseAssets() {
     warn('Release Assets', 'Missing build/entitlements.mac.plist', 'build/entitlements.mac.plist');
   }
 
+  const icon192 = path.join(process.cwd(), 'icon-192.png');
+  if (fs.existsSync(icon192)) {
+    pass('App PNG icon present (icon-192.png)');
+  } else {
+    fail('Release Assets', 'Missing icon-192.png', 'icon-192.png');
+  }
+
   const icon512 = path.join(process.cwd(), 'icon-512.png');
   if (fs.existsSync(icon512)) {
     pass('App PNG icon present (icon-512.png)');
   } else {
     fail('Release Assets', 'Missing icon-512.png', 'icon-512.png');
+  }
+
+  try {
+    execSync('node scripts/verify-release-icons.js', { stdio: 'pipe', cwd: process.cwd() });
+    pass('verify-release-icons.js passes');
+  } catch {
+    fail(
+      'Release Assets',
+      'verify-release-icons.js failed — run npm run verify:icons',
+      'scripts/verify-release-icons.js'
+    );
   }
 }
 

@@ -17,6 +17,7 @@ module.exports = function (context) {
       "tasklist.html",
       "storage.js",
       "manifest.json",
+      "service-worker.js",
       "icon-192.png",
       "icon-512.png",
       "src/**/*"

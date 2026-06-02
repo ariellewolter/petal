@@ -18,3 +18,6 @@ build/*
 # OS/editor
 .DS_Store
 *.log
+
+# Finder duplicate copies of committed app icons (canonical: icon-192.png, icon-512.png)
+icon-*\ *.png

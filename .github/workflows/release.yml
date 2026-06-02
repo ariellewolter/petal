@@ -27,10 +27,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Verify macOS app icon
-        run: |
-          test -f build/icon.icns || (echo "Missing build/icon.icns — run npm run build:icons and commit it" && exit 1)
-          ls -la build/icon.icns
+      - name: Verify release icon assets
+        run: npm run verify:icons
 
       - name: Debug notarize env (safe)
         run: |

@@ -62,8 +62,14 @@ function main() {
   run(`iconutil -c icns "${iconsetDir}" -o "${icnsOut}"`);
   fs.rmSync(iconsetDir, { recursive: true, force: true });
 
+  const icon192 = path.join(root, 'icon-192.png');
+  if (!fs.existsSync(icon192)) {
+    console.log('Creating icon-192.png from icon-512.png…');
+    run(`sips -z 192 192 "${srcPng}" --out "${icon192}" -s format png`);
+  }
+
   console.log(`\n✓ ${icnsOut}`);
-  console.log('Commit build/icon.icns so CI releases use the Petal icon.\n');
+  console.log('Commit build/icon.icns, icon-192.png, and icon-512.png so releases package the Petal icon.\n');
 }
 
 main();
