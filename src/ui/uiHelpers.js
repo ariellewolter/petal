@@ -2,6 +2,14 @@
 // Helper functions for UI operations and DOM manipulation
 
 import { parseDate, today } from '../utils/dates.js';
+
+/** Mark-done checkbox used wherever a task row is rendered */
+export function taskDoneToggleButton(task, style = '') {
+  const done = !!task.done;
+  const label = done ? 'Mark as not done' : 'Mark as done';
+  const id = task.id;
+  return `<button type="button" class="check-box ${done ? 'checked' : ''}" data-action="task:toggle" data-task-id="${id}" title="${label}" aria-label="${label}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;${style}"></button>`;
+}
 import { findProjectById, filterTasksForProject } from '../utils/projectHelpers.js';
 
 /**

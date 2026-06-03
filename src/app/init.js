@@ -91,7 +91,10 @@ import * as buttonHandlers from '../ui/buttonHandlers.js';
  */
 export async function initApp() {
   console.log('🚀 Initializing Petal app...');
-  
+
+  const { installPetalPlatform } = await import('../platform/index.js');
+  await installPetalPlatform();
+
   // IMMEDIATE: Ensure app container and sidebar are visible
   const appEl = document.querySelector('.app');
   const sidebarEl = document.getElementById('global-sidebar');

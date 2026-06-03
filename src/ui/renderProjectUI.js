@@ -8,6 +8,7 @@ import { LANE_STAGES } from '../domain/schema.js';
 import { getWorkflowLanesDisplay, filterTasksForProject, findProjectById, isProjectOpen } from '../utils/projectHelpers.js';
 import { getTaskSubtasks } from '../features/taskOperations.js';
 import { getTaskFiles } from '../features/fileManagement.js';
+import { taskDoneToggleButton } from './uiHelpers.js';
 
 /**
  * Render Next Up strip (Next Up / Blocked / Stale cards)
@@ -62,16 +63,19 @@ export function renderNextUpStrip(ctx, project, projectTasks) {
     })
     .slice(0, 3);
   
+  const nextUpRow = (t, bodyHtml) => `<div class="next-up-item" style="display:flex;align-items:flex-start;gap:8px;padding:8px;">
+    ${taskDoneToggleButton(t, 'margin-top:2px;')}
+    <button type="button" data-action="task:open-drawer" data-task-id="${t.id}" style="flex:1;min-width:0;text-align:left;background:none;border:none;padding:0;cursor:pointer;">${bodyHtml}</button>
+  </div>`;
+
   let html = '';
   
   if (nextUp.length > 0) {
     html += '<div class="next-up-card"><div class="next-up-header">Next Up</div>';
     nextUp.forEach(t => {
       const stage = getMatrixStageFunction(t);
-      html += `<button type="button" class="next-up-item" data-action="task:open-drawer" data-task-id="${t.id}" style="width:100%;text-align:left;background:none;border:none;padding:8px;cursor:pointer;">
-        <div class="next-up-title">${escFunction(t.title || 'Untitled')}</div>
-        <div class="next-up-stage ${stage}">${escFunction(stage)}</div>
-      </button>`;
+      html += nextUpRow(t, `<div class="next-up-title">${escFunction(t.title || 'Untitled')}</div>
+        <div class="next-up-stage ${stage}">${escFunction(stage)}</div>`);
     });
     html += '</div>';
   }
@@ -79,9 +83,7 @@ export function renderNextUpStrip(ctx, project, projectTasks) {
   if (blocked.length > 0) {
     html += '<div class="next-up-card blocked"><div class="next-up-header">Blocked</div>';
     blocked.forEach(t => {
-      html += `<button type="button" class="next-up-item" data-action="task:open-drawer" data-task-id="${t.id}" style="width:100%;text-align:left;background:none;border:none;padding:8px;cursor:pointer;">
-        <div class="next-up-title">${escFunction(t.title || 'Untitled')}</div>
-      </button>`;
+      html += nextUpRow(t, `<div class="next-up-title">${escFunction(t.title || 'Untitled')}</div>`);
     });
     html += '</div>';
   }
@@ -89,9 +91,7 @@ export function renderNextUpStrip(ctx, project, projectTasks) {
   if (stale.length > 0) {
     html += '<div class="next-up-card stale"><div class="next-up-header">Stale</div>';
     stale.forEach(t => {
-      html += `<button type="button" class="next-up-item" data-action="task:open-drawer" data-task-id="${t.id}" style="width:100%;text-align:left;background:none;border:none;padding:8px;cursor:pointer;">
-        <div class="next-up-title">${escFunction(t.title || 'Untitled')}</div>
-      </button>`;
+      html += nextUpRow(t, `<div class="next-up-title">${escFunction(t.title || 'Untitled')}</div>`);
     });
     html += '</div>';
   }

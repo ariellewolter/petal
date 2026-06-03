@@ -1,0 +1,30 @@
+{
+  "name": "petal-vault",
+  "version": "0.1.0",
+  "description": "PetalVault file storage for iOS (iCloud-synced petal.json)",
+  "main": "dist/plugin.cjs.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/esm/index.d.ts",
+  "files": [
+    "dist/",
+    "ios/Sources/"
+  ],
+  "author": "Petal",
+  "license": "MIT",
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    }
+  },
+  "scripts": {
+    "build": "npm run clean && tsc",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@capacitor/core": "^7.0.0",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "@capacitor/core": ">=6.0.0"
+  }
+}

@@ -1,4 +1,5 @@
 node_modules/
+plugins/petal-vault/node_modules/
 
 # App local state / caches (adjust to your real paths)
 storage/
@@ -13,6 +14,7 @@ data/**/*.json
 
 # Electron / build cruft
 dist/
+www/
 out/
 release/
 build/*

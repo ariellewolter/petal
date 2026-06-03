@@ -6,7 +6,7 @@ console.log('🧩 PRELOAD LOADED', { pid: process.pid, time: new Date().toISOStr
 
 const { contextBridge, ipcRenderer } = require('electron');
 
-contextBridge.exposeInMainWorld('electronAPI', {
+const petalElectronAPI = {
   // Storage operations
   loadState: () => ipcRenderer.invoke('storage:load'),
   saveState: (state) => ipcRenderer.invoke('storage:save', state),
@@ -102,5 +102,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setBackgroundColor: (color) => ipcRenderer.invoke('window:setBackgroundColor', color),
   
   // Step 3: Debug IPC - prove which main process we're talking to
-  debugPid: () => ipcRenderer.invoke('debug:pid')
-});
+  debugPid: () => ipcRenderer.invoke('debug:pid'),
+
+  hasVaultStorage: () => true,
+  kind: 'electron',
+};
+
+contextBridge.exposeInMainWorld('electronAPI', petalElectronAPI);
+contextBridge.exposeInMainWorld('petalPlatform', petalElectronAPI);

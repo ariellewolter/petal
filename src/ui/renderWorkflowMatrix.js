@@ -2,6 +2,7 @@
 // UI rendering functions for workflow matrix view
 
 import { esc, escAttr, escJsonForAttr, fileIcon } from '../utils/strings.js';
+import { taskDoneToggleButton } from './uiHelpers.js';
 import { parseDate, dueLabel, today } from '../utils/dates.js';
 import { getMatrixStage, isTaskBlocked, getAllTasks } from '../domain/models.js';
 import { findProjectById, filterTasksForProject, projectIdsMatch } from '../utils/projectHelpers.js';
@@ -227,9 +228,12 @@ export async function renderMatrixSidebar(ctx, project, projectTasks) {
     const depTask = t.dependsOn
       ? allTasksForSidebar.find(d => projectIdsMatch(d.id, t.dependsOn))
       : null;
-    return `<div class="matrix-sidebar-item">
-      <div class="matrix-sidebar-item-title">${escFunction(t.title)}</div>
-      <div class="matrix-sidebar-item-meta">Blocked by: ${depTask ? escFunction(depTask.title) : 'task'}</div>
+    return `<div class="matrix-sidebar-item" style="display:flex;align-items:flex-start;gap:8px;">
+      ${taskDoneToggleButton(t, 'margin-top:2px;')}
+      <div style="flex:1;min-width:0;">
+        <div class="matrix-sidebar-item-title">${escFunction(t.title)}</div>
+        <div class="matrix-sidebar-item-meta">Blocked by: ${depTask ? escFunction(depTask.title) : 'task'}</div>
+      </div>
     </div>`;
   }).join('') || '<div style="font-size:11px;color:var(--text-light);">No blocked tasks</div>';
 

@@ -10,6 +10,7 @@ import {
   setThemePreference
 } from '../utils/theme.js';
 import { buildImportStorePatch } from '../features/exportImport.js';
+import { hasVaultStorage, isIOSApp, getNativeAPI } from '../platform/helpers.js';
 
 /**
  * Render Settings page
@@ -25,18 +26,19 @@ export async function renderSettingsPage(containerEl, state, handlers) {
   let vaultStatus = null;
   let vaultDetails = null;
   let dataPath = null;
-  const isElectron = typeof window.electronAPI !== 'undefined';
+  const nativeVault = hasVaultStorage();
+  const onIPad = isIOSApp();
+  const api = getNativeAPI();
 
-  if (isElectron) {
+  if (nativeVault && api) {
     try {
-      vaultPath = (await window.electronAPI.getVaultPath()) || 'Not set';
+      vaultPath = (await api.getVaultPath()) || 'Not set';
     } catch (err) {
       console.error('Error getting vault path:', err);
       vaultPath = `Could not read vault path (${err.message || err})`;
     }
     try {
-      const getDetails =
-        window.electronAPI.getVaultDetails || window.electronAPI.vaultGetDetails;
+      const getDetails = api.getVaultDetails || api.vaultGetDetails;
       if (getDetails) {
         vaultDetails = await getDetails();
         if (vaultDetails?.activeVaultPath) {
@@ -47,12 +49,12 @@ export async function renderSettingsPage(containerEl, state, handlers) {
       console.error('Error getting vault details:', err);
     }
     try {
-      vaultStatus = await window.electronAPI.vaultGetStatus();
+      vaultStatus = await api.vaultGetStatus();
     } catch (err) {
       console.error('Error getting vault status:', err);
     }
     try {
-      dataPath = await window.electronAPI.getDataPath();
+      dataPath = await api.getDataPath();
     } catch (err) {
       console.error('Error getting data path:', err);
     }
@@ -112,16 +114,17 @@ export async function renderSettingsPage(containerEl, state, handlers) {
             <div class="settings-vault-path-display">${esc(vaultPath)}</div>
           </div>
           
-          ${isElectron ? `
+          ${nativeVault ? `
           <div class="settings-vault-actions">
-            <button class="settings-btn" data-action="open-vault-folder">📁 Open Vault Folder</button>
-            <button class="settings-btn" data-action="choose-vault-folder">📂 Change Vault Location</button>
-            <button class="settings-btn" data-action="copy-from-vault-folder">📋 Copy data from another folder</button>
+            ${onIPad ? '' : '<button class="settings-btn" data-action="open-vault-folder">📁 Open Vault Folder</button>'}
+            <button class="settings-btn" data-action="choose-vault-folder">📂 ${onIPad ? 'Choose iCloud Vault Folder' : 'Change Vault Location'}</button>
+            ${onIPad ? '' : '<button class="settings-btn" data-action="copy-from-vault-folder">📋 Copy data from another folder</button>'}
             <button class="settings-btn" data-action="refresh-vault-status">🔄 Refresh Status</button>
           </div>
+          ${onIPad ? `<p class="settings-section-desc" style="margin-top:10px;">For Mac sync: pick <strong>iCloud Drive → PetalVault</strong> (same folder as the Mac app).</p>` : ''}
           ` : `
           <div class="settings-info-box">
-            <p>Vault management is only available in the desktop app. Open this app in Electron to manage your vault.</p>
+            <p>Vault management is only available in the desktop or iPad app.</p>
           </div>
           `}
         </div>
@@ -176,7 +179,7 @@ export async function renderSettingsPage(containerEl, state, handlers) {
             </div>
           </div>
           
-          ${isElectron ? `
+          ${nativeVault && !onIPad ? `
           <div class="settings-recovery" style="margin-top:24px;padding-top:24px;border-top:1px solid var(--border);">
             <h4 class="settings-subtitle">Recover Data</h4>
             <p class="settings-subtitle-desc">If you've lost data, restore from an automatic backup file.</p>
@@ -213,7 +216,7 @@ export async function renderSettingsPage(containerEl, state, handlers) {
     </div>
     <div class="settings-header-right">
       <div style="display:flex;align-items:center;gap:6px">
-        <span class="settings-header-status">${isElectron ? (vaultReady ? 'Vault ready' : 'Vault not ready') : 'Browser mode'}</span>
+        <span class="settings-header-status">${nativeVault ? (vaultReady ? 'Vault ready' : 'Vault not ready') : 'Browser mode'}</span>
       </div>
     </div>
   `;
@@ -222,7 +225,7 @@ export async function renderSettingsPage(containerEl, state, handlers) {
   window.Petal.pages = window.Petal.pages || {};
   window.Petal.pages.settings = {
     handleAction: (action, actionEl) =>
-      handleSettingsAction(action, actionEl, containerEl, state, handlers, { isElectron, vaultPath })
+      handleSettingsAction(action, actionEl, containerEl, state, handlers, { nativeVault, onIPad, api, vaultPath })
   };
 
   // Handle file import
@@ -240,7 +243,7 @@ export async function renderSettingsPage(containerEl, state, handlers) {
  * Handle settings data-action clicks (via global delegation).
  */
 export async function handleSettingsAction(action, actionEl, containerEl, state, handlers, ctx) {
-  const { isElectron, vaultPath } = ctx;
+  const { nativeVault, onIPad, api, vaultPath } = ctx;
 
   switch (action) {
     case 'set-theme': {
@@ -258,21 +261,21 @@ export async function handleSettingsAction(action, actionEl, containerEl, state,
       document.getElementById('settings-import-input')?.click();
       break;
     case 'open-vault-folder':
-      if (isElectron) {
+      if (nativeVault && api?.vaultOpenFolder && !onIPad) {
         try {
-          await window.electronAPI.vaultOpenFolder(vaultPath);
+          await api.vaultOpenFolder(vaultPath);
         } catch (err) {
           alert('Error opening vault folder: ' + err.message);
         }
       }
       break;
     case 'choose-vault-folder':
-      if (isElectron) {
+      if (nativeVault && api) {
         try {
-          const chooseResult = await window.electronAPI.vaultChoose();
-          if (chooseResult?.canceled) break;
+          const chooseResult = await api.vaultChoose();
+          if (chooseResult?.canceled || chooseResult?.cancelled) break;
           if (chooseResult?.success) {
-            const newPath = chooseResult.vaultPath || await window.electronAPI.getVaultPath();
+            const newPath = chooseResult.vaultPath || (await api.getVaultPath());
             await reloadStateAfterVaultChange(handlers);
             await updateVaultBadge();
             if (chooseResult.copiedFromPrevious) {
@@ -299,11 +302,9 @@ export async function handleSettingsAction(action, actionEl, containerEl, state,
       }
       break;
     case 'copy-from-vault-folder':
-      if (isElectron) {
+      if (nativeVault && api && !onIPad) {
         try {
-          const copyVault =
-            window.electronAPI.copyVaultFromFolder ||
-            window.electronAPI.vaultCopyFromFolder;
+          const copyVault = api.copyVaultFromFolder || api.vaultCopyFromFolder;
           if (!copyVault) {
             alert(
               'Copy vault is not available. Fully quit Petal (Cmd+Q) and reopen the app, then try again.'
@@ -331,12 +332,12 @@ export async function handleSettingsAction(action, actionEl, containerEl, state,
       }
       break;
     case 'refresh-vault-status':
-      if (isElectron) {
+      if (nativeVault) {
         await renderSettingsPage(containerEl, state, handlers);
       }
       break;
     case 'recover-data':
-      if (isElectron && window.recoverData) {
+      if (nativeVault && !onIPad && window.recoverData) {
         await window.recoverData();
         await renderSettingsPage(containerEl, state, handlers);
       } else {

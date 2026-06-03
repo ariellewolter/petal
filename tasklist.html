@@ -5070,9 +5070,9 @@ async function renderWorkflowCanvas(containerEl, state, handlers) {
         ${tags.length > 0 ? `<div class="wf-tags">${tags.map(t => `<span class="wf-tag ${t.class}">${esc(t.text)}</span>`).join('')}</div>` : ''}
         <div class="wf-mini-tasks">
           ${openTasks.slice(0, 4).map(t => `
-            <div class="wf-mtask ${t.done ? 'done-t' : ''}">
-              <div class="wf-mt-dot"></div>
-              <span>${esc(t.title || 'Untitled')}</span>
+            <div class="wf-mtask ${t.done ? 'done-t' : ''}" style="display:flex;align-items:center;gap:6px;">
+              <button type="button" class="check-box ${t.done ? 'checked' : ''}" data-action="task:toggle" data-task-id="${t.id}" title="${t.done ? 'Mark as not done' : 'Mark as done'}" aria-label="${t.done ? 'Mark as not done' : 'Mark as done'}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;"></button>
+              <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(t.title || 'Untitled')}</span>
             </div>
           `).join('')}
           ${openTasks.length > 4 ? `<div class="wf-mtask" style="color:var(--text-light);font-size:9px;">+${openTasks.length - 4} more</div>` : ''}

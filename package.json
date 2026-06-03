@@ -11,14 +11,25 @@
     "build:mac": "npm run verify:icons && electron-builder --mac --publish never --config electron-builder.config.cjs",
     "build:win": "npm run verify:icons && electron-builder --win --publish never --config electron-builder.config.cjs",
     "build:all": "npm run verify:icons && electron-builder --mac --win --publish never --config electron-builder.config.cjs",
-    "build:icons": "node scripts/build-app-icons.js"
+    "build:icons": "node scripts/build-app-icons.js",
+    "cap:prepare": "node scripts/cap-prepare-www.js",
+    "cap:sync:ios": "npm run cap:prepare && npx cap sync ios",
+    "cap:open:ios": "npx cap open ios"
   },
   "keywords": ["task", "tracker", "productivity"],
   "author": "Your Name",
   "license": "MIT",
+  "dependencies": {
+    "@capacitor/app": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "petal-vault": "file:plugins/petal-vault"
+  },
   "devDependencies": {
+    "@capacitor/cli": "^7.0.0",
+    "@capacitor/ios": "^7.0.0",
     "electron": "^28.0.0",
-    "electron-builder": "^24.9.1"
+    "electron-builder": "^24.9.1",
+    "typescript": "^5.0.0"
   },
   "build": {
     "appId": "com.petal.tasktracker",

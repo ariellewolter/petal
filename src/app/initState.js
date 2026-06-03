@@ -9,6 +9,7 @@ import { ensureCellLogSettings, ensureAppearanceSettings } from '../utils/settin
 import { initTheme } from '../utils/theme.js';
 import { refreshProjectSelects } from '../ui/selects.js';
 import { showConflictBanner } from '../ui/conflictBanner.js';
+import { hasVaultStorage, isIOSApp, getNativeAPI } from '../platform/helpers.js';
 
 function applyIncomingStateToStore(payload, sourceLabel) {
   const incoming = payload?.data || payload;
@@ -49,19 +50,21 @@ export async function initStateInternal() {
   let vaultResolved = false;
   let vaultResolvedData = null;
   
-  // Check vault setup if in Electron
-  if (typeof window !== 'undefined' && window.electronAPI) {
+  const nativeApi = getNativeAPI();
+
+  // Check vault setup (Electron or iPad)
+  if (typeof window !== 'undefined' && nativeApi) {
     try {
       // Set up event listeners for vault resolution (for UI updates, but we poll for certainty)
-      window.electronAPI.onVaultResolved((data) => {
+      nativeApi.onVaultResolved((data) => {
         console.log('✓ Vault resolved event received:', data);
       });
       
-      window.electronAPI.onVaultNeedsChoice((data) => {
+      nativeApi.onVaultNeedsChoice((data) => {
         console.log('⚠️ Vault needs user choice:', data);
       });
 
-      window.electronAPI.onVaultExternalModification(async (data) => {
+      nativeApi.onVaultExternalModification(async (data) => {
         console.warn('⚠️ External vault modification detected:', data);
         if (data?.hasUnsavedChanges) {
           const reload = confirm(
@@ -69,34 +72,34 @@ export async function initStateInternal() {
           );
           if (!reload) return;
         }
-        if (window.electronAPI?.supportReloadExternalChanges) {
-          const result = await window.electronAPI.supportReloadExternalChanges();
+        if (nativeApi?.supportReloadExternalChanges) {
+          const result = await nativeApi.supportReloadExternalChanges();
           if (result?.success) {
             applyIncomingStateToStore(result.data, 'external modification');
           }
         }
       });
 
-      window.electronAPI.onVaultCorruptionRecovered(async (data) => {
+      nativeApi.onVaultCorruptionRecovered(async (data) => {
         console.warn('⚠️ Vault recovered from backup:', data);
         alert('Petal detected a corrupted vault file and recovered from backup.');
-        if (window.electronAPI?.supportReloadExternalChanges) {
-          const result = await window.electronAPI.supportReloadExternalChanges();
+        if (nativeApi?.supportReloadExternalChanges) {
+          const result = await nativeApi.supportReloadExternalChanges();
           if (result?.success) {
             applyIncomingStateToStore(result.data, 'corruption recovery');
           }
         }
       });
 
-      window.electronAPI.onVaultRelocated((data) => {
+      nativeApi.onVaultRelocated((data) => {
         console.log('ℹ️ Vault relocation detected:', data);
       });
 
-      window.electronAPI.onVaultNeedsRelocation((data) => {
+      nativeApi.onVaultNeedsRelocation((data) => {
         console.warn('⚠️ Vault needs relocation:', data);
       });
 
-      window.electronAPI.onStorageStateChanged(async (data) => {
+      nativeApi.onStorageStateChanged(async (data) => {
         const hasUnsaved = getSaveStatus()?.hasUnsavedChanges;
         if (hasUnsaved) {
           const reload = confirm(
@@ -107,12 +110,12 @@ export async function initStateInternal() {
         applyIncomingStateToStore(data, 'storage:stateChanged');
       });
 
-      window.electronAPI.onVaultReloadState((payload) => {
+      nativeApi.onVaultReloadState((payload) => {
         applyIncomingStateToStore(payload, 'vault:reloadState');
       });
       
       // Check vault status using new vault system
-      const vaultStatus = await window.electronAPI.vaultGetStatus();
+      const vaultStatus = await nativeApi.vaultGetStatus();
       
       // If vault is already resolved, proceed
       if (vaultStatus.resolved && vaultStatus.activeVaultPath) {
@@ -143,10 +146,14 @@ export async function initStateInternal() {
         // If no vault is active, prompt user to create/choose one
         if (!vaultStatus.initialized || !vaultStatus.activeVault) {
           // Discover existing vaults first
-          const discovered = await window.electronAPI.vaultDiscover();
+          const discovered = await nativeApi.vaultDiscover();
           
           let message = 'Welcome to Petal!\n\n';
-          if (discovered.success && discovered.vaults && discovered.vaults.length > 0) {
+          if (isIOSApp()) {
+            message += 'To sync with your Mac, choose your existing vault folder:\n';
+            message += 'Files → iCloud Drive → PetalVault\n\n';
+            message += 'Click OK to pick the folder, or Cancel to use the default iCloud location.';
+          } else if (discovered.success && discovered.vaults && discovered.vaults.length > 0) {
             message += `Found ${discovered.vaults.length} existing vault${discovered.vaults.length > 1 ? 's' : ''}.\n\n`;
             message += 'Would you like to:\n';
             message += '• Use an existing vault\n';
@@ -161,7 +168,7 @@ export async function initStateInternal() {
           const shouldChoose = confirm(message);
           
           if (shouldChoose) {
-            const result = await window.electronAPI.vaultChoose();
+            const result = await nativeApi.vaultChoose();
             if (!result || !result.success) {
               console.log('Using default vault location');
             } else {
@@ -174,7 +181,7 @@ export async function initStateInternal() {
         try {
           // Trigger resolution state machine first
           console.log('Triggering vault resolution...');
-          await window.electronAPI.vaultEnsureResolved();
+          await nativeApi.vaultEnsureResolved();
           
           // Poll until resolved
           vaultResolvedData = await waitForVaultResolved();
@@ -190,8 +197,9 @@ export async function initStateInternal() {
         }
       }
       
-      // Check OneDrive root (for file linking)
-      const oneDriveRoot = await window.electronAPI.getOneDriveRoot();
+      // Check OneDrive root (for file linking) — desktop only
+      if (!isIOSApp()) {
+      const oneDriveRoot = await nativeApi.getOneDriveRoot();
       if (!oneDriveRoot) {
         const shouldSetOneDrive = confirm(
           'OneDrive Detection\n\n' +
@@ -200,13 +208,14 @@ export async function initStateInternal() {
         );
         
         if (shouldSetOneDrive) {
-          await window.electronAPI.chooseOneDriveRoot();
+          await nativeApi.chooseOneDriveRoot();
         }
+      }
       }
       
       // Show vault path
-      const vaultPath = vaultResolvedData?.vaultPath || await window.electronAPI.getVaultPath();
-      const dataPath = await window.electronAPI.getDataPath();
+      const vaultPath = vaultResolvedData?.vaultPath || await nativeApi.getVaultPath();
+      const dataPath = await nativeApi.getDataPath();
       const pathEl = document.getElementById('data-path');
       if (pathEl && vaultPath) {
         const displayPath = vaultPath.replace(/\\/g, '/').split('/').slice(-2).join('/');
@@ -236,7 +245,7 @@ export async function initStateInternal() {
   updateFileButtons();
   
   // CRITICAL: Only load state after vault is resolved
-  if (typeof window !== 'undefined' && window.electronAPI && !vaultResolved) {
+  if (typeof window !== 'undefined' && hasVaultStorage() && !vaultResolved) {
     console.warn('⚠️ WARNING: Loading state without confirmed vault resolution');
   }
   

@@ -338,8 +338,8 @@ export function handleTodayDelegatedClick(e, state, handlers) {
   const taskRow = e.target.closest('.today-task-item[data-task-id]');
   if (taskRow) {
     const taskId = taskRow.getAttribute('data-task-id');
-    if (e.target.closest('.today-task-check')) {
-      handlers?.toggleTask?.(taskId);
+    if (e.target.closest('[data-action="task:toggle"]')) {
+      return true;
     } else {
       const allTasks = getAllTasks(state.tasks || [], state.projects || []);
       const task = allTasks.find(t => String(t.id) === String(taskId));
@@ -656,9 +656,10 @@ function renderTodayTasks(tasksToday, doneToday, projects) {
     }
     const lane = t.lane || '';
     const tagClass = lane === 'lab' ? 'tag-green' : lane === 'comp' ? 'tag-blue' : 'tag-orange';
+    const doneLabel = done ? 'Mark as not done' : 'Mark as done';
     return `
       <div class="today-task-item" data-task-id="${id}">
-        <div class="today-task-check ${done ? "done" : ""}"></div>
+        <button type="button" class="check-box ${done ? 'checked' : ''}" data-action="task:toggle" data-task-id="${id}" title="${doneLabel}" aria-label="${doneLabel}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;"></button>
         <div class="today-task-body">
           <div class="today-task-name ${done ? "done" : ""}">${escapeHtml(t.title || 'Untitled')}</div>
           <div class="today-task-meta">

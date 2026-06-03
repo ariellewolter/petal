@@ -80,20 +80,30 @@ function pickImportedUiFields(imported, current) {
   return ui;
 }
 
+function getVaultApi() {
+  if (typeof window === 'undefined') return null;
+  return window.petalPlatform || window.electronAPI || null;
+}
+
 class StorageAdapter {
   constructor() {
     this.listeners = [];
-    this.isElectron = typeof window !== 'undefined' && window.electronAPI;
     this.loading = false;
     this.pendingSave = null;
   }
 
+  /** Electron or Capacitor iOS — file-backed PetalVault, not localStorage. */
+  get isVaultBacked() {
+    const api = getVaultApi();
+    return !!api && typeof api.loadState === 'function';
+  }
+
   // Load all state from storage
   async loadState() {
-    if (this.isElectron) {
-      // Electron: load from JSON file (returns conflict info too)
+    if (this.isVaultBacked) {
+      // Electron / iOS: load from vault petal.json (returns conflict info too)
       try {
-        const result = await window.electronAPI.loadState();
+        const result = await getVaultApi().loadState();
         // Check if result has conflict info (new format) or just data (old format)
         if (result.data !== undefined) {
           // New format with conflict info
@@ -212,8 +222,8 @@ class StorageAdapter {
   // Returns: {ok: true} on success, {ok: false, error: string} on failure
   // Pure persistence module - no UI dependencies
   async saveState(state) {
-    if (this.isElectron) {
-      // Electron: save to JSON file via IPC
+    if (this.isVaultBacked) {
+      // Electron / iOS: save to vault petal.json
       try {
         // Release-Safe: Log what we're about to send to main process
         const filesCount = Array.isArray(state.files) ? state.files.length : (state.files !== undefined ? typeof state.files : 'undefined');
@@ -224,7 +234,7 @@ class StorageAdapter {
           hasFiles: 'files' in state
         });
         
-        const result = await window.electronAPI.saveState({
+        const result = await getVaultApi().saveState({
           schemaVersion: state.schemaVersion, // ✅ Include schema version
           tasks: state.tasks || [],
           projects: state.projects || [],
