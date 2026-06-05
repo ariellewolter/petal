@@ -2458,7 +2458,8 @@ function removeTags(text) {
 
 async function addTask(titleOverride = null, statusOverride = null) {
   if (window.Petal?.features?.taskOperations?.addTask) {
-    await window.Petal.features.taskOperations.addTask(titleOverride, statusOverride);
+    const ctx = window.Petal?.handlers?.createPageContext?.() || (typeof createPageContext === 'function' ? createPageContext() : {});
+    await window.Petal.features.taskOperations.addTask(ctx, titleOverride, statusOverride);
     // Close the add task form after adding (unless using override)
     if (!titleOverride) {
       const form = document.getElementById('add-task-form');
@@ -2482,7 +2483,8 @@ function updateTagPreview() {
 
 async function toggleTask(id) {
   if (window.Petal?.features?.taskOperations?.toggleTask) {
-    await window.Petal.features.taskOperations.toggleTask(id);
+    const ctx = window.Petal?.handlers?.createPageContext?.() || (typeof createPageContext === 'function' ? createPageContext() : {});
+    await window.Petal.features.taskOperations.toggleTask(ctx, id);
   } else {
     console.error('Task operations module not loaded');
   }
@@ -5071,7 +5073,7 @@ async function renderWorkflowCanvas(containerEl, state, handlers) {
         <div class="wf-mini-tasks">
           ${openTasks.slice(0, 4).map(t => `
             <div class="wf-mtask ${t.done ? 'done-t' : ''}" style="display:flex;align-items:center;gap:6px;">
-              <button type="button" class="check-box ${t.done ? 'checked' : ''}" data-action="task:toggle" data-task-id="${t.id}" title="${t.done ? 'Mark as not done' : 'Mark as done'}" aria-label="${t.done ? 'Mark as not done' : 'Mark as done'}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;"></button>
+              <button type="button" class="check-box ${t.done ? 'checked' : ''}" data-action="task:toggle" data-task-id="${t.id}" title="${t.done ? 'Mark as not done' : 'Mark as done'}" aria-label="${t.done ? 'Mark as not done' : 'Mark as done'}" style="flex-shrink:0;cursor:pointer;"></button>
               <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(t.title || 'Untitled')}</span>
             </div>
           `).join('')}
@@ -5380,8 +5382,8 @@ function openWfDetail(projectId, state, handlers) {
       ? projectTasks.map(t => `
         <div class="dp-task ${t.done ? 'done-t' : ''}" 
              data-action="task:open-drawer" data-task-id="${t.id}">
-          <button type="button" class="dp-task-check ${t.done ? 'done' : ''}" 
-               data-action="task:toggle" data-task-id="${t.id}" title="Toggle task"
+          <button type="button" class="check-box ${t.done ? 'checked' : ''}" 
+               data-action="task:toggle" data-task-id="${t.id}" title="${t.done ? 'Mark as not done' : 'Mark as done'}" aria-label="${t.done ? 'Mark as not done' : 'Mark as done'}"
                style="background:none;border:none;padding:0;cursor:pointer;"></button>
           <div class="dp-task-label">${esc(t.title || 'Untitled')}</div>
         </div>

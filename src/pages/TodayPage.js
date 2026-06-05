@@ -659,7 +659,7 @@ function renderTodayTasks(tasksToday, doneToday, projects) {
     const doneLabel = done ? 'Mark as not done' : 'Mark as done';
     return `
       <div class="today-task-item" data-task-id="${id}">
-        <button type="button" class="check-box ${done ? 'checked' : ''}" data-action="task:toggle" data-task-id="${id}" title="${doneLabel}" aria-label="${doneLabel}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;"></button>
+        <button type="button" class="check-box ${done ? 'checked' : ''}" data-action="task:toggle" data-task-id="${id}" title="${doneLabel}" aria-label="${doneLabel}" style="flex-shrink:0;cursor:pointer;"></button>
         <div class="today-task-body">
           <div class="today-task-name ${done ? "done" : ""}">${escapeHtml(t.title || 'Untitled')}</div>
           <div class="today-task-meta">

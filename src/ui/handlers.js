@@ -6,6 +6,7 @@ import { appStore } from '../state/store.js';
 import { createDefaultTask, createDefaultProject } from '../domain/schema.js';
 import { projectIdsMatch, taskBelongsToProject } from '../utils/projectHelpers.js';
 import * as workflowOps from '../features/workflow/workflowOperations.js';
+import { toggleAddTaskForm } from './modals.js';
 
 /**
  * Task handlers
@@ -261,7 +262,9 @@ export const uiHandlers = {
   
   setSelectedColor(color) {
     appStore.setState({ selectedColor: color });
-  }
+  },
+
+  toggleAddTaskForm
 };
 
 /**
@@ -442,9 +445,9 @@ export const handlers = {
   },
   
   async toggleTask(id) {
-    // Use taskOperations if available, otherwise use handler
+    const ctx = handlers.createPageContext?.() || {};
     if (window.Petal?.features?.taskOperations?.toggleTask) {
-      await window.Petal.features.taskOperations.toggleTask(id);
+      await window.Petal.features.taskOperations.toggleTask(ctx, id);
     } else {
       await taskHandlers.toggleTask(id);
     }

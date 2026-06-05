@@ -568,7 +568,7 @@ export function renderTaskDrawerSubtasks(ctx) {
   
   container.innerHTML = subtasks.map(st => `
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
-      <button type="button" class="check-box ${st.done ? 'checked' : ''}" data-action="task:toggle" data-task-id="${st.id}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;" title="Toggle subtask"></button>
+      <button type="button" class="check-box ${st.done ? 'checked' : ''}" data-action="task:toggle" data-task-id="${st.id}" style="flex-shrink:0;cursor:pointer;" title="${st.done ? 'Mark as not done' : 'Mark as done'}" aria-label="${st.done ? 'Mark as not done' : 'Mark as done'}"></button>
       <span style="font-size:13px;color:var(--text);flex:1;min-width:0;${st.done ? 'text-decoration:line-through;opacity:0.7;' : ''}">${esc(st.title)}</span>
       <div style="display:flex;gap:6px;flex-shrink:0;">
         <button data-action="edit-task" data-task-id="${st.id}" data-is-subtask="false" data-project-id="${st.projectId || ''}" style="padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;font-size:11px;cursor:pointer;color:var(--text-dim);">Edit</button>

@@ -6,6 +6,7 @@ import { findProjectById } from '../utils/projectHelpers.js';
 import { parseDate, dueLabel, today } from '../utils/dates.js';
 import { getMatrixStage, isTaskBlocked } from '../domain/models.js';
 import { calculateProtocolDayIndex } from '../features/taskOperations.js';
+import { taskDoneToggleButton } from './uiHelpers.js';
 
 /**
  * Render Today Timeline view
@@ -72,7 +73,7 @@ export function renderTodayTimeline(ctx, project, projectTasks) {
         const nextStep = steps.find(s => !s.done);
         
         html += '<div style="padding:8px;background:var(--surface);border-radius:4px;margin-bottom:6px;display:flex;align-items:flex-start;gap:8px;">';
-        html += `<button type="button" class="check-box ${task.done?'checked':''}" data-action="task:toggle" data-task-id="${task.id}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;margin-top:2px;" title="Toggle task"></button>`;
+        html += taskDoneToggleButton(task, 'margin-top:2px;');
         html += '<div style="flex:1;min-width:0;">';
         html += `<div style="font-size:13px;color:var(--text);font-weight:500;">${escFunction(task.title)} (Day ${dayIndex})</div>`;
         if (nextStep) {
@@ -138,7 +139,7 @@ export function renderActiveProtocols(ctx, project, projectTasks) {
     const nextStep = steps.find(s => !s.done);
     
     html += '<div style="padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;display:flex;align-items:flex-start;gap:8px;">';
-    html += `<button type="button" class="check-box ${task.done?'checked':''}" data-action="task:toggle" data-task-id="${task.id}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;margin-top:2px;" title="Toggle task"></button>`;
+    html += taskDoneToggleButton(task, 'margin-top:2px;');
     html += '<div style="flex:1;min-width:0;">';
     html += `<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px;">${escFunction(task.title)}</div>`;
     html += `<div style="font-size:12px;color:var(--rose);margin-bottom:4px;font-weight:500;">Day ${dayIndex} of ${totalDays}</div>`;
@@ -411,7 +412,7 @@ export function renderDeadlinesHorizon(ctx, project, projectTasks) {
       const due = parseDateFunction(task.due);
       const dueStr = due.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
       html += '<div style="padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;display:flex;align-items:flex-start;gap:8px;">';
-      html += `<button type="button" class="check-box ${task.done?'checked':''}" data-action="task:toggle" data-task-id="${task.id}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;margin-top:2px;" title="Toggle task"></button>`;
+      html += taskDoneToggleButton(task, 'margin-top:2px;');
       html += '<div style="flex:1;min-width:0;">';
       html += `<div style="font-size:13px;color:var(--text);font-weight:500;">${escFunction(task.title)}</div>`;
       html += `<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Due: ${dueStr}</div>`;
@@ -427,7 +428,7 @@ export function renderDeadlinesHorizon(ctx, project, projectTasks) {
       const due = parseDateFunction(task.due);
       const dueStr = due.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
       html += '<div style="padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;display:flex;align-items:flex-start;gap:8px;">';
-      html += `<button type="button" class="check-box ${task.done?'checked':''}" data-action="task:toggle" data-task-id="${task.id}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;margin-top:2px;" title="Toggle task"></button>`;
+      html += taskDoneToggleButton(task, 'margin-top:2px;');
       html += '<div style="flex:1;min-width:0;">';
       html += `<div style="font-size:13px;color:var(--text);font-weight:500;">${escFunction(task.title)}</div>`;
       html += `<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Due: ${dueStr}</div>`;
@@ -752,7 +753,7 @@ export function renderTaskItemCompact(ctx, task) {
   const estimated = task.estimatedMinutes ? `<span style="font-size:10px;color:var(--text-dim);margin-left:8px;">(${task.estimatedMinutes} min)</span>` : '';
   
   let html = '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;">';
-  html += `<button type="button" class="check-box ${task.done?'checked':''}" data-action="task:toggle" data-task-id="${task.id}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;" title="Toggle task"></button>`;
+  html += taskDoneToggleButton(task);
   html += '<div style="flex:1;min-width:0;">';
   html += `<div style="font-size:13px;color:var(--text);display:flex;align-items:center;gap:6px;">${escFunction(task.title)}${estimated}</div>`;
   if (tdl) {
@@ -781,7 +782,7 @@ export function renderTaskItem(ctx, task, isStale = false, depTask = null) {
   const staleWarning = isStale ? '<span style="color:var(--overdue);font-size:10px;margin-left:8px;">⚠ Stale</span>' : '';
   
   let html = '<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;">';
-  html += `<button type="button" class="check-box ${task.done?'checked':''}" data-action="task:toggle" data-task-id="${task.id}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;" title="Toggle task"></button>`;
+  html += taskDoneToggleButton(task);
   html += '<div style="flex:1;min-width:0;">';
   html += `<div style="font-size:13px;color:var(--text);display:flex;align-items:center;gap:6px;">${escFunction(task.title)}${protocolBadge}${staleWarning}</div>`;
   if (depTask) {
@@ -801,7 +802,7 @@ function renderTaskItemCompactFallback(task, escFn, dueLabelFn) {
   const estimated = task.estimatedMinutes ? `<span style="font-size:10px;color:var(--text-dim);margin-left:8px;">(${task.estimatedMinutes} min)</span>` : '';
   
   let html = '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;">';
-  html += `<button type="button" class="check-box ${task.done?'checked':''}" data-action="task:toggle" data-task-id="${task.id}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;" title="Toggle task"></button>`;
+  html += taskDoneToggleButton(task);
   html += '<div style="flex:1;min-width:0;">';
   html += `<div style="font-size:13px;color:var(--text);display:flex;align-items:center;gap:6px;">${escFn(task.title)}${estimated}</div>`;
   if (tdl) {

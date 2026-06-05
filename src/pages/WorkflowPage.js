@@ -576,7 +576,7 @@ export function renderWorkflowList() {
             <div class="wf-expand-tasks">
               ${(selectedProjectId ? projectTasks : projectTasks.slice(0, 5)).map(t => `
                 <div class="wf-etask ${t.done ? 'done-t' : ''}" data-task-id="${t.id}">
-                  <button type="button" class="wf-etask-check ${t.done ? 'done' : ''}" data-action="task:toggle" data-task-id="${t.id}" title="Toggle task" style="background:none;border:none;padding:0;cursor:pointer;"></button>
+                  <button type="button" class="check-box ${t.done ? 'checked' : ''}" data-action="task:toggle" data-task-id="${t.id}" title="${t.done ? 'Mark as not done' : 'Mark as done'}" aria-label="${t.done ? 'Mark as not done' : 'Mark as done'}" style="flex-shrink:0;cursor:pointer;"></button>
                   <span class="wf-etask-label">${esc(t.title || 'Untitled')}</span>
                 </div>
               `).join('')}
@@ -763,7 +763,7 @@ export function buildWorkflowTimeline() {
       html += `<div style="display:contents">`;
       const doneLabel = t.done ? 'Mark as not done' : 'Mark as done';
       html += `<div class="wf-tl-task-info" style="padding:8px 14px 8px 36px;border-right:1px solid var(--border-faint);border-bottom:1px solid var(--border-faint);display:flex;align-items:center;gap:7px;background:var(--bg);grid-column:1">
-        <button type="button" class="check-box ${t.done ? 'checked' : ''}" data-action="task:toggle" data-task-id="${t.id}" title="${doneLabel}" aria-label="${doneLabel}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;"></button>
+        <button type="button" class="check-box ${t.done ? 'checked' : ''}" data-action="task:toggle" data-task-id="${t.id}" title="${doneLabel}" aria-label="${doneLabel}" style="flex-shrink:0;cursor:pointer;"></button>
         <div class="wf-tl-task-name" style="font-size:10px;color:var(--text-dim);flex:1;min-width:0;${t.done?'text-decoration:line-through':''}">${esc(t.title || 'Untitled')}</div>
       </div>`;
       html += `<div style="grid-column:2/${months.length+2};border-bottom:1px solid var(--border-faint);position:relative;height:36px;background:var(--bg)">`;

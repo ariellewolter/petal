@@ -3,6 +3,7 @@
 // Takes state and handlers as parameters - no store peeking
 
 import { esc } from '../utils/strings.js';
+import { taskDoneToggleButton } from './uiHelpers.js';
 import { today, parseDate, dueLabel, inRange } from '../utils/dates.js';
 import { getAllTasks } from '../domain/models.js';
 
@@ -197,8 +198,7 @@ function renderTaskItem(task, state) {
   return `<div class="task-card ${task.done ? 'done' : ''}" data-id="${task.id}" data-priority="${priorityClass}">
     <div class="task-top">
       <div class="task-content">
-        <button type="button" class="check-box ${task.done ? 'checked' : ''}"
-             data-action="task:toggle" data-task-id="${task.id}" style="background:none;border:none;padding:0;cursor:pointer;" title="Toggle task"></button>
+        ${taskDoneToggleButton(task)}
         
         <div class="task-body">
           <div class="task-title">

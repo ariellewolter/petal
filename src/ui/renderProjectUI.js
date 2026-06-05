@@ -620,7 +620,7 @@ export function projectHTML(ctx, p, tasksFromStore = null, openProjectsFromStore
             }).join('') : '';
             return `<div class="subtask-item ${st.done?'done':''}" style="margin-left:24px;margin-top:6px;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px;">
               <div style="display:flex;align-items:flex-start;gap:8px;">
-                <button type="button" class="subtask-check ${st.done?'checked':''}" data-action="subtask:toggle" data-task-id="${t.id}" data-subtask-id="${st.id}" style="margin-top:2px;background:none;border:none;padding:0;cursor:pointer;" title="Toggle subtask"></button>
+                <button type="button" class="subtask-check ${st.done?'checked':''}" data-action="subtask:toggle" data-task-id="${t.id}" data-subtask-id="${st.id}" style="margin-top:2px;cursor:pointer;" title="${st.done ? 'Mark as not done' : 'Mark as done'}" aria-label="${st.done ? 'Mark as not done' : 'Mark as done'}"></button>
                 <div class="subtask-body" style="flex:1;">
                   <div class="subtask-title" style="font-weight:500;font-size:13px;">${escFunction(st.title)}</div>
                   <div class="subtask-meta" style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap;">
@@ -659,7 +659,7 @@ export function projectHTML(ctx, p, tasksFromStore = null, openProjectsFromStore
             <div class="task-top">
               <div class="task-content">
                 <input type="checkbox" class="task-select-checkbox" data-project-id="${p.id}" data-task-id="${t.id}" onchange="updateSelection(${p.id})" style="cursor:pointer;flex-shrink:0;width:18px;height:18px;margin-top:2px;display:none;">
-                <button type="button" class="check-box ${t.done ? 'checked' : ''}" data-action="task:toggle" data-task-id="${t.id}" style="background:none;border:none;padding:0;cursor:pointer;" title="Toggle task"></button>
+                ${taskDoneToggleButton(t)}
                 
                 <div class="task-body">
                   <div class="task-title">

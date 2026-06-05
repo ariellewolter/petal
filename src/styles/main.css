@@ -368,7 +368,8 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 .task-top{display:flex;align-items:center;gap:14px;padding:18px 20px;cursor:pointer;user-select:none;position:relative;justify-content:space-between;}
 .task-content{display:flex;align-items:center;gap:14px;flex:1;min-width:0;}
 .task-actions{display:flex;gap:4px;margin-left:8px;flex-shrink:0;opacity:1;visibility:visible;}
-.check-box{width:18px;height:18px;border:1.5px solid var(--border2);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .18s;background:var(--surface);flex-shrink:0;margin-top:0;}
+.check-box{width:18px;height:18px;border:1.5px solid var(--border2);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .18s;background:var(--surface);flex-shrink:0;margin-top:0;appearance:none;-webkit-appearance:none;padding:0;box-sizing:border-box;}
+button.check-box{font:inherit;color:inherit;line-height:1;}
 .check-box:hover{border-color:var(--rose-soft);background:var(--rose-pale);}
 .check-box.checked{background:var(--rose);border-color:var(--rose);}
 .check-box.checked::after{content:'';width:5px;height:8px;border:1.5px solid white;border-top:none;border-left:none;transform:rotate(45deg) translateY(-1px);display:block;}
@@ -1164,10 +1165,7 @@ textarea{resize:vertical;min-height:56px;line-height:1.6;}
 .today-task-item{display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;}
 .today-task-item:last-child{border-bottom:none;}
 .today-task-item:hover{background:var(--bg2);}
-.today-task-check{width:14px;height:14px;border:1.5px solid var(--border2);border-radius:3px;flex-shrink:0;transition:all .2s;display:flex;align-items:center;justify-content:center;}
-.today-task-item:hover .today-task-check{border-color:var(--rose);}
-.today-task-check.done{background:var(--rose);border-color:var(--rose);}
-.today-task-check.done::after{content:'✓';font-size:9px;color:var(--surface);font-weight:bold;}
+.today-task-item .check-box{margin-top:0;}
 .today-task-body{flex:1;min-width:0;}
 .today-task-name{font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .today-task-name.done{text-decoration:line-through;color:var(--text-dim);}

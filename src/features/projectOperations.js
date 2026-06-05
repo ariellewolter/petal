@@ -2039,7 +2039,7 @@ export function openProtocolRunDetail(ctx, runId) {
     html += `<div style="display:flex;flex-direction:column;gap:6px;">`;
     linkedTasks.forEach(task => {
       html += `<div style="padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--text);display:flex;align-items:center;gap:8px;">`;
-      html += `<button type="button" class="check-box ${task.done ? 'checked' : ''}" data-action="task:toggle" data-task-id="${task.id}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;" title="Toggle task"></button>`;
+      html += `<button type="button" class="check-box ${task.done ? 'checked' : ''}" data-action="task:toggle" data-task-id="${task.id}" title="${task.done ? 'Mark as not done' : 'Mark as done'}" aria-label="${task.done ? 'Mark as not done' : 'Mark as done'}" style="flex-shrink:0;cursor:pointer;"></button>`;
       html += `<span style="font-weight:500;flex:1;min-width:0;${task.done ? 'text-decoration:line-through;opacity:0.7;' : ''}">${escFunction(task.title)}</span>`;
       if (task.priority) {
         html += ` <span style="color:var(--text-dim);flex-shrink:0;">(${task.priority})</span>`;

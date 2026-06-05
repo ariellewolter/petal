@@ -10,6 +10,17 @@ console.log('🚀 MAIN BOOT', {
   time: new Date().toISOString()
 });
 
+// Always-on boot trace (survives suppressed console / GUI launches)
+const BOOT_TRACE = require('path').join(__dirname, '.petal-boot-trace.log');
+function bootTrace(msg) {
+  try {
+    require('fs').appendFileSync(BOOT_TRACE, `${new Date().toISOString()} ${msg}\n`);
+  } catch (e) {
+    try { require('fs').appendFileSync(require('path').join(__dirname, 'boot-trace-err.txt'), String(e)); } catch (_) {}
+  }
+}
+bootTrace(`MAIN BOOT pid=${process.pid}`);
+
 function isBrokenPipeError(error) {
   if (!error) return false;
   // Check multiple ways EPIPE might be represented
@@ -114,12 +125,41 @@ if (process.stderr && typeof process.stderr.on === 'function') {
 }
 
 // Now require modules
+bootTrace('requiring electron');
+if (process.env.ELECTRON_RUN_AS_NODE) {
+  const msg = 'ELECTRON_RUN_AS_NODE is set — Electron cannot start as a GUI app. Run: env -u ELECTRON_RUN_AS_NODE npm start';
+  bootTrace(`FATAL: ${msg}`);
+  console.error('❌', msg);
+  process.exit(1);
+}
 const { app, BrowserWindow, ipcMain, dialog, shell, nativeTheme } = require('electron');
+if (!app) {
+  const msg = 'require("electron").app is missing — launch via `npm start` or the Electron binary, not plain node.';
+  bootTrace(`FATAL: ${msg}`);
+  console.error('❌', msg);
+  process.exit(1);
+}
+bootTrace('electron required');
 const path = require('path');
 const fs = require('fs');
 const fsPromises = require('fs').promises;
 const os = require('os');
+bootTrace('loading VaultManager');
 const VaultManager = require('./vault-manager');
+bootTrace('VaultManager loaded');
+
+// Dev runs use the generic Electron binary; use Petal's profile so instance lock,
+// cookies, and vault config don't collide with other Electron projects (e.g. GCODE-GUI).
+try {
+  app.setName('Petal');
+  if (!app.isPackaged) {
+    app.setPath('userData', path.join(app.getPath('appData'), 'Petal'));
+  }
+  bootTrace(`userData=${app.getPath('userData')} packaged=${app.isPackaged}`);
+} catch (setPathErr) {
+  bootTrace(`setPath failed: ${setPathErr?.message || setPathErr}`);
+  throw setPathErr;
+}
 
 // Store original console methods and override them IMMEDIATELY
 // This must happen before any console.log calls in the codebase
@@ -1258,6 +1298,16 @@ function createWindow() {
   mainWindow.webContents.once('did-finish-load', () => {
     safeLog('✅ Window finished loading tasklist.html');
   });
+
+  mainWindow.webContents.on('render-process-gone', (event, details) => {
+    bootTrace(`render-process-gone: ${JSON.stringify(details)}`);
+    safeError('Renderer process gone:', details);
+  });
+
+  mainWindow.on('close', () => {
+    bootTrace('main window close event');
+    safeLog('Main window closing');
+  });
   
   // Log console messages from renderer
   mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
@@ -1281,23 +1331,29 @@ function createWindow() {
 
 // Single instance lock: prevent multiple app instances
 const gotTheLock = app.requestSingleInstanceLock();
+bootTrace(`requestSingleInstanceLock=${gotTheLock}`);
 
 if (!gotTheLock) {
   // Another instance is already running - focus it and quit
+  bootTrace('secondary instance — quitting');
+  _realConsoleLog('Petal is already running — switch to the existing window (Dock / Cmd+Tab).');
   app.quit();
 } else {
   // Handle second instance launch
   app.on('second-instance', () => {
-    // Focus existing window
+    bootTrace('second-instance event — focusing existing window');
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
+      if (!mainWindow.isVisible()) mainWindow.show();
       mainWindow.focus();
+    } else {
+      createWindow();
     }
   });
-}
 
-// Initialize vault system on app ready
-app.whenReady().then(async () => {
+  // Initialize vault system on app ready (primary instance only)
+  app.whenReady().then(async () => {
+  bootTrace('whenReady fired');
   // Step 1: Initialize VaultManager and logger
   vaultManager = new VaultManager(app);
   vaultManager.initializeLogger();
@@ -1347,7 +1403,9 @@ app.whenReady().then(async () => {
   }
   
   // Step 4: Create window
+  bootTrace('creating window');
   createWindow();
+  bootTrace('window created');
   
   // Step 5: Send vault status to renderer
   if (mainWindow && vaultResolution.success) {
@@ -1388,15 +1446,23 @@ app.whenReady().then(async () => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
+    } else if (mainWindow) {
+      mainWindow.show();
+      mainWindow.focus();
     }
     const activeVault = vaultManager?.getActiveVaultPath?.();
     if (activeVault && !dataFileWatcher && !dataFilePollInterval) {
       startWatchingDataFile(activeVault);
     }
   });
-});
+  }).catch((err) => {
+    bootTrace(`whenReady failed: ${err?.message || err}`);
+    _realConsoleError('Failed during app startup:', err);
+  });
+}
 
 app.on('window-all-closed', () => {
+  bootTrace('window-all-closed');
   if (process.platform !== 'darwin') {
     app.quit();
   }

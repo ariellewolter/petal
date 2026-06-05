@@ -3,6 +3,7 @@
 // Takes state and handlers as parameters - no store peeking
 
 import { esc } from '../utils/strings.js';
+import { taskDoneToggleButton } from './uiHelpers.js';
 import { today, parseDate, dueLabel } from '../utils/dates.js';
 import { getAllTasks } from '../domain/models.js';
 import { filterTasksForProject } from '../utils/projectHelpers.js';
@@ -267,8 +268,7 @@ function renderProjectCard(project, state, openSet) {
           return `<div class="task-card ${t.done ? 'done' : ''}" data-id="${t.id}" data-priority="${priorityClass}">
             <div class="task-top">
               <div class="task-content">
-                <button type="button" class="check-box ${t.done ? 'checked' : ''}"
-                     data-action="task:toggle" data-task-id="${t.id}" style="background:none;border:none;padding:0;cursor:pointer;" title="Toggle task"></button>
+                ${taskDoneToggleButton(t)}
                 
                 <div class="task-body">
                   <div class="task-title">

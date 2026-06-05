@@ -1,10 +1,11 @@
 {
   "name": "petal-task-tracker",
-  "version": "1.7.8",
+  "version": "1.7.9",
   "description": "A beautiful task and project tracker with file-based sync",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
+    "start": "env -u ELECTRON_RUN_AS_NODE electron .",
+    "start:gui": "env -u ELECTRON_RUN_AS_NODE open -n node_modules/electron/dist/Electron.app --args .",
     "audit": "node scripts/audit.js",
     "verify:icons": "node scripts/verify-release-icons.js",
     "build": "npm run verify:icons && electron-builder --publish never --config electron-builder.config.cjs",
@@ -16,7 +17,11 @@
     "cap:sync:ios": "npm run cap:prepare && npx cap sync ios",
     "cap:open:ios": "npx cap open ios"
   },
-  "keywords": ["task", "tracker", "productivity"],
+  "keywords": [
+    "task",
+    "tracker",
+    "productivity"
+  ],
   "author": "Your Name",
   "license": "MIT",
   "dependencies": {
@@ -52,7 +57,10 @@
     "mac": {
       "category": "public.app-category.productivity",
       "icon": "build/icon.icns",
-      "target": ["dmg", "zip"]
+      "target": [
+        "dmg",
+        "zip"
+      ]
     },
     "win": {
       "target": "nsis",

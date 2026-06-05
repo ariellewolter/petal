@@ -5,6 +5,7 @@ import { esc, escAttr, escJsonForAttr, fileIcon } from '../utils/strings.js';
 import { parseDate, dueLabel } from '../utils/dates.js';
 import { isTaskBlocked } from '../domain/models.js';
 import { LANE_STAGES } from '../domain/schema.js';
+import { taskDoneToggleButton } from './uiHelpers.js';
 
 /**
  * Render tasks for a specific workflow lane as a list
@@ -124,7 +125,7 @@ export async function renderLane(ctx, laneName, allTasks) {
     return `<div class="task-card ${t.done?'done':''} ${blocked?'blocked':''}" data-priority="${t.priority}">
       <div class="task-top">
         <div class="task-content">
-          <button type="button" class="check-box ${t.done?'checked':''}" data-action="task:toggle" data-task-id="${t.id}" style="background:none;border:none;padding:0;cursor:pointer;" title="Toggle task"></button>
+          ${taskDoneToggleButton(t)}
           <div class="task-body" style="flex:1;">
             <div class="task-title">${escFunction(t.title)}</div>
             <div class="task-meta-row" style="margin-top:6px;">
@@ -238,7 +239,7 @@ export async function renderUnassignedLane(ctx, allTasks) {
     return `<div class="task-card ${t.done?'done':''} ${blocked?'blocked':''}" data-priority="${t.priority}">
       <div class="task-top">
         <div class="task-content">
-          <button type="button" class="check-box ${t.done?'checked':''}" data-action="task:toggle" data-task-id="${t.id}" style="background:none;border:none;padding:0;cursor:pointer;" title="Toggle task"></button>
+          ${taskDoneToggleButton(t)}
           <div class="task-body" style="flex:1;">
             <div class="task-title">${escFunction(t.title)}</div>
             <div class="task-meta-row" style="margin-top:6px;">

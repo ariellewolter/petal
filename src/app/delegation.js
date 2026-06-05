@@ -84,7 +84,38 @@ export function setupEventDelegation() {
     // Avoid duplicate handling: page-level modules already handle these actions.
     // Global delegation runs in capture phase, so without this guard we can fire twice.
     const inTasksView = !!actionBtn.closest('#view-tasks');
-    if (inTasksView && /^(task:|ui:|sort:|filter:|edit-task|delete-task|delete|toggle-task|toggle|open-drawer|drawer)/.test(action)) {
+    const tasksPageBound = !!document.getElementById('view-tasks')?.__tasksPageBound;
+    if (inTasksView && !tasksPageBound) {
+      if (action === 'ui:toggle-add-form') {
+        e.preventDefault();
+        if (window.toggleAddTaskForm) window.toggleAddTaskForm();
+        else if (window.Petal?.handlers?.toggleAddTaskForm) window.Petal.handlers.toggleAddTaskForm();
+        return;
+      }
+      if (action === 'task:add') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof window.addTask === 'function') window.addTask();
+        else if (window.Petal?.features?.taskOperations?.addTask) {
+          const ctx = window.Petal?.handlers?.createPageContext?.() || window.createPageContext?.() || {};
+          window.Petal.features.taskOperations.addTask(ctx);
+        }
+        return;
+      }
+      if (action === 'task:toggle' || action === 'toggle-task') {
+        e.preventDefault();
+        e.stopPropagation();
+        const taskId = actionBtn.getAttribute('data-task-id') || actionBtn.getAttribute('data-id');
+        const ctx = window.Petal?.handlers?.createPageContext?.() || window.createPageContext?.() || {};
+        if (taskId && window.Petal?.features?.taskOperations?.toggleTask) {
+          window.Petal.features.taskOperations.toggleTask(ctx, taskId);
+        } else if (taskId && window.toggleTask) {
+          window.toggleTask(taskId);
+        }
+        return;
+      }
+    }
+    if (inTasksView && tasksPageBound && /^(task:|ui:|sort:|filter:|edit-task|delete-task|delete|toggle-task|toggle|open-drawer|drawer)/.test(action)) {
       return;
     }
     const inFilesView = !!actionBtn.closest('#view-files');

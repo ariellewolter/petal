@@ -964,7 +964,7 @@ export function showFileRelations(fileKey, ctx) {
       const projName = project ? project.name : '';
       const doneLabel = t.done ? 'Mark as not done' : 'Mark as done';
       html += `<div style="padding:8px;background:var(--bg2);border-radius:6px;margin-bottom:6px;display:flex;align-items:flex-start;gap:8px;">
-        <button type="button" class="check-box ${t.done ? 'checked' : ''}" data-action="task:toggle" data-task-id="${t.id}" title="${doneLabel}" aria-label="${doneLabel}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;margin-top:2px;"></button>
+        <button type="button" class="check-box ${t.done ? 'checked' : ''}" data-action="task:toggle" data-task-id="${t.id}" title="${doneLabel}" aria-label="${doneLabel}" style="flex-shrink:0;cursor:pointer;margin-top:2px;"></button>
         <div style="flex:1;min-width:0;">
           <div style="font-weight:500;${t.done ? 'text-decoration:line-through;opacity:0.7;' : ''}">${esc(t.title)}</div>
           <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">

@@ -106,7 +106,7 @@ export function renderMatrixTaskCard(ctx, task, isSubtaskTask = false, subtaskId
     ondragstart="onMatrixDragStart(event, ${task.id})"
     ondragend="onMatrixDragEnd(event)">
     <div class="matrix-task-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-      <button type="button" class="check-box ${task.done ? 'checked' : ''}" data-action="task:toggle" data-task-id="${task.id}" style="flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;" title="Toggle task"></button>
+      ${taskDoneToggleButton(task)}
       <div style="flex:1;min-width:0;">
         ${isTaskSubtask && parentTask ? `<span style="opacity:0.6;font-size:9px;color:var(--text-dim);">↳ ${escFunction(parentTask.title)} → </span>` : ''}
         ${escFunction(task.title)}
@@ -865,8 +865,9 @@ export function renderMindMap(ctx, project, projectTasks, standaloneTasks, tasks
     doneBtn.className = `check-box${isDone ? ' checked' : ''}`;
     doneBtn.dataset.action = 'task:toggle';
     doneBtn.dataset.taskId = String(task.id);
-    doneBtn.title = 'Toggle task';
-    doneBtn.style.cssText = 'flex-shrink:0;background:none;border:none;padding:0;cursor:pointer;margin-top:1px;';
+    doneBtn.title = isDone ? 'Mark as not done' : 'Mark as done';
+    doneBtn.setAttribute('aria-label', doneBtn.title);
+    doneBtn.style.cssText = 'flex-shrink:0;cursor:pointer;margin-top:1px;';
     titleRow.appendChild(doneBtn);
 
     const title = document.createElement('div');
