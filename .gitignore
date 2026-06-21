@@ -19,6 +19,7 @@ out/
 release/
 build/*
 !build/icon.icns
+!build/icon.ico
 !build/entitlements.mac.plist
 
 # OS/editor
